@@ -103,7 +103,9 @@ func (r *ExpenseRepository) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a single expense by ID, including vendor data if available.
 func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expense, error) {
 	e := &domain.Expense{}
-	var deletedAt sql.NullTime
+	var createdAtStr string
+	var updatedAtStr string
+	var deletedAtStr sql.NullString
 	var vendorID sql.NullInt64
 	var vendorName sql.NullString
 	var vendorType sql.NullString
@@ -127,7 +129,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 		&e.VATRatePercent, &e.VATAmount,
 		&e.IsTaxDeductible, &e.BusinessPercent, &e.PaymentMethod,
 		&e.DocumentPath, &e.Notes,
-		&e.CreatedAt, &e.UpdatedAt, &deletedAt,
+		&createdAtStr, &updatedAtStr, &deletedAtStr,
 		&vendorName, &vendorType, &vendorICO,
 	)
 	if err != nil {
@@ -137,8 +139,11 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 		return nil, fmt.Errorf("querying expense %d: %w", id, err)
 	}
 
-	if deletedAt.Valid {
-		e.DeletedAt = &deletedAt.Time
+	e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	e.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+	if deletedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+		e.DeletedAt = &t
 	}
 	if vendorID.Valid {
 		vid := vendorID.Int64
@@ -217,7 +222,9 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 	var expenses []domain.Expense
 	for rows.Next() {
 		var e domain.Expense
-		var deletedAt sql.NullTime
+		var createdAtStr string
+		var updatedAtStr string
+		var deletedAtStr sql.NullString
 		var vendorID sql.NullInt64
 		var vendorName string
 
@@ -227,14 +234,17 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 			&e.VATRatePercent, &e.VATAmount,
 			&e.IsTaxDeductible, &e.BusinessPercent, &e.PaymentMethod,
 			&e.DocumentPath, &e.Notes,
-			&e.CreatedAt, &e.UpdatedAt, &deletedAt,
+			&createdAtStr, &updatedAtStr, &deletedAtStr,
 			&vendorName,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
 		}
 
-		if deletedAt.Valid {
-			e.DeletedAt = &deletedAt.Time
+		e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		e.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+		if deletedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+			e.DeletedAt = &t
 		}
 		if vendorID.Valid {
 			vid := vendorID.Int64

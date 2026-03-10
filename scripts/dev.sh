@@ -29,6 +29,6 @@ fi
 
 # Start Go server in dev mode
 echo "==> Starting Go server in dev mode..."
-go run ./cmd/zfaktury serve --dev --port 8080
+CGO_ENABLED=0 go run ./cmd/zfaktury serve --dev --port 8080
 
 wait

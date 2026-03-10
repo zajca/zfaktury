@@ -189,9 +189,11 @@ func (r *InvoiceRepository) Delete(ctx context.Context, id int64) error {
 func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invoice, error) {
 	inv := &domain.Invoice{}
 	var seqID sql.NullInt64
-	var deletedAt sql.NullTime
-	var sentAt sql.NullTime
-	var paidAt sql.NullTime
+	var createdAtStr string
+	var updatedAtStr string
+	var deletedAtStr sql.NullString
+	var sentAtStr sql.NullString
+	var paidAtStr sql.NullString
 	var custID sql.NullInt64
 	var custType, custName, custICO, custDIC sql.NullString
 	var custStreet, custCity, custZIP, custCountry sql.NullString
@@ -218,8 +220,8 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 		&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
 		&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
 		&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
-		&inv.Notes, &inv.InternalNotes, &sentAt, &paidAt,
-		&inv.CreatedAt, &inv.UpdatedAt, &deletedAt,
+		&inv.Notes, &inv.InternalNotes, &sentAtStr, &paidAtStr,
+		&createdAtStr, &updatedAtStr, &deletedAtStr,
 		&custID, &custType, &custName, &custICO, &custDIC,
 		&custStreet, &custCity, &custZIP, &custCountry,
 		&custEmail, &custPhone, &custWeb,
@@ -234,14 +236,19 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 	if seqID.Valid {
 		inv.SequenceID = seqID.Int64
 	}
-	if sentAt.Valid {
-		inv.SentAt = &sentAt.Time
+	inv.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	inv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+	if sentAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, sentAtStr.String)
+		inv.SentAt = &t
 	}
-	if paidAt.Valid {
-		inv.PaidAt = &paidAt.Time
+	if paidAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, paidAtStr.String)
+		inv.PaidAt = &t
 	}
-	if deletedAt.Valid {
-		inv.DeletedAt = &deletedAt.Time
+	if deletedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+		inv.DeletedAt = &t
 	}
 	if custID.Valid {
 		inv.Customer = &domain.Contact{
@@ -353,9 +360,11 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 	for rows.Next() {
 		var inv domain.Invoice
 		var listSeqID sql.NullInt64
-		var deletedAt sql.NullTime
-		var sentAt sql.NullTime
-		var paidAt sql.NullTime
+		var createdAtStr string
+		var updatedAtStr string
+		var deletedAtStr sql.NullString
+		var sentAtStr sql.NullString
+		var paidAtStr sql.NullString
 		var customerName string
 
 		if err := rows.Scan(
@@ -364,8 +373,8 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 			&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
 			&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
 			&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
-			&inv.Notes, &inv.InternalNotes, &sentAt, &paidAt,
-			&inv.CreatedAt, &inv.UpdatedAt, &deletedAt,
+			&inv.Notes, &inv.InternalNotes, &sentAtStr, &paidAtStr,
+			&createdAtStr, &updatedAtStr, &deletedAtStr,
 			&customerName,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scanning invoice row: %w", err)
@@ -374,14 +383,19 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 		if listSeqID.Valid {
 			inv.SequenceID = listSeqID.Int64
 		}
-		if sentAt.Valid {
-			inv.SentAt = &sentAt.Time
+		inv.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		inv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+		if sentAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, sentAtStr.String)
+			inv.SentAt = &t
 		}
-		if paidAt.Valid {
-			inv.PaidAt = &paidAt.Time
+		if paidAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, paidAtStr.String)
+			inv.PaidAt = &t
 		}
-		if deletedAt.Valid {
-			inv.DeletedAt = &deletedAt.Time
+		if deletedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+			inv.DeletedAt = &t
 		}
 		if customerName != "" {
 			inv.Customer = &domain.Contact{ID: inv.CustomerID, Name: customerName}

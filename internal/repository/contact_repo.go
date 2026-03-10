@@ -95,7 +95,9 @@ func (r *ContactRepository) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a single contact by ID.
 func (r *ContactRepository) GetByID(ctx context.Context, id int64) (*domain.Contact, error) {
 	c := &domain.Contact{}
-	var deletedAt sql.NullTime
+	var createdAtStr string
+	var updatedAtStr string
+	var deletedAtStr sql.NullString
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, type, name, ico, dic, street, city, zip, country,
@@ -107,7 +109,7 @@ func (r *ContactRepository) GetByID(ctx context.Context, id int64) (*domain.Cont
 		&c.ID, &c.Type, &c.Name, &c.ICO, &c.DIC, &c.Street, &c.City, &c.ZIP, &c.Country,
 		&c.Email, &c.Phone, &c.Web, &c.BankAccount, &c.BankCode, &c.IBAN, &c.SWIFT,
 		&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &c.VATUnreliable,
-		&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+		&createdAtStr, &updatedAtStr, &deletedAtStr,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -115,8 +117,11 @@ func (r *ContactRepository) GetByID(ctx context.Context, id int64) (*domain.Cont
 		}
 		return nil, fmt.Errorf("querying contact %d: %w", id, err)
 	}
-	if deletedAt.Valid {
-		c.DeletedAt = &deletedAt.Time
+	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+	if deletedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+		c.DeletedAt = &t
 	}
 	return c, nil
 }
@@ -168,17 +173,22 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 	var contacts []domain.Contact
 	for rows.Next() {
 		var c domain.Contact
-		var deletedAt sql.NullTime
+		var createdAtStr string
+		var updatedAtStr string
+		var deletedAtStr sql.NullString
 		if err := rows.Scan(
 			&c.ID, &c.Type, &c.Name, &c.ICO, &c.DIC, &c.Street, &c.City, &c.ZIP, &c.Country,
 			&c.Email, &c.Phone, &c.Web, &c.BankAccount, &c.BankCode, &c.IBAN, &c.SWIFT,
 			&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &c.VATUnreliable,
-			&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+			&createdAtStr, &updatedAtStr, &deletedAtStr,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
 		}
-		if deletedAt.Valid {
-			c.DeletedAt = &deletedAt.Time
+		c.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+		if deletedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+			c.DeletedAt = &t
 		}
 		contacts = append(contacts, c)
 	}
@@ -191,7 +201,9 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 // FindByICO finds a contact by its Czech business identification number (ICO).
 func (r *ContactRepository) FindByICO(ctx context.Context, ico string) (*domain.Contact, error) {
 	c := &domain.Contact{}
-	var deletedAt sql.NullTime
+	var createdAtStr string
+	var updatedAtStr string
+	var deletedAtStr sql.NullString
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, type, name, ico, dic, street, city, zip, country,
@@ -203,7 +215,7 @@ func (r *ContactRepository) FindByICO(ctx context.Context, ico string) (*domain.
 		&c.ID, &c.Type, &c.Name, &c.ICO, &c.DIC, &c.Street, &c.City, &c.ZIP, &c.Country,
 		&c.Email, &c.Phone, &c.Web, &c.BankAccount, &c.BankCode, &c.IBAN, &c.SWIFT,
 		&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &c.VATUnreliable,
-		&c.CreatedAt, &c.UpdatedAt, &deletedAt,
+		&createdAtStr, &updatedAtStr, &deletedAtStr,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -211,8 +223,11 @@ func (r *ContactRepository) FindByICO(ctx context.Context, ico string) (*domain.
 		}
 		return nil, fmt.Errorf("querying contact by ICO %s: %w", ico, err)
 	}
-	if deletedAt.Valid {
-		c.DeletedAt = &deletedAt.Time
+	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+	if deletedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+		c.DeletedAt = &t
 	}
 	return c, nil
 }

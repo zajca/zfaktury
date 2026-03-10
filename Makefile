@@ -5,7 +5,7 @@ build:
 	@echo "Building frontend..."
 	cd frontend && npm ci && npm run build
 	@echo "Building Go binary..."
-	go build -o zfaktury ./cmd/zfaktury
+	CGO_ENABLED=0 go build -o zfaktury ./cmd/zfaktury
 	@echo "Build complete: ./zfaktury"
 
 # Run in development mode with hot reloading
@@ -14,7 +14,7 @@ dev:
 
 # Run all tests (backend + frontend)
 test:
-	go test ./... -v -race
+	CGO_ENABLED=0 go test ./... -v
 	cd frontend && npm run test
 
 # Clean build artifacts

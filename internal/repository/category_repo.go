@@ -87,7 +87,8 @@ func (r *CategoryRepository) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a single expense category by ID.
 func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.ExpenseCategory, error) {
 	cat := &domain.ExpenseCategory{}
-	var deletedAt sql.NullTime
+	var createdAtStr string
+	var deletedAtStr sql.NullString
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, key, label_cs, label_en, color, sort_order, is_default, created_at, deleted_at
@@ -95,7 +96,7 @@ func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.Exp
 		WHERE id = ? AND deleted_at IS NULL`, id,
 	).Scan(
 		&cat.ID, &cat.Key, &cat.LabelCS, &cat.LabelEN, &cat.Color,
-		&cat.SortOrder, &cat.IsDefault, &cat.CreatedAt, &deletedAt,
+		&cat.SortOrder, &cat.IsDefault, &createdAtStr, &deletedAtStr,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -104,8 +105,10 @@ func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.Exp
 		return nil, fmt.Errorf("querying expense category %d: %w", id, err)
 	}
 
-	if deletedAt.Valid {
-		cat.DeletedAt = &deletedAt.Time
+	cat.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	if deletedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+		cat.DeletedAt = &t
 	}
 	return cat, nil
 }
@@ -113,7 +116,8 @@ func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.Exp
 // GetByKey retrieves a single expense category by its unique key.
 func (r *CategoryRepository) GetByKey(ctx context.Context, key string) (*domain.ExpenseCategory, error) {
 	cat := &domain.ExpenseCategory{}
-	var deletedAt sql.NullTime
+	var createdAtStr string
+	var deletedAtStr sql.NullString
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, key, label_cs, label_en, color, sort_order, is_default, created_at, deleted_at
@@ -121,7 +125,7 @@ func (r *CategoryRepository) GetByKey(ctx context.Context, key string) (*domain.
 		WHERE key = ? AND deleted_at IS NULL`, key,
 	).Scan(
 		&cat.ID, &cat.Key, &cat.LabelCS, &cat.LabelEN, &cat.Color,
-		&cat.SortOrder, &cat.IsDefault, &cat.CreatedAt, &deletedAt,
+		&cat.SortOrder, &cat.IsDefault, &createdAtStr, &deletedAtStr,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -130,8 +134,10 @@ func (r *CategoryRepository) GetByKey(ctx context.Context, key string) (*domain.
 		return nil, fmt.Errorf("querying expense category by key %q: %w", key, err)
 	}
 
-	if deletedAt.Valid {
-		cat.DeletedAt = &deletedAt.Time
+	cat.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	if deletedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+		cat.DeletedAt = &t
 	}
 	return cat, nil
 }
@@ -152,17 +158,20 @@ func (r *CategoryRepository) List(ctx context.Context) ([]domain.ExpenseCategory
 	var categories []domain.ExpenseCategory
 	for rows.Next() {
 		var cat domain.ExpenseCategory
-		var deletedAt sql.NullTime
+		var createdAtStr string
+		var deletedAtStr sql.NullString
 
 		if err := rows.Scan(
 			&cat.ID, &cat.Key, &cat.LabelCS, &cat.LabelEN, &cat.Color,
-			&cat.SortOrder, &cat.IsDefault, &cat.CreatedAt, &deletedAt,
+			&cat.SortOrder, &cat.IsDefault, &createdAtStr, &deletedAtStr,
 		); err != nil {
 			return nil, fmt.Errorf("scanning expense category row: %w", err)
 		}
 
-		if deletedAt.Valid {
-			cat.DeletedAt = &deletedAt.Time
+		cat.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		if deletedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+			cat.DeletedAt = &t
 		}
 		categories = append(categories, cat)
 	}

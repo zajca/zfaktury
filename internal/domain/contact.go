@@ -51,3 +51,35 @@ type Contact struct {
 	UpdatedAt time.Time
 	DeletedAt *time.Time
 }
+
+// DICCountryCode returns the 2-letter country prefix from the DIC (e.g. "CZ" from "CZ12345678").
+// Returns empty string if DIC is too short.
+func (c *Contact) DICCountryCode() string {
+	if len(c.DIC) < 2 {
+		return ""
+	}
+	return c.DIC[:2]
+}
+
+// IsEUPartner returns true if the contact has a non-CZ EU DIC.
+func (c *Contact) IsEUPartner() bool {
+	code := c.DICCountryCode()
+	if code == "" || code == "CZ" {
+		return false
+	}
+	// EU member state codes
+	euCodes := map[string]bool{
+		"AT": true, "BE": true, "BG": true, "HR": true, "CY": true,
+		"DE": true, "DK": true, "EE": true, "ES": true, "FI": true,
+		"FR": true, "GR": true, "EL": true, "HU": true, "IE": true,
+		"IT": true, "LT": true, "LU": true, "LV": true, "MT": true,
+		"NL": true, "PL": true, "PT": true, "RO": true, "SE": true,
+		"SI": true, "SK": true,
+	}
+	return euCodes[code]
+}
+
+// HasCZDIC returns true if the contact has a Czech DIC.
+func (c *Contact) HasCZDIC() bool {
+	return c.DICCountryCode() == "CZ"
+}

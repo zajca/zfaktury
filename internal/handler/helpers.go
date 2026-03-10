@@ -548,3 +548,222 @@ func expenseFromDomain(e *domain.Expense) expenseResponse {
 	}
 	return resp
 }
+
+// --- Tax Period DTO ---
+
+// taxPeriodResponse is the JSON response for a tax period.
+type taxPeriodResponse struct {
+	Year    int `json:"year"`
+	Month   int `json:"month"`
+	Quarter int `json:"quarter"`
+}
+
+// --- VAT Return DTOs ---
+
+// vatReturnRequest is the JSON request body for creating a VAT return.
+type vatReturnRequest struct {
+	Year       int    `json:"year"`
+	Month      int    `json:"month"`
+	Quarter    int    `json:"quarter"`
+	FilingType string `json:"filing_type"`
+}
+
+// vatReturnResponse is the JSON response for a VAT return.
+type vatReturnResponse struct {
+	ID     int64             `json:"id"`
+	Period taxPeriodResponse `json:"period"`
+	FilingType string        `json:"filing_type"`
+
+	OutputVATBase21   int64 `json:"output_vat_base_21"`
+	OutputVATAmount21 int64 `json:"output_vat_amount_21"`
+	OutputVATBase12   int64 `json:"output_vat_base_12"`
+	OutputVATAmount12 int64 `json:"output_vat_amount_12"`
+	OutputVATBase0    int64 `json:"output_vat_base_0"`
+
+	ReverseChargeBase21   int64 `json:"reverse_charge_base_21"`
+	ReverseChargeAmount21 int64 `json:"reverse_charge_amount_21"`
+	ReverseChargeBase12   int64 `json:"reverse_charge_base_12"`
+	ReverseChargeAmount12 int64 `json:"reverse_charge_amount_12"`
+
+	InputVATBase21   int64 `json:"input_vat_base_21"`
+	InputVATAmount21 int64 `json:"input_vat_amount_21"`
+	InputVATBase12   int64 `json:"input_vat_base_12"`
+	InputVATAmount12 int64 `json:"input_vat_amount_12"`
+
+	TotalOutputVAT int64 `json:"total_output_vat"`
+	TotalInputVAT  int64 `json:"total_input_vat"`
+	NetVAT         int64 `json:"net_vat"`
+
+	HasXML    bool    `json:"has_xml"`
+	Status    string  `json:"status"`
+	FiledAt   *string `json:"filed_at,omitempty"`
+	CreatedAt string  `json:"created_at"`
+	UpdatedAt string  `json:"updated_at"`
+}
+
+// vatReturnFromDomain converts a domain.VATReturn to a vatReturnResponse.
+func vatReturnFromDomain(vr *domain.VATReturn) vatReturnResponse {
+	return vatReturnResponse{
+		ID: vr.ID,
+		Period: taxPeriodResponse{
+			Year:    vr.Period.Year,
+			Month:   vr.Period.Month,
+			Quarter: vr.Period.Quarter,
+		},
+		FilingType: vr.FilingType,
+
+		OutputVATBase21:   int64(vr.OutputVATBase21),
+		OutputVATAmount21: int64(vr.OutputVATAmount21),
+		OutputVATBase12:   int64(vr.OutputVATBase12),
+		OutputVATAmount12: int64(vr.OutputVATAmount12),
+		OutputVATBase0:    int64(vr.OutputVATBase0),
+
+		ReverseChargeBase21:   int64(vr.ReverseChargeBase21),
+		ReverseChargeAmount21: int64(vr.ReverseChargeAmount21),
+		ReverseChargeBase12:   int64(vr.ReverseChargeBase12),
+		ReverseChargeAmount12: int64(vr.ReverseChargeAmount12),
+
+		InputVATBase21:   int64(vr.InputVATBase21),
+		InputVATAmount21: int64(vr.InputVATAmount21),
+		InputVATBase12:   int64(vr.InputVATBase12),
+		InputVATAmount12: int64(vr.InputVATAmount12),
+
+		TotalOutputVAT: int64(vr.TotalOutputVAT),
+		TotalInputVAT:  int64(vr.TotalInputVAT),
+		NetVAT:         int64(vr.NetVAT),
+
+		HasXML:    len(vr.XMLData) > 0,
+		Status:    vr.Status,
+		FiledAt:   formatOptionalTime(vr.FiledAt),
+		CreatedAt: vr.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: vr.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+// --- VAT Control Statement DTOs ---
+
+// controlStatementRequest is the JSON request body for creating a control statement.
+type controlStatementRequest struct {
+	Year       int    `json:"year"`
+	Month      int    `json:"month"`
+	FilingType string `json:"filing_type"`
+}
+
+// controlStatementLineResponse is the JSON response for a control statement line.
+type controlStatementLineResponse struct {
+	ID             int64  `json:"id"`
+	Section        string `json:"section"`
+	PartnerDIC     string `json:"partner_dic"`
+	DocumentNumber string `json:"document_number"`
+	DPPD           string `json:"dppd"`
+	Base           int64  `json:"base"`
+	VAT            int64  `json:"vat"`
+	VATRatePercent int    `json:"vat_rate_percent"`
+	InvoiceID      *int64 `json:"invoice_id,omitempty"`
+	ExpenseID      *int64 `json:"expense_id,omitempty"`
+}
+
+// controlStatementResponse is the JSON response for a control statement.
+type controlStatementResponse struct {
+	ID         int64                          `json:"id"`
+	Period     taxPeriodResponse              `json:"period"`
+	FilingType string                         `json:"filing_type"`
+	Lines      []controlStatementLineResponse `json:"lines,omitempty"`
+	HasXML     bool                           `json:"has_xml"`
+	Status     string                         `json:"status"`
+	FiledAt    *string                        `json:"filed_at,omitempty"`
+	CreatedAt  string                         `json:"created_at"`
+	UpdatedAt  string                         `json:"updated_at"`
+}
+
+// controlStatementFromDomain converts a domain.VATControlStatement to a controlStatementResponse.
+func controlStatementFromDomain(cs *domain.VATControlStatement, lines []domain.VATControlStatementLine) controlStatementResponse {
+	resp := controlStatementResponse{
+		ID: cs.ID,
+		Period: taxPeriodResponse{
+			Year:    cs.Period.Year,
+			Month:   cs.Period.Month,
+			Quarter: cs.Period.Quarter,
+		},
+		FilingType: cs.FilingType,
+		HasXML:     len(cs.XMLData) > 0,
+		Status:     cs.Status,
+		FiledAt:    formatOptionalTime(cs.FiledAt),
+		CreatedAt:  cs.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  cs.UpdatedAt.Format(time.RFC3339),
+	}
+	for _, l := range lines {
+		resp.Lines = append(resp.Lines, controlStatementLineResponse{
+			ID:             l.ID,
+			Section:        l.Section,
+			PartnerDIC:     l.PartnerDIC,
+			DocumentNumber: l.DocumentNumber,
+			DPPD:           l.DPPD,
+			Base:           int64(l.Base),
+			VAT:            int64(l.VAT),
+			VATRatePercent: l.VATRatePercent,
+			InvoiceID:      l.InvoiceID,
+			ExpenseID:      l.ExpenseID,
+		})
+	}
+	return resp
+}
+
+// --- VIES Summary DTOs ---
+
+// viesSummaryRequest is the JSON request body for creating a VIES summary.
+type viesSummaryRequest struct {
+	Year       int    `json:"year"`
+	Quarter    int    `json:"quarter"`
+	FilingType string `json:"filing_type"`
+}
+
+// viesSummaryLineResponse is the JSON response for a VIES summary line.
+type viesSummaryLineResponse struct {
+	ID          int64  `json:"id"`
+	PartnerDIC  string `json:"partner_dic"`
+	CountryCode string `json:"country_code"`
+	TotalAmount int64  `json:"total_amount"`
+	ServiceCode string `json:"service_code"`
+}
+
+// viesSummaryResponse is the JSON response for a VIES summary.
+type viesSummaryResponse struct {
+	ID         int64                     `json:"id"`
+	Period     taxPeriodResponse         `json:"period"`
+	FilingType string                    `json:"filing_type"`
+	Lines      []viesSummaryLineResponse `json:"lines,omitempty"`
+	HasXML     bool                      `json:"has_xml"`
+	Status     string                    `json:"status"`
+	FiledAt    *string                   `json:"filed_at,omitempty"`
+	CreatedAt  string                    `json:"created_at"`
+	UpdatedAt  string                    `json:"updated_at"`
+}
+
+// viesSummaryFromDomain converts a domain.VIESSummary to a viesSummaryResponse.
+func viesSummaryFromDomain(vs *domain.VIESSummary, lines []domain.VIESSummaryLine) viesSummaryResponse {
+	resp := viesSummaryResponse{
+		ID: vs.ID,
+		Period: taxPeriodResponse{
+			Year:    vs.Period.Year,
+			Month:   vs.Period.Month,
+			Quarter: vs.Period.Quarter,
+		},
+		FilingType: vs.FilingType,
+		HasXML:     len(vs.XMLData) > 0,
+		Status:     vs.Status,
+		FiledAt:    formatOptionalTime(vs.FiledAt),
+		CreatedAt:  vs.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  vs.UpdatedAt.Format(time.RFC3339),
+	}
+	for _, l := range lines {
+		resp.Lines = append(resp.Lines, viesSummaryLineResponse{
+			ID:          l.ID,
+			PartnerDIC:  l.PartnerDIC,
+			CountryCode: l.CountryCode,
+			TotalAmount: int64(l.TotalAmount),
+			ServiceCode: l.ServiceCode,
+		})
+	}
+	return resp
+}

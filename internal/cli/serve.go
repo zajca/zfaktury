@@ -75,6 +75,10 @@ var serveCmd = &cobra.Command{
 		recurringInvoiceRepo := repository.NewRecurringInvoiceRepository(db)
 		recurringExpenseRepo := repository.NewRecurringExpenseRepository(db)
 
+		vatReturnRepo := repository.NewVATReturnRepository(db)
+		vatControlRepo := repository.NewVATControlStatementRepository(db)
+		viesRepo := repository.NewVIESSummaryRepository(db)
+
 		// Wire ARES client.
 		aresClient := ares.NewClient()
 
@@ -97,6 +101,10 @@ var serveCmd = &cobra.Command{
 		documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir)
 		recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc)
 		recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc)
+
+		vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo)
+		vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo)
+		viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo)
 
 		// Wire OCR service (conditional on API key).
 		var ocrSvc *service.OCRService
@@ -125,7 +133,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, cfg.User.Name)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

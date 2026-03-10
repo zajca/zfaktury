@@ -115,3 +115,43 @@ type SettingsRepo interface {
 	Set(ctx context.Context, key, value string) error
 	SetBulk(ctx context.Context, settings map[string]string) error
 }
+
+// VATReturnRepo defines the persistence interface for VAT returns.
+type VATReturnRepo interface {
+	Create(ctx context.Context, vr *domain.VATReturn) error
+	Update(ctx context.Context, vr *domain.VATReturn) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.VATReturn, error)
+	List(ctx context.Context, year int) ([]domain.VATReturn, error)
+	GetByPeriod(ctx context.Context, year, month, quarter int, filingType string) (*domain.VATReturn, error)
+	LinkInvoices(ctx context.Context, vatReturnID int64, invoiceIDs []int64) error
+	LinkExpenses(ctx context.Context, vatReturnID int64, expenseIDs []int64) error
+	GetLinkedInvoiceIDs(ctx context.Context, vatReturnID int64) ([]int64, error)
+	GetLinkedExpenseIDs(ctx context.Context, vatReturnID int64) ([]int64, error)
+}
+
+// VATControlStatementRepo defines the persistence interface for VAT control statements.
+type VATControlStatementRepo interface {
+	Create(ctx context.Context, cs *domain.VATControlStatement) error
+	Update(ctx context.Context, cs *domain.VATControlStatement) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.VATControlStatement, error)
+	List(ctx context.Context, year int) ([]domain.VATControlStatement, error)
+	GetByPeriod(ctx context.Context, year, month int, filingType string) (*domain.VATControlStatement, error)
+	CreateLines(ctx context.Context, lines []domain.VATControlStatementLine) error
+	DeleteLines(ctx context.Context, controlStatementID int64) error
+	GetLines(ctx context.Context, controlStatementID int64) ([]domain.VATControlStatementLine, error)
+}
+
+// VIESSummaryRepo defines the persistence interface for VIES summaries.
+type VIESSummaryRepo interface {
+	Create(ctx context.Context, vs *domain.VIESSummary) error
+	Update(ctx context.Context, vs *domain.VIESSummary) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.VIESSummary, error)
+	List(ctx context.Context, year int) ([]domain.VIESSummary, error)
+	GetByPeriod(ctx context.Context, year, quarter int, filingType string) (*domain.VIESSummary, error)
+	CreateLines(ctx context.Context, lines []domain.VIESSummaryLine) error
+	DeleteLines(ctx context.Context, viesSummaryID int64) error
+	GetLines(ctx context.Context, viesSummaryID int64) ([]domain.VIESSummaryLine, error)
+}

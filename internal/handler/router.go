@@ -36,6 +36,9 @@ func NewRouter(
 	cnbClient *cnb.Client,
 	pdfGen *pdf.InvoicePDFGenerator,
 	isdocGen *isdoc.ISDOCGenerator,
+	vatReturnSvc *service.VATReturnService,
+	vatControlSvc *service.VATControlStatementService,
+	viesSvc *service.VIESSummaryService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -119,6 +122,14 @@ func NewRouter(
 			api.Mount("/exchange-rate", exchangeHandler.Routes())
 		}
 
+		vatReturnHandler := NewVATReturnHandler(vatReturnSvc)
+		api.Mount("/vat-returns", vatReturnHandler.Routes())
+
+		vatControlHandler := NewVATControlStatementHandler(vatControlSvc, settingsSvc)
+		api.Mount("/vat-control-statements", vatControlHandler.Routes())
+
+		viesHandler := NewVIESHandler(viesSvc, settingsSvc)
+		api.Mount("/vies-summaries", viesHandler.Routes())
 	})
 
 	// Health check endpoint.

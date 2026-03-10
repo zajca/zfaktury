@@ -634,3 +634,63 @@ export interface CreditNoteRequest {
 	}>;
 	reason: string;
 }
+
+// --- Exchange Rate API ---
+
+export interface ExchangeRateResult {
+	currency_code: string;
+	rate: number;
+	date: string;
+}
+
+export const exchangeRateApi = {
+	getRate(currency: string, date?: string) {
+		const query = new URLSearchParams({ currency });
+		if (date) query.set('date', date);
+		return get<ExchangeRateResult>(`/exchange-rate?${query.toString()}`);
+	}
+};
+
+// --- Status History API ---
+
+export interface InvoiceStatusChange {
+	id: number;
+	invoice_id: number;
+	old_status: string;
+	new_status: string;
+	changed_at: string;
+	note: string;
+}
+
+export const statusHistoryApi = {
+	getHistory(invoiceId: number) {
+		return get<InvoiceStatusChange[]>(`/invoices/${invoiceId}/history`);
+	},
+
+	checkOverdue() {
+		return post<{ marked: number }>('/invoices/check-overdue', {});
+	}
+};
+
+// --- Payment Reminder API ---
+
+export interface PaymentReminder {
+	id: number;
+	invoice_id: number;
+	reminder_number: number;
+	sent_at: string;
+	sent_to: string;
+	subject: string;
+	body_preview: string;
+	created_at: string;
+}
+
+export const remindersApi = {
+	sendReminder(invoiceId: number) {
+		return post<PaymentReminder>(`/invoices/${invoiceId}/remind`, {});
+	},
+
+	listReminders(invoiceId: number) {
+		return get<PaymentReminder[]>(`/invoices/${invoiceId}/reminders`);
+	}
+};

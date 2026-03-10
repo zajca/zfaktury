@@ -10,6 +10,7 @@ import (
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
+	"github.com/zajca/zfaktury/internal/service/cnb"
 )
 
 // RouterConfig holds configuration for the HTTP router.
@@ -30,6 +31,9 @@ func NewRouter(
 	recurringInvoiceSvc *service.RecurringInvoiceService,
 	recurringExpenseSvc *service.RecurringExpenseService,
 	ocrSvc *service.OCRService,
+	overdueSvc *service.OverdueService,
+	reminderSvc *service.ReminderService,
+	cnbClient *cnb.Client,
 	pdfGen *pdf.InvoicePDFGenerator,
 	isdocGen *isdoc.ISDOCGenerator,
 	cfg RouterConfig,
@@ -64,7 +68,39 @@ func NewRouter(
 		recurringExpenseHandler := NewRecurringExpenseHandler(recurringExpenseSvc)
 
 		api.Mount("/contacts", contactHandler.Routes())
-		api.Mount("/invoices", invoiceHandler.Routes())
+		// Use Route (not Mount) for /invoices so additional sub-routes can be
+		// registered in the same group without being swallowed by Mount's wildcard.
+		api.Route("/invoices", func(inv chi.Router) {
+			// Core invoice CRUD + actions
+			inv.Post("/", invoiceHandler.Create)
+			inv.Get("/", invoiceHandler.List)
+			inv.Get("/{id}", invoiceHandler.GetByID)
+			inv.Put("/{id}", invoiceHandler.Update)
+			inv.Delete("/{id}", invoiceHandler.Delete)
+			inv.Post("/{id}/send", invoiceHandler.MarkAsSent)
+			inv.Post("/{id}/mark-paid", invoiceHandler.MarkAsPaid)
+			inv.Post("/{id}/duplicate", invoiceHandler.Duplicate)
+			inv.Post("/{id}/settle", invoiceHandler.SettleProforma)
+			inv.Post("/{id}/credit-note", invoiceHandler.CreateCreditNote)
+			inv.Get("/{id}/pdf", invoiceHandler.DownloadPDF)
+			inv.Get("/{id}/qr", invoiceHandler.QRPayment)
+			inv.Get("/{id}/isdoc", invoiceHandler.ExportISDOC)
+			inv.Post("/export/isdoc", invoiceHandler.ExportISDOCBatch)
+
+			// Status history & overdue (conditional)
+			if overdueSvc != nil {
+				statusHistoryHandler := NewStatusHistoryHandler(overdueSvc)
+				inv.Get("/{id}/history", statusHistoryHandler.GetHistory)
+				inv.Post("/check-overdue", statusHistoryHandler.CheckOverdue)
+			}
+
+			// Payment reminders (conditional)
+			if reminderSvc != nil {
+				reminderHandler := NewReminderHandler(reminderSvc)
+				inv.Post("/{id}/remind", reminderHandler.SendReminder)
+				inv.Get("/{id}/reminders", reminderHandler.ListReminders)
+			}
+		})
 		api.Mount("/expenses", expenseHandler.Routes())
 		api.Mount("/expense-categories", categoryHandler.Routes())
 		api.Mount("/settings", settingsHandler.Routes())
@@ -77,6 +113,12 @@ func NewRouter(
 			ocrHandler := NewOCRHandler(ocrSvc)
 			api.Post("/documents/{id}/ocr", ocrHandler.ProcessDocument)
 		}
+
+		if cnbClient != nil {
+			exchangeHandler := NewExchangeHandler(cnbClient)
+			api.Mount("/exchange-rate", exchangeHandler.Routes())
+		}
+
 	})
 
 	// Health check endpoint.

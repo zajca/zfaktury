@@ -95,6 +95,19 @@ type RecurringExpenseRepo interface {
 	Activate(ctx context.Context, id int64) error
 }
 
+// StatusHistoryRepo defines the persistence interface for invoice status change records.
+type StatusHistoryRepo interface {
+	Create(ctx context.Context, change *domain.InvoiceStatusChange) error
+	ListByInvoiceID(ctx context.Context, invoiceID int64) ([]domain.InvoiceStatusChange, error)
+}
+
+// ReminderRepo defines the persistence interface for payment reminders.
+type ReminderRepo interface {
+	Create(ctx context.Context, reminder *domain.PaymentReminder) error
+	ListByInvoiceID(ctx context.Context, invoiceID int64) ([]domain.PaymentReminder, error)
+	CountByInvoiceID(ctx context.Context, invoiceID int64) (int, error)
+}
+
 // SettingsRepo defines the persistence interface for application settings.
 type SettingsRepo interface {
 	GetAll(ctx context.Context) (map[string]string, error)

@@ -25,6 +25,7 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
 	"github.com/zajca/zfaktury/internal/service/email"
+	"github.com/zajca/zfaktury/internal/service/cnb"
 	"github.com/zajca/zfaktury/internal/service/ocr"
 	"github.com/zajca/zfaktury/web"
 )
@@ -82,8 +83,6 @@ var serveCmd = &cobra.Command{
 		if emailSender.IsConfigured() {
 			slog.Info("email sender configured", "host", cfg.SMTP.Host)
 		}
-		_ = emailSender // Will be used by invoice email sending in later rounds.
-
 		// Wire generators.
 		pdfGen := pdf.NewInvoicePDFGenerator()
 		isdocGen := isdoc.NewISDOCGenerator()
@@ -115,7 +114,18 @@ var serveCmd = &cobra.Command{
 			}
 		}
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, pdfGen, isdocGen, handler.RouterConfig{
+		// Wire CNB client.
+		cnbClient := cnb.NewClient()
+
+		// Wire status history repo and overdue service.
+		statusHistoryRepo := repository.NewStatusHistoryRepository(db)
+		overdueSvc := service.NewOverdueService(invoiceRepo, statusHistoryRepo)
+
+		// Wire reminder service.
+		reminderRepo := repository.NewReminderRepository(db)
+		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, cfg.User.Name)
+
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

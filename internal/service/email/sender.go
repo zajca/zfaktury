@@ -73,7 +73,7 @@ func (s *EmailSender) Send(ctx context.Context, msg EmailMessage) error {
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 
 	slog.Info("sending email",
-		"to", msg.To,
+		"recipient_count", len(msg.To),
 		"subject", msg.Subject,
 		"smtp_host", s.cfg.Host,
 		"smtp_port", s.cfg.Port,
@@ -83,7 +83,7 @@ func (s *EmailSender) Send(ctx context.Context, msg EmailMessage) error {
 		return fmt.Errorf("email sender: %w", err)
 	}
 
-	slog.Info("email sent successfully", "to", msg.To, "subject", msg.Subject)
+	slog.Info("email sent successfully", "recipient_count", len(msg.To), "subject", msg.Subject)
 	return nil
 }
 
@@ -375,8 +375,16 @@ func writeAttachment(w *multipart.Writer, att Attachment) error {
 func writeHeader(buf *bytes.Buffer, key, value string) {
 	buf.WriteString(key)
 	buf.WriteString(": ")
-	buf.WriteString(value)
+	buf.WriteString(sanitizeHeaderValue(value))
 	buf.WriteString("\r\n")
+}
+
+// sanitizeHeaderValue strips CRLF sequences to prevent email header injection.
+func sanitizeHeaderValue(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "")
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\n", "")
+	return s
 }
 
 // encodeHeader encodes a header value as RFC 2047 UTF-8 base64 when it

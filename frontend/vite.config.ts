@@ -13,6 +13,11 @@ export default defineConfig({
 		}
 	},
 	test: {
-		include: ['src/**/*.test.ts']
+		include: ['src/**/*.test.ts'],
+		environment: 'jsdom',
+		setupFiles: ['src/test-setup.ts']
+	},
+	resolve: {
+		conditions: ['browser']
 	}
 });

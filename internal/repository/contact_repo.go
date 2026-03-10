@@ -29,12 +29,12 @@ func (r *ContactRepository) Create(ctx context.Context, c *domain.Contact) error
 		INSERT INTO contacts (
 			type, name, ico, dic, street, city, zip, country,
 			email, phone, web, bank_account, bank_code, iban, swift,
-			payment_terms_days, tags, notes, is_favorite, vat_unreliable,
+			payment_terms_days, tags, notes, is_favorite, vat_unreliable_at,
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
-		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliable,
+		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,
 		c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {
@@ -57,12 +57,12 @@ func (r *ContactRepository) Update(ctx context.Context, c *domain.Contact) error
 		UPDATE contacts SET
 			type = ?, name = ?, ico = ?, dic = ?, street = ?, city = ?, zip = ?, country = ?,
 			email = ?, phone = ?, web = ?, bank_account = ?, bank_code = ?, iban = ?, swift = ?,
-			payment_terms_days = ?, tags = ?, notes = ?, is_favorite = ?, vat_unreliable = ?,
+			payment_terms_days = ?, tags = ?, notes = ?, is_favorite = ?, vat_unreliable_at = ?,
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
-		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliable,
+		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,
 		c.UpdatedAt, c.ID,
 	)
 	if err != nil {
@@ -98,17 +98,18 @@ func (r *ContactRepository) GetByID(ctx context.Context, id int64) (*domain.Cont
 	var createdAtStr string
 	var updatedAtStr string
 	var deletedAtStr sql.NullString
+	var vatUnreliableAtStr sql.NullString
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, type, name, ico, dic, street, city, zip, country,
 			email, phone, web, bank_account, bank_code, iban, swift,
-			payment_terms_days, tags, notes, is_favorite, vat_unreliable,
+			payment_terms_days, tags, notes, is_favorite, vat_unreliable_at,
 			created_at, updated_at, deleted_at
 		FROM contacts WHERE id = ? AND deleted_at IS NULL`, id,
 	).Scan(
 		&c.ID, &c.Type, &c.Name, &c.ICO, &c.DIC, &c.Street, &c.City, &c.ZIP, &c.Country,
 		&c.Email, &c.Phone, &c.Web, &c.BankAccount, &c.BankCode, &c.IBAN, &c.SWIFT,
-		&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &c.VATUnreliable,
+		&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &vatUnreliableAtStr,
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 	)
 	if err != nil {
@@ -122,6 +123,10 @@ func (r *ContactRepository) GetByID(ctx context.Context, id int64) (*domain.Cont
 	if deletedAtStr.Valid {
 		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
 		c.DeletedAt = &t
+	}
+	if vatUnreliableAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, vatUnreliableAtStr.String)
+		c.VATUnreliableAt = &t
 	}
 	return c, nil
 }
@@ -156,7 +161,7 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 	// Fetch page.
 	query := "SELECT id, type, name, ico, dic, street, city, zip, country, " +
 		"email, phone, web, bank_account, bank_code, iban, swift, " +
-		"payment_terms_days, tags, notes, is_favorite, vat_unreliable, " +
+		"payment_terms_days, tags, notes, is_favorite, vat_unreliable_at, " +
 		"created_at, updated_at, deleted_at " +
 		"FROM contacts WHERE " + where + " ORDER BY name ASC"
 
@@ -176,10 +181,11 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 		var createdAtStr string
 		var updatedAtStr string
 		var deletedAtStr sql.NullString
+		var vatUnreliableAtStr sql.NullString
 		if err := rows.Scan(
 			&c.ID, &c.Type, &c.Name, &c.ICO, &c.DIC, &c.Street, &c.City, &c.ZIP, &c.Country,
 			&c.Email, &c.Phone, &c.Web, &c.BankAccount, &c.BankCode, &c.IBAN, &c.SWIFT,
-			&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &c.VATUnreliable,
+			&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &vatUnreliableAtStr,
 			&createdAtStr, &updatedAtStr, &deletedAtStr,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
@@ -189,6 +195,10 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 		if deletedAtStr.Valid {
 			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
 			c.DeletedAt = &t
+		}
+		if vatUnreliableAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, vatUnreliableAtStr.String)
+			c.VATUnreliableAt = &t
 		}
 		contacts = append(contacts, c)
 	}
@@ -204,17 +214,18 @@ func (r *ContactRepository) FindByICO(ctx context.Context, ico string) (*domain.
 	var createdAtStr string
 	var updatedAtStr string
 	var deletedAtStr sql.NullString
+	var vatUnreliableAtStr sql.NullString
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, type, name, ico, dic, street, city, zip, country,
 			email, phone, web, bank_account, bank_code, iban, swift,
-			payment_terms_days, tags, notes, is_favorite, vat_unreliable,
+			payment_terms_days, tags, notes, is_favorite, vat_unreliable_at,
 			created_at, updated_at, deleted_at
 		FROM contacts WHERE ico = ? AND deleted_at IS NULL`, ico,
 	).Scan(
 		&c.ID, &c.Type, &c.Name, &c.ICO, &c.DIC, &c.Street, &c.City, &c.ZIP, &c.Country,
 		&c.Email, &c.Phone, &c.Web, &c.BankAccount, &c.BankCode, &c.IBAN, &c.SWIFT,
-		&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &c.VATUnreliable,
+		&c.PaymentTermsDays, &c.Tags, &c.Notes, &c.IsFavorite, &vatUnreliableAtStr,
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 	)
 	if err != nil {
@@ -228,6 +239,10 @@ func (r *ContactRepository) FindByICO(ctx context.Context, ico string) (*domain.
 	if deletedAtStr.Valid {
 		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
 		c.DeletedAt = &t
+	}
+	if vatUnreliableAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, vatUnreliableAtStr.String)
+		c.VATUnreliableAt = &t
 	}
 	return c, nil
 }

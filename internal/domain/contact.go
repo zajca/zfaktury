@@ -41,8 +41,10 @@ type Contact struct {
 	Notes            string `json:"notes"`
 
 	// Flags
-	IsFavorite    bool `json:"is_favorite"`
-	VATUnreliable bool `json:"vat_unreliable"`
+	IsFavorite bool `json:"is_favorite"`
+
+	// VATUnreliableAt is set when the contact is flagged as an unreliable VAT payer.
+	VATUnreliableAt *time.Time `json:"vat_unreliable_at,omitempty"`
 
 	// Timestamps
 	CreatedAt time.Time  `json:"created_at"`

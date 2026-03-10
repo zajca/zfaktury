@@ -23,7 +23,7 @@ export interface Contact {
 	tags: string;
 	notes: string;
 	is_favorite: boolean;
-	vat_unreliable: boolean;
+	vat_unreliable_at: string | null;
 	created_at: string;
 	updated_at: string;
 }

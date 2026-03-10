@@ -85,7 +85,7 @@ func patchTimestampColumns(t *testing.T, db *sql.DB) {
 			payment_terms_days INTEGER NOT NULL DEFAULT 14,
 			tags TEXT, notes TEXT,
 			is_favorite INTEGER NOT NULL DEFAULT 0,
-			vat_unreliable INTEGER NOT NULL DEFAULT 0,
+			vat_unreliable_at DATETIME,
 			created_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 			updated_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 			deleted_at DATETIME
@@ -235,12 +235,12 @@ func SeedContact(t *testing.T, db *sql.DB, c *domain.Contact) *domain.Contact {
 		INSERT INTO contacts (
 			type, name, ico, dic, street, city, zip, country,
 			email, phone, web, bank_account, bank_code, iban, swift,
-			payment_terms_days, tags, notes, is_favorite, vat_unreliable,
+			payment_terms_days, tags, notes, is_favorite, vat_unreliable_at,
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
-		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliable,
+		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,
 		c.CreatedAt, c.UpdatedAt,
 	)
 	if err != nil {

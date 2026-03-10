@@ -107,6 +107,15 @@ type listResponse[T any] struct {
 	Offset int `json:"offset"`
 }
 
+// formatOptionalTime formats a nullable time pointer as an RFC3339 string pointer.
+func formatOptionalTime(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format(time.RFC3339)
+	return &s
+}
+
 // --- Contact DTOs ---
 
 // contactRequest is the JSON request body for creating/updating a contact.
@@ -179,7 +188,7 @@ type contactResponse struct {
 	Tags             string `json:"tags"`
 	Notes            string `json:"notes"`
 	IsFavorite       bool   `json:"is_favorite"`
-	VATUnreliable    bool   `json:"vat_unreliable"`
+	VATUnreliableAt  *string `json:"vat_unreliable_at,omitempty"`
 	CreatedAt        string `json:"created_at"`
 	UpdatedAt        string `json:"updated_at"`
 }
@@ -207,7 +216,7 @@ func contactFromDomain(c *domain.Contact) contactResponse {
 		Tags:             c.Tags,
 		Notes:            c.Notes,
 		IsFavorite:       c.IsFavorite,
-		VATUnreliable:    c.VATUnreliable,
+		VATUnreliableAt:  formatOptionalTime(c.VATUnreliableAt),
 		CreatedAt:        c.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:        c.UpdatedAt.Format(time.RFC3339),
 	}

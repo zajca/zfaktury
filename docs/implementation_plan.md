@@ -25,20 +25,20 @@ Nothing is considered "done" until it passes through this process. Existing code
 **Goal:** Project setup, SQLite schema, CLI framework, user settings, contact management with ARES integration.
 
 ### Project Setup & Infrastructure
-- Exists: Go module with dependencies (chi, cobra, sqlite, goose, toml, maroto, qrpay)
-- Exists: Makefile with `dev`, `build`, `test` targets
-- Exists: SvelteKit frontend with Tailwind v4, TypeScript, adapter-static
-- Exists: Dev mode with Vite HMR proxy
-- Exists: 3-layer architecture (handler -> service -> repository)
-- Missing: Test infrastructure (zero test files)
+- Done: Go module with dependencies (chi, cobra, sqlite, goose, toml, maroto, qrpay)
+- Done: Makefile with `dev`, `build`, `test` targets (includes frontend vitest)
+- Done: SvelteKit frontend with Tailwind v4, TypeScript, adapter-static
+- Done: Dev mode with Vite HMR proxy
+- Done: 3-layer architecture (handler -> service -> repository)
+- Done: Test infrastructure (testutil with in-memory SQLite, seed factories; 96 Go + 53 vitest tests)
 - Missing: CI pipeline (linting, testing, building)
 
 ### SQLite Schema & Database
-- Exists: SQLite connection with WAL mode, foreign keys, busy timeout
-- Exists: Goose migration framework with embedded SQL
-- Exists: Initial schema (contacts, invoices, invoice_items, invoice_sequences, expenses, audit_log, settings)
+- Done: SQLite connection with WAL mode, foreign keys, busy timeout
+- Done: Goose migration framework with embedded SQL
+- Done: Initial schema + migration 002 (schema alignment fixes)
+- Done: Amount (int64 halere) consistency validated across all columns
 - Missing: bank_transactions table (domain struct exists, no migration)
-- Needs review: Amount (int64 halere) consistency across all columns
 - Missing: Audit log write logic (table exists, nothing writes to it)
 
 ### CLI Framework
@@ -51,25 +51,25 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Missing: `backup` subcommands (placeholder for Phase 8)
 
 ### User Settings
-- Exists: Config struct (UserConfig, ServerConfig, SMTPConfig, FIOConfig, OCRConfig)
-- Exists: TOML config file loading from `~/.zfaktury/config.toml`
-- Exists: `ZFAKTURY_DATA_DIR` env var override
-- Exists: Settings key-value table in database
-- Missing: Settings HTTP handler (GET/PUT /api/v1/settings)
-- Missing: Settings service layer
-- Missing: Frontend settings page (currently shows "Pripravuje se...")
+- Done: Config struct (UserConfig, ServerConfig, SMTPConfig, FIOConfig, OCRConfig)
+- Done: TOML config file loading from `~/.zfaktury/config.toml`
+- Done: `ZFAKTURY_DATA_DIR` env var override
+- Done: Settings key-value table in database
+- Done: Settings HTTP handler (GET/PUT /api/v1/settings) with key allowlist validation
+- Done: Settings service layer (GetAll, Get, Set, SetBulk)
+- Done: Frontend settings page (Identity/Address/Bank/VAT sections)
 
 ### Contact Management
-- Exists: Contact domain struct, repository, service, HTTP handler, frontend list + detail/edit pages
-- Exists: ARES client interface in service layer, ARES lookup endpoint in handler, ARES lookup button in frontend
-- Missing: ARES HTTP client implementation (interface defined, wired as nil — lookup does nothing)
+- Done: Contact domain struct, repository, service, HTTP handler, frontend list + detail/edit pages
+- Done: ARES HTTP client implementation (ICO validation, response parsing, LimitReader, error handling)
+- Done: ARES lookup wired end-to-end (enter ICO -> auto-fill contact fields)
 - Missing: VIES VAT validation for EU contacts
 - Missing: Contact tags/groups
 - Missing: Unreliable VAT payer check (nespolehlivy platce)
 
 ### Domain Model
-- Exists: Contact, Invoice, InvoiceItem, InvoiceSequence, Expense, Amount, BankTransaction, VATReturn, VATControlStatement, VIESSummary, filter structs
-- Needs review: Validate all structs match idea.md requirements and schema
+- Done: Contact, Invoice, InvoiceItem, InvoiceSequence, Expense, Amount, BankTransaction, VATReturn, VATControlStatement, VIESSummary, filter structs
+- Done: Validated structs match schema; fixed Amount.String() for negative sub-unit values
 
 **Dependencies:** None (this is the foundation)
 
@@ -84,8 +84,8 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Exists: Invoice domain struct, repository (with transactions), service (with status transitions, duplication), HTTP handler
 - Exists: Frontend invoice list page (filtering, pagination)
 - Exists: Frontend invoice create form (line items, VAT calculations, customer selection)
-- Missing: Frontend invoice edit form (no `/invoices/[id]/edit` route)
-- Missing: Frontend invoice detail page
+- Done: Frontend invoice detail/edit page (`/invoices/[id]`) — view, edit draft, send, pay, duplicate, delete
+- Missing: Frontend invoice edit form for non-draft invoices
 - Missing: Invoice numbering sequence management UI
 - Missing: Proforma invoices (zalohove faktury) and settlement
 - Missing: Credit notes (dobropisy)
@@ -129,8 +129,8 @@ Nothing is considered "done" until it passes through this process. Existing code
 ### Expense CRUD
 - Exists: Expense domain struct, repository, service (with VAT calculations), HTTP handler
 - Exists: Frontend expense list page (search, pagination)
-- Missing: Frontend expense create/edit form (add button exists but no route)
-- Missing: Frontend expense detail page
+- Done: Frontend expense create form (`/expenses/new`)
+- Done: Frontend expense detail/edit page (`/expenses/[id]`)
 - Missing: Expense categories management
 - Missing: Recurring expenses
 - Missing: Tax-deductible marking workflow
@@ -191,12 +191,10 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Missing: Financial overview, charts, outstanding invoices, tax deadlines, API endpoints
 
 ### CRUD UIs
-- Exists: Contact list + detail/edit with ARES lookup UI
-- Exists: Invoice list + create form
-- Exists: Expense list
-- Missing: Invoice edit/detail pages
-- Missing: Expense create/edit/detail pages
-- Missing: Settings page (placeholder only)
+- Done: Contact list + detail/edit with ARES lookup UI
+- Done: Invoice list + create form + detail/edit page
+- Done: Expense list + create form + detail/edit page
+- Done: Settings page (Identity/Address/Bank/VAT sections)
 - Missing: Tax filing pages
 
 ### Reports
@@ -221,15 +219,16 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 | Concern | Status | Notes |
 |---------|--------|-------|
-| Unit tests | Missing | Zero test files exist |
-| Integration tests | Missing | Need test SQLite setup |
+| Unit tests | Done (Phase 1) | 96 Go tests (domain, repo, service, handler) + 53 vitest (API client, money, date) |
+| Integration tests | Done (Phase 1) | testutil with in-memory SQLite, seed factories, FK handling |
 | Structured logging | Exists (partial) | slog middleware logs requests; needs expansion |
 | Audit trail | Missing | Table exists, no write logic |
 | Error handling | Exists (partial) | Handlers return errors; no global strategy |
-| Input validation | Exists (partial) | Basic checks in services; no systematic approach |
+| Input validation | Done (Phase 1) | Settings key allowlist, ICO validation, service-layer checks |
 | API documentation | Missing | No OpenAPI/Swagger |
 | Frontend error states | Exists (partial) | List pages have loading/error/empty states; no toast system |
-| API consistency | Needs review | Known mismatch: TS client `/mark-paid` vs Go handler `/pay` |
+| API consistency | Done (Phase 1) | Fixed `/mark-paid` mismatch, SequenceID NULL handling |
+| Security hardening | Done (Phase 1) | LimitReader, localhost binding, security headers, settings allowlist |
 
 ---
 
@@ -251,9 +250,9 @@ Phase 1 (Foundation)
 
 ## RFC Schedule
 
-1. **RFC-001** (Foundation) — Written, pending review
-2. **RFC-002** (Invoicing) — Write after RFC-001 is validated
-3. **RFC-003** (Expenses) — Write after RFC-001 is validated
+1. **RFC-001** (Foundation) — Done (implemented, tested, reviewed)
+2. **RFC-002** (Invoicing) — Write next
+3. **RFC-003** (Expenses) — Write next (can parallel with RFC-002)
 4. **RFC-004** (VAT Filings) — Write after RFC-002 + RFC-003
 5. **RFC-005** (Annual Tax) — Write after RFC-004
 6. **RFC-006** (Banking) — Write after RFC-002

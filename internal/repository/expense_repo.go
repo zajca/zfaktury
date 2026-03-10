@@ -37,12 +37,12 @@ func (r *ExpenseRepository) Create(ctx context.Context, e *domain.Expense) error
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.VendorID, e.ExpenseNumber, e.Category, e.Description,
-		e.IssueDate, e.Amount, e.CurrencyCode, e.ExchangeRate,
+		e.IssueDate.Format("2006-01-02"), e.Amount, e.CurrencyCode, e.ExchangeRate,
 		e.VATRatePercent, e.VATAmount,
 		e.IsTaxDeductible, e.BusinessPercent, e.PaymentMethod,
 		e.DocumentPath, e.Notes,
 		nil,
-		e.CreatedAt, e.UpdatedAt,
+		e.CreatedAt.Format(time.RFC3339), e.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting expense: %w", err)
@@ -76,12 +76,12 @@ func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		e.VendorID, e.ExpenseNumber, e.Category, e.Description,
-		e.IssueDate, e.Amount, e.CurrencyCode, e.ExchangeRate,
+		e.IssueDate.Format("2006-01-02"), e.Amount, e.CurrencyCode, e.ExchangeRate,
 		e.VATRatePercent, e.VATAmount,
 		e.IsTaxDeductible, e.BusinessPercent, e.PaymentMethod,
 		e.DocumentPath, e.Notes,
 		taxReviewedAt,
-		e.UpdatedAt, e.ID,
+		e.UpdatedAt.Format(time.RFC3339), e.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating expense %d: %w", e.ID, err)
@@ -92,9 +92,10 @@ func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error
 // Delete performs a soft delete on an expense.
 func (r *ExpenseRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id,
+		nowStr, nowStr, id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting expense %d: %w", id, err)

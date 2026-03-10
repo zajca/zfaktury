@@ -48,7 +48,7 @@ func (r *RecurringInvoiceRepository) Create(ctx context.Context, ri *domain.Recu
 		ri.CurrencyCode, ri.ExchangeRate, ri.PaymentMethod,
 		ri.BankAccount, ri.BankCode, ri.IBAN, ri.SWIFT,
 		ri.ConstantSymbol, ri.Notes, ri.IsActive,
-		ri.CreatedAt, ri.UpdatedAt,
+		ri.CreatedAt.Format(time.RFC3339), ri.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting recurring invoice: %w", err)
@@ -115,7 +115,7 @@ func (r *RecurringInvoiceRepository) Update(ctx context.Context, ri *domain.Recu
 		ri.CurrencyCode, ri.ExchangeRate, ri.PaymentMethod,
 		ri.BankAccount, ri.BankCode, ri.IBAN, ri.SWIFT,
 		ri.ConstantSymbol, ri.Notes, ri.IsActive,
-		ri.UpdatedAt, ri.ID,
+		ri.UpdatedAt.Format(time.RFC3339), ri.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating recurring invoice %d: %w", ri.ID, err)
@@ -158,9 +158,10 @@ func (r *RecurringInvoiceRepository) Update(ctx context.Context, ri *domain.Recu
 // Delete performs a soft delete on a recurring invoice.
 func (r *RecurringInvoiceRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE recurring_invoices SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id,
+		nowStr, nowStr, id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting recurring invoice %d: %w", id, err)
@@ -437,7 +438,7 @@ func (r *RecurringInvoiceRepository) Deactivate(ctx context.Context, id int64) e
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE recurring_invoices SET is_active = 0, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, id,
+		now.Format(time.RFC3339), id,
 	)
 	if err != nil {
 		return fmt.Errorf("deactivating recurring invoice %d: %w", id, err)

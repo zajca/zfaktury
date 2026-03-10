@@ -40,7 +40,7 @@ func (r *RecurringExpenseRepository) Create(ctx context.Context, re *domain.Recu
 		re.IsTaxDeductible, re.BusinessPercent, re.PaymentMethod,
 		re.Notes, re.Frequency, re.NextIssueDate.Format("2006-01-02"),
 		formatNullableDate(re.EndDate), re.IsActive,
-		re.CreatedAt, re.UpdatedAt,
+		re.CreatedAt.Format(time.RFC3339), re.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting recurring expense: %w", err)
@@ -73,7 +73,7 @@ func (r *RecurringExpenseRepository) Update(ctx context.Context, re *domain.Recu
 		re.IsTaxDeductible, re.BusinessPercent, re.PaymentMethod,
 		re.Notes, re.Frequency, re.NextIssueDate.Format("2006-01-02"),
 		formatNullableDate(re.EndDate), re.IsActive,
-		re.UpdatedAt, re.ID,
+		re.UpdatedAt.Format(time.RFC3339), re.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating recurring expense %d: %w", re.ID, err)
@@ -84,9 +84,10 @@ func (r *RecurringExpenseRepository) Update(ctx context.Context, re *domain.Recu
 // Delete performs a soft delete on a recurring expense.
 func (r *RecurringExpenseRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE recurring_expenses SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id,
+		nowStr, nowStr, id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting recurring expense %d: %w", id, err)
@@ -249,7 +250,7 @@ func (r *RecurringExpenseRepository) Deactivate(ctx context.Context, id int64) e
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE recurring_expenses SET is_active = 0, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, id,
+		now.Format(time.RFC3339), id,
 	)
 	if err != nil {
 		return fmt.Errorf("deactivating recurring expense %d: %w", id, err)
@@ -269,7 +270,7 @@ func (r *RecurringExpenseRepository) Activate(ctx context.Context, id int64) err
 	now := time.Now()
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE recurring_expenses SET is_active = 1, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, id,
+		now.Format(time.RFC3339), id,
 	)
 	if err != nil {
 		return fmt.Errorf("activating recurring expense %d: %w", id, err)

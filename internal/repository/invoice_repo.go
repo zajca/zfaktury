@@ -42,6 +42,15 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 		relatedInvoiceID = *inv.RelatedInvoiceID
 	}
 
+	var sentAt any
+	if inv.SentAt != nil {
+		sentAt = inv.SentAt.Format(time.RFC3339)
+	}
+	var paidAt any
+	if inv.PaidAt != nil {
+		paidAt = inv.PaidAt.Format(time.RFC3339)
+	}
+
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO invoices (
 			sequence_id, invoice_number, type, status,
@@ -54,13 +63,13 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		seqID, inv.InvoiceNumber, inv.Type, inv.Status,
-		inv.IssueDate, inv.DueDate, inv.DeliveryDate, inv.VariableSymbol, inv.ConstantSymbol,
+		inv.IssueDate.Format("2006-01-02"), inv.DueDate.Format("2006-01-02"), inv.DeliveryDate.Format("2006-01-02"), inv.VariableSymbol, inv.ConstantSymbol,
 		inv.CustomerID, inv.CurrencyCode, inv.ExchangeRate,
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
 		inv.SubtotalAmount, inv.VATAmount, inv.TotalAmount, inv.PaidAmount,
-		inv.Notes, inv.InternalNotes, inv.SentAt, inv.PaidAt,
+		inv.Notes, inv.InternalNotes, sentAt, paidAt,
 		relatedInvoiceID, inv.RelationType,
-		inv.CreatedAt, inv.UpdatedAt,
+		inv.CreatedAt.Format(time.RFC3339), inv.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting invoice: %w", err)
@@ -120,6 +129,15 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 		updateRelatedInvoiceID = *inv.RelatedInvoiceID
 	}
 
+	var updateSentAt any
+	if inv.SentAt != nil {
+		updateSentAt = inv.SentAt.Format(time.RFC3339)
+	}
+	var updatePaidAt any
+	if inv.PaidAt != nil {
+		updatePaidAt = inv.PaidAt.Format(time.RFC3339)
+	}
+
 	_, err = tx.ExecContext(ctx, `
 		UPDATE invoices SET
 			sequence_id = ?, invoice_number = ?, type = ?, status = ?,
@@ -132,13 +150,13 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		updateSeqID, inv.InvoiceNumber, inv.Type, inv.Status,
-		inv.IssueDate, inv.DueDate, inv.DeliveryDate, inv.VariableSymbol, inv.ConstantSymbol,
+		inv.IssueDate.Format("2006-01-02"), inv.DueDate.Format("2006-01-02"), inv.DeliveryDate.Format("2006-01-02"), inv.VariableSymbol, inv.ConstantSymbol,
 		inv.CustomerID, inv.CurrencyCode, inv.ExchangeRate,
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
 		inv.SubtotalAmount, inv.VATAmount, inv.TotalAmount, inv.PaidAmount,
-		inv.Notes, inv.InternalNotes, inv.SentAt, inv.PaidAt,
+		inv.Notes, inv.InternalNotes, updateSentAt, updatePaidAt,
 		updateRelatedInvoiceID, inv.RelationType,
-		inv.UpdatedAt, inv.ID,
+		inv.UpdatedAt.Format(time.RFC3339), inv.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating invoice %d: %w", inv.ID, err)
@@ -181,9 +199,10 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 // Delete performs a soft delete on an invoice.
 func (r *InvoiceRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE invoices SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id,
+		nowStr, nowStr, id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting invoice %d: %w", id, err)
@@ -462,7 +481,7 @@ func (r *InvoiceRepository) UpdateStatus(ctx context.Context, id int64, status s
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE invoices SET status = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		status, now, id,
+		status, now.Format(time.RFC3339), id,
 	)
 	if err != nil {
 		return fmt.Errorf("updating status of invoice %d to %s: %w", id, status, err)

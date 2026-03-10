@@ -27,7 +27,7 @@ func (r *CategoryRepository) Create(ctx context.Context, cat *domain.ExpenseCate
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO expense_categories (key, label_cs, label_en, color, sort_order, is_default, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		cat.Key, cat.LabelCS, cat.LabelEN, cat.Color, cat.SortOrder, cat.IsDefault, cat.CreatedAt,
+		cat.Key, cat.LabelCS, cat.LabelEN, cat.Color, cat.SortOrder, cat.IsDefault, cat.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting expense category: %w", err)
@@ -68,7 +68,7 @@ func (r *CategoryRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE expense_categories SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, id,
+		now.Format(time.RFC3339), id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting expense category %d: %w", id, err)

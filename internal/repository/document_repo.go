@@ -27,7 +27,7 @@ func (r *DocumentRepository) Create(ctx context.Context, doc *domain.ExpenseDocu
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO expense_documents (expense_id, filename, content_type, storage_path, size, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)`,
-		doc.ExpenseID, doc.Filename, doc.ContentType, doc.StoragePath, doc.Size, doc.CreatedAt,
+		doc.ExpenseID, doc.Filename, doc.ContentType, doc.StoragePath, doc.Size, doc.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting expense document: %w", err)
@@ -117,7 +117,7 @@ func (r *DocumentRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE expense_documents SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, id,
+		now.Format(time.RFC3339), id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting expense document %d: %w", id, err)

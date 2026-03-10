@@ -25,6 +25,11 @@ func (r *ContactRepository) Create(ctx context.Context, c *domain.Contact) error
 	c.CreatedAt = now
 	c.UpdatedAt = now
 
+	var vatUnreliableAt any
+	if c.VATUnreliableAt != nil {
+		vatUnreliableAt = c.VATUnreliableAt.Format(time.RFC3339)
+	}
+
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO contacts (
 			type, name, ico, dic, street, city, zip, country,
@@ -34,8 +39,8 @@ func (r *ContactRepository) Create(ctx context.Context, c *domain.Contact) error
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
-		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,
-		c.CreatedAt, c.UpdatedAt,
+		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, vatUnreliableAt,
+		c.CreatedAt.Format(time.RFC3339), c.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting contact: %w", err)
@@ -53,6 +58,11 @@ func (r *ContactRepository) Create(ctx context.Context, c *domain.Contact) error
 func (r *ContactRepository) Update(ctx context.Context, c *domain.Contact) error {
 	c.UpdatedAt = time.Now()
 
+	var updateVatUnreliableAt any
+	if c.VATUnreliableAt != nil {
+		updateVatUnreliableAt = c.VATUnreliableAt.Format(time.RFC3339)
+	}
+
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE contacts SET
 			type = ?, name = ?, ico = ?, dic = ?, street = ?, city = ?, zip = ?, country = ?,
@@ -62,8 +72,8 @@ func (r *ContactRepository) Update(ctx context.Context, c *domain.Contact) error
 		WHERE id = ? AND deleted_at IS NULL`,
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
-		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,
-		c.UpdatedAt, c.ID,
+		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, updateVatUnreliableAt,
+		c.UpdatedAt.Format(time.RFC3339), c.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating contact %d: %w", c.ID, err)
@@ -74,9 +84,10 @@ func (r *ContactRepository) Update(ctx context.Context, c *domain.Contact) error
 // Delete performs a soft delete on a contact.
 func (r *ContactRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE contacts SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id,
+		nowStr, nowStr, id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting contact %d: %w", id, err)

@@ -81,7 +81,7 @@ func SeedContact(t *testing.T, db *sql.DB, c *domain.Contact) *domain.Contact {
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
 		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,
-		c.CreatedAt, c.UpdatedAt,
+		c.CreatedAt.Format(time.RFC3339), c.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		t.Fatalf("seeding contact: %v", err)
@@ -137,12 +137,12 @@ func SeedInvoice(t *testing.T, db *sql.DB, customerID int64, items []domain.Invo
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		seqID, inv.InvoiceNumber, inv.Type, inv.Status,
-		inv.IssueDate, inv.DueDate, inv.DeliveryDate, inv.VariableSymbol, inv.ConstantSymbol,
+		inv.IssueDate.Format("2006-01-02"), inv.DueDate.Format("2006-01-02"), inv.DeliveryDate.Format("2006-01-02"), inv.VariableSymbol, inv.ConstantSymbol,
 		inv.CustomerID, inv.CurrencyCode, inv.ExchangeRate,
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
 		inv.SubtotalAmount, inv.VATAmount, inv.TotalAmount, inv.PaidAmount,
 		inv.Notes, inv.InternalNotes, inv.SentAt, inv.PaidAt,
-		inv.CreatedAt, inv.UpdatedAt,
+		inv.CreatedAt.Format(time.RFC3339), inv.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		t.Fatalf("seeding invoice: %v", err)
@@ -220,11 +220,11 @@ func SeedExpense(t *testing.T, db *sql.DB, e *domain.Expense) *domain.Expense {
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.VendorID, e.ExpenseNumber, e.Category, e.Description,
-		e.IssueDate, e.Amount, e.CurrencyCode, e.ExchangeRate,
+		e.IssueDate.Format("2006-01-02"), e.Amount, e.CurrencyCode, e.ExchangeRate,
 		e.VATRatePercent, e.VATAmount,
 		e.IsTaxDeductible, e.BusinessPercent, e.PaymentMethod,
 		e.DocumentPath, e.Notes,
-		e.CreatedAt, e.UpdatedAt,
+		e.CreatedAt.Format(time.RFC3339), e.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		t.Fatalf("seeding expense: %v", err)

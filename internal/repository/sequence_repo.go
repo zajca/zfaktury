@@ -26,7 +26,7 @@ func (r *SequenceRepository) Create(ctx context.Context, seq *domain.InvoiceSequ
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO invoice_sequences (prefix, next_number, year, format_pattern, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)`,
-		seq.Prefix, seq.NextNumber, seq.Year, seq.FormatPattern, now, now,
+		seq.Prefix, seq.NextNumber, seq.Year, seq.FormatPattern, now.Format(time.RFC3339), now.Format(time.RFC3339),
 	)
 	if err != nil {
 		return fmt.Errorf("inserting invoice sequence: %w", err)
@@ -48,7 +48,7 @@ func (r *SequenceRepository) Update(ctx context.Context, seq *domain.InvoiceSequ
 		UPDATE invoice_sequences SET
 			prefix = ?, next_number = ?, year = ?, format_pattern = ?, updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
-		seq.Prefix, seq.NextNumber, seq.Year, seq.FormatPattern, now, seq.ID,
+		seq.Prefix, seq.NextNumber, seq.Year, seq.FormatPattern, now.Format(time.RFC3339), seq.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating invoice sequence %d: %w", seq.ID, err)
@@ -67,9 +67,10 @@ func (r *SequenceRepository) Update(ctx context.Context, seq *domain.InvoiceSequ
 // Delete performs a soft delete on an invoice sequence.
 func (r *SequenceRepository) Delete(ctx context.Context, id int64) error {
 	now := time.Now()
+	nowStr := now.Format(time.RFC3339)
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE invoice_sequences SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now, now, id,
+		nowStr, nowStr, id,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting invoice sequence %d: %w", id, err)

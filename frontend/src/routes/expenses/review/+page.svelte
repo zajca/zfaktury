@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import DateInput from '$lib/components/DateInput.svelte';
 
 	// Extended Expense type with tax_reviewed_at field not yet in shared client.ts
 	interface ExpenseWithReview {
@@ -184,21 +185,11 @@
 	<div class="mt-6 flex flex-wrap items-end gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
 		<div class="flex flex-col gap-1">
 			<label for="date-from" class="text-xs font-medium text-gray-600">Datum od</label>
-			<input
-				id="date-from"
-				type="date"
-				bind:value={dateFrom}
-				class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-			/>
+			<DateInput id="date-from" bind:value={dateFrom} />
 		</div>
 		<div class="flex flex-col gap-1">
 			<label for="date-to" class="text-xs font-medium text-gray-600">Datum do</label>
-			<input
-				id="date-to"
-				type="date"
-				bind:value={dateTo}
-				class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-			/>
+			<DateInput id="date-to" bind:value={dateTo} />
 		</div>
 		<div class="flex flex-col gap-1">
 			<label for="tax-reviewed" class="text-xs font-medium text-gray-600">Stav kontroly</label>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, formatDateTime, formatMonthYear, toISODate, relativeDate } from './date';
+import { formatDate, formatDateTime, formatMonthYear, toISODate, relativeDate, formatDateLong, addDays } from './date';
 
 describe('formatDate', () => {
 	it('formats a Date object', () => {
@@ -80,6 +80,70 @@ describe('toISODate', () => {
 
 	it('handles date string input', () => {
 		expect(toISODate('2026-01-01')).toBe('2026-01-01');
+	});
+});
+
+describe('formatDateLong', () => {
+	it('formats a Date as long Czech date', () => {
+		const d = new Date(2026, 2, 10); // March 10, 2026
+		const result = formatDateLong(d);
+		expect(result).toContain('10');
+		expect(result).toContain('2026');
+		// Should contain full Czech month name (e.g. "brezen" or "března")
+		expect(result.length).toBeGreaterThan(10);
+	});
+
+	it('formats an ISO string', () => {
+		const result = formatDateLong('2026-01-15');
+		expect(result).toContain('15');
+		expect(result).toContain('2026');
+	});
+
+	it('returns empty string for null', () => {
+		expect(formatDateLong(null)).toBe('');
+	});
+
+	it('returns empty string for undefined', () => {
+		expect(formatDateLong(undefined)).toBe('');
+	});
+
+	it('returns empty string for empty string', () => {
+		expect(formatDateLong('')).toBe('');
+	});
+
+	it('returns empty string for invalid date', () => {
+		expect(formatDateLong('not-a-date')).toBe('');
+	});
+});
+
+describe('addDays', () => {
+	it('adds positive days', () => {
+		expect(addDays('2026-03-10', 7)).toBe('2026-03-17');
+	});
+
+	it('adds days across month boundary', () => {
+		expect(addDays('2026-03-28', 5)).toBe('2026-04-02');
+	});
+
+	it('adds days across year boundary', () => {
+		expect(addDays('2025-12-30', 3)).toBe('2026-01-02');
+	});
+
+	it('adds zero days', () => {
+		expect(addDays('2026-03-10', 0)).toBe('2026-03-10');
+	});
+
+	it('subtracts days with negative value', () => {
+		expect(addDays('2026-03-10', -5)).toBe('2026-03-05');
+	});
+
+	it('handles leap year', () => {
+		expect(addDays('2024-02-28', 1)).toBe('2024-02-29');
+		expect(addDays('2024-02-28', 2)).toBe('2024-03-01');
+	});
+
+	it('handles non-leap year', () => {
+		expect(addDays('2026-02-28', 1)).toBe('2026-03-01');
 	});
 });
 

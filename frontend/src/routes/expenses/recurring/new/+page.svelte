@@ -3,6 +3,7 @@
 	import { recurringExpensesApi, contactsApi, type Contact, type RecurringExpense } from '$lib/api/client';
 	import { formatCZK, toHalere } from '$lib/utils/money';
 	import { toISODate } from '$lib/utils/date';
+	import DateInput from '$lib/components/DateInput.svelte';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 
 	let contacts = $state<Contact[]>([]);
@@ -175,22 +176,11 @@
 				</div>
 				<div>
 					<label for="next_issue_date" class="block text-sm font-medium text-gray-700">Další datum *</label>
-					<input
-						id="next_issue_date"
-						type="date"
-						bind:value={form.next_issue_date}
-						required
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-					/>
+					<DateInput id="next_issue_date" bind:value={form.next_issue_date} required />
 				</div>
 				<div>
 					<label for="end_date" class="block text-sm font-medium text-gray-700">Datum ukončení</label>
-					<input
-						id="end_date"
-						type="date"
-						bind:value={form.end_date}
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-					/>
+					<DateInput id="end_date" bind:value={form.end_date} />
 				</div>
 			</div>
 		</div>

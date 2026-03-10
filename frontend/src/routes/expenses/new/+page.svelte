@@ -4,6 +4,7 @@
 	import { formatCZK, toHalere } from '$lib/utils/money';
 	import { toISODate } from '$lib/utils/date';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
+	import DateInput from '$lib/components/DateInput.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -131,13 +132,7 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
 						<label for="issue_date" class="block text-sm font-medium text-gray-700">Datum *</label>
-						<input
-							id="issue_date"
-							type="date"
-							bind:value={form.issue_date}
-							required
-							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-						/>
+						<DateInput id="issue_date" bind:value={form.issue_date} required />
 					</div>
 					<div>
 						<label for="vendor" class="block text-sm font-medium text-gray-700">Dodavatel</label>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { toISODate } from '$lib/utils/date';
+	import DateInput from '$lib/components/DateInput.svelte';
 	import { formatCZK, toHalere } from '$lib/utils/money';
 
 	interface Contact {
@@ -186,11 +187,11 @@
 				</div>
 				<div>
 					<label for="next_issue_date" class="block text-sm font-medium text-gray-700">Dalsi vystaveni</label>
-					<input id="next_issue_date" type="date" bind:value={form.next_issue_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+					<DateInput id="next_issue_date" bind:value={form.next_issue_date} required />
 				</div>
 				<div>
 					<label for="end_date" class="block text-sm font-medium text-gray-700">Konec opakovani (volitelne)</label>
-					<input id="end_date" type="date" bind:value={form.end_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+					<DateInput id="end_date" bind:value={form.end_date} />
 				</div>
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

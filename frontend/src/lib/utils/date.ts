@@ -68,6 +68,31 @@ export function toISODate(date: string | Date): string {
 }
 
 /**
+ * Format a date as long Czech date: "10. brezen 2026"
+ */
+export function formatDateLong(date: string | Date | null | undefined): string {
+	if (!isValidDate(date)) return '';
+	const d = typeof date === 'string' ? new Date(date) : date;
+	return new Intl.DateTimeFormat('cs-CZ', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
+	}).format(d);
+}
+
+/**
+ * Add N days to an ISO date string, returns ISO date string.
+ */
+export function addDays(isoDate: string, days: number): string {
+	const [year, month, day] = isoDate.split('-').map(Number);
+	const d = new Date(year, month - 1, day + days);
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, '0');
+	const dd = String(d.getDate()).padStart(2, '0');
+	return `${y}-${m}-${dd}`;
+}
+
+/**
  * Returns a human-readable relative time description in Czech.
  */
 export function relativeDate(date: string | Date): string {

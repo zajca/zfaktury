@@ -5,6 +5,7 @@
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
+	import DateInput from '$lib/components/DateInput.svelte';
 
 	let expense = $state<Expense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -200,7 +201,7 @@
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
 								<label for="edit-date" class="block text-sm font-medium text-gray-700">Datum</label>
-								<input id="edit-date" type="date" bind:value={form.issue_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+								<DateInput id="edit-date" bind:value={form.issue_date} required />
 							</div>
 							<div>
 								<label for="edit-vendor" class="block text-sm font-medium text-gray-700">Dodavatel</label>

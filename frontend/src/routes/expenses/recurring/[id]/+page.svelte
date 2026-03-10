@@ -4,6 +4,7 @@
 	import { recurringExpensesApi, contactsApi, type RecurringExpense, type Contact } from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import DateInput from '$lib/components/DateInput.svelte';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 
 	let item = $state<RecurringExpense | null>(null);
@@ -268,11 +269,11 @@
 						</div>
 						<div>
 							<label for="edit-next" class="block text-sm font-medium text-gray-700">Další datum</label>
-							<input id="edit-next" type="date" bind:value={form.next_issue_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<DateInput id="edit-next" bind:value={form.next_issue_date} required />
 						</div>
 						<div>
 							<label for="edit-end" class="block text-sm font-medium text-gray-700">Datum ukončení</label>
-							<input id="edit-end" type="date" bind:value={form.end_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<DateInput id="edit-end" bind:value={form.end_date} />
 						</div>
 					</div>
 				</div>

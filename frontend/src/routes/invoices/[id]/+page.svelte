@@ -3,7 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { invoicesApi, contactsApi, type Invoice, type Contact } from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
-	import { formatDate, toISODate } from '$lib/utils/date';
+	import { formatDate, toISODate, addDays } from '$lib/utils/date';
+	import DateInput from '$lib/components/DateInput.svelte';
 
 	interface FormItem {
 		description: string;
@@ -128,6 +129,21 @@
 	function removeItem(index: number) {
 		if (items.length <= 1) return;
 		items = items.filter((_, i) => i !== index);
+	}
+
+	let dueDateOffset = $state(14);
+
+	function handleIssueDateChange(newValue: string) {
+		form.issue_date = newValue;
+		if (newValue) form.due_date = addDays(newValue, dueDateOffset);
+	}
+
+	function handleDueDateChange(newValue: string) {
+		form.due_date = newValue;
+		if (form.issue_date && newValue) {
+			const diff = (new Date(newValue).getTime() - new Date(form.issue_date).getTime()) / 86400000;
+			dueDateOffset = Math.round(diff);
+		}
 	}
 
 	async function handleSave() {
@@ -289,15 +305,15 @@
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<label for="edit-issue" class="block text-sm font-medium text-gray-700">Datum vystavení</label>
-							<input id="edit-issue" type="date" bind:value={form.issue_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<DateInput id="edit-issue" bind:value={form.issue_date} required onchange={handleIssueDateChange} />
 						</div>
 						<div>
 							<label for="edit-due" class="block text-sm font-medium text-gray-700">Datum splatnosti</label>
-							<input id="edit-due" type="date" bind:value={form.due_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<DateInput id="edit-due" bind:value={form.due_date} required onchange={handleDueDateChange} presets={[{label: '+7 dni', days: 7}, {label: '+14 dni', days: 14}, {label: '+30 dni', days: 30}, {label: '+60 dni', days: 60}]} relativeToValue={form.issue_date} />
 						</div>
 						<div>
 							<label for="edit-delivery" class="block text-sm font-medium text-gray-700">DUZP</label>
-							<input id="edit-delivery" type="date" bind:value={form.delivery_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<DateInput id="edit-delivery" bind:value={form.delivery_date} />
 						</div>
 					</div>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -177,17 +177,76 @@ Then enable it in `~/.claude/settings.json`:
 
 LSP plugins load on startup. After setup, restart Claude Code and verify with `LSP documentSymbol` on any `.go`, `.ts`, or `.svelte` file.
 
+## Development Cycle (MANDATORY)
+
+Every implementation batch MUST follow this cycle. No exceptions. Skipping steps leads to bugs, security issues, and inconsistent code.
+
+### Phase 1: Plan
+
+- Use `plan` mode (EnterPlanMode) to design the implementation before writing code
+- Break work into independent tasks that can be parallelized
+- Identify shared file conflicts upfront
+- Get plan approval before proceeding
+
+### Phase 2: Implement with Teammates
+
+- **ALWAYS use Agent tool with worktree isolation** for parallel tasks
+- Each agent gets its own worktree branch to avoid conflicts
+- Agents MUST NOT edit shared files -- lead merges those after
+- Each agent runs `go build` and `go test` on its own code before reporting done
+
+### Phase 3: Merge & Build
+
+- Lead copies new files from worktrees to main
+- Lead manually integrates shared files (router.go, serve.go, interfaces.go, client.ts, helpers.go)
+- Run full build: `CGO_ENABLED=0 go build ./...`
+- Run full tests: `CGO_ENABLED=0 go test ./...`
+- Fix any failures before proceeding
+
+### Phase 4: Review (parallel agents)
+
+All three reviews run as parallel background agents after merge:
+
+1. **Code Review** (`developer:code-reviewer` agent)
+   - Check for bugs, logic errors, code quality issues
+   - Verify adherence to project conventions (3-layer arch, Amount for money, no JSON tags on domain structs)
+   - Check test coverage adequacy
+
+2. **Security Review** (`developer:code-security` agent)
+   - SQL injection, path traversal, XSS, input validation
+   - File upload safety (size limits, content type validation)
+   - Sensitive data exposure, error message leakage
+   - Output to `docs/AGENT-REPORTS/SECURITY.md`
+
+3. **UX Review** (general agent reviewing frontend)
+   - Check Svelte 5 runes usage (NOT old reactive syntax)
+   - Verify Czech locale for UI text, dates, currency
+   - Check error states, loading states, empty states
+   - Verify responsive layout and accessibility basics
+
+### Phase 5: Fix & Refactor
+
+- Fix all critical and important findings from reviews
+- Run `simplify` skill if needed for code cleanup
+- Run build + tests again after fixes
+- Commit fixes separately from implementation
+
+### Phase 6: Commit
+
+- Only commit after all reviews pass and fixes are applied
+- Clean, descriptive commit message summarizing what was implemented
+
 ## Agent Teams Conventions
 
 When working as part of an agent team:
 
+- **ALWAYS use Agent tool with `isolation: "worktree"`** for parallel implementation tasks
 - Each teammate owns its own files -- NEVER edit files owned by another agent
-- Shared files (`router.go`, `interfaces.go`, `client.ts`, `serve.go`, `helpers.go`) are edited ONLY by the lead or a designated agent
-- Always use plan approval for complex tasks
+- Shared files (`router.go`, `interfaces.go`, `client.ts`, `serve.go`, `helpers.go`) are edited ONLY by the lead after all agents finish
 - After completing work, run `go build ./...` and `go test ./...` to verify
 - Coordinate via messages when you need API contracts or interface definitions from another agent
 
-### Critical shared files (coordinate edits)
+### Critical shared files (lead merges only)
 
 - `internal/handler/router.go` - route registration
 - `internal/repository/interfaces.go` - repository interfaces

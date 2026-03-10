@@ -1,0 +1,19 @@
+{
+  "last_processed_commit": "81f24681fad20e1e8c58b4854c13804b04876b7d",
+  "processed_at": "2026-03-10T00:00:00Z",
+  "findings_count": {
+    "HIGH": 4,
+    "MEDIUM": 10,
+    "LOW": 8,
+    "INFO": 3
+  },
+  "open_findings": [
+    "SEC-001", "SEC-002", "SEC-003", "SEC-004", "SEC-005",
+    "SEC-006", "SEC-007", "SEC-008", "SEC-010", "SEC-011",
+    "SEC-012", "SEC-014", "SEC-016", "SEC-017",
+    "SEC-018", "SEC-019", "SEC-020", "SEC-021", "SEC-022",
+    "SEC-023", "SEC-024", "SEC-025"
+  ],
+  "fixed_findings": ["SEC-009", "SEC-013", "SEC-015"],
+  "report": "docs/AGENT-REPORTS/SECURITY-R2.md"
+}

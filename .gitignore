@@ -36,3 +36,6 @@ logs/
 
 # Temporary
 tmp/
+
+# Claude
+docs/AGENTS_REPORTS

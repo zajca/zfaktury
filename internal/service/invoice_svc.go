@@ -11,15 +11,17 @@ import (
 
 // InvoiceService provides business logic for invoice management.
 type InvoiceService struct {
-	repo     repository.InvoiceRepo
-	contacts *ContactService
+	repo      repository.InvoiceRepo
+	contacts  *ContactService
+	sequences *SequenceService
 }
 
 // NewInvoiceService creates a new InvoiceService.
-func NewInvoiceService(repo repository.InvoiceRepo, contacts *ContactService) *InvoiceService {
+func NewInvoiceService(repo repository.InvoiceRepo, contacts *ContactService, sequences *SequenceService) *InvoiceService {
 	return &InvoiceService{
-		repo:     repo,
-		contacts: contacts,
+		repo:      repo,
+		contacts:  contacts,
+		sequences: sequences,
 	}
 }
 
@@ -53,6 +55,23 @@ func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) er
 	}
 	if invoice.DeliveryDate.IsZero() {
 		invoice.DeliveryDate = invoice.IssueDate
+	}
+
+	// Auto-assign sequence if none provided.
+	if invoice.SequenceID == 0 && invoice.InvoiceNumber == "" && s.sequences != nil {
+		prefix := "FV"
+		switch invoice.Type {
+		case domain.InvoiceTypeProforma:
+			prefix = "ZF"
+		case domain.InvoiceTypeCreditNote:
+			prefix = "DN"
+		}
+		year := invoice.IssueDate.Year()
+		seq, err := s.sequences.GetOrCreateForYear(ctx, prefix, year)
+		if err != nil {
+			return err
+		}
+		invoice.SequenceID = seq.ID
 	}
 
 	// Assign invoice number from sequence.

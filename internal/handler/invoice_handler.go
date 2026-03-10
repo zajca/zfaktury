@@ -1,24 +1,36 @@
 package handler
 
 import (
+	"archive/zip"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/isdoc"
+	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
 // InvoiceHandler handles HTTP requests for invoice management.
 type InvoiceHandler struct {
-	svc *service.InvoiceService
+	svc         *service.InvoiceService
+	settingsSvc *service.SettingsService
+	pdfGen      *pdf.InvoicePDFGenerator
+	isdocGen    *isdoc.ISDOCGenerator
 }
 
 // NewInvoiceHandler creates a new InvoiceHandler.
-func NewInvoiceHandler(svc *service.InvoiceService) *InvoiceHandler {
-	return &InvoiceHandler{svc: svc}
+func NewInvoiceHandler(svc *service.InvoiceService, settingsSvc *service.SettingsService, pdfGen *pdf.InvoicePDFGenerator, isdocGen *isdoc.ISDOCGenerator) *InvoiceHandler {
+	return &InvoiceHandler{
+		svc:         svc,
+		settingsSvc: settingsSvc,
+		pdfGen:      pdfGen,
+		isdocGen:    isdocGen,
+	}
 }
 
 // Routes registers invoice routes on the given router.
@@ -32,6 +44,10 @@ func (h *InvoiceHandler) Routes() chi.Router {
 	r.Post("/{id}/send", h.MarkAsSent)
 	r.Post("/{id}/mark-paid", h.MarkAsPaid)
 	r.Post("/{id}/duplicate", h.Duplicate)
+	r.Get("/{id}/pdf", h.DownloadPDF)
+	r.Get("/{id}/qr", h.QRPayment)
+	r.Get("/{id}/isdoc", h.ExportISDOC)
+	r.Post("/export/isdoc", h.ExportISDOCBatch)
 	return r
 }
 
@@ -241,4 +257,202 @@ func (h *InvoiceHandler) Duplicate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusCreated, invoiceFromDomain(invoice))
+}
+
+// DownloadPDF handles GET /api/v1/invoices/{id}/pdf.
+func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid invoice ID")
+		return
+	}
+
+	invoice, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get invoice for PDF", "error", err, "id", id)
+		respondError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+
+	supplier, err := pdf.LoadSupplierFromSettings(r.Context(), h.settingsSvc)
+	if err != nil {
+		slog.Error("failed to load supplier settings for PDF", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
+		return
+	}
+
+	pdfBytes, err := h.pdfGen.Generate(r.Context(), invoice, supplier)
+	if err != nil {
+		slog.Error("failed to generate PDF", "error", err, "id", id)
+		respondError(w, http.StatusInternalServerError, "failed to generate PDF")
+		return
+	}
+
+	filename := fmt.Sprintf("faktura_%s.pdf", invoice.InvoiceNumber)
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(pdfBytes)
+}
+
+// QRPayment handles GET /api/v1/invoices/{id}/qr.
+func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid invoice ID")
+		return
+	}
+
+	invoice, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get invoice for QR", "error", err, "id", id)
+		respondError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+
+	// Determine IBAN and SWIFT: prefer invoice values, fall back to settings.
+	iban := invoice.IBAN
+	swift := invoice.SWIFT
+	if iban == "" {
+		supplier, err := pdf.LoadSupplierFromSettings(r.Context(), h.settingsSvc)
+		if err != nil {
+			slog.Error("failed to load supplier settings for QR", "error", err)
+			respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
+			return
+		}
+		iban = supplier.IBAN
+		swift = supplier.SWIFT
+	}
+
+	if iban == "" {
+		respondError(w, http.StatusUnprocessableEntity, "IBAN is required for QR payment generation")
+		return
+	}
+
+	qrBytes, err := pdf.GenerateQRPayment(invoice, iban, swift)
+	if err != nil {
+		slog.Error("failed to generate QR payment", "error", err, "id", id)
+		respondError(w, http.StatusInternalServerError, "failed to generate QR payment code")
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(qrBytes)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(qrBytes)
+}
+
+// loadSupplierInfo reads supplier information from application settings.
+func (h *InvoiceHandler) loadSupplierInfo(r *http.Request) (isdoc.SupplierInfo, error) {
+	settings, err := h.settingsSvc.GetAll(r.Context())
+	if err != nil {
+		return isdoc.SupplierInfo{}, fmt.Errorf("loading settings: %w", err)
+	}
+
+	return isdoc.SupplierInfo{
+		CompanyName: settings[service.SettingCompanyName],
+		ICO:         settings[service.SettingICO],
+		DIC:         settings[service.SettingDIC],
+		Street:      settings[service.SettingStreet],
+		City:        settings[service.SettingCity],
+		ZIP:         settings[service.SettingZIP],
+		Email:       settings[service.SettingEmail],
+		Phone:       settings[service.SettingPhone],
+		BankAccount: settings[service.SettingBankAccount],
+		BankCode:    settings[service.SettingBankCode],
+		IBAN:        settings[service.SettingIBAN],
+		SWIFT:       settings[service.SettingSWIFT],
+	}, nil
+}
+
+// ExportISDOC handles GET /api/v1/invoices/{id}/isdoc.
+func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid invoice ID")
+		return
+	}
+
+	invoice, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get invoice for ISDOC export", "error", err, "id", id)
+		respondError(w, http.StatusNotFound, "invoice not found")
+		return
+	}
+
+	supplier, err := h.loadSupplierInfo(r)
+	if err != nil {
+		slog.Error("failed to load supplier info", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
+		return
+	}
+
+	xmlData, err := h.isdocGen.Generate(r.Context(), invoice, supplier)
+	if err != nil {
+		slog.Error("failed to generate ISDOC", "error", err, "id", id)
+		respondError(w, http.StatusInternalServerError, "failed to generate ISDOC document")
+		return
+	}
+
+	filename := fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber)
+	w.Header().Set("Content-Type", "application/xml")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.WriteHeader(http.StatusOK)
+	w.Write(xmlData)
+}
+
+// isdocBatchRequest is the JSON request body for batch ISDOC export.
+type isdocBatchRequest struct {
+	InvoiceIDs []int64 `json:"invoice_ids"`
+}
+
+// ExportISDOCBatch handles POST /api/v1/invoices/export/isdoc.
+func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request) {
+	var req isdocBatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if len(req.InvoiceIDs) == 0 {
+		respondError(w, http.StatusBadRequest, "invoice_ids is required")
+		return
+	}
+
+	supplier, err := h.loadSupplierInfo(r)
+	if err != nil {
+		slog.Error("failed to load supplier info", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", `attachment; filename="isdoc-export.zip"`)
+	w.WriteHeader(http.StatusOK)
+
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	for _, id := range req.InvoiceIDs {
+		invoice, err := h.svc.GetByID(r.Context(), id)
+		if err != nil {
+			slog.Error("failed to get invoice for batch ISDOC export", "error", err, "id", id)
+			continue
+		}
+
+		xmlData, err := h.isdocGen.Generate(r.Context(), invoice, supplier)
+		if err != nil {
+			slog.Error("failed to generate ISDOC for batch export", "error", err, "id", id)
+			continue
+		}
+
+		filename := fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber)
+		f, err := zipWriter.Create(filename)
+		if err != nil {
+			slog.Error("failed to create zip entry", "error", err, "filename", filename)
+			continue
+		}
+		f.Write(xmlData)
+	}
 }

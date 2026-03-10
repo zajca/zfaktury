@@ -19,11 +19,13 @@ func setupInvoiceRouter(t *testing.T) (*chi.Mux, int64) {
 	db := testutil.NewTestDB(t)
 	contactRepo := repository.NewContactRepository(db)
 	invoiceRepo := repository.NewInvoiceRepository(db)
+	sequenceRepo := repository.NewSequenceRepository(db)
 	contactSvc := service.NewContactService(contactRepo, nil)
-	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc)
+	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc)
 
 	contactHandler := NewContactHandler(contactSvc)
-	invoiceHandler := NewInvoiceHandler(invoiceSvc)
+	invoiceHandler := NewInvoiceHandler(invoiceSvc, nil, nil, nil)
 
 	r := chi.NewRouter()
 	r.Mount("/api/v1/contacts", contactHandler.Routes())

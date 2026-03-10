@@ -244,6 +244,15 @@
 					</button>
 				{/if}
 				{#if !editing}
+					<a href={invoicesApi.getPdfUrl(invoiceId)} target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+						</svg>
+						Stahnout PDF
+					</a>
+					<a href={invoicesApi.getIsdocUrl(invoiceId)} download class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-1">
+						Export ISDOC
+					</a>
 					<button onclick={handleDuplicate} class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
 						Duplikovat
 					</button>
@@ -535,24 +544,42 @@
 					</div>
 				</div>
 
-				<!-- Payment info -->
+				<!-- Payment info with QR code -->
 				{#if invoice.bank_account || invoice.iban}
 					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Platebn udaje</h2>
-						<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-							{#if invoice.bank_account}
-								<div>
-									<dt class="text-sm font-medium text-gray-500">Cislo uctu</dt>
-									<dd class="mt-1 text-sm text-gray-900">{invoice.bank_account}{invoice.bank_code ? `/${invoice.bank_code}` : ''}</dd>
+						<h2 class="text-lg font-semibold text-gray-900">Platebni udaje</h2>
+						<div class="mt-4 flex flex-col gap-6 sm:flex-row">
+							<dl class="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
+								{#if invoice.bank_account}
+									<div>
+										<dt class="text-sm font-medium text-gray-500">Cislo uctu</dt>
+										<dd class="mt-1 text-sm text-gray-900">{invoice.bank_account}{invoice.bank_code ? `/${invoice.bank_code}` : ''}</dd>
+									</div>
+								{/if}
+								{#if invoice.iban}
+									<div>
+										<dt class="text-sm font-medium text-gray-500">IBAN</dt>
+										<dd class="mt-1 text-sm text-gray-900">{invoice.iban}</dd>
+									</div>
+								{/if}
+								{#if invoice.variable_symbol}
+									<div>
+										<dt class="text-sm font-medium text-gray-500">Variabilni symbol</dt>
+										<dd class="mt-1 text-sm text-gray-900">{invoice.variable_symbol}</dd>
+									</div>
+								{/if}
+							</dl>
+							{#if invoice.iban && invoice.status !== 'paid'}
+								<div class="flex flex-col items-center gap-2">
+									<span class="text-sm font-medium text-gray-500">QR platba</span>
+									<img
+										src={invoicesApi.getQrUrl(invoiceId)}
+										alt="QR kod pro platbu"
+										class="h-32 w-32 rounded border border-gray-200"
+									/>
 								</div>
 							{/if}
-							{#if invoice.iban}
-								<div>
-									<dt class="text-sm font-medium text-gray-500">IBAN</dt>
-									<dd class="mt-1 text-sm text-gray-900">{invoice.iban}</dd>
-								</div>
-							{/if}
-						</dl>
+						</div>
 					</div>
 				{/if}
 

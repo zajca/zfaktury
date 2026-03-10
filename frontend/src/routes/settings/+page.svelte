@@ -67,6 +67,37 @@
 		</div>
 	{/if}
 
+	<!-- Quick links -->
+	<div class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+		<h2 class="text-lg font-semibold text-gray-900">Sprava</h2>
+		<div class="mt-3 space-y-2">
+			<a
+				href="/settings/sequences"
+				class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+			>
+				<div>
+					<span class="text-gray-900">Ciselne rady faktur</span>
+					<p class="mt-0.5 text-xs text-gray-500">Sprava ciselnych rad pro faktury</p>
+				</div>
+				<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+				</svg>
+			</a>
+			<a
+				href="/settings/categories"
+				class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+			>
+				<div>
+					<span class="text-gray-900">Kategorie nakladu</span>
+					<p class="mt-0.5 text-xs text-gray-500">Sprava kategorii pro trideni nakladu</p>
+				</div>
+				<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+				</svg>
+			</a>
+		</div>
+	</div>
+
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
 			<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>

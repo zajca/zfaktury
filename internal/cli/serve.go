@@ -20,6 +20,8 @@ import (
 	"github.com/zajca/zfaktury/internal/config"
 	"github.com/zajca/zfaktury/internal/database"
 	"github.com/zajca/zfaktury/internal/handler"
+	"github.com/zajca/zfaktury/internal/isdoc"
+	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
 	"github.com/zajca/zfaktury/web"
@@ -64,17 +66,25 @@ var serveCmd = &cobra.Command{
 		invoiceRepo := repository.NewInvoiceRepository(db)
 		expenseRepo := repository.NewExpenseRepository(db)
 		settingsRepo := repository.NewSettingsRepository(db)
+		sequenceRepo := repository.NewSequenceRepository(db)
+		categoryRepo := repository.NewCategoryRepository(db)
 
 		// Wire ARES client.
 		aresClient := ares.NewClient()
 
+		// Wire generators.
+		pdfGen := pdf.NewInvoicePDFGenerator()
+		isdocGen := isdoc.NewISDOCGenerator()
+
 		// Wire services.
 		contactSvc := service.NewContactService(contactRepo, aresClient)
-		invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc)
+		sequenceSvc := service.NewSequenceService(sequenceRepo)
+		invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc)
 		expenseSvc := service.NewExpenseService(expenseRepo)
 		settingsSvc := service.NewSettingsService(settingsRepo)
+		categorySvc := service.NewCategoryService(categoryRepo)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, pdfGen, isdocGen, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

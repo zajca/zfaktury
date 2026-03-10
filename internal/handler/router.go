@@ -7,6 +7,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/zajca/zfaktury/internal/isdoc"
+	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -22,6 +24,10 @@ func NewRouter(
 	invoiceSvc *service.InvoiceService,
 	expenseSvc *service.ExpenseService,
 	settingsSvc *service.SettingsService,
+	sequenceSvc *service.SequenceService,
+	categorySvc *service.CategoryService,
+	pdfGen *pdf.InvoicePDFGenerator,
+	isdocGen *isdoc.ISDOCGenerator,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -44,14 +50,18 @@ func NewRouter(
 		api.Use(jsonContentTypeMiddleware)
 
 		contactHandler := NewContactHandler(contactSvc)
-		invoiceHandler := NewInvoiceHandler(invoiceSvc)
+		invoiceHandler := NewInvoiceHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen)
 		expenseHandler := NewExpenseHandler(expenseSvc)
+		categoryHandler := NewCategoryHandler(categorySvc)
 		settingsHandler := NewSettingsHandler(settingsSvc)
+		sequenceHandler := NewSequenceHandler(sequenceSvc)
 
 		api.Mount("/contacts", contactHandler.Routes())
 		api.Mount("/invoices", invoiceHandler.Routes())
 		api.Mount("/expenses", expenseHandler.Routes())
+		api.Mount("/expense-categories", categoryHandler.Routes())
 		api.Mount("/settings", settingsHandler.Routes())
+		api.Mount("/invoice-sequences", sequenceHandler.Routes())
 	})
 
 	// Health check endpoint.

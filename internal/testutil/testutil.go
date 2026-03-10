@@ -164,6 +164,42 @@ func patchTimestampColumns(t *testing.T, db *sql.DB) {
 		`CREATE INDEX idx_expenses_category ON expenses(category)`,
 		`CREATE INDEX idx_expenses_issue_date ON expenses(issue_date)`,
 		`CREATE INDEX idx_expenses_deleted_at ON expenses(deleted_at)`,
+
+		// -- invoice_sequences --
+		`CREATE TABLE invoice_sequences_tmp (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			prefix TEXT NOT NULL,
+			next_number INTEGER NOT NULL DEFAULT 1,
+			year INTEGER NOT NULL,
+			format_pattern TEXT NOT NULL DEFAULT '{prefix}{year}{number:04d}',
+			created_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+			updated_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+			deleted_at DATETIME,
+			UNIQUE(prefix, year)
+		)`,
+		`INSERT INTO invoice_sequences_tmp SELECT * FROM invoice_sequences`,
+		`DROP TABLE invoice_sequences`,
+		`ALTER TABLE invoice_sequences_tmp RENAME TO invoice_sequences`,
+		`CREATE INDEX idx_invoice_sequences_year ON invoice_sequences(year)`,
+		`CREATE INDEX idx_invoice_sequences_deleted_at ON invoice_sequences(deleted_at)`,
+
+		// -- expense_categories --
+		`CREATE TABLE expense_categories_tmp (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			key TEXT NOT NULL UNIQUE,
+			label_cs TEXT NOT NULL,
+			label_en TEXT NOT NULL,
+			color TEXT NOT NULL DEFAULT '#6B7280',
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			is_default INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+			deleted_at DATETIME
+		)`,
+		`INSERT INTO expense_categories_tmp SELECT * FROM expense_categories`,
+		`DROP TABLE expense_categories`,
+		`ALTER TABLE expense_categories_tmp RENAME TO expense_categories`,
+		`CREATE UNIQUE INDEX idx_expense_categories_key ON expense_categories(key)`,
+		`CREATE INDEX idx_expense_categories_deleted_at ON expense_categories(deleted_at)`,
 	}
 
 	for _, stmt := range stmts {

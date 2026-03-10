@@ -95,6 +95,30 @@ export interface Expense {
 	updated_at: string;
 }
 
+// --- Invoice Sequence Types ---
+
+export interface InvoiceSequence {
+	id: number;
+	prefix: string;
+	next_number: number;
+	year: number;
+	format_pattern: string;
+	preview: string;
+}
+
+// --- Expense Category Types ---
+
+export interface ExpenseCategory {
+	id: number;
+	key: string;
+	label_cs: string;
+	label_en: string;
+	color: string;
+	sort_order: number;
+	is_default: boolean;
+	created_at: string;
+}
+
 export interface ListResponse<T> {
 	data: T[];
 	total: number;
@@ -252,6 +276,25 @@ export const invoicesApi = {
 
 	duplicate(id: number) {
 		return post<Invoice>(`/invoices/${id}/duplicate`, {});
+	},
+
+	getPdfUrl(id: number): string {
+		return `${API_BASE}/invoices/${id}/pdf`;
+	},
+
+	getQrUrl(id: number): string {
+		return `${API_BASE}/invoices/${id}/qr`;
+	},
+
+	getIsdocUrl(id: number): string {
+		return `${API_BASE}/invoices/${id}/isdoc`;
+	},
+
+	exportIsdocBatch(invoiceIds: number[]) {
+		return request<Blob>(`/invoices/export/isdoc`, {
+			method: 'POST',
+			body: JSON.stringify({ invoice_ids: invoiceIds })
+		});
 	}
 };
 
@@ -281,6 +324,50 @@ export const expensesApi = {
 
 	delete(id: number) {
 		return del<void>(`/expenses/${id}`);
+	}
+};
+
+// --- Invoice Sequences API ---
+
+export const sequencesApi = {
+	list() {
+		return get<InvoiceSequence[]>('/invoice-sequences');
+	},
+
+	getById(id: number) {
+		return get<InvoiceSequence>(`/invoice-sequences/${id}`);
+	},
+
+	create(data: Partial<InvoiceSequence>) {
+		return post<InvoiceSequence>('/invoice-sequences', data);
+	},
+
+	update(id: number, data: Partial<InvoiceSequence>) {
+		return put<InvoiceSequence>(`/invoice-sequences/${id}`, data);
+	},
+
+	delete(id: number) {
+		return del<void>(`/invoice-sequences/${id}`);
+	}
+};
+
+// --- Expense Categories API ---
+
+export const categoriesApi = {
+	list() {
+		return get<ExpenseCategory[]>('/expense-categories');
+	},
+
+	create(data: Partial<ExpenseCategory>) {
+		return post<ExpenseCategory>('/expense-categories', data);
+	},
+
+	update(id: number, data: Partial<ExpenseCategory>) {
+		return put<ExpenseCategory>(`/expense-categories/${id}`, data);
+	},
+
+	delete(id: number) {
+		return del<void>(`/expense-categories/${id}`);
 	}
 };
 

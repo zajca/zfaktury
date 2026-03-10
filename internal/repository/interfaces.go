@@ -36,6 +36,28 @@ type ExpenseRepo interface {
 	List(ctx context.Context, filter domain.ExpenseFilter) ([]domain.Expense, int, error)
 }
 
+// InvoiceSequenceRepo defines the persistence interface for invoice sequences.
+type InvoiceSequenceRepo interface {
+	Create(ctx context.Context, seq *domain.InvoiceSequence) error
+	Update(ctx context.Context, seq *domain.InvoiceSequence) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.InvoiceSequence, error)
+	List(ctx context.Context) ([]domain.InvoiceSequence, error)
+	GetByPrefixAndYear(ctx context.Context, prefix string, year int) (*domain.InvoiceSequence, error)
+	CountInvoicesBySequenceID(ctx context.Context, sequenceID int64) (int, error)
+	MaxUsedNumber(ctx context.Context, sequenceID int64) (int, error)
+}
+
+// CategoryRepo defines the persistence interface for expense categories.
+type CategoryRepo interface {
+	Create(ctx context.Context, cat *domain.ExpenseCategory) error
+	Update(ctx context.Context, cat *domain.ExpenseCategory) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.ExpenseCategory, error)
+	GetByKey(ctx context.Context, key string) (*domain.ExpenseCategory, error)
+	List(ctx context.Context) ([]domain.ExpenseCategory, error)
+}
+
 // SettingsRepo defines the persistence interface for application settings.
 type SettingsRepo interface {
 	GetAll(ctx context.Context) (map[string]string, error)

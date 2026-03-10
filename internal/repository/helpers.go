@@ -3,12 +3,24 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
 // parseDate parses a date string and returns the time value.
+// It tries the given layout first, and if the layout is RFC3339 and parsing
+// fails, it also tries the SQLite datetime format (space instead of T separator).
 func parseDate(layout, value string) (time.Time, error) {
 	t, err := time.Parse(layout, value)
+	if err != nil && layout == time.RFC3339 && strings.Contains(value, " ") {
+		// SQLite sometimes stores datetimes with space separator instead of T.
+		// Try replacing the first space between date and time with T.
+		normalized := strings.Replace(value, " ", "T", 1)
+		// Truncate sub-second precision beyond 9 digits if present.
+		if t2, err2 := time.Parse(time.RFC3339Nano, normalized); err2 == nil {
+			return t2, nil
+		}
+	}
 	if err != nil {
 		return time.Time{}, fmt.Errorf("parsing date %q: %w", value, err)
 	}

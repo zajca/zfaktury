@@ -3,6 +3,7 @@
 	import { expensesApi, contactsApi, type Contact } from '$lib/api/client';
 	import { formatCZK, toHalere } from '$lib/utils/money';
 	import { toISODate } from '$lib/utils/date';
+	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -27,28 +28,6 @@
 		form.amount * form.vat_rate_percent / (100 + form.vat_rate_percent)
 	);
 
-	let categories = [
-		'material',
-		'sluzby',
-		'cestovne',
-		'pohonne_hmoty',
-		'telekomunikace',
-		'software',
-		'kancelar',
-		'ostatni'
-	];
-
-	let categoryLabels: Record<string, string> = {
-		material: 'Material',
-		sluzby: 'Sluzby',
-		cestovne: 'Cestovne',
-		pohonne_hmoty: 'Pohonne hmoty',
-		telekomunikace: 'Telekomunikace',
-		software: 'Software a licence',
-		kancelar: 'Kancelar',
-		ostatni: 'Ostatni'
-	};
-
 	$effect(() => {
 		loadContacts();
 	});
@@ -64,11 +43,11 @@
 
 	async function handleSubmit() {
 		if (!form.description) {
-			error = 'Popis je povinny';
+			error = 'Popis je povinný';
 			return;
 		}
 		if (form.amount <= 0) {
-			error = 'Castka musi byt vetsi nez 0';
+			error = 'Částka musí být větší než 0';
 			return;
 		}
 
@@ -94,7 +73,7 @@
 			});
 			goto('/expenses');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se ulozit naklad';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit náklad';
 		} finally {
 			saving = false;
 		}
@@ -102,12 +81,12 @@
 </script>
 
 <svelte:head>
-	<title>Novy naklad - ZFaktury</title>
+	<title>Nový náklad - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<a href="/expenses" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na naklady</a>
-	<h1 class="mt-2 text-2xl font-bold text-gray-900">Novy naklad</h1>
+	<a href="/expenses" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na náklady</a>
+	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nový náklad</h1>
 
 	{#if error}
 		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -118,7 +97,7 @@
 	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-6">
 		<!-- Basic info -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Zakladni udaje</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Základní údaje</h2>
 			<div class="mt-4 space-y-4">
 				<div>
 					<label for="description" class="block text-sm font-medium text-gray-700">Popis *</label>
@@ -133,19 +112,14 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
 						<label for="category" class="block text-sm font-medium text-gray-700">Kategorie</label>
-						<select
+						<CategoryPicker
 							id="category"
-							bind:value={form.category}
-							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-						>
-							<option value="">-- Vyberte --</option>
-							{#each categories as cat}
-								<option value={cat}>{categoryLabels[cat] ?? cat}</option>
-							{/each}
-						</select>
+							value={form.category}
+							onchange={(v) => { form.category = v; }}
+						/>
 					</div>
 					<div>
-						<label for="expense_number" class="block text-sm font-medium text-gray-700">Cislo dokladu</label>
+						<label for="expense_number" class="block text-sm font-medium text-gray-700">Číslo dokladu</label>
 						<input
 							id="expense_number"
 							type="text"
@@ -184,10 +158,10 @@
 
 		<!-- Amount & VAT -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Castka a DPH</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Částka a DPH</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="amount" class="block text-sm font-medium text-gray-700">Castka s DPH (CZK) *</label>
+					<label for="amount" class="block text-sm font-medium text-gray-700">Částka s DPH (CZK) *</label>
 					<input
 						id="amount"
 						type="number"
@@ -221,7 +195,7 @@
 
 		<!-- Tax settings -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Danove nastaveni</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Daňové nastavení</h2>
 			<div class="mt-4 space-y-4">
 				<div class="flex items-center gap-3">
 					<input
@@ -230,10 +204,10 @@
 						bind:checked={form.is_tax_deductible}
 						class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 					/>
-					<label for="tax_deductible" class="text-sm font-medium text-gray-700">Danove uznatelny naklad</label>
+					<label for="tax_deductible" class="text-sm font-medium text-gray-700">Daňově uznatelný náklad</label>
 				</div>
 				<div>
-					<label for="business_percent" class="block text-sm font-medium text-gray-700">Podil pro podnikani (%)</label>
+					<label for="business_percent" class="block text-sm font-medium text-gray-700">Podíl pro podnikání (%)</label>
 					<input
 						id="business_percent"
 						type="number"
@@ -244,13 +218,13 @@
 					/>
 				</div>
 				<div>
-					<label for="payment_method" class="block text-sm font-medium text-gray-700">Zpusob platby</label>
+					<label for="payment_method" class="block text-sm font-medium text-gray-700">Způsob platby</label>
 					<select
 						id="payment_method"
 						bind:value={form.payment_method}
 						class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					>
-						<option value="bank_transfer">Bankovni prevod</option>
+						<option value="bank_transfer">Bankovní převod</option>
 						<option value="cash">Hotovost</option>
 						<option value="card">Karta</option>
 					</select>
@@ -260,12 +234,12 @@
 
 		<!-- Notes -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 			<div class="mt-4">
 				<textarea
 					bind:value={form.notes}
 					rows="3"
-					placeholder="Volitelne poznamky..."
+					placeholder="Volitelné poznámky..."
 					class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				></textarea>
 			</div>
@@ -278,13 +252,13 @@
 				disabled={saving}
 				class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 			>
-				{saving ? 'Ukladam...' : 'Ulozit naklad'}
+				{saving ? 'Ukládám...' : 'Uložit náklad'}
 			</button>
 			<a
 				href="/expenses"
 				class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 			>
-				Zrusit
+				Zrušit
 			</a>
 		</div>
 	</form>

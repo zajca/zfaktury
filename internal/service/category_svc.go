@@ -13,6 +13,9 @@ import (
 // keyPattern validates that a category key is lowercase alphanumeric with underscores.
 var keyPattern = regexp.MustCompile(`^[a-z0-9_]+$`)
 
+// hexColorPattern validates CSS hex color values (#RGB or #RRGGBB).
+var hexColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$`)
+
 // CategoryService provides business logic for expense category management.
 type CategoryService struct {
 	repo repository.CategoryRepo
@@ -110,6 +113,9 @@ func (s *CategoryService) validateCategory(cat *domain.ExpenseCategory) error {
 	}
 	if cat.LabelEN == "" {
 		return errors.New("category English label is required")
+	}
+	if cat.Color != "" && !hexColorPattern.MatchString(cat.Color) {
+		return errors.New("color must be a valid hex color (e.g. #FFF or #FF00FF)")
 	}
 	return nil
 }

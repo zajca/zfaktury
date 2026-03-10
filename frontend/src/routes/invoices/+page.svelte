@@ -16,10 +16,10 @@
 
 	const statusLabels: Record<string, string> = {
 		draft: 'Koncept',
-		sent: 'Odeslana',
-		paid: 'Uhrazena',
+		sent: 'Odeslaná',
+		paid: 'Uhrazená',
 		overdue: 'Po splatnosti',
-		cancelled: 'Stornovana'
+		cancelled: 'Stornovaná'
 	};
 
 	const statusColors: Record<string, string> = {
@@ -43,7 +43,7 @@
 			invoices = res.data;
 			total = res.total;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load invoices';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst faktury';
 		} finally {
 			loading = false;
 		}
@@ -85,7 +85,7 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">Faktury</h1>
-			<p class="mt-1 text-sm text-gray-500">Prehled vydanych faktur</p>
+			<p class="mt-1 text-sm text-gray-500">Přehled vydaných faktur</p>
 		</div>
 		<a
 			href="/invoices/new"
@@ -94,7 +94,7 @@
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
-			Nova faktura
+			Nová faktura
 		</a>
 	</div>
 
@@ -103,19 +103,19 @@
 		<input
 			type="text"
 			bind:value={search}
-			placeholder="Hledat podle cisla, zakaznika..."
+			placeholder="Hledat podle čísla, zákazníka..."
 			class="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 		/>
 		<select
 			bind:value={statusFilter}
 			class="rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 		>
-			<option value="">Vsechny stavy</option>
+			<option value="">Všechny stavy</option>
 			<option value="draft">Koncept</option>
-			<option value="sent">Odeslana</option>
-			<option value="paid">Uhrazena</option>
+			<option value="sent">Odeslaná</option>
+			<option value="paid">Uhrazená</option>
 			<option value="overdue">Po splatnosti</option>
-			<option value="cancelled">Stornovana</option>
+			<option value="cancelled">Stornovaná</option>
 		</select>
 	</div>
 
@@ -134,17 +134,17 @@
 			</div>
 		{:else if invoices.length === 0}
 			<div class="p-12 text-center text-gray-400">
-				{search || statusFilter ? 'Zadne faktury neodpovidaji filtru.' : 'Zatim zadne faktury.'}
+				{search || statusFilter ? 'Žádné faktury neodpovídají filtru.' : 'Zatím žádné faktury.'}
 			</div>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-gray-200 bg-gray-50">
 					<tr>
-						<th class="px-4 py-3 font-medium text-gray-600">Cislo</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Zakaznik</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum vystaveni</th>
+						<th class="px-4 py-3 font-medium text-gray-600">Číslo</th>
+						<th class="px-4 py-3 font-medium text-gray-600">Zákazník</th>
+						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum vystavení</th>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Splatnost</th>
-						<th class="px-4 py-3 text-right font-medium text-gray-600">Castka</th>
+						<th class="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
 						<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
 					</tr>
 				</thead>
@@ -192,7 +192,7 @@
 					disabled={page <= 1}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					Predchozi
+					Předchozí
 				</button>
 				<span class="flex items-center px-3 text-sm text-gray-600">
 					{page} / {totalPages}
@@ -202,7 +202,7 @@
 					disabled={page >= totalPages}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					Dalsi
+					Další
 				</button>
 			</div>
 		</div>

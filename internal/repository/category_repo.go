@@ -43,7 +43,7 @@ func (r *CategoryRepository) Create(ctx context.Context, cat *domain.ExpenseCate
 
 // Update modifies an existing expense category.
 func (r *CategoryRepository) Update(ctx context.Context, cat *domain.ExpenseCategory) error {
-	_, err := r.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE expense_categories SET
 			key = ?, label_cs = ?, label_en = ?, color = ?, sort_order = ?
 		WHERE id = ? AND deleted_at IS NULL`,
@@ -51,6 +51,14 @@ func (r *CategoryRepository) Update(ctx context.Context, cat *domain.ExpenseCate
 	)
 	if err != nil {
 		return fmt.Errorf("updating expense category %d: %w", cat.ID, err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected for expense category %d: %w", cat.ID, err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("expense category %d not found or already deleted", cat.ID)
 	}
 	return nil
 }

@@ -230,8 +230,11 @@ func (g *ISDOCGenerator) buildInvoiceLines(inv *domain.Invoice) InvoiceLines {
 		unitPriceVAT := item.UnitPrice.Multiply(float64(100+item.VATRatePercent) / 100.0)
 
 		line := InvoiceLine{
-			ID:                              fmt.Sprintf("%d", i+1),
-			InvoicedQuantity:                item.Quantity.String(),
+			ID: fmt.Sprintf("%d", i+1),
+			InvoicedQuantity: InvoicedQuantity{
+				Value:    item.Quantity.String(),
+				UnitCode: item.Unit,
+			},
 			LineExtensionAmount:             itemSubtotal.String(),
 			LineExtensionAmountTaxInclusive: item.TotalAmount.String(),
 			LineExtensionTaxAmount:          item.VATAmount.String(),

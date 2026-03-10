@@ -27,7 +27,7 @@
 		try {
 			categories = await categoriesApi.list();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist kategorie';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst kategorie';
 		} finally {
 			loading = false;
 		}
@@ -58,7 +58,7 @@
 
 	async function handleSave() {
 		if (!form.key || !form.label_cs || !form.label_en) {
-			error = 'Klic, cesky a anglicky nazev jsou povinne';
+			error = 'Klíč, český a anglický název jsou povinné';
 			return;
 		}
 
@@ -75,7 +75,7 @@
 			editingId = null;
 			await loadCategories();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se ulozit kategorii';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit kategorii';
 		} finally {
 			saving = false;
 		}
@@ -83,7 +83,7 @@
 
 	async function handleDelete(cat: ExpenseCategory) {
 		if (cat.is_default) {
-			error = 'Vychozi kategorie nelze smazat';
+			error = 'Výchozí kategorie nelze smazat';
 			return;
 		}
 		if (!confirm(`Opravdu chcete smazat kategorii "${cat.label_cs}"?`)) return;
@@ -93,28 +93,28 @@
 			await categoriesApi.delete(cat.id);
 			await loadCategories();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se smazat kategorii';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kategorii';
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Kategorie nakladu - ZFaktury</title>
+	<title>Kategorie nákladů - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<a href="/settings" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na nastaveni</a>
+	<a href="/settings" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na nastavení</a>
 	<div class="mt-2 flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Kategorie nakladu</h1>
-			<p class="mt-1 text-sm text-gray-500">Sprava kategorii pro trideni nakladu</p>
+			<h1 class="text-2xl font-bold text-gray-900">Kategorie nákladů</h1>
+			<p class="mt-1 text-sm text-gray-500">Správa kategorií pro třídění nákladů</p>
 		</div>
 		{#if !showForm}
 			<button
 				onclick={startCreate}
 				class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
 			>
-				Pridat kategorii
+				Přidat kategorii
 			</button>
 		{/if}
 	</div>
@@ -128,22 +128,22 @@
 	{#if showForm}
 		<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">
-				{editingId ? 'Upravit kategorii' : 'Nova kategorie'}
+				{editingId ? 'Upravit kategorii' : 'Nová kategorie'}
 			</h2>
 			<div class="mt-4 space-y-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="cat-key" class="block text-sm font-medium text-gray-700">Klic *</label>
+						<label for="cat-key" class="block text-sm font-medium text-gray-700">Klíč *</label>
 						<input
 							id="cat-key"
 							type="text"
 							bind:value={form.key}
-							placeholder="napr. office_supplies"
+							placeholder="např. office_supplies"
 							pattern="[a-z0-9_]+"
 							required
 							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						/>
-						<p class="mt-1 text-xs text-gray-400">Mala pismena, cisla a podtrzitka</p>
+						<p class="mt-1 text-xs text-gray-400">Malá písmena, čísla a podtržítka</p>
 					</div>
 					<div>
 						<label for="cat-color" class="block text-sm font-medium text-gray-700">Barva</label>
@@ -160,7 +160,7 @@
 				</div>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="cat-label-cs" class="block text-sm font-medium text-gray-700">Cesky nazev *</label>
+						<label for="cat-label-cs" class="block text-sm font-medium text-gray-700">Český název *</label>
 						<input
 							id="cat-label-cs"
 							type="text"
@@ -170,7 +170,7 @@
 						/>
 					</div>
 					<div>
-						<label for="cat-label-en" class="block text-sm font-medium text-gray-700">Anglicky nazev *</label>
+						<label for="cat-label-en" class="block text-sm font-medium text-gray-700">Anglický název *</label>
 						<input
 							id="cat-label-en"
 							type="text"
@@ -181,7 +181,7 @@
 					</div>
 				</div>
 				<div>
-					<label for="cat-sort" class="block text-sm font-medium text-gray-700">Poradi razeni</label>
+					<label for="cat-sort" class="block text-sm font-medium text-gray-700">Pořadí řazení</label>
 					<input
 						id="cat-sort"
 						type="number"
@@ -197,14 +197,14 @@
 					disabled={saving}
 					class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 				>
-					{saving ? 'Ukladam...' : (editingId ? 'Ulozit zmeny' : 'Vytvorit')}
+					{saving ? 'Ukládám...' : (editingId ? 'Uložit změny' : 'Vytvořit')}
 				</button>
 				<button
 					type="button"
 					onclick={cancelForm}
 					class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 				>
-					Zrusit
+					Zrušit
 				</button>
 			</div>
 		</form>
@@ -220,10 +220,10 @@
 				<thead class="bg-gray-50">
 					<tr>
 						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Barva</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Klic</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nazev (CZ)</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nazev (EN)</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Poradi</th>
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Klíč</th>
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Název (CZ)</th>
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Název (EN)</th>
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Pořadí</th>
 						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Akce</th>
 					</tr>
 				</thead>
@@ -233,7 +233,7 @@
 							<td class="whitespace-nowrap px-4 py-3">
 								<div
 									class="h-5 w-5 rounded-full border border-gray-200"
-									style="background-color: {cat.color}"
+									style:background-color={cat.color}
 								></div>
 							</td>
 							<td class="whitespace-nowrap px-4 py-3 text-sm font-mono text-gray-600">{cat.key}</td>
@@ -255,7 +255,7 @@
 										Smazat
 									</button>
 								{:else}
-									<span class="text-xs text-gray-400">vychozi</span>
+									<span class="text-xs text-gray-400">výchozí</span>
 								{/if}
 							</td>
 						</tr>
@@ -263,7 +263,7 @@
 					{#if categories.length === 0}
 						<tr>
 							<td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
-								Zadne kategorie
+								Žádné kategorie
 							</td>
 						</tr>
 					{/if}

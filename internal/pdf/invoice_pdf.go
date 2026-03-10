@@ -374,11 +374,8 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 		}
 	}
 
-	// Payment details on the left, QR on the right.
+	// Payment details column width.
 	paymentInfoSize := 8
-	if qrBytes != nil {
-		paymentInfoSize = 8
-	}
 
 	labelStyle := props.Text{Size: 8, Style: fontstyle.Bold}
 	valueStyle := props.Text{Size: 8}

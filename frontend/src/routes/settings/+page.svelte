@@ -17,7 +17,7 @@
 		try {
 			settings = await settingsApi.getAll();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist nastaveni';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst nastavení';
 		} finally {
 			loading = false;
 		}
@@ -32,7 +32,7 @@
 			success = true;
 			setTimeout(() => { success = false; }, 3000);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se ulozit nastaveni';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení';
 		} finally {
 			saving = false;
 		}
@@ -48,12 +48,12 @@
 </script>
 
 <svelte:head>
-	<title>Nastaveni - ZFaktury</title>
+	<title>Nastavení - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<h1 class="text-2xl font-bold text-gray-900">Nastaveni</h1>
-	<p class="mt-1 text-sm text-gray-500">Konfigurace aplikace a udaje OSVC</p>
+	<h1 class="text-2xl font-bold text-gray-900">Nastavení</h1>
+	<p class="mt-1 text-sm text-gray-500">Konfigurace aplikace a údaje OSVČ</p>
 
 	{#if error}
 		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -63,21 +63,21 @@
 
 	{#if success}
 		<div class="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-			Nastaveni bylo ulozeno.
+			Nastavení bylo uloženo.
 		</div>
 	{/if}
 
 	<!-- Quick links -->
 	<div class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-		<h2 class="text-lg font-semibold text-gray-900">Sprava</h2>
+		<h2 class="text-lg font-semibold text-gray-900">Správa</h2>
 		<div class="mt-3 space-y-2">
 			<a
 				href="/settings/sequences"
 				class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 			>
 				<div>
-					<span class="text-gray-900">Ciselne rady faktur</span>
-					<p class="mt-0.5 text-xs text-gray-500">Sprava ciselnych rad pro faktury</p>
+					<span class="text-gray-900">Číselné řady faktur</span>
+					<p class="mt-0.5 text-xs text-gray-500">Správa číselných řad pro faktury</p>
 				</div>
 				<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -88,8 +88,8 @@
 				class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 			>
 				<div>
-					<span class="text-gray-900">Kategorie nakladu</span>
-					<p class="mt-0.5 text-xs text-gray-500">Sprava kategorii pro trideni nakladu</p>
+					<span class="text-gray-900">Kategorie nákladů</span>
+					<p class="mt-0.5 text-xs text-gray-500">Správa kategorií pro třídění nákladů</p>
 				</div>
 				<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -106,11 +106,11 @@
 		<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 space-y-6">
 			<!-- Identity -->
 			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-				<h2 class="text-lg font-semibold text-gray-900">Udaje podnikatele</h2>
-				<p class="mt-1 text-sm text-gray-500">Tyto udaje se budou zobrazovat na fakturach.</p>
+				<h2 class="text-lg font-semibold text-gray-900">Údaje podnikatele</h2>
+				<p class="mt-1 text-sm text-gray-500">Tyto údaje se budou zobrazovat na fakturách.</p>
 				<div class="mt-4 space-y-4">
 					<div>
-						<label for="company_name" class="block text-sm font-medium text-gray-700">Nazev / Jmeno *</label>
+						<label for="company_name" class="block text-sm font-medium text-gray-700">Název / Jméno *</label>
 						<input
 							id="company_name"
 							type="text"
@@ -121,7 +121,7 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="ico" class="block text-sm font-medium text-gray-700">ICO</label>
+							<label for="ico" class="block text-sm font-medium text-gray-700">IČO</label>
 							<input
 								id="ico"
 								type="text"
@@ -131,7 +131,7 @@
 							/>
 						</div>
 						<div>
-							<label for="dic" class="block text-sm font-medium text-gray-700">DIC</label>
+							<label for="dic" class="block text-sm font-medium text-gray-700">DIČ</label>
 							<input
 								id="dic"
 								type="text"
@@ -149,7 +149,7 @@
 							onchange={(e) => setField('vat_registered', (e.target as HTMLInputElement).checked ? 'true' : 'false')}
 							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 						/>
-						<label for="vat_registered" class="text-sm font-medium text-gray-700">Platce DPH</label>
+						<label for="vat_registered" class="text-sm font-medium text-gray-700">Plátce DPH</label>
 					</div>
 				</div>
 			</div>
@@ -170,7 +170,7 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="city" class="block text-sm font-medium text-gray-700">Mesto</label>
+							<label for="city" class="block text-sm font-medium text-gray-700">Město</label>
 							<input
 								id="city"
 								type="text"
@@ -180,7 +180,7 @@
 							/>
 						</div>
 						<div>
-							<label for="zip" class="block text-sm font-medium text-gray-700">PSC</label>
+							<label for="zip" class="block text-sm font-medium text-gray-700">PSČ</label>
 							<input
 								id="zip"
 								type="text"
@@ -195,7 +195,7 @@
 
 			<!-- Contact -->
 			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-				<h2 class="text-lg font-semibold text-gray-900">Kontaktni udaje</h2>
+				<h2 class="text-lg font-semibold text-gray-900">Kontaktní údaje</h2>
 				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
 						<label for="email" class="block text-sm font-medium text-gray-700">Email</label>
@@ -222,12 +222,12 @@
 
 			<!-- Bank accounts -->
 			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-				<h2 class="text-lg font-semibold text-gray-900">Bankovni ucty</h2>
-				<p class="mt-1 text-sm text-gray-500">Ucet pro prijem plateb na fakturach.</p>
+				<h2 class="text-lg font-semibold text-gray-900">Bankovní účty</h2>
+				<p class="mt-1 text-sm text-gray-500">Účet pro příjem plateb na fakturách.</p>
 				<div class="mt-4 space-y-4">
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="bank_account" class="block text-sm font-medium text-gray-700">Cislo uctu</label>
+							<label for="bank_account" class="block text-sm font-medium text-gray-700">Číslo účtu</label>
 							<input
 								id="bank_account"
 								type="text"
@@ -237,7 +237,7 @@
 							/>
 						</div>
 						<div>
-							<label for="bank_code" class="block text-sm font-medium text-gray-700">Kod banky</label>
+							<label for="bank_code" class="block text-sm font-medium text-gray-700">Kód banky</label>
 							<input
 								id="bank_code"
 								type="text"
@@ -279,7 +279,7 @@
 					disabled={saving}
 					class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 				>
-					{saving ? 'Ukladam...' : 'Ulozit nastaveni'}
+					{saving ? 'Ukládám...' : 'Uložit nastavení'}
 				</button>
 			</div>
 		</form>

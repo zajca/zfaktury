@@ -19,7 +19,7 @@
 			contacts = res.data;
 			total = res.total;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load contacts';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst kontakty';
 		} finally {
 			loading = false;
 		}
@@ -52,7 +52,7 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">Kontakty</h1>
-			<p class="mt-1 text-sm text-gray-500">Sprava zakazniku a dodavatelu</p>
+			<p class="mt-1 text-sm text-gray-500">Správa zákazníků a dodavatelů</p>
 		</div>
 		<a
 			href="/contacts/new"
@@ -61,7 +61,7 @@
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
-			Pridat kontakt
+			Přidat kontakt
 		</a>
 	</div>
 
@@ -70,7 +70,7 @@
 		<input
 			type="text"
 			bind:value={search}
-			placeholder="Hledat podle nazvu, ICO, emailu..."
+			placeholder="Hledat podle názvu, IČO, emailu..."
 			class="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 		/>
 	</div>
@@ -90,16 +90,16 @@
 			</div>
 		{:else if contacts.length === 0}
 			<div class="p-12 text-center text-gray-400">
-				{search ? 'Zadne kontakty neodpovidaji hledani.' : 'Zatim zadne kontakty.'}
+				{search ? 'Žádné kontakty neodpovídají hledání.' : 'Zatím žádné kontakty.'}
 			</div>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-gray-200 bg-gray-50">
 					<tr>
-						<th class="px-4 py-3 font-medium text-gray-600">Nazev</th>
-						<th class="px-4 py-3 font-medium text-gray-600">ICO</th>
-						<th class="px-4 py-3 font-medium text-gray-600">DIC</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Mesto</th>
+						<th class="px-4 py-3 font-medium text-gray-600">Název</th>
+						<th class="px-4 py-3 font-medium text-gray-600">IČO</th>
+						<th class="px-4 py-3 font-medium text-gray-600">DIČ</th>
+						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Město</th>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 lg:table-cell">Email</th>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 lg:table-cell">Telefon</th>
 					</tr>
@@ -128,7 +128,7 @@
 	{#if totalPages > 1}
 		<div class="mt-4 flex items-center justify-between">
 			<p class="text-sm text-gray-500">
-				Celkem {total} kontaktu
+				Celkem {total} kontaktů
 			</p>
 			<div class="flex gap-2">
 				<button
@@ -136,7 +136,7 @@
 					disabled={page <= 1}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					Predchozi
+					Předchozí
 				</button>
 				<span class="flex items-center px-3 text-sm text-gray-600">
 					{page} / {totalPages}
@@ -146,7 +146,7 @@
 					disabled={page >= totalPages}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					Dalsi
+					Další
 				</button>
 			</div>
 		</div>

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -42,7 +41,7 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 		return fmt.Errorf("sequence with prefix %q and year %d already exists", seq.Prefix, seq.Year)
 	}
 	// Only proceed if the error indicates not found.
-	if err != nil && !strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("checking sequence uniqueness: %w", err)
 	}
 
@@ -130,7 +129,7 @@ func (s *SequenceService) GetOrCreateForYear(ctx context.Context, prefix string,
 	}
 
 	// Not found -- create a new sequence for this year.
-	if !strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("looking up sequence: %w", err)
 	}
 
@@ -141,6 +140,12 @@ func (s *SequenceService) GetOrCreateForYear(ctx context.Context, prefix string,
 		FormatPattern: "{prefix}{year}{number:04d}",
 	}
 	if err := s.repo.Create(ctx, newSeq); err != nil {
+		// Race condition: another goroutine may have created the sequence concurrently.
+		// Retry the lookup; if found, use that sequence.
+		retrySeq, retryErr := s.repo.GetByPrefixAndYear(ctx, prefix, year)
+		if retryErr == nil {
+			return retrySeq, nil
+		}
 		return nil, fmt.Errorf("creating sequence for year %d: %w", year, err)
 	}
 	return newSeq, nil

@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -101,11 +104,15 @@ func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete expense category", "error", err, "id", id)
-		if err.Error() == "default categories cannot be deleted" {
+		if strings.Contains(err.Error(), "default categories cannot be deleted") {
 			respondError(w, http.StatusForbidden, err.Error())
 			return
 		}
-		respondError(w, http.StatusNotFound, "category not found")
+		if errors.Is(err, sql.ErrNoRows) || strings.Contains(err.Error(), "not found") {
+			respondError(w, http.StatusNotFound, "category not found")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "failed to delete category")
 		return
 	}
 

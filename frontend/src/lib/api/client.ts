@@ -290,11 +290,19 @@ export const invoicesApi = {
 		return `${API_BASE}/invoices/${id}/isdoc`;
 	},
 
-	exportIsdocBatch(invoiceIds: number[]) {
-		return request<Blob>(`/invoices/export/isdoc`, {
+	async exportIsdocBatch(invoiceIds: number[]): Promise<Blob> {
+		const url = `${API_BASE}/invoices/export/isdoc`;
+		const response = await fetch(url, {
 			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ invoice_ids: invoiceIds })
 		});
+
+		if (!response.ok) {
+			throw new ApiError(response.status, response.statusText);
+		}
+
+		return response.blob();
 	}
 };
 

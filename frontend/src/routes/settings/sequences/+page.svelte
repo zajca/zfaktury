@@ -28,7 +28,7 @@
 		try {
 			sequences = await sequencesApi.list();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist ciselne rady';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst číselné řady';
 		} finally {
 			loading = false;
 		}
@@ -51,7 +51,7 @@
 			createFormatPattern = '{prefix}{year}{number:04d}';
 			await loadSequences();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se vytvorit ciselnou radu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit číselnou řadu';
 		} finally {
 			creating = false;
 		}
@@ -79,20 +79,20 @@
 			editingId = null;
 			await loadSequences();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se ulozit zmeny';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit změny';
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function handleDelete(id: number) {
-		if (!confirm('Opravdu chcete smazat tuto ciselnou radu?')) return;
+		if (!confirm('Opravdu chcete smazat tuto číselnou řadu?')) return;
 		error = null;
 		try {
 			await sequencesApi.delete(id);
 			await loadSequences();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se smazat ciselnou radu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat číselnou řadu';
 		}
 	}
 
@@ -100,7 +100,7 @@
 </script>
 
 <svelte:head>
-	<title>Ciselne rady - ZFaktury</title>
+	<title>Číselné řady - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
@@ -112,9 +112,9 @@
 						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
 					</svg>
 				</a>
-				<h1 class="text-2xl font-bold text-gray-900">Ciselne rady faktur</h1>
+				<h1 class="text-2xl font-bold text-gray-900">Číselné řady faktur</h1>
 			</div>
-			<p class="mt-1 text-sm text-gray-500">Sprava cislovani faktur podle roku a typu</p>
+			<p class="mt-1 text-sm text-gray-500">Správa číslování faktur podle roku a typu</p>
 		</div>
 		<button
 			onclick={() => { showCreateForm = !showCreateForm; }}
@@ -123,7 +123,7 @@
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
-			Nova rada
+			Nová řada
 		</button>
 	</div>
 
@@ -136,7 +136,7 @@
 	<!-- Create Form -->
 	{#if showCreateForm}
 		<div class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Nova ciselna rada</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Nová číselná řada</h2>
 			<form onsubmit={(e) => { e.preventDefault(); handleCreate(); }} class="mt-4 space-y-4">
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					<div>
@@ -148,7 +148,7 @@
 							placeholder="FV"
 							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						/>
-						<p class="mt-1 text-xs text-gray-400">FV = faktura, ZF = zaloha, DN = dobropis</p>
+						<p class="mt-1 text-xs text-gray-400">FV = faktura, ZF = záloha, DN = dobropis</p>
 					</div>
 					<div>
 						<label for="create-year" class="block text-sm font-medium text-gray-700">Rok</label>
@@ -162,7 +162,7 @@
 						/>
 					</div>
 					<div>
-						<label for="create-next" class="block text-sm font-medium text-gray-700">Pocatecni cislo</label>
+						<label for="create-next" class="block text-sm font-medium text-gray-700">Počáteční číslo</label>
 						<input
 							id="create-next"
 							type="number"
@@ -172,7 +172,7 @@
 						/>
 					</div>
 					<div>
-						<label for="create-format" class="block text-sm font-medium text-gray-700">Format</label>
+						<label for="create-format" class="block text-sm font-medium text-gray-700">Formát</label>
 						<input
 							id="create-format"
 							type="text"
@@ -183,7 +183,7 @@
 				</div>
 				<div class="flex items-center gap-4">
 					<p class="text-sm text-gray-500">
-						Nahled: <span class="font-mono font-medium text-gray-900">{createPreview}</span>
+						Náhled: <span class="font-mono font-medium text-gray-900">{createPreview}</span>
 					</p>
 					<div class="ml-auto flex gap-2">
 						<button
@@ -191,14 +191,14 @@
 							onclick={() => { showCreateForm = false; }}
 							class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 						>
-							Zrusit
+							Zrušit
 						</button>
 						<button
 							type="submit"
 							disabled={creating || !createPrefix || !createYear}
 							class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 						>
-							{creating ? 'Vytvari se...' : 'Vytvorit'}
+							{creating ? 'Vytváří se...' : 'Vytvořit'}
 						</button>
 					</div>
 				</div>
@@ -214,7 +214,7 @@
 			</div>
 		{:else if sequences.length === 0}
 			<div class="p-12 text-center text-gray-400">
-				Zatim zadne ciselne rady. Vytvorte novou nebo se vytvori automaticky pri tvorbe faktury.
+				Zatím žádné číselné řady. Vytvořte novou nebo se vytvoří automaticky při tvorbě faktury.
 			</div>
 		{:else}
 			<table class="w-full text-left text-sm">
@@ -222,8 +222,8 @@
 					<tr>
 						<th class="px-4 py-3 font-medium text-gray-600">Prefix</th>
 						<th class="px-4 py-3 font-medium text-gray-600">Rok</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Dalsi cislo</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Nahled</th>
+						<th class="px-4 py-3 font-medium text-gray-600">Další číslo</th>
+						<th class="px-4 py-3 font-medium text-gray-600">Náhled</th>
 						<th class="px-4 py-3 font-medium text-gray-600 text-right">Akce</th>
 					</tr>
 				</thead>
@@ -241,7 +241,7 @@
 											min="1"
 											class="w-24 rounded-lg border border-gray-300 px-2 py-1 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 										/>
-										<span class="text-xs text-amber-600">Pozor: Zmena cisla muze zpusobit duplicity!</span>
+										<span class="text-xs text-amber-600">Pozor: Změna čísla může způsobit duplicity!</span>
 									</div>
 								{:else}
 									<span class="text-gray-600">{seq.next_number}</span>
@@ -255,14 +255,14 @@
 											onclick={() => cancelEdit()}
 											class="rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
 										>
-											Zrusit
+											Zrušit
 										</button>
 										<button
 											onclick={() => handleUpdate(seq)}
 											disabled={saving}
 											class="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
 										>
-											{saving ? 'Ukladam...' : 'Ulozit'}
+											{saving ? 'Ukládám...' : 'Uložit'}
 										</button>
 									</div>
 								{:else}

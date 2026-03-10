@@ -21,7 +21,7 @@
 			expenses = res.data;
 			total = res.total;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load expenses';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst náklady';
 		} finally {
 			loading = false;
 		}
@@ -48,14 +48,14 @@
 </script>
 
 <svelte:head>
-	<title>Naklady - ZFaktury</title>
+	<title>Náklady - ZFaktury</title>
 </svelte:head>
 
 <div>
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Naklady</h1>
-			<p class="mt-1 text-sm text-gray-500">Evidence vydaju a nakladu</p>
+			<h1 class="text-2xl font-bold text-gray-900">Náklady</h1>
+			<p class="mt-1 text-sm text-gray-500">Evidence výdajů a nákladů</p>
 		</div>
 		<a
 			href="/expenses/new"
@@ -64,7 +64,7 @@
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
-			Pridat naklad
+			Přidat náklad
 		</a>
 	</div>
 
@@ -91,7 +91,7 @@
 			</div>
 		{:else if expenses.length === 0}
 			<div class="p-12 text-center text-gray-400">
-				{search ? 'Zadne naklady neodpovidaji hledani.' : 'Zatim zadne naklady.'}
+				{search ? 'Žádné náklady neodpovídají hledání.' : 'Zatím žádné náklady.'}
 			</div>
 		{:else}
 			<table class="w-full text-left text-sm">
@@ -100,7 +100,7 @@
 						<th class="px-4 py-3 font-medium text-gray-600">Popis</th>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Kategorie</th>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum</th>
-						<th class="px-4 py-3 text-right font-medium text-gray-600">Castka</th>
+						<th class="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
@@ -126,14 +126,14 @@
 
 	{#if totalPages > 1}
 		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-500">Celkem {total} nakladu</p>
+			<p class="text-sm text-gray-500">Celkem {total} nákladů</p>
 			<div class="flex gap-2">
 				<button
 					onclick={() => { page = Math.max(1, page - 1); loadExpenses(); }}
 					disabled={page <= 1}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					Predchozi
+					Předchozí
 				</button>
 				<span class="flex items-center px-3 text-sm text-gray-600">{page} / {totalPages}</span>
 				<button
@@ -141,7 +141,7 @@
 					disabled={page >= totalPages}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					Dalsi
+					Další
 				</button>
 			</div>
 		</div>

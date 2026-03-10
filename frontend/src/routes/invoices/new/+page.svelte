@@ -71,7 +71,7 @@
 
 	async function handleSubmit() {
 		if (!form.customer_id) {
-			error = 'Vyberte zakaznika';
+			error = 'Vyberte zákazníka';
 			return;
 		}
 
@@ -110,7 +110,7 @@
 
 			goto('/invoices');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to create invoice';
+			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit fakturu';
 		} finally {
 			saving = false;
 		}
@@ -118,12 +118,12 @@
 </script>
 
 <svelte:head>
-	<title>Nova faktura - ZFaktury</title>
+	<title>Nová faktura - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<a href="/invoices" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na faktury</a>
-	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nova faktura</h1>
+	<a href="/invoices" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na faktury</a>
+	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nová faktura</h1>
 
 	{#if error}
 		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -134,9 +134,9 @@
 	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-8">
 		<!-- Customer -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Zakaznik</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Zákazník</h2>
 			<div class="mt-4">
-				<label for="customer" class="block text-sm font-medium text-gray-700">Vyberte zakaznika</label>
+				<label for="customer" class="block text-sm font-medium text-gray-700">Vyberte zákazníka</label>
 				<select
 					id="customer"
 					bind:value={form.customer_id}
@@ -152,10 +152,10 @@
 
 		<!-- Dates & Symbols -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Udaje faktury</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Údaje faktury</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="issue_date" class="block text-sm font-medium text-gray-700">Datum vystaveni</label>
+					<label for="issue_date" class="block text-sm font-medium text-gray-700">Datum vystavení</label>
 					<input id="issue_date" type="date" bind:value={form.issue_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 				</div>
 				<div>
@@ -169,13 +169,13 @@
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
-					<label for="vs" class="block text-sm font-medium text-gray-700">Variabilni symbol</label>
+					<label for="vs" class="block text-sm font-medium text-gray-700">Variabilní symbol</label>
 					<input id="vs" type="text" bind:value={form.variable_symbol} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 				</div>
 				<div>
-					<label for="payment" class="block text-sm font-medium text-gray-700">Zpusob platby</label>
+					<label for="payment" class="block text-sm font-medium text-gray-700">Způsob platby</label>
 					<select id="payment" bind:value={form.payment_method} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-						<option value="bank_transfer">Bankovni prevod</option>
+						<option value="bank_transfer">Bankovní převod</option>
 						<option value="cash">Hotovost</option>
 						<option value="card">Karta</option>
 					</select>
@@ -186,7 +186,7 @@
 		<!-- Line Items -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<div class="flex items-center justify-between">
-				<h2 class="text-lg font-semibold text-gray-900">Polozky</h2>
+				<h2 class="text-lg font-semibold text-gray-900">Položky</h2>
 				<button
 					type="button"
 					onclick={addItem}
@@ -195,7 +195,7 @@
 					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
-					Pridat polozku
+					Přidat položku
 				</button>
 			</div>
 
@@ -210,7 +210,7 @@
 								</div>
 								<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 									<div>
-										<label for="qty-{index}" class="block text-sm font-medium text-gray-700">Mnozstvi</label>
+										<label for="qty-{index}" class="block text-sm font-medium text-gray-700">Množství</label>
 										<input id="qty-{index}" type="number" step="0.01" min="0" bind:value={item.quantity} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
 									</div>
 									<div>
@@ -220,7 +220,7 @@
 											<option value="hod">hod</option>
 											<option value="m2">m2</option>
 											<option value="den">den</option>
-											<option value="mesic">mesic</option>
+											<option value="mesic">měsíc</option>
 										</select>
 									</div>
 									<div>
@@ -242,7 +242,7 @@
 									type="button"
 									onclick={() => removeItem(index)}
 									class="mt-6 rounded p-1 text-gray-400 hover:text-red-500 transition-colors"
-									aria-label="Remove item"
+									aria-label="Odebrat položku"
 								>
 									<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 										<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -252,7 +252,7 @@
 						</div>
 						<!-- Item subtotal -->
 						<div class="mt-2 text-right text-sm text-gray-500">
-							Zaklad: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
+							Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
 						</div>
 					</div>
 				{/each}
@@ -262,7 +262,7 @@
 			<div class="mt-6 border-t border-gray-200 pt-4">
 				<div class="flex flex-col items-end gap-1 text-sm">
 					<div class="flex gap-8">
-						<span class="text-gray-600">Zaklad:</span>
+						<span class="text-gray-600">Základ:</span>
 						<span class="font-medium text-gray-900">{formatCZK(toHalere(subtotal))}</span>
 					</div>
 					<div class="flex gap-8">
@@ -279,14 +279,14 @@
 
 		<!-- Notes -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 			<div class="mt-4 space-y-4">
 				<div>
-					<label for="notes" class="block text-sm font-medium text-gray-700">Poznamka na fakture</label>
+					<label for="notes" class="block text-sm font-medium text-gray-700">Poznámka na faktuře</label>
 					<textarea id="notes" bind:value={form.notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
 				</div>
 				<div>
-					<label for="internal_notes" class="block text-sm font-medium text-gray-700">Interni poznamka</label>
+					<label for="internal_notes" class="block text-sm font-medium text-gray-700">Interní poznámka</label>
 					<textarea id="internal_notes" bind:value={form.internal_notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
 				</div>
 			</div>
@@ -299,13 +299,13 @@
 				disabled={saving}
 				class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 			>
-				{saving ? 'Ukladam...' : 'Ulozit jako koncept'}
+				{saving ? 'Ukládám...' : 'Uložit jako koncept'}
 			</button>
 			<a
 				href="/invoices"
 				class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 			>
-				Zrusit
+				Zrušit
 			</a>
 		</div>
 	</form>

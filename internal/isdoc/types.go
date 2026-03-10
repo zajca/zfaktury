@@ -92,12 +92,17 @@ type InvoiceLines struct {
 	InvoiceLine []InvoiceLine `xml:"InvoiceLine"`
 }
 
+// InvoicedQuantity represents a quantity with an optional unit code attribute.
+type InvoicedQuantity struct {
+	Value    string `xml:",chardata"`
+	UnitCode string `xml:"unitCode,attr,omitempty"`
+}
+
 // InvoiceLine represents a single line item on the invoice.
 type InvoiceLine struct {
-	ID                    string      `xml:"ID"`
-	InvoicedQuantity      string      `xml:"InvoicedQuantity"`
-	InvoicedQuantityUnit  string      `xml:"InvoicedQuantityUnitCode,attr,omitempty"` // not used as attr in ISDOC
-	LineExtensionAmount   string      `xml:"LineExtensionAmount"`
+	ID                    string            `xml:"ID"`
+	InvoicedQuantity      InvoicedQuantity  `xml:"InvoicedQuantity"`
+	LineExtensionAmount   string            `xml:"LineExtensionAmount"`
 	LineExtensionAmountTaxInclusive string `xml:"LineExtensionAmountTaxInclusive"`
 	LineExtensionTaxAmount string     `xml:"LineExtensionTaxAmount"`
 	UnitPrice             string      `xml:"UnitPrice"`

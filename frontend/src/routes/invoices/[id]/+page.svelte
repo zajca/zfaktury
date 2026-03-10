@@ -19,6 +19,7 @@
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let editing = $state(false);
+	let qrError = $state(false);
 
 	let invoiceId = $derived(Number(page.params.id));
 
@@ -50,10 +51,10 @@
 
 	const statusLabels: Record<string, string> = {
 		draft: 'Koncept',
-		sent: 'Odeslana',
-		paid: 'Uhrazena',
+		sent: 'Odeslaná',
+		paid: 'Uhrazená',
 		overdue: 'Po splatnosti',
-		cancelled: 'Stornovana'
+		cancelled: 'Stornovaná'
 	};
 
 	const statusColors: Record<string, string> = {
@@ -71,11 +72,12 @@
 	async function loadInvoice() {
 		loading = true;
 		error = null;
+		qrError = false;
 		try {
 			invoice = await invoicesApi.getById(invoiceId);
 			populateForm();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist fakturu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst fakturu';
 		} finally {
 			loading = false;
 		}
@@ -149,7 +151,7 @@
 			editing = false;
 			await loadInvoice();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se ulozit fakturu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit fakturu';
 		} finally {
 			saving = false;
 		}
@@ -161,7 +163,7 @@
 			await invoicesApi.send(invoiceId);
 			await loadInvoice();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se odeslat fakturu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se odeslat fakturu';
 		}
 	}
 
@@ -172,7 +174,7 @@
 			await invoicesApi.markPaid(invoiceId, invoice.total_amount, toISODate(new Date()));
 			await loadInvoice();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se oznacit jako uhradenou';
+			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako uhrazenou';
 		}
 	}
 
@@ -182,7 +184,7 @@
 			const dup = await invoicesApi.duplicate(invoiceId);
 			goto(`/invoices/${dup.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se duplikovat fakturu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se duplikovat fakturu';
 		}
 	}
 
@@ -193,7 +195,7 @@
 			await invoicesApi.delete(invoiceId);
 			goto('/invoices');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se smazat fakturu';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat fakturu';
 		}
 	}
 </script>
@@ -203,7 +205,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<a href="/invoices" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na faktury</a>
+	<a href="/invoices" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na faktury</a>
 
 	{#if error}
 		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -229,7 +231,7 @@
 					{/if}
 				</div>
 			</div>
-			<div class="flex gap-2">
+			<div class="flex flex-wrap gap-2">
 				{#if invoice.status === 'draft' && !editing}
 					<button onclick={startEditing} class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
 						Upravit
@@ -240,7 +242,7 @@
 				{/if}
 				{#if invoice.status === 'sent' || invoice.status === 'overdue'}
 					<button onclick={handleMarkPaid} class="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors">
-						Uhrazena
+						Uhrazená
 					</button>
 				{/if}
 				{#if !editing}
@@ -248,7 +250,7 @@
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 						</svg>
-						Stahnout PDF
+						Stáhnout PDF
 					</a>
 					<a href={invoicesApi.getIsdocUrl(invoiceId)} download class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-1">
 						Export ISDOC
@@ -270,7 +272,7 @@
 			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 space-y-6">
 				<!-- Customer -->
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Zakaznik</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Zákazník</h2>
 					<div class="mt-4">
 						<select bind:value={form.customer_id} class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
 							<option value={0}>-- Vyberte --</option>
@@ -283,10 +285,10 @@
 
 				<!-- Dates -->
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Udaje faktury</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Údaje faktury</h2>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<label for="edit-issue" class="block text-sm font-medium text-gray-700">Datum vystaveni</label>
+							<label for="edit-issue" class="block text-sm font-medium text-gray-700">Datum vystavení</label>
 							<input id="edit-issue" type="date" bind:value={form.issue_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
@@ -300,13 +302,13 @@
 					</div>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="edit-vs" class="block text-sm font-medium text-gray-700">Variabilni symbol</label>
+							<label for="edit-vs" class="block text-sm font-medium text-gray-700">Variabilní symbol</label>
 							<input id="edit-vs" type="text" bind:value={form.variable_symbol} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
-							<label for="edit-payment" class="block text-sm font-medium text-gray-700">Zpusob platby</label>
+							<label for="edit-payment" class="block text-sm font-medium text-gray-700">Způsob platby</label>
 							<select id="edit-payment" bind:value={form.payment_method} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-								<option value="bank_transfer">Bankovni prevod</option>
+								<option value="bank_transfer">Bankovní převod</option>
 								<option value="cash">Hotovost</option>
 								<option value="card">Karta</option>
 							</select>
@@ -317,12 +319,12 @@
 				<!-- Items -->
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 					<div class="flex items-center justify-between">
-						<h2 class="text-lg font-semibold text-gray-900">Polozky</h2>
+						<h2 class="text-lg font-semibold text-gray-900">Položky</h2>
 						<button type="button" onclick={addItem} class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
 							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 								<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 							</svg>
-							Pridat
+							Přidat
 						</button>
 					</div>
 					<div class="mt-4 space-y-4">
@@ -336,7 +338,7 @@
 										</div>
 										<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 											<div>
-												<label for="edit-qty-{index}" class="block text-sm font-medium text-gray-700">Mnozstvi</label>
+												<label for="edit-qty-{index}" class="block text-sm font-medium text-gray-700">Množství</label>
 												<input id="edit-qty-{index}" type="number" step="0.01" min="0" bind:value={item.quantity} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
 											</div>
 											<div>
@@ -346,7 +348,7 @@
 													<option value="hod">hod</option>
 													<option value="m2">m2</option>
 													<option value="den">den</option>
-													<option value="mesic">mesic</option>
+													<option value="mesic">měsíc</option>
 												</select>
 											</div>
 											<div>
@@ -364,7 +366,7 @@
 										</div>
 									</div>
 									{#if items.length > 1}
-										<button type="button" onclick={() => removeItem(index)} class="mt-6 rounded p-1 text-gray-400 hover:text-red-500 transition-colors" aria-label="Odebrat polozku">
+										<button type="button" onclick={() => removeItem(index)} class="mt-6 rounded p-1 text-gray-400 hover:text-red-500 transition-colors" aria-label="Odebrat položku">
 											<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 												<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 											</svg>
@@ -372,7 +374,7 @@
 									{/if}
 								</div>
 								<div class="mt-2 text-right text-sm text-gray-500">
-									Zaklad: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
+									Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
 								</div>
 							</div>
 						{/each}
@@ -381,7 +383,7 @@
 					<div class="mt-6 border-t border-gray-200 pt-4">
 						<div class="flex flex-col items-end gap-1 text-sm">
 							<div class="flex gap-8">
-								<span class="text-gray-600">Zaklad:</span>
+								<span class="text-gray-600">Základ:</span>
 								<span class="font-medium text-gray-900">{formatCZK(toHalere(subtotal))}</span>
 							</div>
 							<div class="flex gap-8">
@@ -398,14 +400,14 @@
 
 				<!-- Notes -->
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 					<div class="mt-4 space-y-4">
 						<div>
-							<label for="edit-notes" class="block text-sm font-medium text-gray-700">Poznamka na fakture</label>
+							<label for="edit-notes" class="block text-sm font-medium text-gray-700">Poznámka na faktuře</label>
 							<textarea id="edit-notes" bind:value={form.notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
 						</div>
 						<div>
-							<label for="edit-internal" class="block text-sm font-medium text-gray-700">Interni poznamka</label>
+							<label for="edit-internal" class="block text-sm font-medium text-gray-700">Interní poznámka</label>
 							<textarea id="edit-internal" bind:value={form.internal_notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
 						</div>
 					</div>
@@ -414,10 +416,10 @@
 				<!-- Actions -->
 				<div class="flex gap-3">
 					<button type="submit" disabled={saving} class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors">
-						{saving ? 'Ukladam...' : 'Ulozit zmeny'}
+						{saving ? 'Ukládám...' : 'Uložit změny'}
 					</button>
 					<button type="button" onclick={cancelEditing} class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-						Zrusit
+						Zrušit
 					</button>
 				</div>
 			</form>
@@ -426,10 +428,10 @@
 			<div class="mt-6 space-y-6">
 				<!-- Invoice details -->
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Udaje faktury</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Údaje faktury</h2>
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Datum vystaveni</dt>
+							<dt class="text-sm font-medium text-gray-500">Datum vystavení</dt>
 							<dd class="mt-1 text-sm text-gray-900">{formatDate(invoice.issue_date)}</dd>
 						</div>
 						<div>
@@ -441,17 +443,17 @@
 							<dd class="mt-1 text-sm text-gray-900">{formatDate(invoice.delivery_date)}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Variabilni symbol</dt>
+							<dt class="text-sm font-medium text-gray-500">Variabilní symbol</dt>
 							<dd class="mt-1 text-sm text-gray-900">{invoice.variable_symbol || '-'}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Konstantni symbol</dt>
+							<dt class="text-sm font-medium text-gray-500">Konstantní symbol</dt>
 							<dd class="mt-1 text-sm text-gray-900">{invoice.constant_symbol || '-'}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Zpusob platby</dt>
+							<dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
 							<dd class="mt-1 text-sm text-gray-900">
-								{#if invoice.payment_method === 'bank_transfer'}Bankovni prevod
+								{#if invoice.payment_method === 'bank_transfer'}Bankovní převod
 								{:else if invoice.payment_method === 'cash'}Hotovost
 								{:else if invoice.payment_method === 'card'}Karta
 								{:else}{invoice.payment_method}
@@ -464,23 +466,23 @@
 				<!-- Customer -->
 				{#if invoice.customer}
 					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Zakaznik</h2>
+						<h2 class="text-lg font-semibold text-gray-900">Zákazník</h2>
 						<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
-								<dt class="text-sm font-medium text-gray-500">Nazev</dt>
+								<dt class="text-sm font-medium text-gray-500">Název</dt>
 								<dd class="mt-1 text-sm text-gray-900">
 									<a href="/contacts/{invoice.customer.id}" class="text-blue-600 hover:text-blue-800">{invoice.customer.name}</a>
 								</dd>
 							</div>
 							{#if invoice.customer.ico}
 								<div>
-									<dt class="text-sm font-medium text-gray-500">ICO</dt>
+									<dt class="text-sm font-medium text-gray-500">IČO</dt>
 									<dd class="mt-1 text-sm text-gray-900">{invoice.customer.ico}</dd>
 								</div>
 							{/if}
 							{#if invoice.customer.dic}
 								<div>
-									<dt class="text-sm font-medium text-gray-500">DIC</dt>
+									<dt class="text-sm font-medium text-gray-500">DIČ</dt>
 									<dd class="mt-1 text-sm text-gray-900">{invoice.customer.dic}</dd>
 								</div>
 							{/if}
@@ -490,13 +492,13 @@
 
 				<!-- Items -->
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Polozky</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Položky</h2>
 					<div class="mt-4 overflow-x-auto">
 						<table class="w-full text-left text-sm">
 							<thead class="border-b border-gray-200">
 								<tr>
 									<th class="pb-2 font-medium text-gray-600">Popis</th>
-									<th class="pb-2 text-right font-medium text-gray-600">Mnozstvi</th>
+									<th class="pb-2 text-right font-medium text-gray-600">Množství</th>
 									<th class="pb-2 font-medium text-gray-600">Jednotka</th>
 									<th class="pb-2 text-right font-medium text-gray-600">Cena/ks</th>
 									<th class="pb-2 text-right font-medium text-gray-600">DPH %</th>
@@ -523,7 +525,7 @@
 					<div class="mt-4 border-t border-gray-200 pt-4">
 						<div class="flex flex-col items-end gap-1 text-sm">
 							<div class="flex gap-8">
-								<span class="text-gray-600">Zaklad:</span>
+								<span class="text-gray-600">Základ:</span>
 								<span class="font-medium text-gray-900">{formatCZK(invoice.subtotal_amount)}</span>
 							</div>
 							<div class="flex gap-8">
@@ -547,12 +549,12 @@
 				<!-- Payment info with QR code -->
 				{#if invoice.bank_account || invoice.iban}
 					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Platebni udaje</h2>
+						<h2 class="text-lg font-semibold text-gray-900">Platební údaje</h2>
 						<div class="mt-4 flex flex-col gap-6 sm:flex-row">
 							<dl class="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
 								{#if invoice.bank_account}
 									<div>
-										<dt class="text-sm font-medium text-gray-500">Cislo uctu</dt>
+										<dt class="text-sm font-medium text-gray-500">Číslo účtu</dt>
 										<dd class="mt-1 text-sm text-gray-900">{invoice.bank_account}{invoice.bank_code ? `/${invoice.bank_code}` : ''}</dd>
 									</div>
 								{/if}
@@ -564,7 +566,7 @@
 								{/if}
 								{#if invoice.variable_symbol}
 									<div>
-										<dt class="text-sm font-medium text-gray-500">Variabilni symbol</dt>
+										<dt class="text-sm font-medium text-gray-500">Variabilní symbol</dt>
 										<dd class="mt-1 text-sm text-gray-900">{invoice.variable_symbol}</dd>
 									</div>
 								{/if}
@@ -572,11 +574,18 @@
 							{#if invoice.iban && invoice.status !== 'paid'}
 								<div class="flex flex-col items-center gap-2">
 									<span class="text-sm font-medium text-gray-500">QR platba</span>
-									<img
-										src={invoicesApi.getQrUrl(invoiceId)}
-										alt="QR kod pro platbu"
-										class="h-32 w-32 rounded border border-gray-200"
-									/>
+									{#if qrError}
+										<div class="flex h-32 w-32 items-center justify-center rounded border border-gray-200 bg-gray-50 text-xs text-gray-400">
+											QR kód není dostupný
+										</div>
+									{:else}
+										<img
+											src={invoicesApi.getQrUrl(invoiceId)}
+											alt="QR kód pro platbu"
+											class="h-32 w-32 rounded border border-gray-200"
+											onerror={() => { qrError = true; }}
+										/>
+									{/if}
 								</div>
 							{/if}
 						</div>
@@ -586,16 +595,16 @@
 				<!-- Notes -->
 				{#if invoice.notes || invoice.internal_notes}
 					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
+						<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 						{#if invoice.notes}
 							<div class="mt-4">
-								<h3 class="text-sm font-medium text-gray-500">Poznamka na fakture</h3>
+								<h3 class="text-sm font-medium text-gray-500">Poznámka na faktuře</h3>
 								<p class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{invoice.notes}</p>
 							</div>
 						{/if}
 						{#if invoice.internal_notes}
 							<div class="mt-4">
-								<h3 class="text-sm font-medium text-gray-500">Interni poznamka</h3>
+								<h3 class="text-sm font-medium text-gray-500">Interní poznámka</h3>
 								<p class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{invoice.internal_notes}</p>
 							</div>
 						{/if}
@@ -604,8 +613,8 @@
 
 				<!-- Timestamps -->
 				<div class="text-xs text-gray-400">
-					Vytvoreno: {formatDate(invoice.created_at)} | Upraveno: {formatDate(invoice.updated_at)}
-					{#if invoice.sent_at} | Odeslano: {formatDate(invoice.sent_at)}{/if}
+					Vytvořeno: {formatDate(invoice.created_at)} | Upraveno: {formatDate(invoice.updated_at)}
+					{#if invoice.sent_at} | Odesláno: {formatDate(invoice.sent_at)}{/if}
 					{#if invoice.paid_at} | Uhrazeno: {formatDate(invoice.paid_at)}{/if}
 				</div>
 			</div>

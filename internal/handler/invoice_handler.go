@@ -2,10 +2,12 @@ package handler
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -274,7 +276,7 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplier, err := pdf.LoadSupplierFromSettings(r.Context(), h.settingsSvc)
+	supplier, err := h.loadPDFSupplierInfo(r)
 	if err != nil {
 		slog.Error("failed to load supplier settings for PDF", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
@@ -315,7 +317,7 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 	iban := invoice.IBAN
 	swift := invoice.SWIFT
 	if iban == "" {
-		supplier, err := pdf.LoadSupplierFromSettings(r.Context(), h.settingsSvc)
+		supplier, err := h.loadPDFSupplierInfo(r)
 		if err != nil {
 			slog.Error("failed to load supplier settings for QR", "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
@@ -341,6 +343,30 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(qrBytes)))
 	w.WriteHeader(http.StatusOK)
 	w.Write(qrBytes)
+}
+
+// loadPDFSupplierInfo reads supplier information from application settings for PDF generation.
+func (h *InvoiceHandler) loadPDFSupplierInfo(r *http.Request) (pdf.SupplierInfo, error) {
+	settings, err := h.settingsSvc.GetAll(r.Context())
+	if err != nil {
+		return pdf.SupplierInfo{}, fmt.Errorf("loading settings: %w", err)
+	}
+
+	return pdf.SupplierInfo{
+		Name:          settings[service.SettingCompanyName],
+		ICO:           settings[service.SettingICO],
+		DIC:           settings[service.SettingDIC],
+		VATRegistered: settings[service.SettingVATRegistered] == "true",
+		Street:        settings[service.SettingStreet],
+		City:          settings[service.SettingCity],
+		ZIP:           settings[service.SettingZIP],
+		Email:         settings[service.SettingEmail],
+		Phone:         settings[service.SettingPhone],
+		BankAccount:   settings[service.SettingBankAccount],
+		BankCode:      settings[service.SettingBankCode],
+		IBAN:          settings[service.SettingIBAN],
+		SWIFT:         settings[service.SettingSWIFT],
+	}, nil
 }
 
 // loadSupplierInfo reads supplier information from application settings.
@@ -397,7 +423,7 @@ func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber)
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.WriteHeader(http.StatusOK)
 	w.Write(xmlData)
 }
@@ -420,6 +446,11 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if len(req.InvoiceIDs) > 500 {
+		respondError(w, http.StatusBadRequest, "maximum 500 invoices per batch export")
+		return
+	}
+
 	supplier, err := h.loadSupplierInfo(r)
 	if err != nil {
 		slog.Error("failed to load supplier info", "error", err)
@@ -427,12 +458,9 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", `attachment; filename="isdoc-export.zip"`)
-	w.WriteHeader(http.StatusOK)
-
-	zipWriter := zip.NewWriter(w)
-	defer zipWriter.Close()
+	// Buffer the ZIP in memory so partial failures can be reported as errors.
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
 
 	for _, id := range req.InvoiceIDs {
 		invoice, err := h.svc.GetByID(r.Context(), id)
@@ -447,12 +475,29 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 			continue
 		}
 
-		filename := fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber)
+		// Sanitize filename to prevent zip slip attacks.
+		safeNumber := filepath.Base(invoice.InvoiceNumber)
+		filename := fmt.Sprintf("%s.isdoc", safeNumber)
 		f, err := zipWriter.Create(filename)
 		if err != nil {
 			slog.Error("failed to create zip entry", "error", err, "filename", filename)
 			continue
 		}
-		f.Write(xmlData)
+		if _, err := f.Write(xmlData); err != nil {
+			slog.Error("failed to write zip entry data", "error", err, "filename", filename)
+			continue
+		}
 	}
+
+	if err := zipWriter.Close(); err != nil {
+		slog.Error("failed to finalize zip archive", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to create zip archive")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", `attachment; filename="isdoc-export.zip"`)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+	w.WriteHeader(http.StatusOK)
+	w.Write(buf.Bytes())
 }

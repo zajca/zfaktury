@@ -4,6 +4,7 @@
 	import { expensesApi, contactsApi, type Expense, type Contact } from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 
 	let expense = $state<Expense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -33,22 +34,6 @@
 		form.amount * form.vat_rate_percent / (100 + form.vat_rate_percent)
 	);
 
-	let categories = [
-		'material', 'sluzby', 'cestovne', 'pohonne_hmoty',
-		'telekomunikace', 'software', 'kancelar', 'ostatni'
-	];
-
-	let categoryLabels: Record<string, string> = {
-		material: 'Material',
-		sluzby: 'Sluzby',
-		cestovne: 'Cestovne',
-		pohonne_hmoty: 'Pohonne hmoty',
-		telekomunikace: 'Telekomunikace',
-		software: 'Software a licence',
-		kancelar: 'Kancelar',
-		ostatni: 'Ostatni'
-	};
-
 	$effect(() => {
 		loadExpense();
 	});
@@ -60,7 +45,7 @@
 			expense = await expensesApi.getById(expenseId);
 			populateForm();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist naklad';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst náklad';
 		} finally {
 			loading = false;
 		}
@@ -101,11 +86,11 @@
 
 	async function handleSave() {
 		if (!form.description) {
-			error = 'Popis je povinny';
+			error = 'Popis je povinný';
 			return;
 		}
 		if (form.amount <= 0) {
-			error = 'Castka musi byt vetsi nez 0';
+			error = 'Částka musí být větší než 0';
 			return;
 		}
 
@@ -132,30 +117,30 @@
 			editing = false;
 			await loadExpense();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se ulozit naklad';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit náklad';
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat tento naklad?')) return;
+		if (!confirm('Opravdu chcete smazat tento náklad?')) return;
 		error = null;
 		try {
 			await expensesApi.delete(expenseId);
 			goto('/expenses');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se smazat naklad';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat náklad';
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>{expense ? `Naklad - ${expense.description}` : 'Naklad'} - ZFaktury</title>
+	<title>{expense ? `Náklad - ${expense.description}` : 'Náklad'} - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<a href="/expenses" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na naklady</a>
+	<a href="/expenses" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na náklady</a>
 
 	{#if error}
 		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -192,7 +177,7 @@
 			<!-- Edit mode -->
 			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 space-y-6">
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Zakladni udaje</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Základní údaje</h2>
 					<div class="mt-4 space-y-4">
 						<div>
 							<label for="edit-desc" class="block text-sm font-medium text-gray-700">Popis *</label>
@@ -201,15 +186,14 @@
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
 								<label for="edit-cat" class="block text-sm font-medium text-gray-700">Kategorie</label>
-								<select id="edit-cat" bind:value={form.category} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-									<option value="">-- Vyberte --</option>
-									{#each categories as cat}
-										<option value={cat}>{categoryLabels[cat] ?? cat}</option>
-									{/each}
-								</select>
+								<CategoryPicker
+									id="edit-cat"
+									value={form.category}
+									onchange={(v) => { form.category = v; }}
+								/>
 							</div>
 							<div>
-								<label for="edit-num" class="block text-sm font-medium text-gray-700">Cislo dokladu</label>
+								<label for="edit-num" class="block text-sm font-medium text-gray-700">Číslo dokladu</label>
 								<input id="edit-num" type="text" bind:value={form.expense_number} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 							</div>
 						</div>
@@ -232,10 +216,10 @@
 				</div>
 
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Castka a DPH</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Částka a DPH</h2>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<label for="edit-amount" class="block text-sm font-medium text-gray-700">Castka s DPH (CZK)</label>
+							<label for="edit-amount" class="block text-sm font-medium text-gray-700">Částka s DPH (CZK)</label>
 							<input id="edit-amount" type="number" step="0.01" min="0" bind:value={form.amount} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
@@ -256,20 +240,20 @@
 				</div>
 
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Danove nastaveni</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Daňové nastavení</h2>
 					<div class="mt-4 space-y-4">
 						<div class="flex items-center gap-3">
 							<input id="edit-deductible" type="checkbox" bind:checked={form.is_tax_deductible} class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-							<label for="edit-deductible" class="text-sm font-medium text-gray-700">Danove uznatelny naklad</label>
+							<label for="edit-deductible" class="text-sm font-medium text-gray-700">Daňově uznatelný náklad</label>
 						</div>
 						<div>
-							<label for="edit-biz" class="block text-sm font-medium text-gray-700">Podil pro podnikani (%)</label>
+							<label for="edit-biz" class="block text-sm font-medium text-gray-700">Podíl pro podnikání (%)</label>
 							<input id="edit-biz" type="number" min="0" max="100" bind:value={form.business_percent} class="mt-1 w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
-							<label for="edit-pm" class="block text-sm font-medium text-gray-700">Zpusob platby</label>
+							<label for="edit-pm" class="block text-sm font-medium text-gray-700">Způsob platby</label>
 							<select id="edit-pm" bind:value={form.payment_method} class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-								<option value="bank_transfer">Bankovni prevod</option>
+								<option value="bank_transfer">Bankovní převod</option>
 								<option value="cash">Hotovost</option>
 								<option value="card">Karta</option>
 							</select>
@@ -278,7 +262,7 @@
 				</div>
 
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 					<div class="mt-4">
 						<textarea bind:value={form.notes} rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
 					</div>
@@ -286,10 +270,10 @@
 
 				<div class="flex gap-3">
 					<button type="submit" disabled={saving} class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors">
-						{saving ? 'Ukladam...' : 'Ulozit zmeny'}
+						{saving ? 'Ukládám...' : 'Uložit změny'}
 					</button>
 					<button type="button" onclick={cancelEditing} class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-						Zrusit
+						Zrušit
 					</button>
 				</div>
 			</form>
@@ -297,11 +281,11 @@
 			<!-- View mode -->
 			<div class="mt-6 space-y-6">
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Zakladni udaje</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Základní údaje</h2>
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
 							<dt class="text-sm font-medium text-gray-500">Kategorie</dt>
-							<dd class="mt-1 text-sm text-gray-900">{categoryLabels[expense.category] ?? (expense.category || '-')}</dd>
+							<dd class="mt-1 text-sm text-gray-900">{expense.category || '-'}</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-gray-500">Datum</dt>
@@ -309,14 +293,14 @@
 						</div>
 						{#if expense.expense_number}
 							<div>
-								<dt class="text-sm font-medium text-gray-500">Cislo dokladu</dt>
+								<dt class="text-sm font-medium text-gray-500">Číslo dokladu</dt>
 								<dd class="mt-1 text-sm text-gray-900">{expense.expense_number}</dd>
 							</div>
 						{/if}
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Zpusob platby</dt>
+							<dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
 							<dd class="mt-1 text-sm text-gray-900">
-								{#if expense.payment_method === 'bank_transfer'}Bankovni prevod
+								{#if expense.payment_method === 'bank_transfer'}Bankovní převod
 								{:else if expense.payment_method === 'cash'}Hotovost
 								{:else if expense.payment_method === 'card'}Karta
 								{:else}{expense.payment_method}
@@ -327,10 +311,10 @@
 				</div>
 
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Castka</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Částka</h2>
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Castka s DPH</dt>
+							<dt class="text-sm font-medium text-gray-500">Částka s DPH</dt>
 							<dd class="mt-1 text-lg font-bold text-gray-900">{formatCZK(expense.amount)}</dd>
 						</div>
 						<div>
@@ -338,21 +322,21 @@
 							<dd class="mt-1 text-sm text-gray-900">{formatCZK(expense.vat_amount)}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Zaklad</dt>
+							<dt class="text-sm font-medium text-gray-500">Základ</dt>
 							<dd class="mt-1 text-sm text-gray-900">{formatCZK(expense.amount - expense.vat_amount)}</dd>
 						</div>
 					</dl>
 				</div>
 
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Danove udaje</h2>
+					<h2 class="text-lg font-semibold text-gray-900">Daňové údaje</h2>
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Danove uznatelny</dt>
+							<dt class="text-sm font-medium text-gray-500">Daňově uznatelný</dt>
 							<dd class="mt-1 text-sm text-gray-900">{expense.is_tax_deductible ? 'Ano' : 'Ne'}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Podil pro podnikani</dt>
+							<dt class="text-sm font-medium text-gray-500">Podíl pro podnikání</dt>
 							<dd class="mt-1 text-sm text-gray-900">{expense.business_percent}%</dd>
 						</div>
 					</dl>
@@ -360,13 +344,13 @@
 
 				{#if expense.notes}
 					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
+						<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 						<p class="mt-2 text-sm text-gray-900 whitespace-pre-wrap">{expense.notes}</p>
 					</div>
 				{/if}
 
 				<div class="text-xs text-gray-400">
-					Vytvoreno: {formatDate(expense.created_at)} | Upraveno: {formatDate(expense.updated_at)}
+					Vytvořeno: {formatDate(expense.created_at)} | Upraveno: {formatDate(expense.updated_at)}
 				</div>
 			</div>
 		{/if}

@@ -77,45 +77,54 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ## Phase 2 — Invoicing
 
-**RFC:** `docs/rfc/002-invoicing.md` (not yet written)
+**RFC:** `docs/rfc/002-invoicing.md`
 **Goal:** Full invoice lifecycle — CRUD, PDF, QR codes, email, ISDOC export.
 
-### Invoice CRUD
-- Exists: Invoice domain struct, repository (with transactions), service (with status transitions, duplication), HTTP handler
-- Exists: Frontend invoice list page (filtering, pagination)
-- Exists: Frontend invoice create form (line items, VAT calculations, customer selection)
-- Done: Frontend invoice detail/edit page (`/invoices/[id]`) — view, edit draft, send, pay, duplicate, delete
-- Missing: Frontend invoice edit form for non-draft invoices
-- Missing: Invoice numbering sequence management UI
+### Sub-Phase 2A (Done)
+
+#### Invoice CRUD
+- Done: Invoice domain struct, repository (with transactions), service (with status transitions, duplication), HTTP handler
+- Done: Frontend invoice list page (filtering, pagination)
+- Done: Frontend invoice create form (line items, VAT calculations, customer selection)
+- Done: Frontend invoice detail/edit page (`/invoices/[id]`) — view, edit draft, send, pay, duplicate, delete with PDF/QR/ISDOC buttons
+
+#### PDF Generation
+- Done: PDF generator using maroto/v2 (`internal/pdf/invoice_pdf.go`)
+- Done: Full Czech invoice layout (header, supplier/customer, items, VAT summary, payment info, QR code)
+- Done: PDF HTTP endpoint (GET `/api/v1/invoices/{id}/pdf`)
+
+#### QR Payment Code
+- Done: QR code generation using qrpay (`internal/pdf/qr_payment.go`)
+- Done: Czech QR Platba SPD format
+- Done: QR HTTP endpoint (GET `/api/v1/invoices/{id}/qr`)
+- Done: QR display in frontend invoice detail
+
+#### ISDOC Export
+- Done: ISDOC 6.0.2 XML generation (`internal/isdoc/generator.go`, `internal/isdoc/types.go`)
+- Done: Single invoice ISDOC endpoint (GET `/api/v1/invoices/{id}/isdoc`)
+- Done: Batch ISDOC export as ZIP (POST `/api/v1/invoices/export/isdoc`)
+
+#### Invoice Sequence Management
+- Done: Sequence repository, service, handler (`internal/repository/sequence_repo.go`, etc.)
+- Done: Frontend sequence management UI (`/settings/sequences`)
+- Done: Auto-create sequence for current year on invoice create
+
+### Sub-Phase 2B (Missing)
 - Missing: Proforma invoices (zalohove faktury) and settlement
 - Missing: Credit notes (dobropisy)
 - Missing: Recurring invoices with configurable intervals
+
+### Sub-Phase 2C (Missing)
 - Missing: Multi-currency with CNB exchange rates
-
-### PDF Generation
-- Missing: PDF service using maroto/v2 (dependency installed, not used)
-- Missing: Invoice PDF template (header, items table, totals, bank info, QR code)
-- Missing: Customizable templates (logo, colors, footer)
-- Missing: PDF HTTP endpoint (GET /api/v1/invoices/{id}/pdf)
-- Missing: PDF CLI command
-
-### QR Payment Code
-- Missing: QR code generation using qrpay (dependency installed, not used)
-- Missing: Czech QR Platba SPD format
-- Missing: Embed QR in PDF and display in frontend
-
-### Email Sending
-- Exists: SMTP config in config struct
-- Missing: Email service, templates, HTTP endpoint
-
-### ISDOC Export
-- Missing: ISDOC XML generation, HTTP endpoint, batch export
-
-### Invoice Status Tracking
-- Exists: Status field, MarkAsSent/MarkAsPaid service methods
 - Missing: Automatic overdue detection
 - Missing: Status history / timeline
 - Missing: Payment reminders
+
+### Not Yet Started
+- Missing: Email service, templates, HTTP endpoint (SMTP config exists)
+- Missing: Frontend invoice edit form for non-draft invoices
+- Missing: Customizable PDF templates (logo, colors, footer)
+- Missing: PDF CLI command
 
 **Dependencies:** Phase 1
 
@@ -123,24 +132,30 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ## Phase 3 — Expenses
 
-**RFC:** `docs/rfc/003-expenses.md` (not yet written)
+**RFC:** `docs/rfc/003-expenses.md`
 **Goal:** Expense management with document upload and AI OCR.
 
+### Task 3 — Expense Categories (Done)
+- Done: ExpenseCategory domain struct (`internal/domain/category.go`)
+- Done: Category repository with CRUD (`internal/repository/category_repo.go`)
+- Done: Category service with validation (`internal/service/category_svc.go`)
+- Done: Category HTTP handler (`internal/handler/category_handler.go`)
+- Done: Frontend category management page (`/settings/categories`)
+- Done: CategoryPicker component for expense forms
+- Done: Migration 004 with 16 default Czech OSVC categories
+- Done: Integrated into expense create/edit pages
+
 ### Expense CRUD
-- Exists: Expense domain struct, repository, service (with VAT calculations), HTTP handler
-- Exists: Frontend expense list page (search, pagination)
-- Done: Frontend expense create form (`/expenses/new`)
-- Done: Frontend expense detail/edit page (`/expenses/[id]`)
-- Missing: Expense categories management
-- Missing: Recurring expenses
-- Missing: Tax-deductible marking workflow
+- Done: Expense domain struct, repository, service (with VAT calculations), HTTP handler
+- Done: Frontend expense list page (search, pagination)
+- Done: Frontend expense create form (`/expenses/new`) with CategoryPicker
+- Done: Frontend expense detail/edit page (`/expenses/[id]`) with CategoryPicker
 
-### Document Upload
-- Missing: File upload endpoint, document storage, linking, viewer
-
-### AI OCR
-- Exists: OCR config in config struct
-- Missing: OCR service, data extraction, user confirmation UI
+### Remaining Tasks (Missing)
+- Missing: Task 1 — Document upload (file upload endpoint, document storage, linking, viewer)
+- Missing: Task 2 — AI OCR (OCR service, data extraction, user confirmation UI; OCR config exists)
+- Missing: Task 4 — Recurring expenses
+- Missing: Task 5 — Tax-deductible marking workflow
 
 **Dependencies:** Phase 1
 
@@ -251,8 +266,8 @@ Phase 1 (Foundation)
 ## RFC Schedule
 
 1. **RFC-001** (Foundation) — Done (implemented, tested, reviewed)
-2. **RFC-002** (Invoicing) — Write next
-3. **RFC-003** (Expenses) — Write next (can parallel with RFC-002)
+2. **RFC-002** (Invoicing) — Written, Sub-Phase 2A done (PDF, QR, ISDOC, sequences)
+3. **RFC-003** (Expenses) — Written, Task 3 done (expense categories)
 4. **RFC-004** (VAT Filings) — Write after RFC-002 + RFC-003
 5. **RFC-005** (Annual Tax) — Write after RFC-004
 6. **RFC-006** (Banking) — Write after RFC-002

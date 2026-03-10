@@ -177,6 +177,24 @@ Then enable it in `~/.claude/settings.json`:
 
 LSP plugins load on startup. After setup, restart Claude Code and verify with `LSP documentSymbol` on any `.go`, `.ts`, or `.svelte` file.
 
+## Agent Teams Conventions
+
+When working as part of an agent team:
+
+- Each teammate owns its own files -- NEVER edit files owned by another agent
+- Shared files (`router.go`, `interfaces.go`, `client.ts`, `serve.go`, `helpers.go`) are edited ONLY by the lead or a designated agent
+- Always use plan approval for complex tasks
+- After completing work, run `go build ./...` and `go test ./...` to verify
+- Coordinate via messages when you need API contracts or interface definitions from another agent
+
+### Critical shared files (coordinate edits)
+
+- `internal/handler/router.go` - route registration
+- `internal/repository/interfaces.go` - repository interfaces
+- `frontend/src/lib/api/client.ts` - API types
+- `internal/cli/serve.go` - dependency wiring
+- `internal/handler/helpers.go` - shared DTOs
+
 ## Testing
 
 - Use `go test ./...` for Go tests

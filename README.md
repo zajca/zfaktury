@@ -144,6 +144,92 @@ All endpoints under `/api/v1`:
 | GET/POST | `/api/v1/expenses` | List / create expenses |
 | GET/PUT/DELETE | `/api/v1/expenses/{id}` | Get / update / delete expense |
 
+## Claude Code Agent Teams
+
+Agent teams allow parallel development using multiple coordinated Claude Code sessions. One session acts as team lead, others work as teammates on independent tasks.
+
+### Prerequisites
+
+- tmux (installed via NixOS home-manager `programs.tmux`)
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `~/.claude/settings.json` env
+
+### Setup
+
+The env var is already configured in `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+### Usage with tmux
+
+Start a tmux session first, then launch Claude Code inside it. The `auto` display mode (default) detects tmux and uses split panes automatically:
+
+```bash
+# Start tmux session
+tmux new -s zfaktury
+
+# Inside tmux, start Claude Code
+claude
+
+# Ask Claude to create an agent team:
+# "Create an agent team for implementing PDF invoice generation:
+#  - Backend agent: service + handler
+#  - Frontend agent: download button
+#  - Test agent: integration tests"
+```
+
+Each teammate gets its own tmux pane. Click into a pane to interact with that teammate directly.
+
+To force a specific display mode:
+
+```bash
+claude --teammate-mode in-process  # all in one terminal, Shift+Down to cycle
+```
+
+### Common scenarios
+
+**Full-stack feature** (3 agents: backend + frontend + tests):
+```
+Create an agent team for [feature]:
+- Backend agent: implement service and handler
+- Frontend agent: add UI components
+- Test agent: write integration tests
+```
+
+**Parallel services** (2-4 agents, each owns a directory):
+```
+Create an agent team for implementing independent services:
+- Agent ARES: internal/service/ares/
+- Agent QR: internal/service/qr/
+- Agent CNB: internal/service/cnb/
+```
+
+**Code review** (3 agents with different focus):
+```
+Create an agent team to review the project:
+- Security reviewer
+- Performance reviewer
+- Architecture reviewer
+```
+
+### Conventions
+
+See `CLAUDE.md` section "Agent Teams Conventions" for rules on file ownership, shared file coordination, and quality gates.
+
+### Key commands
+
+| Action | Command |
+|--------|---------|
+| Cycle teammates (in-process) | Shift+Down |
+| Toggle task list | Ctrl+T |
+| List tmux sessions | `tmux ls` |
+| Kill orphaned session | `tmux kill-session -t <name>` |
+
 ## License
 
 Private project.

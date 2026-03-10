@@ -25,6 +25,7 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
 	"github.com/zajca/zfaktury/internal/service/email"
+	"github.com/zajca/zfaktury/internal/service/ocr"
 	"github.com/zajca/zfaktury/web"
 )
 
@@ -70,6 +71,8 @@ var serveCmd = &cobra.Command{
 		sequenceRepo := repository.NewSequenceRepository(db)
 		categoryRepo := repository.NewCategoryRepository(db)
 		documentRepo := repository.NewDocumentRepository(db)
+		recurringInvoiceRepo := repository.NewRecurringInvoiceRepository(db)
+		recurringExpenseRepo := repository.NewRecurringExpenseRepository(db)
 
 		// Wire ARES client.
 		aresClient := ares.NewClient()
@@ -79,7 +82,7 @@ var serveCmd = &cobra.Command{
 		if emailSender.IsConfigured() {
 			slog.Info("email sender configured", "host", cfg.SMTP.Host)
 		}
-		_ = emailSender // will be used by invoice email sending in later rounds
+		_ = emailSender // Will be used by invoice email sending in later rounds.
 
 		// Wire generators.
 		pdfGen := pdf.NewInvoicePDFGenerator()
@@ -93,8 +96,26 @@ var serveCmd = &cobra.Command{
 		settingsSvc := service.NewSettingsService(settingsRepo)
 		categorySvc := service.NewCategoryService(categoryRepo)
 		documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir)
+		recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc)
+		recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, pdfGen, isdocGen, handler.RouterConfig{
+		// Wire OCR service (conditional on API key).
+		var ocrSvc *service.OCRService
+		if cfg.OCR.APIKey != "" {
+			var provider ocr.Provider
+			switch cfg.OCR.Provider {
+			case "openai", "":
+				provider = ocr.NewOpenAIProvider(cfg.OCR.APIKey)
+			default:
+				slog.Warn("unknown OCR provider, OCR disabled", "provider", cfg.OCR.Provider)
+			}
+			if provider != nil {
+				ocrSvc = service.NewOCRService(provider, documentSvc)
+				slog.Info("OCR service configured", "provider", provider.Name())
+			}
+		}
+
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, pdfGen, isdocGen, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

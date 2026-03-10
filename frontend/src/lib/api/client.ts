@@ -149,6 +149,94 @@ export interface AresResult {
 	country: string;
 }
 
+// --- Recurring Invoice Types ---
+
+export interface RecurringInvoiceItem {
+	id: number;
+	recurring_invoice_id: number;
+	description: string;
+	quantity: number;
+	unit: string;
+	unit_price: number;
+	vat_rate_percent: number;
+	sort_order: number;
+}
+
+export interface RecurringInvoice {
+	id: number;
+	name: string;
+	customer_id: number;
+	customer?: Contact;
+	frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+	next_issue_date: string;
+	end_date?: string;
+	currency_code: string;
+	exchange_rate: number;
+	payment_method: string;
+	bank_account: string;
+	bank_code: string;
+	iban: string;
+	swift: string;
+	constant_symbol: string;
+	notes: string;
+	is_active: boolean;
+	items: RecurringInvoiceItem[];
+	created_at: string;
+	updated_at: string;
+}
+
+// --- Recurring Expense Types ---
+
+export interface RecurringExpense {
+	id: number;
+	name: string;
+	vendor_id?: number;
+	vendor?: Contact;
+	category: string;
+	description: string;
+	amount: number;
+	currency_code: string;
+	exchange_rate: number;
+	vat_rate_percent: number;
+	vat_amount: number;
+	is_tax_deductible: boolean;
+	business_percent: number;
+	payment_method: string;
+	notes: string;
+	frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+	next_issue_date: string;
+	end_date?: string;
+	is_active: boolean;
+	created_at: string;
+	updated_at: string;
+}
+
+// --- OCR Types ---
+
+export interface OCRItem {
+	description: string;
+	quantity: number;
+	unit_price: number;
+	vat_rate_percent: number;
+	total_amount: number;
+}
+
+export interface OCRResult {
+	vendor_name: string;
+	vendor_ico: string;
+	vendor_dic: string;
+	invoice_number: string;
+	issue_date: string;
+	due_date: string;
+	total_amount: number;
+	vat_amount: number;
+	vat_rate_percent: number;
+	currency_code: string;
+	description: string;
+	items: OCRItem[];
+	confidence: number;
+}
+
 // --- Settings Types ---
 
 export interface Settings {
@@ -293,6 +381,10 @@ export const invoicesApi = {
 
 	settle(id: number) {
 		return post<Invoice>(`/invoices/${id}/settle`, {});
+	},
+
+	createCreditNote(id: number, data: CreditNoteRequest) {
+		return post<Invoice>(`/invoices/${id}/credit-note`, data);
 	},
 
 	getPdfUrl(id: number): string {
@@ -448,3 +540,97 @@ export const settingsApi = {
 		return put<Settings>('/settings', settings);
 	}
 };
+
+// --- Recurring Invoices API ---
+
+export const recurringInvoicesApi = {
+	list() {
+		return get<RecurringInvoice[]>('/recurring-invoices');
+	},
+
+	getById(id: number) {
+		return get<RecurringInvoice>(`/recurring-invoices/${id}`);
+	},
+
+	create(data: Partial<RecurringInvoice>) {
+		return post<RecurringInvoice>('/recurring-invoices', data);
+	},
+
+	update(id: number, data: Partial<RecurringInvoice>) {
+		return put<RecurringInvoice>(`/recurring-invoices/${id}`, data);
+	},
+
+	delete(id: number) {
+		return del<void>(`/recurring-invoices/${id}`);
+	},
+
+	generate(id: number) {
+		return post<Invoice>(`/recurring-invoices/${id}/generate`, {});
+	},
+
+	processDue() {
+		return post<{ generated_count: number }>('/recurring-invoices/process-due', {});
+	}
+};
+
+// --- Recurring Expenses API ---
+
+export const recurringExpensesApi = {
+	list(params?: { limit?: number; offset?: number }) {
+		const query = new URLSearchParams();
+		if (params?.limit) query.set('limit', String(params.limit));
+		if (params?.offset) query.set('offset', String(params.offset));
+		const qs = query.toString();
+		return get<ListResponse<RecurringExpense>>(`/recurring-expenses${qs ? `?${qs}` : ''}`);
+	},
+
+	getById(id: number) {
+		return get<RecurringExpense>(`/recurring-expenses/${id}`);
+	},
+
+	create(data: Partial<RecurringExpense>) {
+		return post<RecurringExpense>('/recurring-expenses', data);
+	},
+
+	update(id: number, data: Partial<RecurringExpense>) {
+		return put<RecurringExpense>(`/recurring-expenses/${id}`, data);
+	},
+
+	delete(id: number) {
+		return del<void>(`/recurring-expenses/${id}`);
+	},
+
+	activate(id: number) {
+		return post<void>(`/recurring-expenses/${id}/activate`, {});
+	},
+
+	deactivate(id: number) {
+		return post<void>(`/recurring-expenses/${id}/deactivate`, {});
+	},
+
+	generate(asOfDate?: string) {
+		return post<{ generated: number }>('/recurring-expenses/generate', { as_of_date: asOfDate || '' });
+	}
+};
+
+// --- OCR API ---
+
+export const ocrApi = {
+	processDocument(documentId: number) {
+		return post<OCRResult>(`/documents/${documentId}/ocr`, {});
+	}
+};
+
+// --- Credit Note API (on invoices) ---
+
+export interface CreditNoteRequest {
+	items?: Array<{
+		description: string;
+		quantity: number;
+		unit: string;
+		unit_price: number;
+		vat_rate_percent: number;
+		sort_order: number;
+	}>;
+	reason: string;
+}

@@ -270,6 +270,80 @@ func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (
 	return settlement, nil
 }
 
+// CreateCreditNote creates a credit note for an existing regular invoice.
+// If items is nil/empty, a full credit note is created (all items negated).
+// If items are provided, a partial credit note is created with those items.
+func (s *InvoiceService) CreateCreditNote(ctx context.Context, originalID int64, items []domain.InvoiceItem, reason string) (*domain.Invoice, error) {
+	if originalID == 0 {
+		return nil, errors.New("original invoice ID is required")
+	}
+
+	original, err := s.repo.GetByID(ctx, originalID)
+	if err != nil {
+		return nil, err
+	}
+
+	if original.Type != domain.InvoiceTypeRegular {
+		return nil, errors.New("credit notes can only be created for regular invoices")
+	}
+	if original.Status != domain.InvoiceStatusSent && original.Status != domain.InvoiceStatusPaid {
+		return nil, errors.New("credit notes can only be created for sent or paid invoices")
+	}
+
+	today := time.Now()
+	creditNote := &domain.Invoice{
+		Type:             domain.InvoiceTypeCreditNote,
+		RelatedInvoiceID: &original.ID,
+		RelationType:     domain.RelationTypeCreditNote,
+		CustomerID:       original.CustomerID,
+		IssueDate:        today,
+		DueDate:          today,
+		DeliveryDate:     today,
+		CurrencyCode:     original.CurrencyCode,
+		ExchangeRate:     original.ExchangeRate,
+		PaymentMethod:    original.PaymentMethod,
+		BankAccount:      original.BankAccount,
+		BankCode:         original.BankCode,
+		IBAN:             original.IBAN,
+		SWIFT:            original.SWIFT,
+		ConstantSymbol:   original.ConstantSymbol,
+		Notes:            reason,
+		Status:           domain.InvoiceStatusDraft,
+	}
+
+	if len(items) == 0 {
+		// Full credit note: copy all items with negated unit prices.
+		for _, item := range original.Items {
+			creditNote.Items = append(creditNote.Items, domain.InvoiceItem{
+				Description:    item.Description,
+				Quantity:       item.Quantity,
+				Unit:           item.Unit,
+				UnitPrice:      item.UnitPrice * -1,
+				VATRatePercent: item.VATRatePercent,
+				SortOrder:      item.SortOrder,
+			})
+		}
+	} else {
+		// Partial credit note: use provided items with negated unit prices.
+		for _, item := range items {
+			creditNote.Items = append(creditNote.Items, domain.InvoiceItem{
+				Description:    item.Description,
+				Quantity:       item.Quantity,
+				Unit:           item.Unit,
+				UnitPrice:      item.UnitPrice * -1,
+				VATRatePercent: item.VATRatePercent,
+				SortOrder:      item.SortOrder,
+			})
+		}
+	}
+
+	if err := s.Create(ctx, creditNote); err != nil {
+		return nil, err
+	}
+
+	return creditNote, nil
+}
+
 // Duplicate creates a copy of an existing invoice as a new draft.
 func (s *InvoiceService) Duplicate(ctx context.Context, id int64) (*domain.Invoice, error) {
 	if id == 0 {

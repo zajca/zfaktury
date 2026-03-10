@@ -47,6 +47,7 @@ func (h *InvoiceHandler) Routes() chi.Router {
 	r.Post("/{id}/mark-paid", h.MarkAsPaid)
 	r.Post("/{id}/duplicate", h.Duplicate)
 	r.Post("/{id}/settle", h.SettleProforma)
+	r.Post("/{id}/credit-note", h.CreateCreditNote)
 	r.Get("/{id}/pdf", h.DownloadPDF)
 	r.Get("/{id}/qr", h.QRPayment)
 	r.Get("/{id}/isdoc", h.ExportISDOC)
@@ -280,6 +281,49 @@ func (h *InvoiceHandler) SettleProforma(w http.ResponseWriter, r *http.Request) 
 	invoice, err := h.svc.SettleProforma(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to settle proforma", "error", err, "id", id)
+		respondError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, invoiceFromDomain(invoice))
+}
+
+// creditNoteRequest is the JSON request body for creating a credit note.
+type creditNoteRequest struct {
+	Items  []invoiceItemRequest `json:"items"`
+	Reason string               `json:"reason"`
+}
+
+// CreateCreditNote handles POST /api/v1/invoices/{id}/credit-note.
+func (h *InvoiceHandler) CreateCreditNote(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid invoice ID")
+		return
+	}
+
+	var req creditNoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	// Convert request items to domain items.
+	var items []domain.InvoiceItem
+	for _, ri := range req.Items {
+		items = append(items, domain.InvoiceItem{
+			Description:    ri.Description,
+			Quantity:       domain.Amount(ri.Quantity),
+			Unit:           ri.Unit,
+			UnitPrice:      domain.Amount(ri.UnitPrice),
+			VATRatePercent: ri.VATRatePercent,
+			SortOrder:      ri.SortOrder,
+		})
+	}
+
+	invoice, err := h.svc.CreateCreditNote(r.Context(), id, items, req.Reason)
+	if err != nil {
+		slog.Error("failed to create credit note", "error", err, "id", id)
 		respondError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}

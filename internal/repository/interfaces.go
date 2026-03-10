@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
@@ -68,6 +69,30 @@ type DocumentRepo interface {
 	ListByExpenseID(ctx context.Context, expenseID int64) ([]domain.ExpenseDocument, error)
 	Delete(ctx context.Context, id int64) error
 	CountByExpenseID(ctx context.Context, expenseID int64) (int, error)
+}
+
+// RecurringInvoiceRepo defines the persistence interface for recurring invoices.
+type RecurringInvoiceRepo interface {
+	Create(ctx context.Context, ri *domain.RecurringInvoice) error
+	Update(ctx context.Context, ri *domain.RecurringInvoice) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.RecurringInvoice, error)
+	List(ctx context.Context) ([]domain.RecurringInvoice, error)
+	ListDue(ctx context.Context, date time.Time) ([]domain.RecurringInvoice, error)
+	Deactivate(ctx context.Context, id int64) error
+}
+
+// RecurringExpenseRepo defines the persistence interface for recurring expenses.
+type RecurringExpenseRepo interface {
+	Create(ctx context.Context, re *domain.RecurringExpense) error
+	Update(ctx context.Context, re *domain.RecurringExpense) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.RecurringExpense, error)
+	List(ctx context.Context, limit, offset int) ([]domain.RecurringExpense, int, error)
+	ListActive(ctx context.Context) ([]domain.RecurringExpense, error)
+	ListDue(ctx context.Context, asOfDate time.Time) ([]domain.RecurringExpense, error)
+	Deactivate(ctx context.Context, id int64) error
+	Activate(ctx context.Context, id int64) error
 }
 
 // SettingsRepo defines the persistence interface for application settings.

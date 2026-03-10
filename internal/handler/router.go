@@ -27,6 +27,9 @@ func NewRouter(
 	sequenceSvc *service.SequenceService,
 	categorySvc *service.CategoryService,
 	documentSvc *service.DocumentService,
+	recurringInvoiceSvc *service.RecurringInvoiceService,
+	recurringExpenseSvc *service.RecurringExpenseService,
+	ocrSvc *service.OCRService,
 	pdfGen *pdf.InvoicePDFGenerator,
 	isdocGen *isdoc.ISDOCGenerator,
 	cfg RouterConfig,
@@ -57,6 +60,8 @@ func NewRouter(
 		settingsHandler := NewSettingsHandler(settingsSvc)
 		sequenceHandler := NewSequenceHandler(sequenceSvc)
 		documentHandler := NewDocumentHandler(documentSvc)
+		recurringInvoiceHandler := NewRecurringInvoiceHandler(recurringInvoiceSvc)
+		recurringExpenseHandler := NewRecurringExpenseHandler(recurringExpenseSvc)
 
 		api.Mount("/contacts", contactHandler.Routes())
 		api.Mount("/invoices", invoiceHandler.Routes())
@@ -65,6 +70,13 @@ func NewRouter(
 		api.Mount("/settings", settingsHandler.Routes())
 		api.Mount("/invoice-sequences", sequenceHandler.Routes())
 		api.Mount("/", documentHandler.Routes())
+		api.Mount("/recurring-invoices", recurringInvoiceHandler.Routes())
+		api.Mount("/recurring-expenses", recurringExpenseHandler.Routes())
+
+		if ocrSvc != nil {
+			ocrHandler := NewOCRHandler(ocrSvc)
+			api.Post("/documents/{id}/ocr", ocrHandler.ProcessDocument)
+		}
 	})
 
 	// Health check endpoint.

@@ -85,7 +85,9 @@
 			const a = document.createElement('a');
 			a.href = url;
 			a.download = `souhrnne-hlaseni-${summary?.period.year}-Q${summary?.period.quarter}.xml`;
+			document.body.appendChild(a);
 			a.click();
+			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodarilo se stahnout XML';
@@ -158,7 +160,7 @@
 					{/if}
 				</div>
 			</div>
-			<div class="flex gap-2">
+			<div class="flex flex-wrap gap-2">
 				<button
 					onclick={handleRecalculate}
 					disabled={actionLoading || summary.status === 'filed'}

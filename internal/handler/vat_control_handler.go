@@ -56,11 +56,11 @@ func (h *VATControlStatementHandler) Create(w http.ResponseWriter, r *http.Reque
 
 	if err := h.svc.Create(r.Context(), cs); err != nil {
 		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, err.Error())
+			respondError(w, http.StatusBadRequest, "invalid input")
 			return
 		}
 		if errors.Is(err, domain.ErrDuplicateNumber) {
-			respondError(w, http.StatusConflict, err.Error())
+			respondError(w, http.StatusConflict, "control statement already exists for this period")
 			return
 		}
 		slog.Error("failed to create control statement", "error", err)
@@ -141,7 +141,7 @@ func (h *VATControlStatementHandler) Delete(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, err.Error())
+			respondError(w, http.StatusBadRequest, "cannot delete a filed control statement")
 			return
 		}
 		slog.Error("failed to delete control statement", "error", err, "id", id)
@@ -166,7 +166,7 @@ func (h *VATControlStatementHandler) Recalculate(w http.ResponseWriter, r *http.
 			return
 		}
 		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, err.Error())
+			respondError(w, http.StatusBadRequest, "cannot recalculate a filed control statement")
 			return
 		}
 		slog.Error("failed to recalculate control statement", "error", err, "id", id)

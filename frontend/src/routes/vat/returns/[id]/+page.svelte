@@ -91,6 +91,7 @@
 	}
 
 	async function handleMarkFiled() {
+		if (!confirm('Opravdu chcete oznacit DPH priznani jako podane?')) return;
 		actionLoading = 'filed';
 		error = null;
 		try {

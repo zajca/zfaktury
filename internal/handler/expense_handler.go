@@ -25,10 +25,17 @@ func (h *ExpenseHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
+	r.Post("/review", h.MarkTaxReviewed)
+	r.Post("/unreview", h.UnmarkTaxReviewed)
 	r.Get("/{id}", h.GetByID)
 	r.Put("/{id}", h.Update)
 	r.Delete("/{id}", h.Delete)
 	return r
+}
+
+// bulkIDsRequest is the JSON request body for bulk ID operations.
+type bulkIDsRequest struct {
+	IDs []int64 `json:"ids"`
 }
 
 // Create handles POST /api/v1/expenses.
@@ -59,13 +66,14 @@ func (h *ExpenseHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 
 	filter := domain.ExpenseFilter{
-		Category: r.URL.Query().Get("category"),
-		VendorID: parseOptionalInt64(r, "vendor_id"),
-		DateFrom: parseOptionalTime(r, "date_from"),
-		DateTo:   parseOptionalTime(r, "date_to"),
-		Search:   r.URL.Query().Get("search"),
-		Limit:    limit,
-		Offset:   offset,
+		Category:    r.URL.Query().Get("category"),
+		VendorID:    parseOptionalInt64(r, "vendor_id"),
+		DateFrom:    parseOptionalTime(r, "date_from"),
+		DateTo:      parseOptionalTime(r, "date_to"),
+		Search:      r.URL.Query().Get("search"),
+		TaxReviewed: parseOptionalBool(r, "tax_reviewed"),
+		Limit:       limit,
+		Offset:      offset,
 	}
 
 	expenses, total, err := h.svc.List(r.Context(), filter)
@@ -150,5 +158,35 @@ func (h *ExpenseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// MarkTaxReviewed handles POST /api/v1/expenses/review.
+func (h *ExpenseHandler) MarkTaxReviewed(w http.ResponseWriter, r *http.Request) {
+	var req bulkIDsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.svc.MarkTaxReviewed(r.Context(), req.IDs); err != nil {
+		slog.Error("failed to mark expenses as tax reviewed", "error", err)
+		respondError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// UnmarkTaxReviewed handles POST /api/v1/expenses/unreview.
+func (h *ExpenseHandler) UnmarkTaxReviewed(w http.ResponseWriter, r *http.Request) {
+	var req bulkIDsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.svc.UnmarkTaxReviewed(r.Context(), req.IDs); err != nil {
+		slog.Error("failed to unmark expenses as tax reviewed", "error", err)
+		respondError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

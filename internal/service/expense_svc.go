@@ -100,3 +100,40 @@ func (s *ExpenseService) List(ctx context.Context, filter domain.ExpenseFilter) 
 	}
 	return s.repo.List(ctx, filter)
 }
+
+const maxBulkIDs = 500
+
+// MarkTaxReviewed marks the given expense IDs as tax-reviewed.
+func (s *ExpenseService) MarkTaxReviewed(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return errors.New("no expense IDs provided")
+	}
+	if len(ids) > maxBulkIDs {
+		return errors.New("too many IDs, maximum is 500")
+	}
+	return s.repo.MarkTaxReviewed(ctx, dedupIDs(ids))
+}
+
+// UnmarkTaxReviewed removes the tax review mark from the given expense IDs.
+func (s *ExpenseService) UnmarkTaxReviewed(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return errors.New("no expense IDs provided")
+	}
+	if len(ids) > maxBulkIDs {
+		return errors.New("too many IDs, maximum is 500")
+	}
+	return s.repo.UnmarkTaxReviewed(ctx, dedupIDs(ids))
+}
+
+// dedupIDs removes duplicate int64 values preserving order.
+func dedupIDs(ids []int64) []int64 {
+	seen := make(map[int64]struct{}, len(ids))
+	result := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			result = append(result, id)
+		}
+	}
+	return result
+}

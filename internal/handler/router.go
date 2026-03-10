@@ -26,6 +26,7 @@ func NewRouter(
 	settingsSvc *service.SettingsService,
 	sequenceSvc *service.SequenceService,
 	categorySvc *service.CategoryService,
+	documentSvc *service.DocumentService,
 	pdfGen *pdf.InvoicePDFGenerator,
 	isdocGen *isdoc.ISDOCGenerator,
 	cfg RouterConfig,
@@ -55,6 +56,7 @@ func NewRouter(
 		categoryHandler := NewCategoryHandler(categorySvc)
 		settingsHandler := NewSettingsHandler(settingsSvc)
 		sequenceHandler := NewSequenceHandler(sequenceSvc)
+		documentHandler := NewDocumentHandler(documentSvc)
 
 		api.Mount("/contacts", contactHandler.Routes())
 		api.Mount("/invoices", invoiceHandler.Routes())
@@ -62,6 +64,7 @@ func NewRouter(
 		api.Mount("/expense-categories", categoryHandler.Routes())
 		api.Mount("/settings", settingsHandler.Routes())
 		api.Mount("/invoice-sequences", sequenceHandler.Routes())
+		api.Mount("/", documentHandler.Routes())
 	})
 
 	// Health check endpoint.

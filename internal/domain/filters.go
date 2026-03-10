@@ -15,11 +15,12 @@ type InvoiceFilter struct {
 
 // ExpenseFilter holds filtering options for listing expenses.
 type ExpenseFilter struct {
-	Category string     `json:"category"`
-	VendorID *int64     `json:"vendor_id"`
-	DateFrom *time.Time `json:"date_from"`
-	DateTo   *time.Time `json:"date_to"`
-	Search   string     `json:"search"`
-	Limit    int        `json:"limit"`
-	Offset   int        `json:"offset"`
+	Category    string     `json:"category"`
+	VendorID    *int64     `json:"vendor_id"`
+	DateFrom    *time.Time `json:"date_from"`
+	DateTo      *time.Time `json:"date_to"`
+	Search      string     `json:"search"`
+	TaxReviewed *bool      `json:"tax_reviewed"`
+	Limit       int        `json:"limit"`
+	Offset      int        `json:"offset"`
 }

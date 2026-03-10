@@ -211,6 +211,65 @@ func (s *InvoiceService) MarkAsPaid(ctx context.Context, id int64, amount domain
 	return s.repo.Update(ctx, invoice)
 }
 
+// SettleProforma creates a settlement regular invoice from a paid proforma invoice.
+// The proforma must have status=paid. The new invoice is a draft linked to the proforma.
+func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (*domain.Invoice, error) {
+	if proformaID == 0 {
+		return nil, errors.New("proforma ID is required")
+	}
+
+	proforma, err := s.repo.GetByID(ctx, proformaID)
+	if err != nil {
+		return nil, err
+	}
+	if proforma.Type != domain.InvoiceTypeProforma {
+		return nil, errors.New("invoice is not a proforma")
+	}
+	if proforma.Status != domain.InvoiceStatusPaid {
+		return nil, errors.New("only paid proformas can be settled")
+	}
+
+	today := time.Now()
+	settlement := &domain.Invoice{
+		Type:             domain.InvoiceTypeRegular,
+		RelatedInvoiceID: &proforma.ID,
+		RelationType:     domain.RelationTypeSettlement,
+		CustomerID:       proforma.CustomerID,
+		IssueDate:        today,
+		DueDate:          today,
+		DeliveryDate:     today,
+		CurrencyCode:     proforma.CurrencyCode,
+		ExchangeRate:     proforma.ExchangeRate,
+		PaymentMethod:    proforma.PaymentMethod,
+		BankAccount:      proforma.BankAccount,
+		BankCode:         proforma.BankCode,
+		IBAN:             proforma.IBAN,
+		SWIFT:            proforma.SWIFT,
+		ConstantSymbol:   proforma.ConstantSymbol,
+		Notes:            proforma.Notes,
+		Status:           domain.InvoiceStatusDraft,
+	}
+
+	// Copy line items without IDs.
+	for _, item := range proforma.Items {
+		settlement.Items = append(settlement.Items, domain.InvoiceItem{
+			Description:    item.Description,
+			Quantity:       item.Quantity,
+			Unit:           item.Unit,
+			UnitPrice:      item.UnitPrice,
+			VATRatePercent: item.VATRatePercent,
+			SortOrder:      item.SortOrder,
+		})
+	}
+
+	// Create assigns invoice number from "FV" sequence and calculates totals.
+	if err := s.Create(ctx, settlement); err != nil {
+		return nil, err
+	}
+
+	return settlement, nil
+}
+
 // Duplicate creates a copy of an existing invoice as a new draft.
 func (s *InvoiceService) Duplicate(ctx context.Context, id int64) (*domain.Invoice, error) {
 	if id == 0 {

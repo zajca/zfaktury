@@ -25,6 +25,7 @@ type InvoiceRepo interface {
 	List(ctx context.Context, filter domain.InvoiceFilter) ([]domain.Invoice, int, error)
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	GetNextNumber(ctx context.Context, sequenceID int64) (string, error)
+	GetRelatedInvoices(ctx context.Context, invoiceID int64) ([]domain.Invoice, error)
 }
 
 // ExpenseRepo defines the persistence interface for expenses.
@@ -34,6 +35,8 @@ type ExpenseRepo interface {
 	Delete(ctx context.Context, id int64) error
 	GetByID(ctx context.Context, id int64) (*domain.Expense, error)
 	List(ctx context.Context, filter domain.ExpenseFilter) ([]domain.Expense, int, error)
+	MarkTaxReviewed(ctx context.Context, ids []int64) error
+	UnmarkTaxReviewed(ctx context.Context, ids []int64) error
 }
 
 // InvoiceSequenceRepo defines the persistence interface for invoice sequences.
@@ -56,6 +59,15 @@ type CategoryRepo interface {
 	GetByID(ctx context.Context, id int64) (*domain.ExpenseCategory, error)
 	GetByKey(ctx context.Context, key string) (*domain.ExpenseCategory, error)
 	List(ctx context.Context) ([]domain.ExpenseCategory, error)
+}
+
+// DocumentRepo defines the persistence interface for expense documents.
+type DocumentRepo interface {
+	Create(ctx context.Context, doc *domain.ExpenseDocument) error
+	GetByID(ctx context.Context, id int64) (*domain.ExpenseDocument, error)
+	ListByExpenseID(ctx context.Context, expenseID int64) ([]domain.ExpenseDocument, error)
+	Delete(ctx context.Context, id int64) error
+	CountByExpenseID(ctx context.Context, expenseID int64) (int, error)
 }
 
 // SettingsRepo defines the persistence interface for application settings.

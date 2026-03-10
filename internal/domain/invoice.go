@@ -9,6 +9,12 @@ const (
 	InvoiceTypeCreditNote = "credit_note"
 )
 
+// Invoice relation type constants.
+const (
+	RelationTypeSettlement = "settlement"
+	RelationTypeCreditNote = "credit_note"
+)
+
 // Invoice status constants.
 const (
 	InvoiceStatusDraft     = "draft"
@@ -56,6 +62,10 @@ type Invoice struct {
 	// Notes
 	Notes         string `json:"notes"`
 	InternalNotes string `json:"internal_notes"`
+
+	// Related invoice (for credit notes, settlements)
+	RelatedInvoiceID *int64
+	RelationType     string // "", "settlement", "credit_note"
 
 	// Event timestamps
 	SentAt *time.Time `json:"sent_at,omitempty"`

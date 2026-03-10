@@ -24,6 +24,7 @@ import (
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
+	"github.com/zajca/zfaktury/internal/service/email"
 	"github.com/zajca/zfaktury/web"
 )
 
@@ -68,9 +69,17 @@ var serveCmd = &cobra.Command{
 		settingsRepo := repository.NewSettingsRepository(db)
 		sequenceRepo := repository.NewSequenceRepository(db)
 		categoryRepo := repository.NewCategoryRepository(db)
+		documentRepo := repository.NewDocumentRepository(db)
 
 		// Wire ARES client.
 		aresClient := ares.NewClient()
+
+		// Wire email sender.
+		emailSender := email.NewEmailSender(cfg.SMTP)
+		if emailSender.IsConfigured() {
+			slog.Info("email sender configured", "host", cfg.SMTP.Host)
+		}
+		_ = emailSender // will be used by invoice email sending in later rounds
 
 		// Wire generators.
 		pdfGen := pdf.NewInvoicePDFGenerator()
@@ -83,8 +92,9 @@ var serveCmd = &cobra.Command{
 		expenseSvc := service.NewExpenseService(expenseRepo)
 		settingsSvc := service.NewSettingsService(settingsRepo)
 		categorySvc := service.NewCategoryService(categoryRepo)
+		documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, pdfGen, isdocGen, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, pdfGen, isdocGen, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

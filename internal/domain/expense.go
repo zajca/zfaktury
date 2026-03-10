@@ -26,6 +26,8 @@ type Expense struct {
 	DocumentPath string `json:"document_path"`
 	Notes        string `json:"notes"`
 
+	TaxReviewedAt *time.Time
+
 	// Timestamps
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`

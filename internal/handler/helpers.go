@@ -329,67 +329,71 @@ type invoiceItemResponse struct {
 
 // invoiceResponse is the JSON response for an invoice.
 type invoiceResponse struct {
-	ID              int64                 `json:"id"`
-	SequenceID      int64                 `json:"sequence_id"`
-	InvoiceNumber   string                `json:"invoice_number"`
-	Type            string                `json:"type"`
-	Status          string                `json:"status"`
-	CustomerID      int64                 `json:"customer_id"`
-	IssueDate       string                `json:"issue_date"`
-	DueDate         string                `json:"due_date"`
-	DeliveryDate    string                `json:"delivery_date"`
-	VariableSymbol  string                `json:"variable_symbol"`
-	ConstantSymbol  string                `json:"constant_symbol"`
-	CurrencyCode    string                `json:"currency_code"`
-	ExchangeRate    int64                 `json:"exchange_rate"`
-	PaymentMethod   string                `json:"payment_method"`
-	BankAccount     string                `json:"bank_account"`
-	BankCode        string                `json:"bank_code"`
-	IBAN            string                `json:"iban"`
-	SWIFT           string                `json:"swift"`
-	SubtotalAmount  int64                 `json:"subtotal_amount"`
-	VATAmount       int64                 `json:"vat_amount"`
-	TotalAmount     int64                 `json:"total_amount"`
-	PaidAmount      int64                 `json:"paid_amount"`
-	Notes           string                `json:"notes"`
-	InternalNotes   string                `json:"internal_notes"`
-	SentAt          *string               `json:"sent_at,omitempty"`
-	PaidAt          *string               `json:"paid_at,omitempty"`
-	Items           []invoiceItemResponse  `json:"items"`
-	Customer        *contactResponse       `json:"customer,omitempty"`
-	CreatedAt       string                `json:"created_at"`
-	UpdatedAt       string                `json:"updated_at"`
+	ID               int64                 `json:"id"`
+	SequenceID       int64                 `json:"sequence_id"`
+	InvoiceNumber    string                `json:"invoice_number"`
+	Type             string                `json:"type"`
+	Status           string                `json:"status"`
+	CustomerID       int64                 `json:"customer_id"`
+	IssueDate        string                `json:"issue_date"`
+	DueDate          string                `json:"due_date"`
+	DeliveryDate     string                `json:"delivery_date"`
+	VariableSymbol   string                `json:"variable_symbol"`
+	ConstantSymbol   string                `json:"constant_symbol"`
+	CurrencyCode     string                `json:"currency_code"`
+	ExchangeRate     int64                 `json:"exchange_rate"`
+	PaymentMethod    string                `json:"payment_method"`
+	BankAccount      string                `json:"bank_account"`
+	BankCode         string                `json:"bank_code"`
+	IBAN             string                `json:"iban"`
+	SWIFT            string                `json:"swift"`
+	SubtotalAmount   int64                 `json:"subtotal_amount"`
+	VATAmount        int64                 `json:"vat_amount"`
+	TotalAmount      int64                 `json:"total_amount"`
+	PaidAmount       int64                 `json:"paid_amount"`
+	Notes            string                `json:"notes"`
+	InternalNotes    string                `json:"internal_notes"`
+	RelatedInvoiceID *int64                `json:"related_invoice_id,omitempty"`
+	RelationType     string                `json:"relation_type,omitempty"`
+	SentAt           *string               `json:"sent_at,omitempty"`
+	PaidAt           *string               `json:"paid_at,omitempty"`
+	Items            []invoiceItemResponse  `json:"items"`
+	Customer         *contactResponse       `json:"customer,omitempty"`
+	CreatedAt        string                `json:"created_at"`
+	UpdatedAt        string                `json:"updated_at"`
 }
 
 // invoiceFromDomain converts a domain.Invoice to an invoiceResponse.
 func invoiceFromDomain(inv *domain.Invoice) invoiceResponse {
 	resp := invoiceResponse{
-		ID:             inv.ID,
-		SequenceID:     inv.SequenceID,
-		InvoiceNumber:  inv.InvoiceNumber,
-		Type:           inv.Type,
-		Status:         inv.Status,
-		CustomerID:     inv.CustomerID,
-		IssueDate:      inv.IssueDate.Format("2006-01-02"),
-		DueDate:        inv.DueDate.Format("2006-01-02"),
-		DeliveryDate:   inv.DeliveryDate.Format("2006-01-02"),
-		VariableSymbol: inv.VariableSymbol,
-		ConstantSymbol: inv.ConstantSymbol,
-		CurrencyCode:   inv.CurrencyCode,
-		ExchangeRate:   int64(inv.ExchangeRate),
-		PaymentMethod:  inv.PaymentMethod,
-		BankAccount:    inv.BankAccount,
-		BankCode:       inv.BankCode,
-		IBAN:           inv.IBAN,
-		SWIFT:          inv.SWIFT,
-		SubtotalAmount: int64(inv.SubtotalAmount),
-		VATAmount:      int64(inv.VATAmount),
-		TotalAmount:    int64(inv.TotalAmount),
-		PaidAmount:     int64(inv.PaidAmount),
-		Notes:          inv.Notes,
-		InternalNotes:  inv.InternalNotes,
-		CreatedAt:      inv.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      inv.UpdatedAt.Format(time.RFC3339),
+		ID:               inv.ID,
+		SequenceID:       inv.SequenceID,
+		InvoiceNumber:    inv.InvoiceNumber,
+		Type:             inv.Type,
+		Status:           inv.Status,
+		CustomerID:       inv.CustomerID,
+		IssueDate:        inv.IssueDate.Format("2006-01-02"),
+		DueDate:          inv.DueDate.Format("2006-01-02"),
+		DeliveryDate:     inv.DeliveryDate.Format("2006-01-02"),
+		VariableSymbol:   inv.VariableSymbol,
+		ConstantSymbol:   inv.ConstantSymbol,
+		CurrencyCode:     inv.CurrencyCode,
+		ExchangeRate:     int64(inv.ExchangeRate),
+		PaymentMethod:    inv.PaymentMethod,
+		BankAccount:      inv.BankAccount,
+		BankCode:         inv.BankCode,
+		IBAN:             inv.IBAN,
+		SWIFT:            inv.SWIFT,
+		SubtotalAmount:   int64(inv.SubtotalAmount),
+		VATAmount:        int64(inv.VATAmount),
+		TotalAmount:      int64(inv.TotalAmount),
+		PaidAmount:       int64(inv.PaidAmount),
+		Notes:            inv.Notes,
+		InternalNotes:    inv.InternalNotes,
+		RelatedInvoiceID: inv.RelatedInvoiceID,
+		RelationType:     inv.RelationType,
+		CreatedAt:        inv.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        inv.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if inv.SentAt != nil {
@@ -502,6 +506,7 @@ type expenseResponse struct {
 	PaymentMethod   string           `json:"payment_method"`
 	DocumentPath    string           `json:"document_path,omitempty"`
 	Notes           string           `json:"notes"`
+	TaxReviewedAt   *string          `json:"tax_reviewed_at,omitempty"`
 	CreatedAt       string           `json:"created_at"`
 	UpdatedAt       string           `json:"updated_at"`
 }
@@ -525,6 +530,7 @@ func expenseFromDomain(e *domain.Expense) expenseResponse {
 		PaymentMethod:   e.PaymentMethod,
 		DocumentPath:    e.DocumentPath,
 		Notes:           e.Notes,
+		TaxReviewedAt:   formatOptionalTime(e.TaxReviewedAt),
 		CreatedAt:       e.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       e.UpdatedAt.Format(time.RFC3339),
 	}

@@ -67,6 +67,8 @@ export interface Invoice {
 	paid_amount: number;
 	notes: string;
 	internal_notes: string;
+	related_invoice_id?: number;
+	relation_type?: string;
 	sent_at?: string;
 	paid_at?: string;
 	items: InvoiceItem[];
@@ -92,8 +94,18 @@ export interface Expense {
 	payment_method: string;
 	document_path?: string;
 	notes: string;
+	tax_reviewed_at?: string;
 	created_at: string;
 	updated_at: string;
+}
+
+export interface ExpenseDocument {
+	id: number;
+	expense_id: number;
+	filename: string;
+	content_type: string;
+	size: number;
+	created_at: string;
 }
 
 // --- Invoice Sequence Types ---
@@ -279,6 +291,10 @@ export const invoicesApi = {
 		return post<Invoice>(`/invoices/${id}/duplicate`, {});
 	},
 
+	settle(id: number) {
+		return post<Invoice>(`/invoices/${id}/settle`, {});
+	},
+
 	getPdfUrl(id: number): string {
 		return `${API_BASE}/invoices/${id}/pdf`;
 	},
@@ -333,6 +349,14 @@ export const expensesApi = {
 
 	delete(id: number) {
 		return del<void>(`/expenses/${id}`);
+	},
+
+	markTaxReviewed(ids: number[]) {
+		return post<void>('/expenses/review', { ids });
+	},
+
+	unmarkTaxReviewed(ids: number[]) {
+		return post<void>('/expenses/unreview', { ids });
 	}
 };
 
@@ -377,6 +401,39 @@ export const categoriesApi = {
 
 	delete(id: number) {
 		return del<void>(`/expense-categories/${id}`);
+	}
+};
+
+// --- Documents API ---
+
+export const documentsApi = {
+	listByExpense(expenseId: number) {
+		return get<ExpenseDocument[]>(`/expenses/${expenseId}/documents`);
+	},
+
+	getById(id: number) {
+		return get<ExpenseDocument>(`/documents/${id}`);
+	},
+
+	async upload(expenseId: number, file: File): Promise<ExpenseDocument> {
+		const formData = new FormData();
+		formData.append('file', file);
+		const url = `${API_BASE}/expenses/${expenseId}/documents`;
+		const response = await fetch(url, { method: 'POST', body: formData });
+		if (!response.ok) {
+			let body: unknown;
+			try { body = await response.json(); } catch { /* ignore */ }
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.json();
+	},
+
+	getDownloadUrl(id: number): string {
+		return `${API_BASE}/documents/${id}/download`;
+	},
+
+	delete(id: number) {
+		return del<void>(`/documents/${id}`);
 	}
 };
 

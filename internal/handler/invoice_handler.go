@@ -46,6 +46,7 @@ func (h *InvoiceHandler) Routes() chi.Router {
 	r.Post("/{id}/send", h.MarkAsSent)
 	r.Post("/{id}/mark-paid", h.MarkAsPaid)
 	r.Post("/{id}/duplicate", h.Duplicate)
+	r.Post("/{id}/settle", h.SettleProforma)
 	r.Get("/{id}/pdf", h.DownloadPDF)
 	r.Get("/{id}/qr", h.QRPayment)
 	r.Get("/{id}/isdoc", h.ExportISDOC)
@@ -260,6 +261,25 @@ func (h *InvoiceHandler) Duplicate(w http.ResponseWriter, r *http.Request) {
 	invoice, err := h.svc.Duplicate(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to duplicate invoice", "error", err, "id", id)
+		respondError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, invoiceFromDomain(invoice))
+}
+
+// SettleProforma handles POST /api/v1/invoices/{id}/settle.
+// Creates a regular settlement invoice from a paid proforma.
+func (h *InvoiceHandler) SettleProforma(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid invoice ID")
+		return
+	}
+
+	invoice, err := h.svc.SettleProforma(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to settle proforma", "error", err, "id", id)
 		respondError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}

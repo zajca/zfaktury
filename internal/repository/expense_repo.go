@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -32,13 +33,15 @@ func (r *ExpenseRepository) Create(ctx context.Context, e *domain.Expense) error
 			vat_rate_percent, vat_amount,
 			is_tax_deductible, business_percent, payment_method,
 			document_path, notes,
+			tax_reviewed_at,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		e.VendorID, e.ExpenseNumber, e.Category, e.Description,
 		e.IssueDate, e.Amount, e.CurrencyCode, e.ExchangeRate,
 		e.VATRatePercent, e.VATAmount,
 		e.IsTaxDeductible, e.BusinessPercent, e.PaymentMethod,
 		e.DocumentPath, e.Notes,
+		nil,
 		e.CreatedAt, e.UpdatedAt,
 	)
 	if err != nil {
@@ -57,6 +60,11 @@ func (r *ExpenseRepository) Create(ctx context.Context, e *domain.Expense) error
 func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error {
 	e.UpdatedAt = time.Now()
 
+	var taxReviewedAt interface{}
+	if e.TaxReviewedAt != nil {
+		taxReviewedAt = e.TaxReviewedAt.Format(time.RFC3339)
+	}
+
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE expenses SET
 			vendor_id = ?, expense_number = ?, category = ?, description = ?,
@@ -64,6 +72,7 @@ func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error
 			vat_rate_percent = ?, vat_amount = ?,
 			is_tax_deductible = ?, business_percent = ?, payment_method = ?,
 			document_path = ?, notes = ?,
+			tax_reviewed_at = ?,
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		e.VendorID, e.ExpenseNumber, e.Category, e.Description,
@@ -71,6 +80,7 @@ func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error
 		e.VATRatePercent, e.VATAmount,
 		e.IsTaxDeductible, e.BusinessPercent, e.PaymentMethod,
 		e.DocumentPath, e.Notes,
+		taxReviewedAt,
 		e.UpdatedAt, e.ID,
 	)
 	if err != nil {
@@ -107,6 +117,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 	var createdAtStr string
 	var updatedAtStr string
 	var deletedAtStr sql.NullString
+	var taxReviewedAtStr sql.NullString
 	var vendorID sql.NullInt64
 	var vendorName sql.NullString
 	var vendorType sql.NullString
@@ -119,6 +130,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 			e.vat_rate_percent, e.vat_amount,
 			e.is_tax_deductible, e.business_percent, e.payment_method,
 			e.document_path, e.notes,
+			e.tax_reviewed_at,
 			e.created_at, e.updated_at, e.deleted_at,
 			c.name, c.type, c.ico
 		FROM expenses e
@@ -130,6 +142,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 		&e.VATRatePercent, &e.VATAmount,
 		&e.IsTaxDeductible, &e.BusinessPercent, &e.PaymentMethod,
 		&e.DocumentPath, &e.Notes,
+		&taxReviewedAtStr,
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 		&vendorName, &vendorType, &vendorICO,
 	)
@@ -146,6 +159,10 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 	if deletedAtStr.Valid {
 		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
 		e.DeletedAt = &t
+	}
+	if taxReviewedAtStr.Valid {
+		t, _ := time.Parse(time.RFC3339, taxReviewedAtStr.String)
+		e.TaxReviewedAt = &t
 	}
 	if vendorID.Valid {
 		vid := vendorID.Int64
@@ -190,6 +207,13 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 		search := "%" + filter.Search + "%"
 		args = append(args, search, search, search)
 	}
+	if filter.TaxReviewed != nil {
+		if *filter.TaxReviewed {
+			where += " AND e.tax_reviewed_at IS NOT NULL"
+		} else {
+			where += " AND e.tax_reviewed_at IS NULL"
+		}
+	}
 
 	// Count.
 	var total int
@@ -205,6 +229,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 			e.vat_rate_percent, e.vat_amount,
 			e.is_tax_deductible, e.business_percent, e.payment_method,
 			e.document_path, e.notes,
+			e.tax_reviewed_at,
 			e.created_at, e.updated_at, e.deleted_at,
 			COALESCE(c.name, '') AS vendor_name
 		FROM expenses e
@@ -228,6 +253,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 		var createdAtStr string
 		var updatedAtStr string
 		var deletedAtStr sql.NullString
+		var taxReviewedAtStr sql.NullString
 		var vendorID sql.NullInt64
 		var vendorName string
 
@@ -237,6 +263,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 			&e.VATRatePercent, &e.VATAmount,
 			&e.IsTaxDeductible, &e.BusinessPercent, &e.PaymentMethod,
 			&e.DocumentPath, &e.Notes,
+			&taxReviewedAtStr,
 			&createdAtStr, &updatedAtStr, &deletedAtStr,
 			&vendorName,
 		); err != nil {
@@ -249,6 +276,10 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 		if deletedAtStr.Valid {
 			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
 			e.DeletedAt = &t
+		}
+		if taxReviewedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, taxReviewedAtStr.String)
+			e.TaxReviewedAt = &t
 		}
 		if vendorID.Valid {
 			vid := vendorID.Int64
@@ -264,4 +295,41 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 		return nil, 0, fmt.Errorf("iterating expense rows: %w", err)
 	}
 	return expenses, total, nil
+}
+
+// MarkTaxReviewed sets tax_reviewed_at to the current timestamp for the given expense IDs.
+func (r *ExpenseRepository) MarkTaxReviewed(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = placeholders[:len(placeholders)-1]
+	args := make([]any, len(ids)+1)
+	args[0] = time.Now().Format(time.RFC3339)
+	for i, id := range ids {
+		args[i+1] = id
+	}
+	_, err := r.db.ExecContext(ctx,
+		fmt.Sprintf("UPDATE expenses SET tax_reviewed_at = ? WHERE id IN (%s) AND deleted_at IS NULL", placeholders),
+		args...,
+	)
+	return err
+}
+
+// UnmarkTaxReviewed clears tax_reviewed_at for the given expense IDs.
+func (r *ExpenseRepository) UnmarkTaxReviewed(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = placeholders[:len(placeholders)-1]
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	_, err := r.db.ExecContext(ctx,
+		fmt.Sprintf("UPDATE expenses SET tax_reviewed_at = NULL WHERE id IN (%s) AND deleted_at IS NULL", placeholders),
+		args...,
+	)
+	return err
 }

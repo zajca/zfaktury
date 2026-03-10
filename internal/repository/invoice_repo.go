@@ -37,6 +37,11 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 		seqID = inv.SequenceID
 	}
 
+	var relatedInvoiceID any
+	if inv.RelatedInvoiceID != nil {
+		relatedInvoiceID = *inv.RelatedInvoiceID
+	}
+
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO invoices (
 			sequence_id, invoice_number, type, status,
@@ -45,14 +50,16 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 			payment_method, bank_account, bank_code, iban, swift,
 			subtotal_amount, vat_amount, total_amount, paid_amount,
 			notes, internal_notes, sent_at, paid_at,
+			related_invoice_id, relation_type,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		seqID, inv.InvoiceNumber, inv.Type, inv.Status,
 		inv.IssueDate, inv.DueDate, inv.DeliveryDate, inv.VariableSymbol, inv.ConstantSymbol,
 		inv.CustomerID, inv.CurrencyCode, inv.ExchangeRate,
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
 		inv.SubtotalAmount, inv.VATAmount, inv.TotalAmount, inv.PaidAmount,
 		inv.Notes, inv.InternalNotes, inv.SentAt, inv.PaidAt,
+		relatedInvoiceID, inv.RelationType,
 		inv.CreatedAt, inv.UpdatedAt,
 	)
 	if err != nil {
@@ -108,6 +115,11 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 		updateSeqID = inv.SequenceID
 	}
 
+	var updateRelatedInvoiceID any
+	if inv.RelatedInvoiceID != nil {
+		updateRelatedInvoiceID = *inv.RelatedInvoiceID
+	}
+
 	_, err = tx.ExecContext(ctx, `
 		UPDATE invoices SET
 			sequence_id = ?, invoice_number = ?, type = ?, status = ?,
@@ -116,6 +128,7 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 			payment_method = ?, bank_account = ?, bank_code = ?, iban = ?, swift = ?,
 			subtotal_amount = ?, vat_amount = ?, total_amount = ?, paid_amount = ?,
 			notes = ?, internal_notes = ?, sent_at = ?, paid_at = ?,
+			related_invoice_id = ?, relation_type = ?,
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		updateSeqID, inv.InvoiceNumber, inv.Type, inv.Status,
@@ -124,6 +137,7 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
 		inv.SubtotalAmount, inv.VATAmount, inv.TotalAmount, inv.PaidAmount,
 		inv.Notes, inv.InternalNotes, inv.SentAt, inv.PaidAt,
+		updateRelatedInvoiceID, inv.RelationType,
 		inv.UpdatedAt, inv.ID,
 	)
 	if err != nil {
@@ -196,6 +210,8 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 	var deletedAtStr sql.NullString
 	var sentAtStr sql.NullString
 	var paidAtStr sql.NullString
+	var relatedInvoiceID sql.NullInt64
+	var relationType sql.NullString
 	var custID sql.NullInt64
 	var custType, custName, custICO, custDIC sql.NullString
 	var custStreet, custCity, custZIP, custCountry sql.NullString
@@ -209,6 +225,7 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 			i.payment_method, i.bank_account, i.bank_code, i.iban, i.swift,
 			i.subtotal_amount, i.vat_amount, i.total_amount, i.paid_amount,
 			i.notes, i.internal_notes, i.sent_at, i.paid_at,
+			i.related_invoice_id, i.relation_type,
 			i.created_at, i.updated_at, i.deleted_at,
 			c.id, c.type, c.name, c.ico, c.dic,
 			c.street, c.city, c.zip, c.country,
@@ -223,6 +240,7 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 		&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
 		&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
 		&inv.Notes, &inv.InternalNotes, &sentAtStr, &paidAtStr,
+		&relatedInvoiceID, &relationType,
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 		&custID, &custType, &custName, &custICO, &custDIC,
 		&custStreet, &custCity, &custZIP, &custCountry,
@@ -237,6 +255,12 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 
 	if seqID.Valid {
 		inv.SequenceID = seqID.Int64
+	}
+	if relatedInvoiceID.Valid {
+		inv.RelatedInvoiceID = &relatedInvoiceID.Int64
+	}
+	if relationType.Valid {
+		inv.RelationType = relationType.String
 	}
 	inv.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
 	inv.DueDate, _ = time.Parse("2006-01-02", dueDateStr)
@@ -347,6 +371,7 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 			i.payment_method, i.bank_account, i.bank_code, i.iban, i.swift,
 			i.subtotal_amount, i.vat_amount, i.total_amount, i.paid_amount,
 			i.notes, i.internal_notes, i.sent_at, i.paid_at,
+			i.related_invoice_id, i.relation_type,
 			i.created_at, i.updated_at, i.deleted_at,
 			COALESCE(c.name, '') AS customer_name
 		FROM invoices i
@@ -374,6 +399,8 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 		var deletedAtStr sql.NullString
 		var sentAtStr sql.NullString
 		var paidAtStr sql.NullString
+		var listRelatedInvoiceID sql.NullInt64
+		var listRelationType sql.NullString
 		var customerName string
 
 		if err := rows.Scan(
@@ -383,6 +410,7 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 			&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
 			&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
 			&inv.Notes, &inv.InternalNotes, &sentAtStr, &paidAtStr,
+			&listRelatedInvoiceID, &listRelationType,
 			&createdAtStr, &updatedAtStr, &deletedAtStr,
 			&customerName,
 		); err != nil {
@@ -391,6 +419,12 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 
 		if listSeqID.Valid {
 			inv.SequenceID = listSeqID.Int64
+		}
+		if listRelatedInvoiceID.Valid {
+			inv.RelatedInvoiceID = &listRelatedInvoiceID.Int64
+		}
+		if listRelationType.Valid {
+			inv.RelationType = listRelationType.String
 		}
 		inv.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
 		inv.DueDate, _ = time.Parse("2006-01-02", dueDateStr)
@@ -442,6 +476,90 @@ func (r *InvoiceRepository) UpdateStatus(ctx context.Context, id int64, status s
 		return fmt.Errorf("invoice %d not found or already deleted", id)
 	}
 	return nil
+}
+
+// GetRelatedInvoices returns all non-deleted invoices that reference the given invoiceID as their related invoice.
+func (r *InvoiceRepository) GetRelatedInvoices(ctx context.Context, invoiceID int64) ([]domain.Invoice, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT
+			i.id, i.sequence_id, i.invoice_number, i.type, i.status,
+			i.issue_date, i.due_date, i.delivery_date, i.variable_symbol, i.constant_symbol,
+			i.customer_id, i.currency_code, i.exchange_rate,
+			i.payment_method, i.bank_account, i.bank_code, i.iban, i.swift,
+			i.subtotal_amount, i.vat_amount, i.total_amount, i.paid_amount,
+			i.notes, i.internal_notes, i.sent_at, i.paid_at,
+			i.related_invoice_id, i.relation_type,
+			i.created_at, i.updated_at, i.deleted_at
+		FROM invoices i
+		WHERE i.related_invoice_id = ? AND i.deleted_at IS NULL
+		ORDER BY i.created_at ASC`, invoiceID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying related invoices for invoice %d: %w", invoiceID, err)
+	}
+	defer rows.Close()
+
+	var invoices []domain.Invoice
+	for rows.Next() {
+		var inv domain.Invoice
+		var relSeqID sql.NullInt64
+		var issueDateStr, dueDateStr string
+		var deliveryDateStr sql.NullString
+		var createdAtStr, updatedAtStr string
+		var deletedAtStr sql.NullString
+		var sentAtStr sql.NullString
+		var paidAtStr sql.NullString
+		var relRelatedInvoiceID sql.NullInt64
+		var relRelationType sql.NullString
+
+		if err := rows.Scan(
+			&inv.ID, &relSeqID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
+			&issueDateStr, &dueDateStr, &deliveryDateStr, &inv.VariableSymbol, &inv.ConstantSymbol,
+			&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
+			&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
+			&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
+			&inv.Notes, &inv.InternalNotes, &sentAtStr, &paidAtStr,
+			&relRelatedInvoiceID, &relRelationType,
+			&createdAtStr, &updatedAtStr, &deletedAtStr,
+		); err != nil {
+			return nil, fmt.Errorf("scanning related invoice row: %w", err)
+		}
+
+		if relSeqID.Valid {
+			inv.SequenceID = relSeqID.Int64
+		}
+		if relRelatedInvoiceID.Valid {
+			inv.RelatedInvoiceID = &relRelatedInvoiceID.Int64
+		}
+		if relRelationType.Valid {
+			inv.RelationType = relRelationType.String
+		}
+		inv.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
+		inv.DueDate, _ = time.Parse("2006-01-02", dueDateStr)
+		if deliveryDateStr.Valid {
+			inv.DeliveryDate, _ = time.Parse("2006-01-02", deliveryDateStr.String)
+		}
+		inv.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		inv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+		if sentAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, sentAtStr.String)
+			inv.SentAt = &t
+		}
+		if paidAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, paidAtStr.String)
+			inv.PaidAt = &t
+		}
+		if deletedAtStr.Valid {
+			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
+			inv.DeletedAt = &t
+		}
+
+		invoices = append(invoices, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating related invoice rows: %w", err)
+	}
+	return invoices, nil
 }
 
 // GetNextNumber atomically increments the sequence counter and returns the formatted invoice number.

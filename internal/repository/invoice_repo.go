@@ -189,6 +189,8 @@ func (r *InvoiceRepository) Delete(ctx context.Context, id int64) error {
 func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invoice, error) {
 	inv := &domain.Invoice{}
 	var seqID sql.NullInt64
+	var issueDateStr, dueDateStr string
+	var deliveryDateStr sql.NullString
 	var createdAtStr string
 	var updatedAtStr string
 	var deletedAtStr sql.NullString
@@ -216,7 +218,7 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 		WHERE i.id = ? AND i.deleted_at IS NULL`, id,
 	).Scan(
 		&inv.ID, &seqID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
-		&inv.IssueDate, &inv.DueDate, &inv.DeliveryDate, &inv.VariableSymbol, &inv.ConstantSymbol,
+		&issueDateStr, &dueDateStr, &deliveryDateStr, &inv.VariableSymbol, &inv.ConstantSymbol,
 		&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
 		&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
 		&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
@@ -235,6 +237,11 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 
 	if seqID.Valid {
 		inv.SequenceID = seqID.Int64
+	}
+	inv.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
+	inv.DueDate, _ = time.Parse("2006-01-02", dueDateStr)
+	if deliveryDateStr.Valid {
+		inv.DeliveryDate, _ = time.Parse("2006-01-02", deliveryDateStr.String)
 	}
 	inv.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
 	inv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
@@ -360,6 +367,8 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 	for rows.Next() {
 		var inv domain.Invoice
 		var listSeqID sql.NullInt64
+		var issueDateStr, dueDateStr string
+		var deliveryDateStr sql.NullString
 		var createdAtStr string
 		var updatedAtStr string
 		var deletedAtStr sql.NullString
@@ -369,7 +378,7 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 
 		if err := rows.Scan(
 			&inv.ID, &listSeqID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
-			&inv.IssueDate, &inv.DueDate, &inv.DeliveryDate, &inv.VariableSymbol, &inv.ConstantSymbol,
+			&issueDateStr, &dueDateStr, &deliveryDateStr, &inv.VariableSymbol, &inv.ConstantSymbol,
 			&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
 			&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
 			&inv.SubtotalAmount, &inv.VATAmount, &inv.TotalAmount, &inv.PaidAmount,
@@ -382,6 +391,11 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 
 		if listSeqID.Valid {
 			inv.SequenceID = listSeqID.Int64
+		}
+		inv.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
+		inv.DueDate, _ = time.Parse("2006-01-02", dueDateStr)
+		if deliveryDateStr.Valid {
+			inv.DeliveryDate, _ = time.Parse("2006-01-02", deliveryDateStr.String)
 		}
 		inv.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
 		inv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)

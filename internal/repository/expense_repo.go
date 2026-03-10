@@ -103,6 +103,7 @@ func (r *ExpenseRepository) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a single expense by ID, including vendor data if available.
 func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expense, error) {
 	e := &domain.Expense{}
+	var issueDateStr string
 	var createdAtStr string
 	var updatedAtStr string
 	var deletedAtStr sql.NullString
@@ -125,7 +126,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 		WHERE e.id = ? AND e.deleted_at IS NULL`, id,
 	).Scan(
 		&e.ID, &vendorID, &e.ExpenseNumber, &e.Category, &e.Description,
-		&e.IssueDate, &e.Amount, &e.CurrencyCode, &e.ExchangeRate,
+		&issueDateStr, &e.Amount, &e.CurrencyCode, &e.ExchangeRate,
 		&e.VATRatePercent, &e.VATAmount,
 		&e.IsTaxDeductible, &e.BusinessPercent, &e.PaymentMethod,
 		&e.DocumentPath, &e.Notes,
@@ -139,6 +140,7 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 		return nil, fmt.Errorf("querying expense %d: %w", id, err)
 	}
 
+	e.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
 	e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
 	e.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
 	if deletedAtStr.Valid {
@@ -222,6 +224,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 	var expenses []domain.Expense
 	for rows.Next() {
 		var e domain.Expense
+		var issueDateStr string
 		var createdAtStr string
 		var updatedAtStr string
 		var deletedAtStr sql.NullString
@@ -230,7 +233,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 
 		if err := rows.Scan(
 			&e.ID, &vendorID, &e.ExpenseNumber, &e.Category, &e.Description,
-			&e.IssueDate, &e.Amount, &e.CurrencyCode, &e.ExchangeRate,
+			&issueDateStr, &e.Amount, &e.CurrencyCode, &e.ExchangeRate,
 			&e.VATRatePercent, &e.VATAmount,
 			&e.IsTaxDeductible, &e.BusinessPercent, &e.PaymentMethod,
 			&e.DocumentPath, &e.Notes,
@@ -240,6 +243,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
 		}
 
+		e.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
 		e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
 		e.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
 		if deletedAtStr.Valid {

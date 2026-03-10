@@ -25,10 +25,10 @@ func (h *ContactHandler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
+	r.Get("/ares/{ico}", h.LookupARES)
 	r.Get("/{id}", h.GetByID)
 	r.Put("/{id}", h.Update)
 	r.Delete("/{id}", h.Delete)
-	r.Get("/ares/{ico}", h.LookupARES)
 	return r
 }
 
@@ -123,7 +123,13 @@ func (h *ContactHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, contactFromDomain(contact))
+	updated, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to fetch updated contact")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, contactFromDomain(updated))
 }
 
 // Delete handles DELETE /api/v1/contacts/{id}.

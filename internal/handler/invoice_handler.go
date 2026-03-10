@@ -155,7 +155,13 @@ func (h *InvoiceHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, invoiceFromDomain(invoice))
+	updated, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to fetch updated invoice")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, invoiceFromDomain(updated))
 }
 
 // Delete handles DELETE /api/v1/invoices/{id}.

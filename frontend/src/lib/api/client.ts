@@ -77,6 +77,7 @@ export interface Invoice {
 export interface Expense {
 	id: number;
 	vendor_id?: number;
+	vendor?: Contact;
 	expense_number: string;
 	category: string;
 	description: string;

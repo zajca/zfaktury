@@ -464,6 +464,8 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 		return "", fmt.Errorf("querying invoice sequence %d: %w", sequenceID, err)
 	}
 
+	// NOTE: format_pattern is not yet implemented; using hardcoded format.
+	// This must stay consistent with service.FormatPreview.
 	number := fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
 
 	_, err = tx.ExecContext(ctx, `

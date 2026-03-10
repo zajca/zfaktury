@@ -152,6 +152,8 @@ func (s *SequenceService) GetOrCreateForYear(ctx context.Context, prefix string,
 }
 
 // FormatPreview returns a preview of the next formatted invoice number for a sequence.
+// NOTE: format_pattern is not yet implemented; using hardcoded format.
+// This must stay consistent with InvoiceRepository.GetNextNumber.
 func FormatPreview(seq *domain.InvoiceSequence) string {
 	return fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
 }

@@ -485,29 +485,30 @@ func (r *expenseRequest) toDomain() (*domain.Expense, error) {
 
 // expenseResponse is the JSON response for an expense.
 type expenseResponse struct {
-	ID              int64  `json:"id"`
-	VendorID        *int64 `json:"vendor_id,omitempty"`
-	ExpenseNumber   string `json:"expense_number"`
-	Category        string `json:"category"`
-	Description     string `json:"description"`
-	IssueDate       string `json:"issue_date"`
-	Amount          int64  `json:"amount"`
-	CurrencyCode    string `json:"currency_code"`
-	ExchangeRate    int64  `json:"exchange_rate"`
-	VATRatePercent  int    `json:"vat_rate_percent"`
-	VATAmount       int64  `json:"vat_amount"`
-	IsTaxDeductible bool   `json:"is_tax_deductible"`
-	BusinessPercent int    `json:"business_percent"`
-	PaymentMethod   string `json:"payment_method"`
-	DocumentPath    string `json:"document_path,omitempty"`
-	Notes           string `json:"notes"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
+	ID              int64            `json:"id"`
+	VendorID        *int64           `json:"vendor_id,omitempty"`
+	Vendor          *contactResponse `json:"vendor,omitempty"`
+	ExpenseNumber   string           `json:"expense_number"`
+	Category        string           `json:"category"`
+	Description     string           `json:"description"`
+	IssueDate       string           `json:"issue_date"`
+	Amount          int64            `json:"amount"`
+	CurrencyCode    string           `json:"currency_code"`
+	ExchangeRate    int64            `json:"exchange_rate"`
+	VATRatePercent  int              `json:"vat_rate_percent"`
+	VATAmount       int64            `json:"vat_amount"`
+	IsTaxDeductible bool             `json:"is_tax_deductible"`
+	BusinessPercent int              `json:"business_percent"`
+	PaymentMethod   string           `json:"payment_method"`
+	DocumentPath    string           `json:"document_path,omitempty"`
+	Notes           string           `json:"notes"`
+	CreatedAt       string           `json:"created_at"`
+	UpdatedAt       string           `json:"updated_at"`
 }
 
 // expenseFromDomain converts a domain.Expense to an expenseResponse.
 func expenseFromDomain(e *domain.Expense) expenseResponse {
-	return expenseResponse{
+	resp := expenseResponse{
 		ID:              e.ID,
 		VendorID:        e.VendorID,
 		ExpenseNumber:   e.ExpenseNumber,
@@ -527,4 +528,9 @@ func expenseFromDomain(e *domain.Expense) expenseResponse {
 		CreatedAt:       e.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       e.UpdatedAt.Format(time.RFC3339),
 	}
+	if e.Vendor != nil {
+		v := contactFromDomain(e.Vendor)
+		resp.Vendor = &v
+	}
+	return resp
 }

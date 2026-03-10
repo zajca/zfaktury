@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -42,7 +43,7 @@ func (s *OverdueService) CheckOverdue(ctx context.Context) (int, error) {
 	// First, find all candidates before updating.
 	ids, err := s.invoiceRepo.ListOverdueCandidateIDs(ctx, now)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("listing overdue candidates: %w", err)
 	}
 
 	if len(ids) == 0 {
@@ -74,5 +75,9 @@ func (s *OverdueService) CheckOverdue(ctx context.Context) (int, error) {
 
 // GetHistory returns the status change history for a given invoice.
 func (s *OverdueService) GetHistory(ctx context.Context, invoiceID int64) ([]domain.InvoiceStatusChange, error) {
-	return s.historyRepo.ListByInvoiceID(ctx, invoiceID)
+	history, err := s.historyRepo.ListByInvoiceID(ctx, invoiceID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching invoice status history: %w", err)
+	}
+	return history, nil
 }

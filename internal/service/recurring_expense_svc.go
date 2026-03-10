@@ -64,7 +64,10 @@ func (s *RecurringExpenseService) Create(ctx context.Context, re *domain.Recurri
 		re.VATAmount = re.Amount.Multiply(float64(re.VATRatePercent) / (100.0 + float64(re.VATRatePercent)))
 	}
 
-	return s.repo.Create(ctx, re)
+	if err := s.repo.Create(ctx, re); err != nil {
+		return fmt.Errorf("creating recurring expense: %w", err)
+	}
+	return nil
 }
 
 // Update validates and updates an existing recurring expense.
@@ -96,7 +99,10 @@ func (s *RecurringExpenseService) Update(ctx context.Context, re *domain.Recurri
 		re.VATAmount = re.Amount.Multiply(float64(re.VATRatePercent) / (100.0 + float64(re.VATRatePercent)))
 	}
 
-	return s.repo.Update(ctx, re)
+	if err := s.repo.Update(ctx, re); err != nil {
+		return fmt.Errorf("updating recurring expense: %w", err)
+	}
+	return nil
 }
 
 // Delete removes a recurring expense by ID (soft delete).
@@ -104,7 +110,10 @@ func (s *RecurringExpenseService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
 		return errors.New("recurring expense ID is required")
 	}
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("deleting recurring expense: %w", err)
+	}
+	return nil
 }
 
 // GetByID retrieves a recurring expense by its ID.
@@ -112,7 +121,11 @@ func (s *RecurringExpenseService) GetByID(ctx context.Context, id int64) (*domai
 	if id == 0 {
 		return nil, errors.New("recurring expense ID is required")
 	}
-	return s.repo.GetByID(ctx, id)
+	re, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching recurring expense: %w", err)
+	}
+	return re, nil
 }
 
 // List retrieves recurring expenses with pagination.
@@ -126,7 +139,11 @@ func (s *RecurringExpenseService) List(ctx context.Context, limit, offset int) (
 	if offset < 0 {
 		offset = 0
 	}
-	return s.repo.List(ctx, limit, offset)
+	items, count, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listing recurring expenses: %w", err)
+	}
+	return items, count, nil
 }
 
 // Activate enables a recurring expense for generation.
@@ -134,7 +151,10 @@ func (s *RecurringExpenseService) Activate(ctx context.Context, id int64) error 
 	if id == 0 {
 		return errors.New("recurring expense ID is required")
 	}
-	return s.repo.Activate(ctx, id)
+	if err := s.repo.Activate(ctx, id); err != nil {
+		return fmt.Errorf("activating recurring expense: %w", err)
+	}
+	return nil
 }
 
 // Deactivate disables a recurring expense from generation.
@@ -142,7 +162,10 @@ func (s *RecurringExpenseService) Deactivate(ctx context.Context, id int64) erro
 	if id == 0 {
 		return errors.New("recurring expense ID is required")
 	}
-	return s.repo.Deactivate(ctx, id)
+	if err := s.repo.Deactivate(ctx, id); err != nil {
+		return fmt.Errorf("deactivating recurring expense: %w", err)
+	}
+	return nil
 }
 
 // GeneratePending finds all due recurring expenses and creates actual expenses for them.

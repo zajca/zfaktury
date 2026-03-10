@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { expensesApi, type Expense } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
@@ -79,7 +80,7 @@
 	</div>
 
 	{#if error}
-		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 			{error}
 		</div>
 	{/if}
@@ -87,7 +88,7 @@
 	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
-				<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+				<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
 			</div>
 		{:else if expenses.length === 0}
 			<div class="p-12 text-center text-gray-400">
@@ -107,7 +108,10 @@
 					{#each expenses as expense}
 						<tr
 							class="hover:bg-gray-50 transition-colors cursor-pointer"
-							onclick={() => { window.location.href = `/expenses/${expense.id}`; }}
+							role="link"
+							tabindex="0"
+							onclick={() => { goto(`/expenses/${expense.id}`); }}
+							onkeydown={(e) => { if (e.key === 'Enter') goto(`/expenses/${expense.id}`); }}
 						>
 							<td class="px-4 py-3">
 								<a href="/expenses/{expense.id}" class="font-medium text-blue-600 hover:text-blue-800">

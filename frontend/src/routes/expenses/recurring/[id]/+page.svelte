@@ -181,14 +181,14 @@
 	<a href="/expenses/recurring" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na opakované náklady</a>
 
 	{#if error}
-		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 			{error}
 		</div>
 	{/if}
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
 		</div>
 	{:else if item}
 		<!-- Header -->

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -44,7 +45,10 @@ func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) er
 		expense.VATAmount = expense.Amount.Multiply(float64(expense.VATRatePercent) / (100.0 + float64(expense.VATRatePercent)))
 	}
 
-	return s.repo.Create(ctx, expense)
+	if err := s.repo.Create(ctx, expense); err != nil {
+		return fmt.Errorf("creating expense: %w", err)
+	}
+	return nil
 }
 
 // Update validates and updates an existing expense.
@@ -67,7 +71,10 @@ func (s *ExpenseService) Update(ctx context.Context, expense *domain.Expense) er
 		expense.VATAmount = expense.Amount.Multiply(float64(expense.VATRatePercent) / (100.0 + float64(expense.VATRatePercent)))
 	}
 
-	return s.repo.Update(ctx, expense)
+	if err := s.repo.Update(ctx, expense); err != nil {
+		return fmt.Errorf("updating expense: %w", err)
+	}
+	return nil
 }
 
 // Delete removes an expense by ID (soft delete).
@@ -75,7 +82,10 @@ func (s *ExpenseService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
 		return errors.New("expense ID is required")
 	}
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("deleting expense: %w", err)
+	}
+	return nil
 }
 
 // GetByID retrieves an expense by its ID.
@@ -83,7 +93,11 @@ func (s *ExpenseService) GetByID(ctx context.Context, id int64) (*domain.Expense
 	if id == 0 {
 		return nil, errors.New("expense ID is required")
 	}
-	return s.repo.GetByID(ctx, id)
+	exp, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching expense: %w", err)
+	}
+	return exp, nil
 }
 
 // List retrieves expenses matching the given filter.
@@ -98,7 +112,11 @@ func (s *ExpenseService) List(ctx context.Context, filter domain.ExpenseFilter) 
 	if filter.Offset < 0 {
 		filter.Offset = 0
 	}
-	return s.repo.List(ctx, filter)
+	expenses, count, err := s.repo.List(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listing expenses: %w", err)
+	}
+	return expenses, count, nil
 }
 
 const maxBulkIDs = 500
@@ -111,7 +129,10 @@ func (s *ExpenseService) MarkTaxReviewed(ctx context.Context, ids []int64) error
 	if len(ids) > maxBulkIDs {
 		return errors.New("too many IDs, maximum is 500")
 	}
-	return s.repo.MarkTaxReviewed(ctx, dedupIDs(ids))
+	if err := s.repo.MarkTaxReviewed(ctx, dedupIDs(ids)); err != nil {
+		return fmt.Errorf("marking expenses as tax reviewed: %w", err)
+	}
+	return nil
 }
 
 // UnmarkTaxReviewed removes the tax review mark from the given expense IDs.
@@ -122,7 +143,10 @@ func (s *ExpenseService) UnmarkTaxReviewed(ctx context.Context, ids []int64) err
 	if len(ids) > maxBulkIDs {
 		return errors.New("too many IDs, maximum is 500")
 	}
-	return s.repo.UnmarkTaxReviewed(ctx, dedupIDs(ids))
+	if err := s.repo.UnmarkTaxReviewed(ctx, dedupIDs(ids)); err != nil {
+		return fmt.Errorf("unmarking expenses tax review: %w", err)
+	}
+	return nil
 }
 
 // dedupIDs removes duplicate int64 values preserving order.

@@ -4,23 +4,23 @@ import "time"
 
 // InvoiceFilter holds filtering options for listing invoices.
 type InvoiceFilter struct {
-	Status     string     `json:"status"`
-	CustomerID *int64     `json:"customer_id"`
-	DateFrom   *time.Time `json:"date_from"`
-	DateTo     *time.Time `json:"date_to"`
-	Search     string     `json:"search"`
-	Limit      int        `json:"limit"`
-	Offset     int        `json:"offset"`
+	Status     string
+	CustomerID *int64
+	DateFrom   *time.Time
+	DateTo     *time.Time
+	Search     string
+	Limit      int
+	Offset     int
 }
 
 // ExpenseFilter holds filtering options for listing expenses.
 type ExpenseFilter struct {
-	Category    string     `json:"category"`
-	VendorID    *int64     `json:"vendor_id"`
-	DateFrom    *time.Time `json:"date_from"`
-	DateTo      *time.Time `json:"date_to"`
-	Search      string     `json:"search"`
-	TaxReviewed *bool      `json:"tax_reviewed"`
-	Limit       int        `json:"limit"`
-	Offset      int        `json:"offset"`
+	Category    string
+	VendorID    *int64
+	DateFrom    *time.Time
+	DateTo      *time.Time
+	Search      string
+	TaxReviewed *bool
+	Limit       int
+	Offset      int
 }

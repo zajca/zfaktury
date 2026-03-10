@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -46,7 +47,10 @@ func (s *RecurringInvoiceService) Create(ctx context.Context, ri *domain.Recurri
 		ri.CurrencyCode = domain.CurrencyCZK
 	}
 
-	return s.repo.Create(ctx, ri)
+	if err := s.repo.Create(ctx, ri); err != nil {
+		return fmt.Errorf("creating recurring invoice: %w", err)
+	}
+	return nil
 }
 
 // Update validates and updates an existing recurring invoice.
@@ -67,10 +71,13 @@ func (s *RecurringInvoiceService) Update(ctx context.Context, ri *domain.Recurri
 	// Verify it exists.
 	_, err := s.repo.GetByID(ctx, ri.ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetching recurring invoice for update: %w", err)
 	}
 
-	return s.repo.Update(ctx, ri)
+	if err := s.repo.Update(ctx, ri); err != nil {
+		return fmt.Errorf("updating recurring invoice: %w", err)
+	}
+	return nil
 }
 
 // Delete removes a recurring invoice by ID (soft delete).
@@ -78,7 +85,10 @@ func (s *RecurringInvoiceService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
 		return errors.New("recurring invoice ID is required")
 	}
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("deleting recurring invoice: %w", err)
+	}
+	return nil
 }
 
 // GetByID retrieves a recurring invoice by its ID.
@@ -86,19 +96,27 @@ func (s *RecurringInvoiceService) GetByID(ctx context.Context, id int64) (*domai
 	if id == 0 {
 		return nil, errors.New("recurring invoice ID is required")
 	}
-	return s.repo.GetByID(ctx, id)
+	ri, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching recurring invoice: %w", err)
+	}
+	return ri, nil
 }
 
 // List retrieves all recurring invoices.
 func (s *RecurringInvoiceService) List(ctx context.Context) ([]domain.RecurringInvoice, error) {
-	return s.repo.List(ctx)
+	items, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing recurring invoices: %w", err)
+	}
+	return items, nil
 }
 
 // GenerateInvoice creates a single invoice from a recurring invoice template.
 func (s *RecurringInvoiceService) GenerateInvoice(ctx context.Context, id int64) (*domain.Invoice, error) {
 	ri, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetching recurring invoice for generation: %w", err)
 	}
 
 	return s.createInvoiceFromTemplate(ctx, ri, ri.NextIssueDate)
@@ -111,7 +129,7 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 	dueList, err := s.repo.ListDue(ctx, today)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("listing due recurring invoices: %w", err)
 	}
 
 	count := 0
@@ -121,7 +139,7 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
 		// Check if past end_date - deactivate instead of generating.
 		if ri.EndDate != nil && today.After(*ri.EndDate) {
 			if err := s.repo.Deactivate(ctx, ri.ID); err != nil {
-				return count, err
+				return count, fmt.Errorf("deactivating expired recurring invoice %d: %w", ri.ID, err)
 			}
 			continue
 		}
@@ -129,7 +147,7 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
 		// Generate the invoice.
 		_, err := s.createInvoiceFromTemplate(ctx, ri, ri.NextIssueDate)
 		if err != nil {
-			return count, err
+			return count, fmt.Errorf("generating invoice from recurring %d: %w", ri.ID, err)
 		}
 		count++
 
@@ -142,7 +160,7 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
 		}
 
 		if err := s.repo.Update(ctx, ri); err != nil {
-			return count, err
+			return count, fmt.Errorf("updating recurring invoice %d next date: %w", ri.ID, err)
 		}
 	}
 
@@ -182,7 +200,7 @@ func (s *RecurringInvoiceService) createInvoiceFromTemplate(ctx context.Context,
 
 	// Create assigns invoice number from sequence and calculates totals.
 	if err := s.invoices.Create(ctx, invoice); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating invoice from template: %w", err)
 	}
 
 	return invoice, nil

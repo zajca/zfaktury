@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -124,20 +125,26 @@ func (r *ContactRepository) GetByID(ctx context.Context, id int64) (*domain.Cont
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("contact %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying contact %d: %w", id, err)
 	}
-	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		c.DeletedAt = &t
+	c.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact: %w", err)
 	}
-	if vatUnreliableAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, vatUnreliableAtStr.String)
-		c.VATUnreliableAt = &t
+	c.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact: %w", err)
+	}
+	c.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact: %w", err)
+	}
+	c.VATUnreliableAt, err = parseDatePtr(time.RFC3339, vatUnreliableAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact: %w", err)
 	}
 	return c, nil
 }
@@ -201,15 +208,21 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 		); err != nil {
 			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
 		}
-		c.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			c.DeletedAt = &t
+		c.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
 		}
-		if vatUnreliableAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, vatUnreliableAtStr.String)
-			c.VATUnreliableAt = &t
+		c.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
+		}
+		c.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
+		}
+		c.VATUnreliableAt, err = parseDatePtr(time.RFC3339, vatUnreliableAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning contact row: %w", err)
 		}
 		contacts = append(contacts, c)
 	}
@@ -240,20 +253,26 @@ func (r *ContactRepository) FindByICO(ctx context.Context, ico string) (*domain.
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("contact with ICO %s not found: %w", ico, err)
 		}
 		return nil, fmt.Errorf("querying contact by ICO %s: %w", ico, err)
 	}
-	c.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		c.DeletedAt = &t
+	c.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact by ICO: %w", err)
 	}
-	if vatUnreliableAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, vatUnreliableAtStr.String)
-		c.VATUnreliableAt = &t
+	c.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact by ICO: %w", err)
+	}
+	c.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact by ICO: %w", err)
+	}
+	c.VATUnreliableAt, err = parseDatePtr(time.RFC3339, vatUnreliableAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning contact by ICO: %w", err)
 	}
 	return c, nil
 }

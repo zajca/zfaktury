@@ -136,7 +136,11 @@ func (s *ReminderService) SendReminder(ctx context.Context, invoiceID int64) (*d
 
 // GetReminders returns all reminders for the given invoice.
 func (s *ReminderService) GetReminders(ctx context.Context, invoiceID int64) ([]domain.PaymentReminder, error) {
-	return s.reminderRepo.ListByInvoiceID(ctx, invoiceID)
+	reminders, err := s.reminderRepo.ListByInvoiceID(ctx, invoiceID)
+	if err != nil {
+		return nil, fmt.Errorf("listing reminders for invoice: %w", err)
+	}
+	return reminders, nil
 }
 
 // isOverdue checks whether the invoice qualifies for a reminder.

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -148,22 +149,31 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 		&vendorName, &vendorType, &vendorICO,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("expense %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying expense %d: %w", id, err)
 	}
 
-	e.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
-	e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	e.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		e.DeletedAt = &t
+	e.IssueDate, err = parseDate(time.DateOnly, issueDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense: %w", err)
 	}
-	if taxReviewedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, taxReviewedAtStr.String)
-		e.TaxReviewedAt = &t
+	e.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense: %w", err)
+	}
+	e.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense: %w", err)
+	}
+	e.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense: %w", err)
+	}
+	e.TaxReviewedAt, err = parseDatePtr(time.RFC3339, taxReviewedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense: %w", err)
 	}
 	if vendorID.Valid {
 		vid := vendorID.Int64
@@ -271,16 +281,25 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
 		}
 
-		e.IssueDate, _ = time.Parse("2006-01-02", issueDateStr)
-		e.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		e.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			e.DeletedAt = &t
+		e.IssueDate, err = parseDate(time.DateOnly, issueDateStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
 		}
-		if taxReviewedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, taxReviewedAtStr.String)
-			e.TaxReviewedAt = &t
+		e.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
+		}
+		e.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
+		}
+		e.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
+		}
+		e.TaxReviewedAt, err = parseDatePtr(time.RFC3339, taxReviewedAtStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scanning expense row: %w", err)
 		}
 		if vendorID.Valid {
 			vid := vendorID.Int64

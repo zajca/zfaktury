@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -138,22 +139,31 @@ func (r *RecurringExpenseRepository) GetByID(ctx context.Context, id int64) (*do
 		&vendorName, &vendorType, &vendorICO,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("recurring expense %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying recurring expense %d: %w", id, err)
 	}
 
-	re.NextIssueDate, _ = time.Parse("2006-01-02", nextIssueDateStr)
-	re.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	re.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-	if endDateStr.Valid {
-		t, _ := time.Parse("2006-01-02", endDateStr.String)
-		re.EndDate = &t
+	re.NextIssueDate, err = parseDate(time.DateOnly, nextIssueDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring expense: %w", err)
 	}
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		re.DeletedAt = &t
+	re.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring expense: %w", err)
+	}
+	re.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring expense: %w", err)
+	}
+	re.EndDate, err = parseDatePtr(time.DateOnly, endDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring expense: %w", err)
+	}
+	re.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring expense: %w", err)
 	}
 	if vendorID.Valid {
 		vid := vendorID.Int64
@@ -296,6 +306,7 @@ func (r *RecurringExpenseRepository) scanList(ctx context.Context, query string,
 // scanRows scans recurring expense rows from a query result.
 func (r *RecurringExpenseRepository) scanRows(rows *sql.Rows) ([]domain.RecurringExpense, error) {
 	var items []domain.RecurringExpense
+	var err error
 	for rows.Next() {
 		var re domain.RecurringExpense
 		var nextIssueDateStr string
@@ -318,16 +329,25 @@ func (r *RecurringExpenseRepository) scanRows(rows *sql.Rows) ([]domain.Recurrin
 			return nil, fmt.Errorf("scanning recurring expense row: %w", err)
 		}
 
-		re.NextIssueDate, _ = time.Parse("2006-01-02", nextIssueDateStr)
-		re.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		re.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-		if endDateStr.Valid {
-			t, _ := time.Parse("2006-01-02", endDateStr.String)
-			re.EndDate = &t
+		re.NextIssueDate, err = parseDate(time.DateOnly, nextIssueDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring expense row: %w", err)
 		}
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			re.DeletedAt = &t
+		re.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring expense row: %w", err)
+		}
+		re.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring expense row: %w", err)
+		}
+		re.EndDate, err = parseDatePtr(time.DateOnly, endDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring expense row: %w", err)
+		}
+		re.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring expense row: %w", err)
 		}
 		if vendorID.Valid {
 			vid := vendorID.Int64

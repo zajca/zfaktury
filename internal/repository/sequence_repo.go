@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -95,7 +96,7 @@ func (r *SequenceRepository) GetByID(ctx context.Context, id int64) (*domain.Inv
 		FROM invoice_sequences WHERE id = ? AND deleted_at IS NULL`, id,
 	).Scan(&seq.ID, &seq.Prefix, &seq.NextNumber, &seq.Year, &seq.FormatPattern)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("invoice sequence %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying invoice sequence %d: %w", id, err)
@@ -139,7 +140,7 @@ func (r *SequenceRepository) GetByPrefixAndYear(ctx context.Context, prefix stri
 		WHERE prefix = ? AND year = ? AND deleted_at IS NULL`, prefix, year,
 	).Scan(&seq.ID, &seq.Prefix, &seq.NextNumber, &seq.Year, &seq.FormatPattern)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("invoice sequence with prefix %q and year %d not found: %w", prefix, year, err)
 		}
 		return nil, fmt.Errorf("querying invoice sequence by prefix %q and year %d: %w", prefix, year, err)
@@ -170,7 +171,7 @@ func (r *SequenceRepository) MaxUsedNumber(ctx context.Context, sequenceID int64
 		SELECT next_number FROM invoice_sequences WHERE id = ? AND deleted_at IS NULL`, sequenceID,
 	).Scan(&nextNumber)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("querying max used number for sequence %d: %w", sequenceID, err)

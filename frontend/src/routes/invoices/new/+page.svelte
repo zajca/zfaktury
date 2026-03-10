@@ -142,7 +142,7 @@
 	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nová faktura</h1>
 
 	{#if error}
-		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 			{error}
 		</div>
 	{/if}

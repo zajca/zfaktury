@@ -70,8 +70,14 @@ func (r *ReminderRepository) ListByInvoiceID(ctx context.Context, invoiceID int6
 			return nil, fmt.Errorf("scanning payment reminder row: %w", err)
 		}
 
-		rem.SentAt, _ = time.Parse(time.RFC3339, sentAtStr)
-		rem.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		rem.SentAt, err = parseDate(time.RFC3339, sentAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning payment reminder row: %w", err)
+		}
+		rem.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning payment reminder row: %w", err)
+		}
 
 		reminders = append(reminders, rem)
 	}

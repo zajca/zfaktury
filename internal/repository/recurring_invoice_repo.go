@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -214,22 +215,31 @@ func (r *RecurringInvoiceRepository) GetByID(ctx context.Context, id int64) (*do
 		&custEmail, &custPhone, &custWeb,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("recurring invoice %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying recurring invoice %d: %w", id, err)
 	}
 
-	ri.NextIssueDate, _ = time.Parse("2006-01-02", nextIssueDateStr)
-	if endDateStr.Valid {
-		t, _ := time.Parse("2006-01-02", endDateStr.String)
-		ri.EndDate = &t
+	ri.NextIssueDate, err = parseDate(time.DateOnly, nextIssueDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring invoice: %w", err)
 	}
-	ri.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	ri.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		ri.DeletedAt = &t
+	ri.EndDate, err = parseDatePtr(time.DateOnly, endDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring invoice: %w", err)
+	}
+	ri.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring invoice: %w", err)
+	}
+	ri.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring invoice: %w", err)
+	}
+	ri.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning recurring invoice: %w", err)
 	}
 
 	if custID.Valid {
@@ -319,16 +329,25 @@ func (r *RecurringInvoiceRepository) List(ctx context.Context) ([]domain.Recurri
 			return nil, fmt.Errorf("scanning recurring invoice row: %w", err)
 		}
 
-		ri.NextIssueDate, _ = time.Parse("2006-01-02", nextIssueDateStr)
-		if endDateStr.Valid {
-			t, _ := time.Parse("2006-01-02", endDateStr.String)
-			ri.EndDate = &t
+		ri.NextIssueDate, err = parseDate(time.DateOnly, nextIssueDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring invoice row: %w", err)
 		}
-		ri.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		ri.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			ri.DeletedAt = &t
+		ri.EndDate, err = parseDatePtr(time.DateOnly, endDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring invoice row: %w", err)
+		}
+		ri.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring invoice row: %w", err)
+		}
+		ri.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring invoice row: %w", err)
+		}
+		ri.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning recurring invoice row: %w", err)
 		}
 		if customerName != "" {
 			ri.Customer = &domain.Contact{ID: ri.CustomerID, Name: customerName}
@@ -380,16 +399,25 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, date time.Time
 			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
 		}
 
-		ri.NextIssueDate, _ = time.Parse("2006-01-02", nextIssueDateStr)
-		if endDateStr.Valid {
-			t, _ := time.Parse("2006-01-02", endDateStr.String)
-			ri.EndDate = &t
+		ri.NextIssueDate, err = parseDate(time.DateOnly, nextIssueDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
 		}
-		ri.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		ri.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			ri.DeletedAt = &t
+		ri.EndDate, err = parseDatePtr(time.DateOnly, endDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
+		}
+		ri.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
+		}
+		ri.UpdatedAt, err = parseDate(time.RFC3339, updatedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
+		}
+		ri.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
 		}
 
 		result = append(result, ri)

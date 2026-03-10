@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -99,16 +100,19 @@ func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.Exp
 		&cat.SortOrder, &cat.IsDefault, &createdAtStr, &deletedAtStr,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("expense category %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying expense category %d: %w", id, err)
 	}
 
-	cat.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		cat.DeletedAt = &t
+	cat.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense category: %w", err)
+	}
+	cat.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense category: %w", err)
 	}
 	return cat, nil
 }
@@ -128,16 +132,19 @@ func (r *CategoryRepository) GetByKey(ctx context.Context, key string) (*domain.
 		&cat.SortOrder, &cat.IsDefault, &createdAtStr, &deletedAtStr,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("expense category with key %q not found: %w", key, err)
 		}
 		return nil, fmt.Errorf("querying expense category by key %q: %w", key, err)
 	}
 
-	cat.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		cat.DeletedAt = &t
+	cat.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense category by key: %w", err)
+	}
+	cat.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense category by key: %w", err)
 	}
 	return cat, nil
 }
@@ -168,10 +175,13 @@ func (r *CategoryRepository) List(ctx context.Context) ([]domain.ExpenseCategory
 			return nil, fmt.Errorf("scanning expense category row: %w", err)
 		}
 
-		cat.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			cat.DeletedAt = &t
+		cat.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning expense category row: %w", err)
+		}
+		cat.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning expense category row: %w", err)
 		}
 		categories = append(categories, cat)
 	}

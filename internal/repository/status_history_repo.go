@@ -59,7 +59,10 @@ func (r *StatusHistoryRepository) ListByInvoiceID(ctx context.Context, invoiceID
 		if err := rows.Scan(&c.ID, &c.InvoiceID, &c.OldStatus, &c.NewStatus, &changedAtStr, &c.Note); err != nil {
 			return nil, fmt.Errorf("scanning status history row: %w", err)
 		}
-		c.ChangedAt, _ = time.Parse(time.RFC3339, changedAtStr)
+		c.ChangedAt, err = parseDate(time.RFC3339, changedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning status history row: %w", err)
+		}
 		changes = append(changes, c)
 	}
 	if err := rows.Err(); err != nil {

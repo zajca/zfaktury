@@ -26,81 +26,81 @@ const (
 
 // Invoice represents an issued invoice.
 type Invoice struct {
-	ID             int64  `json:"id"`
-	SequenceID     int64  `json:"sequence_id"`
-	InvoiceNumber  string `json:"invoice_number"`
-	Type           string `json:"type"`   // regular, proforma, credit_note
-	Status         string `json:"status"` // draft, sent, paid, overdue, cancelled
+	ID             int64
+	SequenceID     int64
+	InvoiceNumber  string
+	Type           string   // regular, proforma, credit_note
+	Status         string // draft, sent, paid, overdue, cancelled
 
-	IssueDate      time.Time `json:"issue_date"`
-	DueDate        time.Time `json:"due_date"`
-	DeliveryDate   time.Time `json:"delivery_date"`
-	VariableSymbol string    `json:"variable_symbol"`
-	ConstantSymbol string    `json:"constant_symbol"`
+	IssueDate      time.Time
+	DueDate        time.Time
+	DeliveryDate   time.Time
+	VariableSymbol string
+	ConstantSymbol string
 
 	// Customer
-	CustomerID int64    `json:"customer_id"`
-	Customer   *Contact `json:"customer,omitempty"`
+	CustomerID int64
+	Customer   *Contact
 
 	// Currency
-	CurrencyCode string `json:"currency_code"`
-	ExchangeRate Amount `json:"exchange_rate"` // stored as cents, e.g. 2534 = 25.34 CZK per unit
+	CurrencyCode string
+	ExchangeRate Amount // stored as cents, e.g. 2534 = 25.34 CZK per unit
 
 	// Payment
-	PaymentMethod string `json:"payment_method"`
-	BankAccount   string `json:"bank_account"`
-	BankCode      string `json:"bank_code"`
-	IBAN          string `json:"iban"`
-	SWIFT         string `json:"swift"`
+	PaymentMethod string
+	BankAccount   string
+	BankCode      string
+	IBAN          string
+	SWIFT         string
 
 	// Amounts
-	SubtotalAmount Amount `json:"subtotal_amount"`
-	VATAmount      Amount `json:"vat_amount"`
-	TotalAmount    Amount `json:"total_amount"`
-	PaidAmount     Amount `json:"paid_amount"`
+	SubtotalAmount Amount
+	VATAmount      Amount
+	TotalAmount    Amount
+	PaidAmount     Amount
 
 	// Notes
-	Notes         string `json:"notes"`
-	InternalNotes string `json:"internal_notes"`
+	Notes         string
+	InternalNotes string
 
 	// Related invoice (for credit notes, settlements)
 	RelatedInvoiceID *int64
 	RelationType     string // "", "settlement", "credit_note"
 
 	// Event timestamps
-	SentAt *time.Time `json:"sent_at,omitempty"`
-	PaidAt *time.Time `json:"paid_at,omitempty"`
+	SentAt *time.Time
+	PaidAt *time.Time
 
 	// Line items
-	Items []InvoiceItem `json:"items"`
+	Items []InvoiceItem
 
 	// Timestamps
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
 }
 
 // InvoiceItem represents a single line item on an invoice.
 type InvoiceItem struct {
-	ID             int64  `json:"id"`
-	InvoiceID      int64  `json:"invoice_id"`
-	Description    string `json:"description"`
-	Quantity       Amount `json:"quantity"`        // stored as cents for decimal precision (e.g. 250 = 2.50)
-	Unit           string `json:"unit"`            // ks, hod, m2, etc.
-	UnitPrice      Amount `json:"unit_price"`      // price per unit in halere
-	VATRatePercent int    `json:"vat_rate_percent"` // 0, 12, 21
-	VATAmount      Amount `json:"vat_amount"`
-	TotalAmount    Amount `json:"total_amount"` // including VAT
-	SortOrder      int    `json:"sort_order"`
+	ID             int64
+	InvoiceID      int64
+	Description    string
+	Quantity       Amount        // stored as cents for decimal precision (e.g. 250 = 2.50)
+	Unit           string            // ks, hod, m2, etc.
+	UnitPrice      Amount      // price per unit in halere
+	VATRatePercent int    // 0, 12, 21
+	VATAmount      Amount
+	TotalAmount    Amount // including VAT
+	SortOrder      int
 }
 
 // InvoiceSequence defines a numbering sequence for invoices.
 type InvoiceSequence struct {
-	ID            int64  `json:"id"`
-	Prefix        string `json:"prefix"`         // e.g. "FV"
-	NextNumber    int    `json:"next_number"`     // next number to assign
-	Year          int    `json:"year"`            // sequence year
-	FormatPattern string `json:"format_pattern"`  // e.g. "{prefix}{year}{number:04d}"
+	ID            int64
+	Prefix        string         // e.g. "FV"
+	NextNumber    int        // next number to assign
+	Year          int               // sequence year
+	FormatPattern string  // e.g. "{prefix}{year}{number:04d}"
 }
 
 // CalculateTotals recalculates subtotal, VAT, and total from invoice items.

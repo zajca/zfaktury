@@ -26,10 +26,10 @@
 <div class="flex h-screen bg-gray-50">
 	<!-- Mobile sidebar overlay -->
 	{#if sidebarOpen}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="fixed inset-0 z-30 bg-black/50 lg:hidden"
-			role="button"
-			tabindex="-1"
+			role="presentation"
 			onclick={() => (sidebarOpen = false)}
 			onkeydown={(e) => e.key === 'Escape' && (sidebarOpen = false)}
 		></div>

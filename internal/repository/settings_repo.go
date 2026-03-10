@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -44,7 +45,7 @@ func (r *SettingsRepository) Get(ctx context.Context, key string) (string, error
 	var value string
 	err := r.db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = ?`, key).Scan(&value)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("setting %q not found: %w", key, err)
 		}
 		return "", fmt.Errorf("querying setting %q: %w", key, err)

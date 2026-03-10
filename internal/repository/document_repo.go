@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"context"
 	"database/sql"
 	"fmt"
@@ -56,16 +57,19 @@ func (r *DocumentRepository) GetByID(ctx context.Context, id int64) (*domain.Exp
 		&doc.StoragePath, &doc.Size, &createdAtStr, &deletedAtStr,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("expense document %d not found: %w", id, err)
 		}
 		return nil, fmt.Errorf("querying expense document %d: %w", id, err)
 	}
 
-	doc.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	if deletedAtStr.Valid {
-		t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-		doc.DeletedAt = &t
+	doc.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense document: %w", err)
+	}
+	doc.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning expense document: %w", err)
 	}
 
 	return doc, nil
@@ -97,10 +101,13 @@ func (r *DocumentRepository) ListByExpenseID(ctx context.Context, expenseID int6
 			return nil, fmt.Errorf("scanning expense document row: %w", err)
 		}
 
-		doc.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-		if deletedAtStr.Valid {
-			t, _ := time.Parse(time.RFC3339, deletedAtStr.String)
-			doc.DeletedAt = &t
+		doc.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning expense document row: %w", err)
+		}
+		doc.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("scanning expense document row: %w", err)
 		}
 
 		docs = append(docs, doc)

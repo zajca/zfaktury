@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { categoriesApi, type ExpenseCategory } from '$lib/api/client';
 
 	interface Props {
@@ -15,7 +16,7 @@
 	let customMode = $state(false);
 	let customValue = $state('');
 
-	$effect(() => {
+	onMount(() => {
 		loadCategories();
 	});
 

@@ -10,44 +10,44 @@ const (
 
 // Contact represents a business contact (customer or vendor).
 type Contact struct {
-	ID   int64  `json:"id"`
-	Type string `json:"type"` // "company" or "individual"
-	Name string `json:"name"`
+	ID   int64
+	Type string // "company" or "individual"
+	Name string
 
 	// Czech business identifiers
-	ICO string `json:"ico"`
-	DIC string `json:"dic"`
+	ICO string
+	DIC string
 
 	// Address
-	Street  string `json:"street"`
-	City    string `json:"city"`
-	ZIP     string `json:"zip"`
-	Country string `json:"country"`
+	Street  string
+	City    string
+	ZIP     string
+	Country string
 
 	// Contact info
-	Email string `json:"email"`
-	Phone string `json:"phone"`
-	Web   string `json:"web"`
+	Email string
+	Phone string
+	Web   string
 
 	// Bank details
-	BankAccount string `json:"bank_account"`
-	BankCode    string `json:"bank_code"`
-	IBAN        string `json:"iban"`
-	SWIFT       string `json:"swift"`
+	BankAccount string
+	BankCode    string
+	IBAN        string
+	SWIFT       string
 
 	// Settings
-	PaymentTermsDays int    `json:"payment_terms_days"`
-	Tags             string `json:"tags"` // comma-separated
-	Notes            string `json:"notes"`
+	PaymentTermsDays int
+	Tags             string // comma-separated
+	Notes            string
 
 	// Flags
-	IsFavorite bool `json:"is_favorite"`
+	IsFavorite bool
 
 	// VATUnreliableAt is set when the contact is flagged as an unreliable VAT payer.
-	VATUnreliableAt *time.Time `json:"vat_unreliable_at,omitempty"`
+	VATUnreliableAt *time.Time
 
 	// Timestamps
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
 }

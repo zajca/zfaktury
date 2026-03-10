@@ -46,6 +46,49 @@ All monetary amounts use `domain.Amount` (int64, halere/cents). Never use float 
 - API client in `frontend/src/lib/api/client.ts`
 - Czech locale for UI text, dates, currency formatting
 
+## Coding Standards (MANDATORY)
+
+These rules are non-negotiable. Every new or modified code MUST follow them.
+
+### Go Error Handling
+
+- **Always use `errors.Is()` for sentinel error comparison** -- NEVER `err == sql.ErrNoRows` or direct equality. Use `errors.Is(err, sql.ErrNoRows)`.
+- **Always handle `time.Parse` errors** -- NEVER ignore with `_, _ = time.Parse(...)`. Use the helpers in `internal/repository/helpers.go`: `parseDate(layout, value)`, `parseDateOptional(layout, ns)`, `parseDatePtr(layout, ns)`.
+- **Wrap errors in services with context** -- Every service method that calls a repo must wrap errors: `fmt.Errorf("creating invoice: %w", err)`. Use descriptive verbs: "creating", "updating", "deleting", "listing", "fetching".
+- **Use sentinel errors from `domain/errors.go`** for business errors -- `ErrNotFound`, `ErrInvalidInput`, `ErrPaidInvoice`, `ErrNoItems`, `ErrDuplicateNumber`. Do NOT use ad-hoc `errors.New("...")` strings.
+
+### Go Domain Purity
+
+- **No struct tags on domain types** -- Domain structs in `internal/domain/` must have NO `json:`, `db:`, or any other tags. All serialization is handled via handler DTOs.
+- **No duplicate scan code in repositories** -- Use scan helper functions (e.g., `scanInvoiceRow`, `scanInvoiceItem` in `invoice_repo.go`). When adding new entities, extract scan logic into a reusable helper.
+
+### Svelte Data Loading
+
+- **Use `onMount` for initial data loading** -- NEVER `$effect(() => { loadData(); })` for one-time initialization.
+- **Use `$effect` ONLY for reactive side effects** -- Filter/search changes that trigger reload. Always guard with `let mounted = false` pattern:
+  ```typescript
+  let mounted = false;
+  onMount(() => { loadData(); mounted = true; });
+  $effect(() => { filterVar; if (!mounted) return; loadData(); });
+  ```
+
+### Svelte API Usage
+
+- **Always use the typed API client** (`$lib/api/client.ts`) -- NEVER raw `fetch()` for API calls. If a method is missing from the client, add it there first.
+- **No local type re-declarations** -- Import types from `$lib/api/client.ts`, do NOT redeclare `interface Contact { ... }` locally.
+
+### Svelte Shared Utilities
+
+- **Invoice status labels/colors** -- Import from `$lib/utils/invoice.ts`, do NOT define inline.
+- **Invoice items editor** -- Use `<InvoiceItemsEditor>` component from `$lib/components/InvoiceItemsEditor.svelte` for any invoice item editing UI. Do NOT duplicate item editor markup.
+
+### Accessibility
+
+- **Error messages** must have `role="alert"` on the container div.
+- **Loading spinners** must have `role="status"` and `<span class="sr-only">Nacitani...</span>`.
+- **Clickable table rows** must have `role="link"`, `tabindex="0"`, `onkeydown` Enter handler, and use `goto()` (not `window.location.href`).
+- **Backdrop overlays** use `role="presentation"`, NOT `role="button"`.
+
 ### Config
 
 - TOML config at `~/.zfaktury/config.toml`
@@ -256,6 +299,79 @@ When working as part of an agent team:
 
 ## Testing
 
-- Use `go test ./...` for Go tests
+### Go
+
+- `CGO_ENABLED=0 go test ./...` for all Go tests
 - Integration tests with real SQLite in `tests/integration/`
-- Frontend: `cd frontend && npm run check` for type checking
+
+### Frontend (Svelte Component Tests)
+
+**Run:** `cd frontend && npm test` (Vitest with jsdom)
+
+**Infrastructure:** Vitest + jsdom + `@testing-library/svelte` + `@testing-library/jest-dom`
+- Config: `frontend/vite.config.ts` (test section)
+- Setup: `frontend/src/test-setup.ts` (jest-dom matchers)
+- 276 tests across 24 files covering all route pages and shared components
+
+**File naming:** `page.test.ts` (NOT `+page.test.ts` -- avoids SvelteKit routing conflicts)
+
+**Test locations:**
+- Shared components: `src/lib/components/*.test.ts`
+- Route pages: `src/routes/**/page.test.ts`
+
+**Standard test pattern:**
+```typescript
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status, statusText: status === 200 ? 'OK' : 'Error',
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+beforeEach(() => { mockFetch.mockReset(); });
+afterEach(() => { cleanup(); });
+```
+
+**Critical pitfalls:**
+
+1. **`vi.mock` hoisting** -- Factory functions are hoisted above all `const`/`let` declarations. Cannot reference variables defined in the same file. Use inline `vi.fn()` in factories, access mocks via dynamic import in test bodies:
+   ```typescript
+   // WRONG: vi.mock(() => ({ goto: mockGoto }))  -- mockGoto not yet defined
+   // RIGHT:
+   vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+   // In test:
+   const { goto } = await import('$app/navigation');
+   expect(goto).toHaveBeenCalledWith('/invoices');
+   ```
+
+2. **`$app/state` mock for detail pages** -- Pages using `page.params` need mutable mock:
+   ```typescript
+   vi.mock('$app/state', () => ({
+     page: { params: { id: '1' }, url: { pathname: '/contacts/1', searchParams: new URLSearchParams() } }
+   }));
+   // Reset in beforeEach:
+   beforeEach(async () => {
+     const { page } = await import('$app/state');
+     (page as any).params = { id: '1' };
+   });
+   ```
+
+3. **HTML5 `required` bypass** -- `fireEvent.click(submitBtn)` triggers native validation, blocking custom validation tests. Remove required attrs first:
+   ```typescript
+   document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
+   ```
+
+4. **Fake timers + waitFor** -- `waitFor` polling can freeze with fake timers. Use `await vi.advanceTimersByTimeAsync(10)` to flush Svelte state updates.
+
+5. **Snippet children (Layout)** -- Layout uses `children: Snippet`. Cannot pass children directly in `render()`. Use `LayoutTestWrapper.svelte` wrapper component.
+
+6. **Delete mock chaining** -- After delete (204 response), component may auto-reload data. Chain mocks: `mockFetch.mockResolvedValueOnce(deleteResponse).mockResolvedValueOnce(jsonResponse(reloadData))`
+
+**Type checking:** `cd frontend && npm run check`

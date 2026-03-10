@@ -37,7 +37,11 @@ func NewSettingsService(repo *repository.SettingsRepository) *SettingsService {
 
 // GetAll retrieves all settings.
 func (s *SettingsService) GetAll(ctx context.Context) (map[string]string, error) {
-	return s.repo.GetAll(ctx)
+	settings, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetching all settings: %w", err)
+	}
+	return settings, nil
 }
 
 // Get retrieves a single setting by key.
@@ -45,7 +49,11 @@ func (s *SettingsService) Get(ctx context.Context, key string) (string, error) {
 	if err := validateKey(key); err != nil {
 		return "", err
 	}
-	return s.repo.Get(ctx, key)
+	val, err := s.repo.Get(ctx, key)
+	if err != nil {
+		return "", fmt.Errorf("fetching setting %q: %w", key, err)
+	}
+	return val, nil
 }
 
 // Set upserts a single setting.
@@ -53,7 +61,10 @@ func (s *SettingsService) Set(ctx context.Context, key, value string) error {
 	if err := validateKey(key); err != nil {
 		return err
 	}
-	return s.repo.Set(ctx, key, value)
+	if err := s.repo.Set(ctx, key, value); err != nil {
+		return fmt.Errorf("setting %q: %w", key, err)
+	}
+	return nil
 }
 
 // SetBulk upserts multiple settings at once.
@@ -63,7 +74,10 @@ func (s *SettingsService) SetBulk(ctx context.Context, settings map[string]strin
 			return err
 		}
 	}
-	return s.repo.SetBulk(ctx, settings)
+	if err := s.repo.SetBulk(ctx, settings); err != nil {
+		return fmt.Errorf("setting bulk settings: %w", err)
+	}
+	return nil
 }
 
 // knownKeys contains all valid setting keys.

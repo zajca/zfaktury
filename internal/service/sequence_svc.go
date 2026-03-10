@@ -45,7 +45,10 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 		return fmt.Errorf("checking sequence uniqueness: %w", err)
 	}
 
-	return s.repo.Create(ctx, seq)
+	if err := s.repo.Create(ctx, seq); err != nil {
+		return fmt.Errorf("creating sequence: %w", err)
+	}
+	return nil
 }
 
 // Update validates and updates an existing invoice sequence.
@@ -79,7 +82,10 @@ func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequenc
 		return fmt.Errorf("sequence with prefix %q and year %d already exists", seq.Prefix, seq.Year)
 	}
 
-	return s.repo.Update(ctx, seq)
+	if err := s.repo.Update(ctx, seq); err != nil {
+		return fmt.Errorf("updating sequence: %w", err)
+	}
+	return nil
 }
 
 // Delete removes an invoice sequence by ID (soft delete).
@@ -97,7 +103,10 @@ func (s *SequenceService) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("cannot delete sequence: %d invoices reference it", count)
 	}
 
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("deleting sequence: %w", err)
+	}
+	return nil
 }
 
 // GetByID retrieves a sequence by its ID.
@@ -105,12 +114,20 @@ func (s *SequenceService) GetByID(ctx context.Context, id int64) (*domain.Invoic
 	if id == 0 {
 		return nil, errors.New("sequence ID is required")
 	}
-	return s.repo.GetByID(ctx, id)
+	seq, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching sequence: %w", err)
+	}
+	return seq, nil
 }
 
 // List retrieves all invoice sequences.
 func (s *SequenceService) List(ctx context.Context) ([]domain.InvoiceSequence, error) {
-	return s.repo.List(ctx)
+	seqs, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing sequences: %w", err)
+	}
+	return seqs, nil
 }
 
 // GetOrCreateForYear retrieves an existing sequence for the given prefix and year,

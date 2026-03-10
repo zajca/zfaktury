@@ -422,11 +422,14 @@ export const invoicesApi = {
 // --- Expenses API ---
 
 export const expensesApi = {
-	list(params?: { limit?: number; offset?: number; search?: string }) {
+	list(params?: { limit?: number; offset?: number; search?: string; date_from?: string; date_to?: string; tax_reviewed?: string }) {
 		const query = new URLSearchParams();
 		if (params?.limit) query.set('limit', String(params.limit));
 		if (params?.offset) query.set('offset', String(params.offset));
 		if (params?.search) query.set('search', params.search);
+		if (params?.date_from) query.set('date_from', params.date_from);
+		if (params?.date_to) query.set('date_to', params.date_to);
+		if (params?.tax_reviewed) query.set('tax_reviewed', params.tax_reviewed);
 		const qs = query.toString();
 		return get<ListResponse<Expense>>(`/expenses${qs ? `?${qs}` : ''}`);
 	},

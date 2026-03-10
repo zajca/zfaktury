@@ -250,10 +250,10 @@
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center p-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
 		</div>
 	{:else if error && !recurringInvoice}
-		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 			{error}
 		</div>
 	{:else if recurringInvoice && !editing}
@@ -278,7 +278,7 @@
 		</div>
 
 		{#if error}
-			<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+			<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 				{error}
 			</div>
 		{/if}
@@ -362,7 +362,7 @@
 		<h1 class="mt-2 text-2xl font-bold text-gray-900">Upravit: {recurringInvoice?.name}</h1>
 
 		{#if error}
-			<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+			<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
 				{error}
 			</div>
 		{/if}

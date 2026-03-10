@@ -130,7 +130,11 @@ func (s *DocumentService) GetByID(ctx context.Context, id int64) (*domain.Expens
 	if id == 0 {
 		return nil, errors.New("document ID is required")
 	}
-	return s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching document: %w", err)
+	}
+	return doc, nil
 }
 
 // ListByExpenseID retrieves all active documents for an expense.
@@ -138,7 +142,11 @@ func (s *DocumentService) ListByExpenseID(ctx context.Context, expenseID int64) 
 	if expenseID == 0 {
 		return nil, errors.New("expense ID is required")
 	}
-	return s.repo.ListByExpenseID(ctx, expenseID)
+	docs, err := s.repo.ListByExpenseID(ctx, expenseID)
+	if err != nil {
+		return nil, fmt.Errorf("listing documents for expense: %w", err)
+	}
+	return docs, nil
 }
 
 // Delete soft-deletes the document record and removes the file from disk.
@@ -172,7 +180,7 @@ func (s *DocumentService) GetFilePath(ctx context.Context, id int64) (string, st
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("fetching document for file path: %w", err)
 	}
 
 	// Validate the stored path is within our data directory to prevent path traversal.

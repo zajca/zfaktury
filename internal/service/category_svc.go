@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -42,7 +43,10 @@ func (s *CategoryService) Create(ctx context.Context, cat *domain.ExpenseCategor
 		cat.Color = "#6B7280"
 	}
 
-	return s.repo.Create(ctx, cat)
+	if err := s.repo.Create(ctx, cat); err != nil {
+		return fmt.Errorf("creating category: %w", err)
+	}
+	return nil
 }
 
 // Update validates and updates an existing expense category.
@@ -61,7 +65,10 @@ func (s *CategoryService) Update(ctx context.Context, cat *domain.ExpenseCategor
 		return errors.New("category with this key already exists")
 	}
 
-	return s.repo.Update(ctx, cat)
+	if err := s.repo.Update(ctx, cat); err != nil {
+		return fmt.Errorf("updating category: %w", err)
+	}
+	return nil
 }
 
 // Delete removes an expense category by ID (soft delete).
@@ -73,14 +80,17 @@ func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 
 	cat, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetching category for delete: %w", err)
 	}
 
 	if cat.IsDefault {
 		return errors.New("default categories cannot be deleted")
 	}
 
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("deleting category: %w", err)
+	}
+	return nil
 }
 
 // GetByID retrieves an expense category by its ID.
@@ -88,12 +98,20 @@ func (s *CategoryService) GetByID(ctx context.Context, id int64) (*domain.Expens
 	if id == 0 {
 		return nil, errors.New("category ID is required")
 	}
-	return s.repo.GetByID(ctx, id)
+	cat, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching category: %w", err)
+	}
+	return cat, nil
 }
 
 // List retrieves all expense categories.
 func (s *CategoryService) List(ctx context.Context) ([]domain.ExpenseCategory, error) {
-	return s.repo.List(ctx)
+	cats, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing categories: %w", err)
+	}
+	return cats, nil
 }
 
 // validateCategory performs common validation for create and update operations.

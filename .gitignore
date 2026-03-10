@@ -1,0 +1,38 @@
+# Go binaries
+/zfaktury
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build/test
+*.test
+*.out
+/vendor/
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.svelte-kit/
+
+# Data
+*.db
+*.db-shm
+*.db-wal
+
+# Environment and secrets
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+
+# Temporary
+tmp/

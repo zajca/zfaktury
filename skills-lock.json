@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "E2E Test Builder": {
+      "source": "svelte-society/sveltesociety.dev",
+      "sourceType": "github",
+      "computedHash": "6ceb3d47526426d13113b7bf0133de1c66eef5133e059dac01023225aeeb6dc8"
+    },
+    "Page Builder": {
+      "source": "svelte-society/sveltesociety.dev",
+      "sourceType": "github",
+      "computedHash": "6fcd77285b96c9868c2e0569c03dae3d051ecdaaeceec9ef84c4ecc11beb57b9"
+    },
+    "component-builder": {
+      "source": "svelte-society/sveltesociety.dev",
+      "sourceType": "github",
+      "computedHash": "64e91e4f59a0307e3d07b36426975fdd2a1ff90bcf8230f1518c66a86ccbc582"
+    },
+    "go-code-review": {
+      "source": "cxuu/golang-skills",
+      "sourceType": "github",
+      "computedHash": "1032087d03a6f51697bd927b4f4bf480ddb89982fcf919c6a541089e9ce1e607"
+    },
+    "go-documentation": {
+      "source": "cxuu/golang-skills",
+      "sourceType": "github",
+      "computedHash": "5a52e6d13e5719b373a47a53975d48c1bbd570f489e7555725a802973e162e01"
+    },
+    "go-linting": {
+      "source": "cxuu/golang-skills",
+      "sourceType": "github",
+      "computedHash": "41effcb704d0836720d02ff497a8b4b5c76e41491612c22b36f67d87b42d3744"
+    },
+    "go-naming": {
+      "source": "cxuu/golang-skills",
+      "sourceType": "github",
+      "computedHash": "1bb0e4a009afe3673797b9cb910ed5160d615db313ab221ba20c38e3c67e9c9d"
+    },
+    "go-testing": {
+      "source": "cxuu/golang-skills",
+      "sourceType": "github",
+      "computedHash": "5313f27158ada59a570389197277cc09a238bdeaf23937c55b8e8323a8da688f"
+    },
+    "golang": {
+      "source": "saisudhir14/golang-agent-skill",
+      "sourceType": "github",
+      "computedHash": "9b51b75f48443bd04c8a34774aa0ba600eb78f2b6653f3673f38105a41e0e417"
+    },
+    "svelte-code-writer": {
+      "source": "sveltejs/mcp",
+      "sourceType": "github",
+      "computedHash": "c0e2cce9855f8e312cbb0a05aef164b4659c672d7723e4e598ffa6bc94890542"
+    },
+    "svelte-core-bestpractices": {
+      "source": "sveltejs/mcp",
+      "sourceType": "github",
+      "computedHash": "029f15399e7dbba15c9a8ed70bc7f9e6322d89a905efbdcc125443b37d087175"
+    },
+    "using-remote-functions": {
+      "source": "svelte-society/sveltesociety.dev",
+      "sourceType": "github",
+      "computedHash": "bf3f5852918ffc28674f1de263aab7ce663c97a6beab48d0019c8a056fbcf2b2"
+    }
+  }
+}

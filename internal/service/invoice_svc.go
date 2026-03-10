@@ -33,6 +33,9 @@ func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) er
 	if len(invoice.Items) == 0 {
 		return errors.New("at least one line item is required")
 	}
+	if invoice.DueDate.IsZero() {
+		return errors.New("due date is required")
+	}
 
 	// Verify customer exists.
 	_, err := s.contacts.GetByID(ctx, invoice.CustomerID)
@@ -105,6 +108,9 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 	if len(invoice.Items) == 0 {
 		return errors.New("at least one line item is required")
 	}
+	if invoice.DueDate.IsZero() {
+		return errors.New("due date is required")
+	}
 
 	// Verify the invoice exists and is editable.
 	existing, err := s.repo.GetByID(ctx, invoice.ID)
@@ -118,6 +124,20 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 	// Preserve existing status if not explicitly set in the update request.
 	if invoice.Status == "" {
 		invoice.Status = existing.Status
+	}
+
+	// Preserve fields that should not be changed via update.
+	if invoice.InvoiceNumber == "" {
+		invoice.InvoiceNumber = existing.InvoiceNumber
+	}
+	if invoice.SequenceID == 0 {
+		invoice.SequenceID = existing.SequenceID
+	}
+	if invoice.VariableSymbol == "" {
+		invoice.VariableSymbol = existing.VariableSymbol
+	}
+	if invoice.Type == "" {
+		invoice.Type = existing.Type
 	}
 
 	// Recalculate totals.

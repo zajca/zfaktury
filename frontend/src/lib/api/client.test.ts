@@ -34,7 +34,22 @@ describe('ApiError', () => {
 		expect(err.statusText).toBe('Not Found');
 		expect(err.body).toEqual({ error: 'not found' });
 		expect(err.name).toBe('ApiError');
-		expect(err.message).toBe('API Error 404: Not Found');
+		expect(err.message).toBe('not found'); // extracts from body.error
+	});
+
+	it('falls back to generic message when body has no error field', () => {
+		const err = new ApiError(500, 'Internal Server Error');
+		expect(err.message).toBe('API Error 500: Internal Server Error');
+	});
+
+	it('falls back to generic message when body.error is not a string', () => {
+		const err = new ApiError(400, 'Bad Request', { error: 123 });
+		expect(err.message).toBe('API Error 400: Bad Request');
+	});
+
+	it('extracts validation error message from body', () => {
+		const err = new ApiError(422, 'Unprocessable Entity', { error: 'due_date is required' });
+		expect(err.message).toBe('due_date is required');
 	});
 });
 

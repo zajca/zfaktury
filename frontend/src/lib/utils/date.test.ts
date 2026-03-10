@@ -17,6 +17,22 @@ describe('formatDate', () => {
 		expect(result).toContain('1');
 		expect(result).toContain('2026');
 	});
+
+	it('returns "-" for null', () => {
+		expect(formatDate(null)).toBe('-');
+	});
+
+	it('returns "-" for undefined', () => {
+		expect(formatDate(undefined)).toBe('-');
+	});
+
+	it('returns "-" for empty string', () => {
+		expect(formatDate('')).toBe('-');
+	});
+
+	it('returns "-" for invalid date string', () => {
+		expect(formatDate('not-a-date')).toBe('-');
+	});
 });
 
 describe('formatDateTime', () => {
@@ -26,6 +42,18 @@ describe('formatDateTime', () => {
 		expect(result).toContain('10');
 		expect(result).toContain('14');
 		expect(result).toContain('30');
+	});
+
+	it('returns "-" for null', () => {
+		expect(formatDateTime(null)).toBe('-');
+	});
+
+	it('returns "-" for undefined', () => {
+		expect(formatDateTime(undefined)).toBe('-');
+	});
+
+	it('returns "-" for empty string', () => {
+		expect(formatDateTime('')).toBe('-');
 	});
 });
 

@@ -22,17 +22,31 @@ const czechMonthYearFormatter = new Intl.DateTimeFormat('cs-CZ', {
 });
 
 /**
- * Format a date string or Date as Czech date: "1. 3. 2026"
+ * Check if a date value is valid and non-empty.
  */
-export function formatDate(date: string | Date): string {
+function isValidDate(date: string | Date | null | undefined): date is string | Date {
+	if (date == null) return false;
+	if (typeof date === 'string' && date.trim() === '') return false;
+	const d = typeof date === 'string' ? new Date(date) : date;
+	return !isNaN(d.getTime());
+}
+
+/**
+ * Format a date string or Date as Czech date: "1. 3. 2026"
+ * Returns "-" for null, undefined, empty, or invalid dates.
+ */
+export function formatDate(date: string | Date | null | undefined): string {
+	if (!isValidDate(date)) return '-';
 	const d = typeof date === 'string' ? new Date(date) : date;
 	return czechDateFormatter.format(d);
 }
 
 /**
  * Format a date string or Date as Czech datetime: "1. 3. 2026 14:30"
+ * Returns "-" for null, undefined, empty, or invalid dates.
  */
-export function formatDateTime(date: string | Date): string {
+export function formatDateTime(date: string | Date | null | undefined): string {
+	if (!isValidDate(date)) return '-';
 	const d = typeof date === 'string' ? new Date(date) : date;
 	return czechDateTimeFormatter.format(d);
 }

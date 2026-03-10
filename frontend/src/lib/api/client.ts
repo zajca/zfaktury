@@ -251,7 +251,11 @@ export class ApiError extends Error {
 		public statusText: string,
 		public body?: unknown
 	) {
-		super(`API Error ${status}: ${statusText}`);
+		const detail =
+			body && typeof body === 'object' && 'error' in body && typeof (body as Record<string, unknown>).error === 'string'
+				? (body as Record<string, string>).error
+				: null;
+		super(detail ?? `API Error ${status}: ${statusText}`);
 		this.name = 'ApiError';
 	}
 }

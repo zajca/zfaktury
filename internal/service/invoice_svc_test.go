@@ -311,3 +311,89 @@ func TestInvoiceService_List_DefaultLimit(t *testing.T) {
 		t.Errorf("len = %d, want 3", len(invoices))
 	}
 }
+
+func TestInvoiceService_Create_NoDueDate(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	inv.DueDate = time.Time{} // zero value
+
+	err := svc.Create(ctx, inv)
+	if err == nil {
+		t.Fatal("expected error for missing due date, got nil")
+	}
+	if !strings.Contains(err.Error(), "due date") {
+		t.Errorf("error should mention 'due date', got: %v", err)
+	}
+}
+
+func TestInvoiceService_Update_NoDueDate(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	inv.DueDate = time.Time{} // zero value
+
+	err := svc.Update(ctx, inv)
+	if err == nil {
+		t.Fatal("expected error for missing due date, got nil")
+	}
+	if !strings.Contains(err.Error(), "due date") {
+		t.Errorf("error should mention 'due date', got: %v", err)
+	}
+}
+
+func TestInvoiceService_Update_PreservesInvoiceNumber(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	originalNumber := inv.InvoiceNumber
+	originalSeqID := inv.SequenceID
+	originalVS := inv.VariableSymbol
+	originalType := inv.Type
+
+	// Update with empty identifying fields -- service should preserve originals.
+	inv.InvoiceNumber = ""
+	inv.SequenceID = 0
+	inv.VariableSymbol = ""
+	inv.Type = ""
+	inv.Notes = "Updated"
+
+	if err := svc.Update(ctx, inv); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	updated, err := svc.GetByID(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+
+	if updated.InvoiceNumber != originalNumber {
+		t.Errorf("InvoiceNumber = %q, want %q", updated.InvoiceNumber, originalNumber)
+	}
+	if updated.SequenceID != originalSeqID {
+		t.Errorf("SequenceID = %d, want %d", updated.SequenceID, originalSeqID)
+	}
+	if updated.VariableSymbol != originalVS {
+		t.Errorf("VariableSymbol = %q, want %q", updated.VariableSymbol, originalVS)
+	}
+	if updated.Type != originalType {
+		t.Errorf("Type = %q, want %q", updated.Type, originalType)
+	}
+	if updated.Notes != "Updated" {
+		t.Errorf("Notes = %q, want %q", updated.Notes, "Updated")
+	}
+}

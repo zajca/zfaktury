@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -42,6 +43,10 @@ type recurringInvoiceRequest struct {
 }
 
 func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
+	if r.NextIssueDate == "" {
+		return nil, errors.New("next_issue_date is required")
+	}
+
 	ri := &domain.RecurringInvoice{
 		Name:           r.Name,
 		CustomerID:     r.CustomerID,
@@ -58,13 +63,11 @@ func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
 		IsActive:       r.IsActive,
 	}
 
-	if r.NextIssueDate != "" {
-		t, err := time.Parse("2006-01-02", r.NextIssueDate)
-		if err != nil {
-			return nil, err
-		}
-		ri.NextIssueDate = t
+	nextIssueDate, err := time.Parse("2006-01-02", r.NextIssueDate)
+	if err != nil {
+		return nil, errors.New("invalid next_issue_date format, expected YYYY-MM-DD")
 	}
+	ri.NextIssueDate = nextIssueDate
 
 	if r.EndDate != nil && *r.EndDate != "" {
 		t, err := time.Parse("2006-01-02", *r.EndDate)
@@ -204,7 +207,7 @@ func (h *RecurringInvoiceHandler) Create(w http.ResponseWriter, r *http.Request)
 
 	ri, err := req.toDomain()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -268,7 +271,7 @@ func (h *RecurringInvoiceHandler) Update(w http.ResponseWriter, r *http.Request)
 
 	ri, err := req.toDomain()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	ri.ID = id

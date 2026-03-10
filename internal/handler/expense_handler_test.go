@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -240,5 +241,25 @@ func TestExpenseHandler_Delete_NotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestExpenseHandler_Create_MissingIssueDate(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	body := `{"description":"Test","amount":50000,"issue_date":"","category":"supplies","business_percent":100,"payment_method":"cash","is_tax_deductible":true}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/expenses", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+
+	var resp errorResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if !strings.Contains(resp.Error, "issue_date is required") {
+		t.Errorf("error = %q, want to contain %q", resp.Error, "issue_date is required")
 	}
 }

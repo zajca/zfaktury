@@ -268,7 +268,7 @@
 						</div>
 						<div>
 							<label for="edit-next" class="block text-sm font-medium text-gray-700">Další datum</label>
-							<input id="edit-next" type="date" bind:value={form.next_issue_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<input id="edit-next" type="date" bind:value={form.next_issue_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
 							<label for="edit-end" class="block text-sm font-medium text-gray-700">Datum ukončení</label>

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -325,5 +326,89 @@ func TestInvoiceHandler_Update(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusOK, w.Body.String())
+	}
+}
+
+func TestInvoiceHandler_Create_MissingIssueDate(t *testing.T) {
+	r, seqID := setupInvoiceRouter(t)
+	customerID := createInvoiceCustomer(t, r)
+
+	body := fmt.Sprintf(`{"sequence_id":%d,"invoice_number":"FV-NODATE","customer_id":%d,"issue_date":"","due_date":"2026-03-15","items":[{"description":"Test","quantity":100,"unit":"ks","unit_price":10000,"vat_rate_percent":21}]}`, seqID, customerID)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invoices", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+
+	var resp errorResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if !strings.Contains(resp.Error, "issue_date is required") {
+		t.Errorf("error = %q, want to contain %q", resp.Error, "issue_date is required")
+	}
+}
+
+func TestInvoiceHandler_Create_MissingDueDate(t *testing.T) {
+	r, seqID := setupInvoiceRouter(t)
+	customerID := createInvoiceCustomer(t, r)
+
+	body := fmt.Sprintf(`{"sequence_id":%d,"invoice_number":"FV-NODUE","customer_id":%d,"issue_date":"2026-03-01","due_date":"","items":[{"description":"Test","quantity":100,"unit":"ks","unit_price":10000,"vat_rate_percent":21}]}`, seqID, customerID)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invoices", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+
+	var resp errorResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if !strings.Contains(resp.Error, "due_date is required") {
+		t.Errorf("error = %q, want to contain %q", resp.Error, "due_date is required")
+	}
+}
+
+func TestInvoiceHandler_Update_PreservesInvoiceNumber(t *testing.T) {
+	r, seqID := setupInvoiceRouter(t)
+	customerID := createInvoiceCustomer(t, r)
+	created := createTestInvoice(t, r, customerID, seqID)
+
+	originalInvoiceNumber := created.InvoiceNumber
+
+	// PUT without invoice_number or sequence_id - simulates what frontend sends.
+	updateBody := fmt.Sprintf(`{
+		"customer_id": %d,
+		"issue_date": "2026-03-01",
+		"due_date": "2026-03-15",
+		"delivery_date": "2026-03-01",
+		"payment_method": "bank_transfer",
+		"notes": "Updated",
+		"items": [{"description": "Updated", "quantity": 100, "unit": "hod", "unit_price": 100000, "vat_rate_percent": 21}]
+	}`, customerID)
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/invoices/%d", created.ID), bytes.NewBufferString(updateBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("PUT status = %d, want %d, body = %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	// GET the invoice and verify invoice_number is preserved.
+	getReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/invoices/%d", created.ID), nil)
+	getW := httptest.NewRecorder()
+	r.ServeHTTP(getW, getReq)
+
+	if getW.Code != http.StatusOK {
+		t.Fatalf("GET status = %d, want %d", getW.Code, http.StatusOK)
+	}
+
+	var got invoiceResponse
+	json.NewDecoder(getW.Body).Decode(&got)
+	if got.InvoiceNumber != originalInvoiceNumber {
+		t.Errorf("InvoiceNumber = %q, want %q (original should be preserved)", got.InvoiceNumber, originalInvoiceNumber)
 	}
 }

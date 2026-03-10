@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -60,6 +61,10 @@ type recurringExpenseRequest struct {
 
 // toDomain converts a recurringExpenseRequest to a domain.RecurringExpense.
 func (r *recurringExpenseRequest) toDomain() (*domain.RecurringExpense, error) {
+	if r.NextIssueDate == "" {
+		return nil, errors.New("next_issue_date is required")
+	}
+
 	re := &domain.RecurringExpense{
 		Name:            r.Name,
 		VendorID:        r.VendorID,
@@ -78,13 +83,11 @@ func (r *recurringExpenseRequest) toDomain() (*domain.RecurringExpense, error) {
 		IsActive:        r.IsActive,
 	}
 
-	if r.NextIssueDate != "" {
-		t, err := time.Parse("2006-01-02", r.NextIssueDate)
-		if err != nil {
-			return nil, err
-		}
-		re.NextIssueDate = t
+	nextIssueDate, err := time.Parse("2006-01-02", r.NextIssueDate)
+	if err != nil {
+		return nil, errors.New("invalid next_issue_date format, expected YYYY-MM-DD")
 	}
+	re.NextIssueDate = nextIssueDate
 
 	if r.EndDate != nil && *r.EndDate != "" {
 		t, err := time.Parse("2006-01-02", *r.EndDate)
@@ -181,7 +184,7 @@ func (h *RecurringExpenseHandler) Create(w http.ResponseWriter, r *http.Request)
 
 	re, err := req.toDomain()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -252,7 +255,7 @@ func (h *RecurringExpenseHandler) Update(w http.ResponseWriter, r *http.Request)
 
 	re, err := req.toDomain()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	re.ID = id
@@ -330,7 +333,7 @@ func (h *RecurringExpenseHandler) GeneratePending(w http.ResponseWriter, r *http
 		var err error
 		asOfDate, err = time.Parse("2006-01-02", req.AsOfDate)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+			respondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 	} else {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -259,6 +260,13 @@ type invoiceRequest struct {
 
 // toDomain converts an invoiceRequest to a domain.Invoice.
 func (r *invoiceRequest) toDomain() (*domain.Invoice, error) {
+	if r.IssueDate == "" {
+		return nil, errors.New("issue_date is required")
+	}
+	if r.DueDate == "" {
+		return nil, errors.New("due_date is required")
+	}
+
 	inv := &domain.Invoice{
 		SequenceID:     r.SequenceID,
 		InvoiceNumber:  r.InvoiceNumber,
@@ -277,20 +285,18 @@ func (r *invoiceRequest) toDomain() (*domain.Invoice, error) {
 		InternalNotes:  r.InternalNotes,
 	}
 
-	if r.IssueDate != "" {
-		t, err := time.Parse("2006-01-02", r.IssueDate)
-		if err != nil {
-			return nil, err
-		}
-		inv.IssueDate = t
+	issueDate, err := time.Parse("2006-01-02", r.IssueDate)
+	if err != nil {
+		return nil, errors.New("invalid issue_date format, expected YYYY-MM-DD")
 	}
-	if r.DueDate != "" {
-		t, err := time.Parse("2006-01-02", r.DueDate)
-		if err != nil {
-			return nil, err
-		}
-		inv.DueDate = t
+	inv.IssueDate = issueDate
+
+	dueDate, err := time.Parse("2006-01-02", r.DueDate)
+	if err != nil {
+		return nil, errors.New("invalid due_date format, expected YYYY-MM-DD")
 	}
+	inv.DueDate = dueDate
+
 	if r.DeliveryDate != "" {
 		t, err := time.Parse("2006-01-02", r.DeliveryDate)
 		if err != nil {
@@ -459,6 +465,10 @@ type expenseRequest struct {
 
 // toDomain converts an expenseRequest to a domain.Expense.
 func (r *expenseRequest) toDomain() (*domain.Expense, error) {
+	if r.IssueDate == "" {
+		return nil, errors.New("issue_date is required")
+	}
+
 	exp := &domain.Expense{
 		VendorID:        r.VendorID,
 		ExpenseNumber:   r.ExpenseNumber,
@@ -476,13 +486,11 @@ func (r *expenseRequest) toDomain() (*domain.Expense, error) {
 		Notes:           r.Notes,
 	}
 
-	if r.IssueDate != "" {
-		t, err := time.Parse("2006-01-02", r.IssueDate)
-		if err != nil {
-			return nil, err
-		}
-		exp.IssueDate = t
+	issueDate, err := time.Parse("2006-01-02", r.IssueDate)
+	if err != nil {
+		return nil, errors.New("invalid issue_date format, expected YYYY-MM-DD")
 	}
+	exp.IssueDate = issueDate
 
 	return exp, nil
 }

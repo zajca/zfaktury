@@ -65,7 +65,7 @@ func (h *InvoiceHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	invoice, err := req.toDomain()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -146,7 +146,7 @@ func (h *InvoiceHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	invoice, err := req.toDomain()
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	invoice.ID = id

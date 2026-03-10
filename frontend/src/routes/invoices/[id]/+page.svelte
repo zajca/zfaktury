@@ -289,11 +289,11 @@
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<label for="edit-issue" class="block text-sm font-medium text-gray-700">Datum vystavení</label>
-							<input id="edit-issue" type="date" bind:value={form.issue_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<input id="edit-issue" type="date" bind:value={form.issue_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
 							<label for="edit-due" class="block text-sm font-medium text-gray-700">Datum splatnosti</label>
-							<input id="edit-due" type="date" bind:value={form.due_date} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<input id="edit-due" type="date" bind:value={form.due_date} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
 						</div>
 						<div>
 							<label for="edit-delivery" class="block text-sm font-medium text-gray-700">DUZP</label>

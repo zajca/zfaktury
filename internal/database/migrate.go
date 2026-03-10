@@ -12,6 +12,9 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
+// MigrationsFS returns the embedded migrations filesystem for use in tests.
+func MigrationsFS() embed.FS { return migrationsFS }
+
 // Migrate runs all pending database migrations using goose.
 func Migrate(db *sql.DB) error {
 	goose.SetLogger(goose.NopLogger())
@@ -26,8 +29,18 @@ func Migrate(db *sql.DB) error {
 		currentVersion = 0
 	}
 
+	// Disable FK checks during migrations (table recreation may temporarily break references).
+	if _, err := db.Exec("PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("disabling foreign keys for migration: %w", err)
+	}
+
 	if err := goose.Up(db, "migrations"); err != nil {
 		return fmt.Errorf("running migrations: %w", err)
+	}
+
+	// Re-enable FK checks after migrations.
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		return fmt.Errorf("re-enabling foreign keys after migration: %w", err)
 	}
 
 	newVersion, err := goose.GetDBVersion(db)

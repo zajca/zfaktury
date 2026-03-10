@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/spf13/cobra"
 
+	"github.com/zajca/zfaktury/internal/ares"
 	"github.com/zajca/zfaktury/internal/config"
 	"github.com/zajca/zfaktury/internal/database"
 	"github.com/zajca/zfaktury/internal/handler"
@@ -62,13 +63,18 @@ var serveCmd = &cobra.Command{
 		contactRepo := repository.NewContactRepository(db)
 		invoiceRepo := repository.NewInvoiceRepository(db)
 		expenseRepo := repository.NewExpenseRepository(db)
+		settingsRepo := repository.NewSettingsRepository(db)
+
+		// Wire ARES client.
+		aresClient := ares.NewClient()
 
 		// Wire services.
-		contactSvc := service.NewContactService(contactRepo, nil) // ARES client wired later
+		contactSvc := service.NewContactService(contactRepo, aresClient)
 		invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc)
 		expenseSvc := service.NewExpenseService(expenseRepo)
+		settingsSvc := service.NewSettingsService(settingsRepo)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 
@@ -80,7 +86,7 @@ var serveCmd = &cobra.Command{
 			mountEmbeddedFrontend(router)
 		}
 
-		addr := fmt.Sprintf(":%d", cfg.Server.Port)
+		addr := fmt.Sprintf("127.0.0.1:%d", cfg.Server.Port)
 		srv := &http.Server{
 			Addr:         addr,
 			Handler:      router,

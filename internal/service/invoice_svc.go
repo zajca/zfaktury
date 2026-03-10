@@ -96,6 +96,11 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 		return errors.New("cannot update a paid invoice")
 	}
 
+	// Preserve existing status if not explicitly set in the update request.
+	if invoice.Status == "" {
+		invoice.Status = existing.Status
+	}
+
 	// Recalculate totals.
 	invoice.CalculateTotals()
 

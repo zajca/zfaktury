@@ -35,3 +35,11 @@ type ExpenseRepo interface {
 	GetByID(ctx context.Context, id int64) (*domain.Expense, error)
 	List(ctx context.Context, filter domain.ExpenseFilter) ([]domain.Expense, int, error)
 }
+
+// SettingsRepo defines the persistence interface for application settings.
+type SettingsRepo interface {
+	GetAll(ctx context.Context) (map[string]string, error)
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key, value string) error
+	SetBulk(ctx context.Context, settings map[string]string) error
+}

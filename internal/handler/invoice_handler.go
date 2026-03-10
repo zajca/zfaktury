@@ -30,7 +30,7 @@ func (h *InvoiceHandler) Routes() chi.Router {
 	r.Put("/{id}", h.Update)
 	r.Delete("/{id}", h.Delete)
 	r.Post("/{id}/send", h.MarkAsSent)
-	r.Post("/{id}/pay", h.MarkAsPaid)
+	r.Post("/{id}/mark-paid", h.MarkAsPaid)
 	r.Post("/{id}/duplicate", h.Duplicate)
 	return r
 }

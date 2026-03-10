@@ -32,6 +32,9 @@ func (a Amount) String() string {
 	if fraction < 0 {
 		fraction = -fraction
 	}
+	if a < 0 && whole == 0 {
+		return fmt.Sprintf("-%d.%02d", whole, fraction)
+	}
 	return fmt.Sprintf("%d.%02d", whole, fraction)
 }
 

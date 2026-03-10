@@ -15,7 +15,7 @@
 		loading = true;
 		error = null;
 		try {
-			const res = await contactsApi.list({ page, per_page: perPage, search: search || undefined });
+			const res = await contactsApi.list({ limit: perPage, offset: (page - 1) * perPage, search: search || undefined });
 			contacts = res.data;
 			total = res.total;
 		} catch (e) {

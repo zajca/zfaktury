@@ -26,7 +26,6 @@ export interface Contact {
 	vat_unreliable: boolean;
 	created_at: string;
 	updated_at: string;
-	deleted_at?: string;
 }
 
 export interface InvoiceItem {
@@ -73,34 +72,34 @@ export interface Invoice {
 	items: InvoiceItem[];
 	created_at: string;
 	updated_at: string;
-	deleted_at?: string;
 }
 
 export interface Expense {
 	id: number;
-	description: string;
-	amount: number;
-	vat_amount: number;
-	total_amount: number;
-	currency_code: string;
-	category: string;
 	vendor_id?: number;
-	vendor?: Contact;
-	expense_date: string;
-	payment_method: string;
-	document_number: string;
-	notes: string;
+	expense_number: string;
+	category: string;
+	description: string;
+	issue_date: string;
+	amount: number;
+	currency_code: string;
+	exchange_rate: number;
+	vat_rate_percent: number;
+	vat_amount: number;
 	is_tax_deductible: boolean;
+	business_percent: number;
+	payment_method: string;
+	document_path?: string;
+	notes: string;
 	created_at: string;
 	updated_at: string;
-	deleted_at?: string;
 }
 
-export interface PaginatedResponse<T> {
+export interface ListResponse<T> {
 	data: T[];
 	total: number;
-	page: number;
-	per_page: number;
+	limit: number;
+	offset: number;
 }
 
 export interface AresResult {
@@ -111,6 +110,12 @@ export interface AresResult {
 	city: string;
 	zip: string;
 	country: string;
+}
+
+// --- Settings Types ---
+
+export interface Settings {
+	[key: string]: string;
 }
 
 // --- API Error ---
@@ -128,8 +133,10 @@ export class ApiError extends Error {
 
 // --- Fetch Wrapper ---
 
+const API_BASE = '/api/v1';
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-	const url = `/api${path}`;
+	const url = `${API_BASE}${path}`;
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		...(options?.headers as Record<string, string>)
@@ -176,13 +183,13 @@ function del<T>(path: string): Promise<T> {
 // --- Contacts API ---
 
 export const contactsApi = {
-	list(params?: { page?: number; per_page?: number; search?: string }) {
+	list(params?: { limit?: number; offset?: number; search?: string }) {
 		const query = new URLSearchParams();
-		if (params?.page) query.set('page', String(params.page));
-		if (params?.per_page) query.set('per_page', String(params.per_page));
+		if (params?.limit) query.set('limit', String(params.limit));
+		if (params?.offset) query.set('offset', String(params.offset));
 		if (params?.search) query.set('search', params.search);
 		const qs = query.toString();
-		return get<PaginatedResponse<Contact>>(`/contacts${qs ? `?${qs}` : ''}`);
+		return get<ListResponse<Contact>>(`/contacts${qs ? `?${qs}` : ''}`);
 	},
 
 	getById(id: number) {
@@ -209,14 +216,14 @@ export const contactsApi = {
 // --- Invoices API ---
 
 export const invoicesApi = {
-	list(params?: { page?: number; per_page?: number; search?: string; status?: string }) {
+	list(params?: { limit?: number; offset?: number; search?: string; status?: string }) {
 		const query = new URLSearchParams();
-		if (params?.page) query.set('page', String(params.page));
-		if (params?.per_page) query.set('per_page', String(params.per_page));
+		if (params?.limit) query.set('limit', String(params.limit));
+		if (params?.offset) query.set('offset', String(params.offset));
 		if (params?.search) query.set('search', params.search);
 		if (params?.status) query.set('status', params.status);
 		const qs = query.toString();
-		return get<PaginatedResponse<Invoice>>(`/invoices${qs ? `?${qs}` : ''}`);
+		return get<ListResponse<Invoice>>(`/invoices${qs ? `?${qs}` : ''}`);
 	},
 
 	getById(id: number) {
@@ -239,8 +246,8 @@ export const invoicesApi = {
 		return post<Invoice>(`/invoices/${id}/send`, {});
 	},
 
-	markPaid(id: number) {
-		return post<Invoice>(`/invoices/${id}/mark-paid`, {});
+	markPaid(id: number, amount?: number, paidAt?: string) {
+		return post<Invoice>(`/invoices/${id}/mark-paid`, { amount, paid_at: paidAt });
 	},
 
 	duplicate(id: number) {
@@ -251,13 +258,13 @@ export const invoicesApi = {
 // --- Expenses API ---
 
 export const expensesApi = {
-	list(params?: { page?: number; per_page?: number; search?: string }) {
+	list(params?: { limit?: number; offset?: number; search?: string }) {
 		const query = new URLSearchParams();
-		if (params?.page) query.set('page', String(params.page));
-		if (params?.per_page) query.set('per_page', String(params.per_page));
+		if (params?.limit) query.set('limit', String(params.limit));
+		if (params?.offset) query.set('offset', String(params.offset));
 		if (params?.search) query.set('search', params.search);
 		const qs = query.toString();
-		return get<PaginatedResponse<Expense>>(`/expenses${qs ? `?${qs}` : ''}`);
+		return get<ListResponse<Expense>>(`/expenses${qs ? `?${qs}` : ''}`);
 	},
 
 	getById(id: number) {
@@ -274,5 +281,17 @@ export const expensesApi = {
 
 	delete(id: number) {
 		return del<void>(`/expenses/${id}`);
+	}
+};
+
+// --- Settings API ---
+
+export const settingsApi = {
+	getAll() {
+		return get<Settings>('/settings');
+	},
+
+	update(settings: Settings) {
+		return put<Settings>('/settings', settings);
 	}
 };

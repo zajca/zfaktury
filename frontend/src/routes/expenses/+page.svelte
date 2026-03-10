@@ -17,7 +17,7 @@
 		loading = true;
 		error = null;
 		try {
-			const res = await expensesApi.list({ page, per_page: perPage, search: search || undefined });
+			const res = await expensesApi.list({ limit: perPage, offset: (page - 1) * perPage, search: search || undefined });
 			expenses = res.data;
 			total = res.total;
 		} catch (e) {
@@ -57,14 +57,15 @@
 			<h1 class="text-2xl font-bold text-gray-900">Naklady</h1>
 			<p class="mt-1 text-sm text-gray-500">Evidence vydaju a nakladu</p>
 		</div>
-		<button
+		<a
+			href="/expenses/new"
 			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
 			Pridat naklad
-		</button>
+		</a>
 	</div>
 
 	<!-- Search -->
@@ -104,11 +105,18 @@
 				</thead>
 				<tbody class="divide-y divide-gray-100">
 					{#each expenses as expense}
-						<tr class="hover:bg-gray-50 transition-colors">
-							<td class="px-4 py-3 font-medium text-gray-900">{expense.description}</td>
+						<tr
+							class="hover:bg-gray-50 transition-colors cursor-pointer"
+							onclick={() => { window.location.href = `/expenses/${expense.id}`; }}
+						>
+							<td class="px-4 py-3">
+								<a href="/expenses/{expense.id}" class="font-medium text-blue-600 hover:text-blue-800">
+									{expense.description}
+								</a>
+							</td>
 							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">{expense.category || '-'}</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">{formatDate(expense.expense_date)}</td>
-							<td class="px-4 py-3 text-right font-medium text-gray-900">{formatCZK(expense.total_amount)}</td>
+							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">{formatDate(expense.issue_date)}</td>
+							<td class="px-4 py-3 text-right font-medium text-gray-900">{formatCZK(expense.amount)}</td>
 						</tr>
 					{/each}
 				</tbody>

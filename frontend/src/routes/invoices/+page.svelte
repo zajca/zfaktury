@@ -35,8 +35,8 @@
 		error = null;
 		try {
 			const res = await invoicesApi.list({
-				page,
-				per_page: perPage,
+				limit: perPage,
+				offset: (page - 1) * perPage,
 				search: search || undefined,
 				status: statusFilter || undefined
 			});

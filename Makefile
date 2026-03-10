@@ -12,9 +12,10 @@ build:
 dev:
 	@bash scripts/dev.sh
 
-# Run all tests
+# Run all tests (backend + frontend)
 test:
 	go test ./... -v -race
+	cd frontend && npm run test
 
 # Clean build artifacts
 clean:

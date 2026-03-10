@@ -31,6 +31,12 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 	}
 	defer tx.Rollback()
 
+	// Use NULL for zero sequence_id to avoid FK constraint violation.
+	var seqID any
+	if inv.SequenceID > 0 {
+		seqID = inv.SequenceID
+	}
+
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO invoices (
 			sequence_id, invoice_number, type, status,
@@ -41,7 +47,7 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 			notes, internal_notes, sent_at, paid_at,
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		inv.SequenceID, inv.InvoiceNumber, inv.Type, inv.Status,
+		seqID, inv.InvoiceNumber, inv.Type, inv.Status,
 		inv.IssueDate, inv.DueDate, inv.DeliveryDate, inv.VariableSymbol, inv.ConstantSymbol,
 		inv.CustomerID, inv.CurrencyCode, inv.ExchangeRate,
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
@@ -97,6 +103,11 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 	}
 	defer tx.Rollback()
 
+	var updateSeqID any
+	if inv.SequenceID > 0 {
+		updateSeqID = inv.SequenceID
+	}
+
 	_, err = tx.ExecContext(ctx, `
 		UPDATE invoices SET
 			sequence_id = ?, invoice_number = ?, type = ?, status = ?,
@@ -107,7 +118,7 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 			notes = ?, internal_notes = ?, sent_at = ?, paid_at = ?,
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
-		inv.SequenceID, inv.InvoiceNumber, inv.Type, inv.Status,
+		updateSeqID, inv.InvoiceNumber, inv.Type, inv.Status,
 		inv.IssueDate, inv.DueDate, inv.DeliveryDate, inv.VariableSymbol, inv.ConstantSymbol,
 		inv.CustomerID, inv.CurrencyCode, inv.ExchangeRate,
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
@@ -177,6 +188,7 @@ func (r *InvoiceRepository) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves an invoice with its items and customer data.
 func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invoice, error) {
 	inv := &domain.Invoice{}
+	var seqID sql.NullInt64
 	var deletedAt sql.NullTime
 	var sentAt sql.NullTime
 	var paidAt sql.NullTime
@@ -201,7 +213,7 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 		LEFT JOIN contacts c ON c.id = i.customer_id
 		WHERE i.id = ? AND i.deleted_at IS NULL`, id,
 	).Scan(
-		&inv.ID, &inv.SequenceID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
+		&inv.ID, &seqID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
 		&inv.IssueDate, &inv.DueDate, &inv.DeliveryDate, &inv.VariableSymbol, &inv.ConstantSymbol,
 		&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
 		&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
@@ -219,6 +231,9 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 		return nil, fmt.Errorf("querying invoice %d: %w", id, err)
 	}
 
+	if seqID.Valid {
+		inv.SequenceID = seqID.Int64
+	}
 	if sentAt.Valid {
 		inv.SentAt = &sentAt.Time
 	}
@@ -337,13 +352,14 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 	var invoices []domain.Invoice
 	for rows.Next() {
 		var inv domain.Invoice
+		var listSeqID sql.NullInt64
 		var deletedAt sql.NullTime
 		var sentAt sql.NullTime
 		var paidAt sql.NullTime
 		var customerName string
 
 		if err := rows.Scan(
-			&inv.ID, &inv.SequenceID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
+			&inv.ID, &listSeqID, &inv.InvoiceNumber, &inv.Type, &inv.Status,
 			&inv.IssueDate, &inv.DueDate, &inv.DeliveryDate, &inv.VariableSymbol, &inv.ConstantSymbol,
 			&inv.CustomerID, &inv.CurrencyCode, &inv.ExchangeRate,
 			&inv.PaymentMethod, &inv.BankAccount, &inv.BankCode, &inv.IBAN, &inv.SWIFT,
@@ -355,6 +371,9 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 			return nil, 0, fmt.Errorf("scanning invoice row: %w", err)
 		}
 
+		if listSeqID.Valid {
+			inv.SequenceID = listSeqID.Int64
+		}
 		if sentAt.Valid {
 			inv.SentAt = &sentAt.Time
 		}
@@ -379,12 +398,20 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 // UpdateStatus changes the status of an invoice.
 func (r *InvoiceRepository) UpdateStatus(ctx context.Context, id int64, status string) error {
 	now := time.Now()
-	_, err := r.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE invoices SET status = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
 		status, now, id,
 	)
 	if err != nil {
 		return fmt.Errorf("updating status of invoice %d to %s: %w", id, status, err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected for invoice %d status update: %w", id, err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("invoice %d not found or already deleted", id)
 	}
 	return nil
 }

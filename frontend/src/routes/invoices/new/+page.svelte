@@ -62,7 +62,7 @@
 
 	async function loadContacts() {
 		try {
-			const res = await contactsApi.list({ per_page: 1000 });
+			const res = await contactsApi.list({ limit: 1000 });
 			contacts = res.data;
 		} catch {
 			// Contacts loading is non-critical

@@ -347,6 +347,7 @@ type invoiceResponse struct {
 	SentAt          *string               `json:"sent_at,omitempty"`
 	PaidAt          *string               `json:"paid_at,omitempty"`
 	Items           []invoiceItemResponse  `json:"items"`
+	Customer        *contactResponse       `json:"customer,omitempty"`
 	CreatedAt       string                `json:"created_at"`
 	UpdatedAt       string                `json:"updated_at"`
 }
@@ -389,6 +390,11 @@ func invoiceFromDomain(inv *domain.Invoice) invoiceResponse {
 	if inv.PaidAt != nil {
 		s := inv.PaidAt.Format(time.RFC3339)
 		resp.PaidAt = &s
+	}
+
+	if inv.Customer != nil {
+		c := contactFromDomain(inv.Customer)
+		resp.Customer = &c
 	}
 
 	for _, item := range inv.Items {

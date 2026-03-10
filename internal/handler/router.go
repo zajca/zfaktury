@@ -21,6 +21,7 @@ func NewRouter(
 	contactSvc *service.ContactService,
 	invoiceSvc *service.InvoiceService,
 	expenseSvc *service.ExpenseService,
+	settingsSvc *service.SettingsService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -28,6 +29,7 @@ func NewRouter(
 	// Global middleware.
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
+	r.Use(securityHeadersMiddleware)
 	r.Use(slogMiddleware)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
@@ -44,10 +46,12 @@ func NewRouter(
 		contactHandler := NewContactHandler(contactSvc)
 		invoiceHandler := NewInvoiceHandler(invoiceSvc)
 		expenseHandler := NewExpenseHandler(expenseSvc)
+		settingsHandler := NewSettingsHandler(settingsSvc)
 
 		api.Mount("/contacts", contactHandler.Routes())
 		api.Mount("/invoices", invoiceHandler.Routes())
 		api.Mount("/expenses", expenseHandler.Routes())
+		api.Mount("/settings", settingsHandler.Routes())
 	})
 
 	// Health check endpoint.
@@ -81,6 +85,16 @@ func slogMiddleware(next http.Handler) http.Handler {
 func jsonContentTypeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeadersMiddleware adds basic security headers to all responses.
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		next.ServeHTTP(w, r)
 	})
 }

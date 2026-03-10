@@ -14,7 +14,8 @@ import (
 func New(cfg *config.Config) (*sql.DB, error) {
 	dbPath := cfg.DatabasePath()
 
-	db, err := sql.Open("sqlite", dbPath)
+	dsn := dbPath + "?_time_format=sqlite"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("opening database at %s: %w", dbPath, err)
 	}

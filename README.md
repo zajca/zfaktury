@@ -5,8 +5,15 @@ Self-contained invoicing and tax management application for Czech sole proprieto
 ## Features
 
 - **Invoicing** -- create, send, track invoices with PDF generation and QR payment codes
+- **Credit notes & proforma invoices** -- settle proformas, issue credit notes
+- **Recurring invoices & expenses** -- automatic generation on schedule
+- **Email sending** -- send invoices with PDF and ISDOC attachments via SMTP
+- **Payment reminders** -- overdue tracking and reminder emails
 - **Expenses** -- manual entry, document upload, AI OCR extraction
+- **ISDOC export** -- single invoice or batch export in Czech ISDOC format
 - **Contacts** -- company/individual records with ARES and VIES integration
+- **Exchange rates** -- CNB (Czech National Bank) daily rates
+- **Invoice sequences & expense categories** -- customizable numbering and categorization
 - **VAT filings** -- VAT return, control statement, EU sales list (EPO XML)
 - **Income tax** -- annual tax return with deductions and credits
 - **Bank integration** -- FIO API, CSV/GPC import, automatic payment matching
@@ -164,28 +171,6 @@ Override data directory with `ZFAKTURY_DATA_DIR` environment variable.
   logs/             Structured JSON logs
 ```
 
-## API Endpoints
-
-All endpoints under `/api/v1`:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| GET/POST | `/api/v1/contacts` | List / create contacts |
-| GET/PUT/DELETE | `/api/v1/contacts/{id}` | Get / update / delete contact |
-| GET | `/api/v1/contacts/ares/{ico}` | ARES lookup by ICO |
-| GET/POST | `/api/v1/invoices` | List / create invoices |
-| GET/PUT/DELETE | `/api/v1/invoices/{id}` | Get / update / delete invoice |
-| POST | `/api/v1/invoices/{id}/send` | Mark invoice as sent |
-| POST | `/api/v1/invoices/{id}/pay` | Mark invoice as paid |
-| POST | `/api/v1/invoices/{id}/duplicate` | Duplicate invoice |
-| GET/POST | `/api/v1/expenses` | List / create expenses |
-| GET/PUT/DELETE | `/api/v1/expenses/{id}` | Get / update / delete expense |
-| POST | `/api/v1/expenses/import` | Import expense from document (OCR) |
-| POST | `/api/v1/expenses/{id}/documents` | Upload document to expense |
-| GET | `/api/v1/expenses/{id}/documents` | List documents for expense |
-| POST | `/api/v1/documents/{id}/ocr` | Run OCR on a document |
-
 ## Document Import & OCR
 
 ZFaktury supports importing expenses directly from scanned documents (PDF, JPG, PNG, WebP). When OCR is configured, the system automatically extracts vendor name, invoice number, amounts, dates, and other fields.
@@ -226,92 +211,6 @@ Without the `[ocr]` section (or with an empty `api_key`), the import still works
 | HEIC | `image/heic` |
 
 Maximum file size: 20 MB. Up to 10 documents per expense.
-
-## Claude Code Agent Teams
-
-Agent teams allow parallel development using multiple coordinated Claude Code sessions. One session acts as team lead, others work as teammates on independent tasks.
-
-### Prerequisites
-
-- tmux (installed via NixOS home-manager `programs.tmux`)
-- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `~/.claude/settings.json` env
-
-### Setup
-
-The env var is already configured in `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
-
-### Usage with tmux
-
-Start a tmux session first, then launch Claude Code inside it. The `auto` display mode (default) detects tmux and uses split panes automatically:
-
-```bash
-# Start tmux session
-tmux new -s zfaktury
-
-# Inside tmux, start Claude Code
-claude
-
-# Ask Claude to create an agent team:
-# "Create an agent team for implementing PDF invoice generation:
-#  - Backend agent: service + handler
-#  - Frontend agent: download button
-#  - Test agent: integration tests"
-```
-
-Each teammate gets its own tmux pane. Click into a pane to interact with that teammate directly.
-
-To force a specific display mode:
-
-```bash
-claude --teammate-mode in-process  # all in one terminal, Shift+Down to cycle
-```
-
-### Common scenarios
-
-**Full-stack feature** (3 agents: backend + frontend + tests):
-```
-Create an agent team for [feature]:
-- Backend agent: implement service and handler
-- Frontend agent: add UI components
-- Test agent: write integration tests
-```
-
-**Parallel services** (2-4 agents, each owns a directory):
-```
-Create an agent team for implementing independent services:
-- Agent ARES: internal/service/ares/
-- Agent QR: internal/service/qr/
-- Agent CNB: internal/service/cnb/
-```
-
-**Code review** (3 agents with different focus):
-```
-Create an agent team to review the project:
-- Security reviewer
-- Performance reviewer
-- Architecture reviewer
-```
-
-### Conventions
-
-See `CLAUDE.md` section "Agent Teams Conventions" for rules on file ownership, shared file coordination, and quality gates.
-
-### Key commands
-
-| Action | Command |
-|--------|---------|
-| Cycle teammates (in-process) | Shift+Down |
-| Toggle task list | Ctrl+T |
-| List tmux sessions | `tmux ls` |
-| Kill orphaned session | `tmux kill-session -t <name>` |
 
 ## License
 

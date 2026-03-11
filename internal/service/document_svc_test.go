@@ -236,6 +236,38 @@ func TestDocumentService_ListByExpenseID_ZeroID(t *testing.T) {
 	}
 }
 
+func TestDocumentService_ListByExpenseID_Success(t *testing.T) {
+	svc, _ := newDocumentTestService(t)
+	ctx := context.Background()
+
+	data := bytes.NewReader(pdfMagic)
+	_, err := svc.Upload(ctx, 1, "test.pdf", "application/pdf", data)
+	if err != nil {
+		t.Fatalf("Upload: %v", err)
+	}
+
+	docs, err := svc.ListByExpenseID(ctx, 1)
+	if err != nil {
+		t.Fatalf("ListByExpenseID: %v", err)
+	}
+	if len(docs) != 1 {
+		t.Errorf("got %d docs, want 1", len(docs))
+	}
+}
+
+func TestDocumentService_ListByExpenseID_Empty(t *testing.T) {
+	svc, _ := newDocumentTestService(t)
+	ctx := context.Background()
+
+	docs, err := svc.ListByExpenseID(ctx, 999)
+	if err != nil {
+		t.Fatalf("ListByExpenseID: %v", err)
+	}
+	if len(docs) != 0 {
+		t.Errorf("got %d docs, want 0", len(docs))
+	}
+}
+
 func TestDocumentService_Delete_ZeroID(t *testing.T) {
 	svc, _ := newDocumentTestService(t)
 	ctx := context.Background()

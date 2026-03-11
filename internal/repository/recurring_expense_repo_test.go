@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -314,5 +315,264 @@ func TestRecurringExpenseRepository_WithEndDate(t *testing.T) {
 	}
 	if got.EndDate.Format("2006-01-02") != "2026-12-31" {
 		t.Errorf("EndDate = %s, want 2026-12-31", got.EndDate.Format("2006-01-02"))
+	}
+}
+
+func TestRecurringExpenseRepository_List_WithPagination(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	// Create 5 items with different next issue dates for deterministic ordering.
+	for i := 0; i < 5; i++ {
+		seedRecurringExpense(t, repo, &domain.RecurringExpense{
+			Name:          fmt.Sprintf("Item %d", i),
+			NextIssueDate: time.Date(2026, 4, 1+i, 0, 0, 0, 0, time.UTC),
+		})
+	}
+
+	// Get first page.
+	items, total, err := repo.List(context.Background(), 2, 0)
+	if err != nil {
+		t.Fatalf("List(2,0) error: %v", err)
+	}
+	if total != 5 {
+		t.Errorf("total = %d, want 5", total)
+	}
+	if len(items) != 2 {
+		t.Errorf("len = %d, want 2", len(items))
+	}
+
+	// Get second page.
+	items2, total2, err := repo.List(context.Background(), 2, 2)
+	if err != nil {
+		t.Fatalf("List(2,2) error: %v", err)
+	}
+	if total2 != 5 {
+		t.Errorf("total = %d, want 5", total2)
+	}
+	if len(items2) != 2 {
+		t.Errorf("len = %d, want 2", len(items2))
+	}
+
+	// Get last page.
+	items3, _, err := repo.List(context.Background(), 2, 4)
+	if err != nil {
+		t.Fatalf("List(2,4) error: %v", err)
+	}
+	if len(items3) != 1 {
+		t.Errorf("len = %d, want 1", len(items3))
+	}
+}
+
+func TestRecurringExpenseRepository_List_WithVendor(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Vendor Co"})
+	seedRecurringExpense(t, repo, &domain.RecurringExpense{
+		Name:     "With vendor",
+		VendorID: &vendor.ID,
+	})
+
+	items, _, err := repo.List(context.Background(), 0, 0)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("len = %d, want 1", len(items))
+	}
+	if items[0].VendorID == nil {
+		t.Fatal("expected VendorID to be set")
+	}
+	if items[0].Vendor == nil {
+		t.Fatal("expected Vendor to be populated in list")
+	}
+	if items[0].Vendor.Name != "Vendor Co" {
+		t.Errorf("Vendor.Name = %q, want %q", items[0].Vendor.Name, "Vendor Co")
+	}
+}
+
+func TestRecurringExpenseRepository_List_Empty(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	items, total, err := repo.List(context.Background(), 0, 0)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if total != 0 {
+		t.Errorf("total = %d, want 0", total)
+	}
+	if items != nil {
+		t.Errorf("expected nil items for empty database, got %d", len(items))
+	}
+}
+
+func TestRecurringExpenseRepository_Deactivate_NotFound(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	err := repo.Deactivate(context.Background(), 99999)
+	if err == nil {
+		t.Error("expected error for non-existent recurring expense")
+	}
+}
+
+func TestRecurringExpenseRepository_Deactivate_AlreadyDeleted(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	seeded := seedRecurringExpense(t, repo, nil)
+	repo.Delete(context.Background(), seeded.ID)
+
+	err := repo.Deactivate(context.Background(), seeded.ID)
+	if err == nil {
+		t.Error("expected error when deactivating a deleted recurring expense")
+	}
+}
+
+func TestRecurringExpenseRepository_Delete_AlreadyDeleted(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	seeded := seedRecurringExpense(t, repo, nil)
+	repo.Delete(context.Background(), seeded.ID)
+
+	err := repo.Delete(context.Background(), seeded.ID)
+	if err == nil {
+		t.Error("expected error when deleting already deleted recurring expense")
+	}
+}
+
+func TestRecurringExpenseRepository_GetByID_WithoutVendor(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	seeded := seedRecurringExpense(t, repo, &domain.RecurringExpense{
+		Name: "No vendor",
+	})
+
+	got, err := repo.GetByID(context.Background(), seeded.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.VendorID != nil {
+		t.Errorf("expected VendorID to be nil, got %v", got.VendorID)
+	}
+	if got.Vendor != nil {
+		t.Error("expected Vendor to be nil when no vendor is set")
+	}
+}
+
+func TestRecurringExpenseRepository_ListDue_Empty(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	asOf := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	items, err := repo.ListDue(context.Background(), asOf)
+	if err != nil {
+		t.Fatalf("ListDue() error: %v", err)
+	}
+	if items != nil {
+		t.Errorf("expected nil items for empty database, got %d", len(items))
+	}
+}
+
+func TestRecurringExpenseRepository_ListDue_ExcludesInactive(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	// Due and active.
+	seedRecurringExpense(t, repo, &domain.RecurringExpense{
+		Name:          "Active due",
+		NextIssueDate: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+	})
+
+	// Due but inactive.
+	inactive := seedRecurringExpense(t, repo, &domain.RecurringExpense{
+		Name:          "Inactive due",
+		NextIssueDate: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+	})
+	repo.Deactivate(context.Background(), inactive.ID)
+
+	asOf := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	items, err := repo.ListDue(context.Background(), asOf)
+	if err != nil {
+		t.Fatalf("ListDue() error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("len = %d, want 1", len(items))
+	}
+	if items[0].Name != "Active due" {
+		t.Errorf("Name = %q, want %q", items[0].Name, "Active due")
+	}
+}
+
+func TestRecurringExpenseRepository_ListDue_WithVendor(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Due Vendor"})
+	seedRecurringExpense(t, repo, &domain.RecurringExpense{
+		Name:          "Due with vendor",
+		VendorID:      &vendor.ID,
+		NextIssueDate: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+	})
+
+	asOf := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	items, err := repo.ListDue(context.Background(), asOf)
+	if err != nil {
+		t.Fatalf("ListDue() error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("len = %d, want 1", len(items))
+	}
+	if items[0].VendorID == nil {
+		t.Fatal("expected VendorID to be set")
+	}
+	if items[0].Vendor == nil {
+		t.Fatal("expected Vendor to be populated in due list")
+	}
+	if items[0].Vendor.Name != "Due Vendor" {
+		t.Errorf("Vendor.Name = %q, want %q", items[0].Vendor.Name, "Due Vendor")
+	}
+}
+
+func TestRecurringExpenseRepository_ListActive_Empty(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	items, err := repo.ListActive(context.Background())
+	if err != nil {
+		t.Fatalf("ListActive() error: %v", err)
+	}
+	if items != nil {
+		t.Errorf("expected nil items for empty database, got %d", len(items))
+	}
+}
+
+func TestRecurringExpenseRepository_Update_WithEndDate(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewRecurringExpenseRepository(db)
+
+	seeded := seedRecurringExpense(t, repo, &domain.RecurringExpense{Name: "Before"})
+
+	endDate := time.Date(2027, 6, 30, 0, 0, 0, 0, time.UTC)
+	seeded.EndDate = &endDate
+	seeded.Name = "After"
+
+	if err := repo.Update(context.Background(), seeded); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	got, err := repo.GetByID(context.Background(), seeded.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.EndDate == nil {
+		t.Fatal("expected EndDate to be set after update")
+	}
+	if got.EndDate.Format("2006-01-02") != "2027-06-30" {
+		t.Errorf("EndDate = %s, want 2027-06-30", got.EndDate.Format("2006-01-02"))
 	}
 }

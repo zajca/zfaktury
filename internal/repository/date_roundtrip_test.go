@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -431,5 +432,72 @@ func assertTimestampEqual(t *testing.T, field string, want, got time.Time) {
 	gotStr := got.Format(time.RFC3339)
 	if wantStr != gotStr {
 		t.Errorf("%s = %s, want %s", field, gotStr, wantStr)
+	}
+}
+
+func TestParseDate_Fallbacks(t *testing.T) {
+	// Direct parse succeeds.
+	if _, err := parseDate("2006-01-02", "2025-03-15"); err != nil {
+		t.Errorf("direct parse: %v", err)
+	}
+
+	// RFC3339 with space separator fallback.
+	v, err := parseDate(time.RFC3339, "2025-03-15 10:30:00Z")
+	if err != nil {
+		t.Errorf("space separator fallback: %v", err)
+	}
+	if v.Year() != 2025 || v.Month() != 3 || v.Day() != 15 {
+		t.Errorf("wrong date: %v", v)
+	}
+
+	// Date-only layout with full timestamp value.
+	v2, err := parseDate("2006-01-02", "2025-03-15T10:30:00Z")
+	if err != nil {
+		t.Errorf("date-only with timestamp: %v", err)
+	}
+	if v2.Year() != 2025 || v2.Month() != 3 || v2.Day() != 15 {
+		t.Errorf("wrong date: %v", v2)
+	}
+
+	// Completely invalid value.
+	if _, err := parseDate("2006-01-02", "not-a-date"); err == nil {
+		t.Error("expected error for invalid date")
+	}
+}
+
+func TestParseDateOptional_EmptyString(t *testing.T) {
+	// Empty string returns zero time.
+	v, err := parseDateOptional("2006-01-02", sql.NullString{Valid: true, String: ""})
+	if err != nil {
+		t.Errorf("empty string: %v", err)
+	}
+	if !v.IsZero() {
+		t.Error("expected zero time for empty string")
+	}
+
+	// Invalid NullString returns zero time.
+	v2, err := parseDateOptional("2006-01-02", sql.NullString{Valid: false})
+	if err != nil {
+		t.Errorf("invalid null: %v", err)
+	}
+	if !v2.IsZero() {
+		t.Error("expected zero time for invalid")
+	}
+
+	// Valid string parses correctly.
+	v3, err := parseDateOptional("2006-01-02", sql.NullString{Valid: true, String: "2025-06-01"})
+	if err != nil {
+		t.Errorf("valid string: %v", err)
+	}
+	if v3.Year() != 2025 {
+		t.Errorf("Year = %d, want 2025", v3.Year())
+	}
+}
+
+func TestParseDatePtr_ErrorPath(t *testing.T) {
+	// Invalid date returns error.
+	_, err := parseDatePtr("2006-01-02", sql.NullString{Valid: true, String: "invalid"})
+	if err == nil {
+		t.Error("expected error for invalid date")
 	}
 }

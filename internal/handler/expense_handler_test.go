@@ -263,3 +263,185 @@ func TestExpenseHandler_Create_MissingIssueDate(t *testing.T) {
 		t.Errorf("error = %q, want to contain %q", resp.Error, "issue_date is required")
 	}
 }
+
+func TestExpenseHandler_MarkTaxReviewed(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	e1 := createTestExpense(t, r)
+	e2 := createTestExpense(t, r)
+
+	body := fmt.Sprintf(`{"ids":[%d,%d]}`, e1.ID, e2.ID)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/expenses/review", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusNoContent, w.Body.String())
+	}
+
+	// Verify that expenses are now marked as tax reviewed.
+	for _, id := range []int64{e1.ID, e2.ID} {
+		getReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/expenses/%d", id), nil)
+		getW := httptest.NewRecorder()
+		r.ServeHTTP(getW, getReq)
+
+		var resp expenseResponse
+		json.NewDecoder(getW.Body).Decode(&resp)
+		if resp.TaxReviewedAt == nil {
+			t.Errorf("expense %d: TaxReviewedAt is nil, expected non-nil after marking", id)
+		}
+	}
+}
+
+func TestExpenseHandler_MarkTaxReviewed_InvalidBody(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/expenses/review", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestExpenseHandler_UnmarkTaxReviewed(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	e1 := createTestExpense(t, r)
+	e2 := createTestExpense(t, r)
+
+	// First mark them as reviewed.
+	markBody := fmt.Sprintf(`{"ids":[%d,%d]}`, e1.ID, e2.ID)
+	markReq := httptest.NewRequest(http.MethodPost, "/api/v1/expenses/review", bytes.NewBufferString(markBody))
+	markReq.Header.Set("Content-Type", "application/json")
+	markW := httptest.NewRecorder()
+	r.ServeHTTP(markW, markReq)
+
+	if markW.Code != http.StatusNoContent {
+		t.Fatalf("mark: status = %d, want %d, body = %s", markW.Code, http.StatusNoContent, markW.Body.String())
+	}
+
+	// Now unmark them.
+	unmarkBody := fmt.Sprintf(`{"ids":[%d,%d]}`, e1.ID, e2.ID)
+	unmarkReq := httptest.NewRequest(http.MethodPost, "/api/v1/expenses/unreview", bytes.NewBufferString(unmarkBody))
+	unmarkReq.Header.Set("Content-Type", "application/json")
+	unmarkW := httptest.NewRecorder()
+	r.ServeHTTP(unmarkW, unmarkReq)
+
+	if unmarkW.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want %d, body = %s", unmarkW.Code, http.StatusNoContent, unmarkW.Body.String())
+	}
+
+	// Verify that expenses are no longer marked as tax reviewed.
+	for _, id := range []int64{e1.ID, e2.ID} {
+		getReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/expenses/%d", id), nil)
+		getW := httptest.NewRecorder()
+		r.ServeHTTP(getW, getReq)
+
+		var resp expenseResponse
+		json.NewDecoder(getW.Body).Decode(&resp)
+		if resp.TaxReviewedAt != nil {
+			t.Errorf("expense %d: TaxReviewedAt = %v, expected nil after unmarking", id, *resp.TaxReviewedAt)
+		}
+	}
+}
+
+func TestExpenseHandler_UnmarkTaxReviewed_InvalidBody(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/expenses/unreview", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestExpenseHandler_Update_InvalidID(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/expenses/abc", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestExpenseHandler_Update_InvalidBody(t *testing.T) {
+	r := setupExpenseRouter(t)
+	created := createTestExpense(t, r)
+
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/expenses/%d", created.ID), bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestExpenseHandler_Delete_InvalidID(t *testing.T) {
+	r := setupExpenseRouter(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/expenses/abc", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestExpenseHandler_List_WithFilters(t *testing.T) {
+	r := setupExpenseRouter(t)
+	createTestExpense(t, r)
+
+	// Filter by category.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/expenses?category=supplies", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("category filter: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Filter by date range.
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/expenses?date_from=2026-01-01&date_to=2026-12-31", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("date filter: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Filter by search.
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/expenses?search=supplies", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("search filter: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Filter by tax_reviewed.
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/expenses?tax_reviewed=false", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("tax_reviewed filter: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	// Pagination.
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/expenses?limit=5&offset=0", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("pagination: status = %d, want %d", w.Code, http.StatusOK)
+	}
+}

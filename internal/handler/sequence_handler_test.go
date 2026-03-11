@@ -208,3 +208,63 @@ func TestSequenceHandler_Delete_InvalidID(t *testing.T) {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
+
+func TestSequenceHandler_Update_InvalidID(t *testing.T) {
+	r := setupSequenceRouter(t)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/invoice-sequences/abc", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSequenceHandler_Update_InvalidBody(t *testing.T) {
+	r := setupSequenceRouter(t)
+	created := createTestSequence(t, r, "FV", 2026)
+
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/invoice-sequences/%d", created.ID), bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestSequenceHandler_Delete_NotFound(t *testing.T) {
+	r := setupSequenceRouter(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/invoice-sequences/99999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
+	}
+}
+
+func TestSequenceHandler_List_WithMultiple(t *testing.T) {
+	r := setupSequenceRouter(t)
+
+	createTestSequence(t, r, "FV", 2026)
+	createTestSequence(t, r, "PF", 2026)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/invoice-sequences", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp []sequenceResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if len(resp) < 2 {
+		t.Errorf("expected at least 2 sequences, got %d", len(resp))
+	}
+}

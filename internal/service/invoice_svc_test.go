@@ -350,6 +350,433 @@ func TestInvoiceService_Update_NoDueDate(t *testing.T) {
 	}
 }
 
+func TestInvoiceService_GetByID_ZeroID(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.GetByID(ctx, 0)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+	if !strings.Contains(err.Error(), "ID is required") {
+		t.Errorf("error should mention 'ID is required', got: %v", err)
+	}
+}
+
+func TestInvoiceService_GetByID_NotFound(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.GetByID(ctx, 99999)
+	if err == nil {
+		t.Error("expected error for non-existent invoice")
+	}
+}
+
+func TestInvoiceService_GetByID_Valid(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.ID != inv.ID {
+		t.Errorf("ID = %d, want %d", got.ID, inv.ID)
+	}
+	if got.CustomerID != customerID {
+		t.Errorf("CustomerID = %d, want %d", got.CustomerID, customerID)
+	}
+}
+
+func TestInvoiceService_Delete_ZeroID(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	err := svc.Delete(ctx, 0)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+	if !strings.Contains(err.Error(), "ID is required") {
+		t.Errorf("error should mention 'ID is required', got: %v", err)
+	}
+}
+
+func TestInvoiceService_Delete_NotFound(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	err := svc.Delete(ctx, 99999)
+	if err == nil {
+		t.Error("expected error for non-existent invoice")
+	}
+}
+
+func TestInvoiceService_Delete_DraftInvoice(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if err := svc.Delete(ctx, inv.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	// Verify it's gone.
+	_, err := svc.GetByID(ctx, inv.ID)
+	if err == nil {
+		t.Error("expected error after deleting invoice")
+	}
+}
+
+func TestInvoiceService_SettleProforma_ZeroID(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.SettleProforma(ctx, 0)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestInvoiceService_SettleProforma_NotProforma(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create a regular invoice (not proforma).
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	_, err := svc.SettleProforma(ctx, inv.ID)
+	if err == nil {
+		t.Error("expected error for non-proforma invoice")
+	}
+	if !strings.Contains(err.Error(), "not a proforma") {
+		t.Errorf("error should mention 'not a proforma', got: %v", err)
+	}
+}
+
+func TestInvoiceService_SettleProforma_UnpaidProforma(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create proforma (draft, not paid). Let auto-sequence handle the number.
+	proforma := makeInvoice(customerID)
+	proforma.Type = domain.InvoiceTypeProforma
+	proforma.SequenceID = 0
+	proforma.InvoiceNumber = ""
+	if err := svc.Create(ctx, proforma); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	_, err := svc.SettleProforma(ctx, proforma.ID)
+	if err == nil {
+		t.Error("expected error for unpaid proforma")
+	}
+	if !strings.Contains(err.Error(), "paid") {
+		t.Errorf("error should mention 'paid', got: %v", err)
+	}
+}
+
+func TestInvoiceService_SettleProforma_Valid(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create and pay a proforma.
+	proforma := makeInvoice(customerID)
+	proforma.Type = domain.InvoiceTypeProforma
+	proforma.InvoiceNumber = "ZF20260001"
+	if err := svc.Create(ctx, proforma); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if err := svc.MarkAsPaid(ctx, proforma.ID, proforma.TotalAmount, time.Now()); err != nil {
+		t.Fatalf("MarkAsPaid() error: %v", err)
+	}
+
+	// Settle the proforma.
+	settlement, err := svc.SettleProforma(ctx, proforma.ID)
+	if err != nil {
+		t.Fatalf("SettleProforma() error: %v", err)
+	}
+
+	if settlement.ID == 0 {
+		t.Error("expected non-zero settlement ID")
+	}
+	if settlement.Type != domain.InvoiceTypeRegular {
+		t.Errorf("Type = %q, want %q", settlement.Type, domain.InvoiceTypeRegular)
+	}
+	if settlement.Status != domain.InvoiceStatusDraft {
+		t.Errorf("Status = %q, want %q", settlement.Status, domain.InvoiceStatusDraft)
+	}
+	if settlement.RelatedInvoiceID == nil || *settlement.RelatedInvoiceID != proforma.ID {
+		t.Error("settlement should reference the proforma")
+	}
+	if settlement.RelationType != domain.RelationTypeSettlement {
+		t.Errorf("RelationType = %q, want %q", settlement.RelationType, domain.RelationTypeSettlement)
+	}
+	if settlement.CustomerID != customerID {
+		t.Errorf("CustomerID = %d, want %d", settlement.CustomerID, customerID)
+	}
+	if len(settlement.Items) != len(proforma.Items) {
+		t.Errorf("len(Items) = %d, want %d", len(settlement.Items), len(proforma.Items))
+	}
+}
+
+func TestInvoiceService_SettleProforma_Idempotent(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create and pay a proforma.
+	proforma := makeInvoice(customerID)
+	proforma.Type = domain.InvoiceTypeProforma
+	proforma.InvoiceNumber = "ZF20260002"
+	if err := svc.Create(ctx, proforma); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.MarkAsPaid(ctx, proforma.ID, proforma.TotalAmount, time.Now()); err != nil {
+		t.Fatalf("MarkAsPaid() error: %v", err)
+	}
+
+	// Settle twice.
+	first, err := svc.SettleProforma(ctx, proforma.ID)
+	if err != nil {
+		t.Fatalf("first SettleProforma() error: %v", err)
+	}
+	second, err := svc.SettleProforma(ctx, proforma.ID)
+	if err != nil {
+		t.Fatalf("second SettleProforma() error: %v", err)
+	}
+
+	if first.ID != second.ID {
+		t.Errorf("idempotent settle returned different IDs: %d vs %d", first.ID, second.ID)
+	}
+}
+
+func TestInvoiceService_CreateCreditNote_ZeroID(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.CreateCreditNote(ctx, 0, nil, "reason")
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestInvoiceService_CreateCreditNote_NotRegular(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create a proforma invoice.
+	proforma := makeInvoice(customerID)
+	proforma.Type = domain.InvoiceTypeProforma
+	proforma.InvoiceNumber = "ZF20260003"
+	if err := svc.Create(ctx, proforma); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	_, err := svc.CreateCreditNote(ctx, proforma.ID, nil, "reason")
+	if err == nil {
+		t.Error("expected error for non-regular invoice")
+	}
+	if !strings.Contains(err.Error(), "regular invoices") {
+		t.Errorf("error should mention 'regular invoices', got: %v", err)
+	}
+}
+
+func TestInvoiceService_CreateCreditNote_DraftInvoice(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create a draft regular invoice.
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	_, err := svc.CreateCreditNote(ctx, inv.ID, nil, "reason")
+	if err == nil {
+		t.Error("expected error for draft invoice")
+	}
+	if !strings.Contains(err.Error(), "sent or paid") {
+		t.Errorf("error should mention 'sent or paid', got: %v", err)
+	}
+}
+
+func TestInvoiceService_CreateCreditNote_FullCreditNote(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create and send a regular invoice.
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.MarkAsSent(ctx, inv.ID); err != nil {
+		t.Fatalf("MarkAsSent() error: %v", err)
+	}
+
+	// Create full credit note (no items provided).
+	cn, err := svc.CreateCreditNote(ctx, inv.ID, nil, "full refund")
+	if err != nil {
+		t.Fatalf("CreateCreditNote() error: %v", err)
+	}
+
+	if cn.Type != domain.InvoiceTypeCreditNote {
+		t.Errorf("Type = %q, want %q", cn.Type, domain.InvoiceTypeCreditNote)
+	}
+	if cn.RelatedInvoiceID == nil || *cn.RelatedInvoiceID != inv.ID {
+		t.Error("credit note should reference the original invoice")
+	}
+	if cn.RelationType != domain.RelationTypeCreditNote {
+		t.Errorf("RelationType = %q, want %q", cn.RelationType, domain.RelationTypeCreditNote)
+	}
+	if cn.Notes != "full refund" {
+		t.Errorf("Notes = %q, want %q", cn.Notes, "full refund")
+	}
+	if len(cn.Items) != len(inv.Items) {
+		t.Fatalf("len(Items) = %d, want %d", len(cn.Items), len(inv.Items))
+	}
+	// Verify prices are negated.
+	for i, item := range cn.Items {
+		originalPrice := inv.Items[i].UnitPrice
+		if item.UnitPrice != originalPrice*-1 {
+			t.Errorf("item %d UnitPrice = %d, want %d (negated)", i, item.UnitPrice, originalPrice*-1)
+		}
+	}
+}
+
+func TestInvoiceService_CreateCreditNote_PartialCreditNote(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create, send, and pay a regular invoice.
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.MarkAsPaid(ctx, inv.ID, inv.TotalAmount, time.Now()); err != nil {
+		t.Fatalf("MarkAsPaid() error: %v", err)
+	}
+
+	// Create partial credit note with custom items.
+	partialItems := []domain.InvoiceItem{
+		{
+			Description:    "Partial refund item",
+			Quantity:       100,
+			Unit:           "ks",
+			UnitPrice:      50000,
+			VATRatePercent: 21,
+		},
+	}
+	cn, err := svc.CreateCreditNote(ctx, inv.ID, partialItems, "partial refund")
+	if err != nil {
+		t.Fatalf("CreateCreditNote() error: %v", err)
+	}
+
+	if len(cn.Items) != 1 {
+		t.Fatalf("len(Items) = %d, want 1", len(cn.Items))
+	}
+	// Partial credit note items should also have negated prices.
+	if cn.Items[0].UnitPrice != -50000 {
+		t.Errorf("item UnitPrice = %d, want -50000", cn.Items[0].UnitPrice)
+	}
+	if cn.Items[0].Description != "Partial refund item" {
+		t.Errorf("item Description = %q, want %q", cn.Items[0].Description, "Partial refund item")
+	}
+}
+
+func TestInvoiceService_GetRelatedInvoices_Empty(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	related, err := svc.GetRelatedInvoices(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetRelatedInvoices() error: %v", err)
+	}
+	if len(related) != 0 {
+		t.Errorf("len(related) = %d, want 0", len(related))
+	}
+}
+
+func TestInvoiceService_GetRelatedInvoices_WithCreditNote(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Create and send a regular invoice.
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.MarkAsSent(ctx, inv.ID); err != nil {
+		t.Fatalf("MarkAsSent() error: %v", err)
+	}
+
+	// Create a credit note for it.
+	_, err := svc.CreateCreditNote(ctx, inv.ID, nil, "refund")
+	if err != nil {
+		t.Fatalf("CreateCreditNote() error: %v", err)
+	}
+
+	related, err := svc.GetRelatedInvoices(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetRelatedInvoices() error: %v", err)
+	}
+	if len(related) != 1 {
+		t.Fatalf("len(related) = %d, want 1", len(related))
+	}
+	if related[0].Type != domain.InvoiceTypeCreditNote {
+		t.Errorf("related Type = %q, want %q", related[0].Type, domain.InvoiceTypeCreditNote)
+	}
+}
+
+func TestInvoiceService_MarkAsSent_ZeroID(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	err := svc.MarkAsSent(ctx, 0)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestInvoiceService_MarkAsPaid_ZeroID(t *testing.T) {
+	svc, _, _, _, _ := newInvoiceTestStack(t)
+	ctx := context.Background()
+
+	err := svc.MarkAsPaid(ctx, 0, 100, time.Now())
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
 func TestInvoiceService_Update_PreservesInvoiceNumber(t *testing.T) {
 	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
 	ctx := context.Background()

@@ -130,6 +130,22 @@ func TestContactService_Delete_ZeroID(t *testing.T) {
 	}
 }
 
+func TestContactService_Delete_Success(t *testing.T) {
+	svc, _ := newContactService(t, nil)
+	ctx := context.Background()
+
+	c := &domain.Contact{Name: "To Delete", Type: domain.ContactTypeCompany}
+	if err := svc.Create(ctx, c); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.Delete(ctx, c.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := svc.GetByID(ctx, c.ID); err == nil {
+		t.Error("expected error after delete")
+	}
+}
+
 func TestContactService_GetByID_ZeroID(t *testing.T) {
 	svc, _ := newContactService(t, nil)
 	ctx := context.Background()
@@ -137,6 +153,23 @@ func TestContactService_GetByID_ZeroID(t *testing.T) {
 	_, err := svc.GetByID(ctx, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
+	}
+}
+
+func TestContactService_GetByID_Success(t *testing.T) {
+	svc, _ := newContactService(t, nil)
+	ctx := context.Background()
+
+	c := &domain.Contact{Name: "Test Contact", Type: domain.ContactTypeCompany}
+	if err := svc.Create(ctx, c); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := svc.GetByID(ctx, c.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Name != "Test Contact" {
+		t.Errorf("Name = %q, want %q", got.Name, "Test Contact")
 	}
 }
 

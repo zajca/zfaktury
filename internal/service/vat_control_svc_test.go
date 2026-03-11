@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/testutil"
 )
 
 // --- Mock implementations ---
@@ -452,4 +455,278 @@ func TestVATControlStatementService_MarkFiled(t *testing.T) {
 	if updated.FiledAt == nil {
 		t.Error("FiledAt should be set after MarkFiled")
 	}
+}
+
+// --- Additional tests using real SQLite ---
+
+func setupVATControlSvc(t *testing.T) (*VATControlStatementService, *sql.DB) {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	csRepo := repository.NewVATControlStatementRepository(db)
+	invRepo := repository.NewInvoiceRepository(db)
+	expRepo := repository.NewExpenseRepository(db)
+	contactRepo := repository.NewContactRepository(db)
+	svc := NewVATControlStatementService(csRepo, invRepo, expRepo, contactRepo)
+	return svc, db
+}
+
+func TestVATControlStatementService_List_Empty(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	result, err := svc.List(ctx, 2025)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("List() returned %d items, want 0", len(result))
+	}
+}
+
+func TestVATControlStatementService_List_MultipleStatements(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	// Create statements for different months in 2025.
+	for _, m := range []int{1, 3, 6} {
+		cs := &domain.VATControlStatement{
+			Period:     domain.TaxPeriod{Year: 2025, Month: m},
+			FilingType: domain.FilingTypeRegular,
+		}
+		if err := svc.Create(ctx, cs); err != nil {
+			t.Fatalf("Create(month=%d) error: %v", m, err)
+		}
+	}
+
+	// Also create one in a different year.
+	cs2024 := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2024, Month: 12},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs2024); err != nil {
+		t.Fatalf("Create(2024/12) error: %v", err)
+	}
+
+	// List for 2025 should return 3.
+	result, err := svc.List(ctx, 2025)
+	if err != nil {
+		t.Fatalf("List(2025) error: %v", err)
+	}
+	if len(result) != 3 {
+		t.Errorf("List(2025) returned %d items, want 3", len(result))
+	}
+
+	// List for 2024 should return 1.
+	result2024, err := svc.List(ctx, 2024)
+	if err != nil {
+		t.Fatalf("List(2024) error: %v", err)
+	}
+	if len(result2024) != 1 {
+		t.Errorf("List(2024) returned %d items, want 1", len(result2024))
+	}
+}
+
+func TestVATControlStatementService_List_FiltersByYear(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	cs := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2023, Month: 5},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// List for a different year returns empty.
+	result, err := svc.List(ctx, 2025)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("List(2025) returned %d items, want 0", len(result))
+	}
+}
+
+func TestVATControlStatementService_Delete_Draft(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	cs := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 4},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Delete draft should succeed.
+	if err := svc.Delete(ctx, cs.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	// GetByID after delete should fail.
+	_, err := svc.GetByID(ctx, cs.ID)
+	if err == nil {
+		t.Error("GetByID() should return error after delete")
+	}
+}
+
+func TestVATControlStatementService_Delete_NotFound(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	err := svc.Delete(ctx, 9999)
+	if err == nil {
+		t.Error("Delete() should return error for non-existent ID")
+	}
+}
+
+func TestVATControlStatementService_Delete_Ready(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	cs := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 5},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Recalculate to move to "ready" status.
+	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// Delete ready statement should succeed (only filed is blocked).
+	if err := svc.Delete(ctx, cs.ID); err != nil {
+		t.Fatalf("Delete() of ready statement should succeed, got error: %v", err)
+	}
+}
+
+func TestVATControlStatementService_GenerateXML_Basic(t *testing.T) {
+	svc, db := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	// Insert DIC setting.
+	_, err := db.ExecContext(ctx, "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	if err != nil {
+		t.Fatalf("inserting DIC setting: %v", err)
+	}
+
+	cs := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	xmlData, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+	if len(xmlData) == 0 {
+		t.Error("GenerateXML() returned empty XML")
+	}
+
+	// Verify XML is stored on the statement.
+	updated, err := svc.GetByID(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(updated.XMLData) == 0 {
+		t.Error("XMLData should be stored after GenerateXML")
+	}
+}
+
+func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
+	svc, db := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	// Insert DIC setting.
+	_, err := db.ExecContext(ctx, "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	if err != nil {
+		t.Fatalf("inserting DIC setting: %v", err)
+	}
+
+	// Create a contact with CZ DIC.
+	contact := testutil.SeedContact(t, db, &domain.Contact{
+		Name: "Test Customer",
+		DIC:  "CZ99887766",
+	})
+
+	// Create an invoice with delivery date in March 2025, big enough for A4.
+	march15 := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{
+			Description:    "Consulting",
+			Quantity:       100,     // 1.00
+			Unit:           "hod",
+			UnitPrice:      1500000, // 15000.00 CZK
+			VATRatePercent: 21,
+		},
+	})
+	// Update delivery date and status.
+	_, err = db.ExecContext(ctx, "UPDATE invoices SET delivery_date = ?, status = ? WHERE id = ?",
+		march15.Format("2006-01-02"), domain.InvoiceStatusSent, inv.ID)
+	if err != nil {
+		t.Fatalf("updating invoice: %v", err)
+	}
+
+	cs := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Recalculate to generate lines.
+	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// Generate XML with lines.
+	xmlData, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+	if len(xmlData) == 0 {
+		t.Error("GenerateXML() returned empty XML")
+	}
+
+	// Verify XML is non-empty and stored.
+	updated, err := svc.GetByID(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(updated.XMLData) == 0 {
+		t.Error("XMLData should be stored after GenerateXML with lines")
+	}
+}
+
+func TestVATControlStatementService_GenerateXML_NotFound(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	_, err := svc.GenerateXML(ctx, 9999, "CZ12345678")
+	if err == nil {
+		t.Error("GenerateXML() should return error for non-existent ID")
+	}
+}
+
+// contains checks if s contains substr.
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

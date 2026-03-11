@@ -202,3 +202,119 @@ func TestCategoryHandler_Create_InvalidBody(t *testing.T) {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }
+
+func TestCategoryHandler_Update_InvalidID(t *testing.T) {
+	h, _ := setupCategoryHandler(t)
+
+	req := httptest.NewRequest(http.MethodPut, "/abc", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Mount("/", h.Routes())
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestCategoryHandler_Update_InvalidBody(t *testing.T) {
+	h, repo := setupCategoryHandler(t)
+	ctx := httptest.NewRequest(http.MethodGet, "/", nil).Context()
+
+	cat := &domain.ExpenseCategory{
+		Key:     "handler_update_invalid",
+		LabelCS: "Test",
+		LabelEN: "Test",
+	}
+	if err := repo.Create(ctx, cat); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/%d", cat.ID), bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Mount("/", h.Routes())
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestCategoryHandler_Delete_InvalidID(t *testing.T) {
+	h, _ := setupCategoryHandler(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/abc", nil)
+	w := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Mount("/", h.Routes())
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestCategoryHandler_Delete_NotFound(t *testing.T) {
+	h, _ := setupCategoryHandler(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/99999", nil)
+	w := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Mount("/", h.Routes())
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusNotFound, w.Body.String())
+	}
+}
+
+func TestCategoryHandler_List_WithCategories(t *testing.T) {
+	h, repo := setupCategoryHandler(t)
+	ctx := httptest.NewRequest(http.MethodGet, "/", nil).Context()
+
+	cat := &domain.ExpenseCategory{
+		Key:     "handler_list_test",
+		LabelCS: "Seznam",
+		LabelEN: "List",
+		Color:   "#123456",
+	}
+	if err := repo.Create(ctx, cat); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Mount("/", h.Routes())
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var categories []categoryResponse
+	if err := json.NewDecoder(w.Body).Decode(&categories); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+
+	found := false
+	for _, c := range categories {
+		if c.Key == "handler_list_test" {
+			found = true
+			if c.Color != "#123456" {
+				t.Errorf("Color = %q, want %q", c.Color, "#123456")
+			}
+		}
+	}
+	if !found {
+		t.Error("expected to find handler_list_test category")
+	}
+}

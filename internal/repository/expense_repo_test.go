@@ -234,6 +234,163 @@ func TestExpenseRepository_List_DateFilter(t *testing.T) {
 	}
 }
 
+func TestExpenseRepository_MarkTaxReviewed(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	exp1 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense 1"})
+	exp2 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense 2"})
+	exp3 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense 3"})
+
+	// Mark exp1 and exp2 as tax reviewed.
+	if err := repo.MarkTaxReviewed(ctx, []int64{exp1.ID, exp2.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() error: %v", err)
+	}
+
+	// Verify exp1 is reviewed.
+	got1, err := repo.GetByID(ctx, exp1.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got1.TaxReviewedAt == nil {
+		t.Error("expected exp1.TaxReviewedAt to be set")
+	}
+
+	// Verify exp2 is reviewed.
+	got2, err := repo.GetByID(ctx, exp2.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got2.TaxReviewedAt == nil {
+		t.Error("expected exp2.TaxReviewedAt to be set")
+	}
+
+	// Verify exp3 is NOT reviewed.
+	got3, err := repo.GetByID(ctx, exp3.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got3.TaxReviewedAt != nil {
+		t.Error("expected exp3.TaxReviewedAt to be nil")
+	}
+}
+
+func TestExpenseRepository_MarkTaxReviewed_EmptySlice(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	// Should be a no-op, not an error.
+	if err := repo.MarkTaxReviewed(ctx, []int64{}); err != nil {
+		t.Fatalf("MarkTaxReviewed(empty) error: %v", err)
+	}
+}
+
+func TestExpenseRepository_MarkTaxReviewed_SkipsDeleted(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	exp := testutil.SeedExpense(t, db, &domain.Expense{Description: "Deleted"})
+	if err := repo.Delete(ctx, exp.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	// MarkTaxReviewed on a deleted expense should not error.
+	if err := repo.MarkTaxReviewed(ctx, []int64{exp.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() error: %v", err)
+	}
+}
+
+func TestExpenseRepository_UnmarkTaxReviewed(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	exp1 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense A"})
+	exp2 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense B"})
+
+	// First mark both as reviewed.
+	if err := repo.MarkTaxReviewed(ctx, []int64{exp1.ID, exp2.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() error: %v", err)
+	}
+
+	// Unmark only exp1.
+	if err := repo.UnmarkTaxReviewed(ctx, []int64{exp1.ID}); err != nil {
+		t.Fatalf("UnmarkTaxReviewed() error: %v", err)
+	}
+
+	// Verify exp1 is no longer reviewed.
+	got1, err := repo.GetByID(ctx, exp1.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got1.TaxReviewedAt != nil {
+		t.Error("expected exp1.TaxReviewedAt to be nil after unmark")
+	}
+
+	// Verify exp2 is still reviewed.
+	got2, err := repo.GetByID(ctx, exp2.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got2.TaxReviewedAt == nil {
+		t.Error("expected exp2.TaxReviewedAt to still be set")
+	}
+}
+
+func TestExpenseRepository_UnmarkTaxReviewed_EmptySlice(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	// Should be a no-op, not an error.
+	if err := repo.UnmarkTaxReviewed(ctx, []int64{}); err != nil {
+		t.Fatalf("UnmarkTaxReviewed(empty) error: %v", err)
+	}
+}
+
+func TestExpenseRepository_List_TaxReviewedFilter(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	exp1 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Reviewed"})
+	testutil.SeedExpense(t, db, &domain.Expense{Description: "Not reviewed"})
+
+	// Mark exp1 as reviewed.
+	if err := repo.MarkTaxReviewed(ctx, []int64{exp1.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() error: %v", err)
+	}
+
+	// Filter for reviewed expenses.
+	reviewed := true
+	expenses, total, err := repo.List(ctx, domain.ExpenseFilter{TaxReviewed: &reviewed})
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if expenses[0].Description != "Reviewed" {
+		t.Errorf("Description = %q, want %q", expenses[0].Description, "Reviewed")
+	}
+
+	// Filter for unreviewed expenses.
+	notReviewed := false
+	expenses, total, err = repo.List(ctx, domain.ExpenseFilter{TaxReviewed: &notReviewed})
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if total != 1 {
+		t.Errorf("total = %d, want 1", total)
+	}
+	if expenses[0].Description != "Not reviewed" {
+		t.Errorf("Description = %q, want %q", expenses[0].Description, "Not reviewed")
+	}
+}
+
 func TestExpenseRepository_List_ExcludesSoftDeleted(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewExpenseRepository(db)

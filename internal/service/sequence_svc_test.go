@@ -156,6 +156,90 @@ func TestSequenceService_Delete_ZeroID(t *testing.T) {
 	}
 }
 
+func TestSequenceService_Update_ZeroID(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	seq := &domain.InvoiceSequence{ID: 0, Prefix: "FV", Year: 2026, NextNumber: 1}
+	if err := svc.Update(ctx, seq); err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestSequenceService_Update_MissingPrefix(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	seq := &domain.InvoiceSequence{ID: 1, Prefix: "", Year: 2026, NextNumber: 1}
+	if err := svc.Update(ctx, seq); err == nil {
+		t.Error("expected error for empty prefix")
+	}
+}
+
+func TestSequenceService_Update_MissingYear(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	seq := &domain.InvoiceSequence{ID: 1, Prefix: "FV", Year: 0, NextNumber: 1}
+	if err := svc.Update(ctx, seq); err == nil {
+		t.Error("expected error for zero year")
+	}
+}
+
+func TestSequenceService_Update_ZeroNextNumber(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	seq := &domain.InvoiceSequence{ID: 1, Prefix: "FV", Year: 2026, NextNumber: 0}
+	if err := svc.Update(ctx, seq); err == nil {
+		t.Error("expected error for zero next_number")
+	}
+}
+
+func TestSequenceService_GetByID_Success(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	seq := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, seq); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	got, err := svc.GetByID(ctx, seq.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Prefix != "FV" {
+		t.Errorf("Prefix = %q, want FV", got.Prefix)
+	}
+}
+
+func TestSequenceService_GetByID_ZeroID(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	if _, err := svc.GetByID(ctx, 0); err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestSequenceService_GetOrCreateForYear_EmptyPrefix(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	if _, err := svc.GetOrCreateForYear(ctx, "", 2026); err == nil {
+		t.Error("expected error for empty prefix")
+	}
+}
+
+func TestSequenceService_GetOrCreateForYear_ZeroYear(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	if _, err := svc.GetOrCreateForYear(ctx, "FV", 0); err == nil {
+		t.Error("expected error for zero year")
+	}
+}
+
 func TestSequenceService_GetOrCreateForYear_ExistingSequence(t *testing.T) {
 	svc, _ := newSequenceTestStack(t)
 	ctx := context.Background()

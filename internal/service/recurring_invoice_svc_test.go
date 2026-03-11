@@ -249,3 +249,266 @@ func TestRecurringInvoiceService_ProcessDue_DeactivatesAfterLastCycle(t *testing
 		t.Error("expected IsActive to be false after last cycle")
 	}
 }
+
+// --- Update tests ---
+
+func TestRecurringInvoiceService_Update_Valid(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	ri.Name = "Updated hosting"
+	ri.Frequency = domain.FrequencyQuarterly
+	ri.Items[0].Description = "Premium hosting"
+
+	if err := svc.Update(ctx, ri); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, ri.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.Name != "Updated hosting" {
+		t.Errorf("Name = %q, want %q", got.Name, "Updated hosting")
+	}
+	if got.Frequency != domain.FrequencyQuarterly {
+		t.Errorf("Frequency = %q, want %q", got.Frequency, domain.FrequencyQuarterly)
+	}
+}
+
+func TestRecurringInvoiceService_Update_ZeroID(t *testing.T) {
+	svc, _, _ := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+
+	ri := makeTestRecurringInvoice(1)
+	ri.ID = 0
+	err := svc.Update(ctx, ri)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestRecurringInvoiceService_Update_EmptyName(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	ri.Name = ""
+	err := svc.Update(ctx, ri)
+	if err == nil {
+		t.Error("expected error for empty name")
+	}
+}
+
+func TestRecurringInvoiceService_Update_NoCustomer(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	ri.CustomerID = 0
+	err := svc.Update(ctx, ri)
+	if err == nil {
+		t.Error("expected error for zero customer ID")
+	}
+}
+
+func TestRecurringInvoiceService_Update_NoItems(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	ri.Items = nil
+	err := svc.Update(ctx, ri)
+	if err == nil {
+		t.Error("expected error for empty items")
+	}
+}
+
+func TestRecurringInvoiceService_Update_NotFound(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	ri.ID = 99999
+	err := svc.Update(ctx, ri)
+	if err == nil {
+		t.Error("expected error for non-existent recurring invoice")
+	}
+}
+
+// --- Delete tests ---
+
+func TestRecurringInvoiceService_Delete_Valid(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if err := svc.Delete(ctx, ri.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	// Verify it's soft-deleted (GetByID should fail).
+	_, err := svc.GetByID(ctx, ri.ID)
+	if err == nil {
+		t.Error("expected error after delete, got nil")
+	}
+}
+
+func TestRecurringInvoiceService_Delete_ZeroID(t *testing.T) {
+	svc, _, _ := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+
+	err := svc.Delete(ctx, 0)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestRecurringInvoiceService_Delete_NotFound(t *testing.T) {
+	svc, _, _ := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+
+	err := svc.Delete(ctx, 99999)
+	if err == nil {
+		t.Error("expected error for non-existent recurring invoice")
+	}
+}
+
+// --- List tests ---
+
+func TestRecurringInvoiceService_List_Empty(t *testing.T) {
+	svc, _, _ := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+
+	items, err := svc.List(ctx)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(items) != 0 {
+		t.Errorf("List() returned %d items, want 0", len(items))
+	}
+}
+
+func TestRecurringInvoiceService_List_MultipleItems(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	for i := 0; i < 3; i++ {
+		ri := makeTestRecurringInvoice(customerID)
+		ri.Name = "Recurring " + string(rune('A'+i))
+		if err := svc.Create(ctx, ri); err != nil {
+			t.Fatalf("Create() error: %v", err)
+		}
+	}
+
+	items, err := svc.List(ctx)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(items) != 3 {
+		t.Errorf("List() returned %d items, want 3", len(items))
+	}
+}
+
+func TestRecurringInvoiceService_List_ExcludesDeleted(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri1 := makeTestRecurringInvoice(customerID)
+	ri1.Name = "Keep"
+	if err := svc.Create(ctx, ri1); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	ri2 := makeTestRecurringInvoice(customerID)
+	ri2.Name = "Delete me"
+	if err := svc.Create(ctx, ri2); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if err := svc.Delete(ctx, ri2.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	items, err := svc.List(ctx)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Errorf("List() returned %d items, want 1 (deleted should be excluded)", len(items))
+	}
+	if items[0].Name != "Keep" {
+		t.Errorf("remaining item Name = %q, want %q", items[0].Name, "Keep")
+	}
+}
+
+func TestRecurringInvoiceService_GetByID_Valid(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	ri := makeTestRecurringInvoice(customerID)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, ri.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.Name != "Monthly hosting" {
+		t.Errorf("Name = %q, want %q", got.Name, "Monthly hosting")
+	}
+	if got.CustomerID != customerID {
+		t.Errorf("CustomerID = %d, want %d", got.CustomerID, customerID)
+	}
+}
+
+func TestRecurringInvoiceService_GetByID_ZeroID(t *testing.T) {
+	svc, _, _ := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.GetByID(ctx, 0)
+	if err == nil {
+		t.Error("expected error for zero ID")
+	}
+}
+
+func TestRecurringInvoiceService_GetByID_NotFound(t *testing.T) {
+	svc, _, _ := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.GetByID(ctx, 99999)
+	if err == nil {
+		t.Error("expected error for non-existent ID")
+	}
+}

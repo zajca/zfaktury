@@ -191,12 +191,49 @@ func TestRecurringExpenseService_Delete_ZeroID(t *testing.T) {
 	}
 }
 
+func TestRecurringExpenseService_Delete_Success(t *testing.T) {
+	svc, _ := newRecurringExpenseTestStack(t)
+	ctx := context.Background()
+
+	re := makeRecurringExpense()
+	if err := svc.Create(ctx, re); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := svc.Delete(ctx, re.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	// Should not be found after delete.
+	if _, err := svc.GetByID(ctx, re.ID); err == nil {
+		t.Error("expected error after delete")
+	}
+}
+
 func TestRecurringExpenseService_GetByID_ZeroID(t *testing.T) {
 	svc, _ := newRecurringExpenseTestStack(t)
 	ctx := context.Background()
 
 	if _, err := svc.GetByID(ctx, 0); err == nil {
 		t.Error("expected error for zero ID")
+	}
+}
+
+func TestRecurringExpenseService_GetByID_Success(t *testing.T) {
+	svc, _ := newRecurringExpenseTestStack(t)
+	ctx := context.Background()
+
+	re := makeRecurringExpense()
+	if err := svc.Create(ctx, re); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, re.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Name != re.Name {
+		t.Errorf("Name = %q, want %q", got.Name, re.Name)
 	}
 }
 
@@ -209,6 +246,22 @@ func TestRecurringExpenseService_Activate_ZeroID(t *testing.T) {
 	}
 }
 
+func TestRecurringExpenseService_Activate_Success(t *testing.T) {
+	svc, _ := newRecurringExpenseTestStack(t)
+	ctx := context.Background()
+
+	re := makeRecurringExpense()
+	if err := svc.Create(ctx, re); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.Deactivate(ctx, re.ID); err != nil {
+		t.Fatalf("Deactivate: %v", err)
+	}
+	if err := svc.Activate(ctx, re.ID); err != nil {
+		t.Fatalf("Activate: %v", err)
+	}
+}
+
 func TestRecurringExpenseService_Deactivate_ZeroID(t *testing.T) {
 	svc, _ := newRecurringExpenseTestStack(t)
 	ctx := context.Background()
@@ -216,6 +269,43 @@ func TestRecurringExpenseService_Deactivate_ZeroID(t *testing.T) {
 	if err := svc.Deactivate(ctx, 0); err == nil {
 		t.Error("expected error for zero ID")
 	}
+}
+
+func TestRecurringExpenseService_Deactivate_Success(t *testing.T) {
+	svc, _ := newRecurringExpenseTestStack(t)
+	ctx := context.Background()
+
+	re := makeRecurringExpense()
+	if err := svc.Create(ctx, re); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.Deactivate(ctx, re.ID); err != nil {
+		t.Fatalf("Deactivate: %v", err)
+	}
+}
+
+func TestRecurringExpenseService_List_HighLimit(t *testing.T) {
+	svc, _ := newRecurringExpenseTestStack(t)
+	ctx := context.Background()
+
+	// Limit > 100 should be capped.
+	items, count, err := svc.List(ctx, 200, 0)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("count = %d, want 0", count)
+	}
+	if len(items) != 0 {
+		t.Errorf("len = %d, want 0", len(items))
+	}
+
+	// Negative offset should be treated as 0.
+	items2, _, err := svc.List(ctx, 10, -5)
+	if err != nil {
+		t.Fatalf("List with negative offset: %v", err)
+	}
+	_ = items2
 }
 
 func TestRecurringExpenseService_List_DefaultLimit(t *testing.T) {

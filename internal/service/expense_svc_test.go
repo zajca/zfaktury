@@ -266,3 +266,235 @@ func TestExpenseService_List_DefaultLimit(t *testing.T) {
 		t.Errorf("len = %d, want 3", len(expenses))
 	}
 }
+
+func TestExpenseService_GetByID_Valid(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	e := makeExpense()
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.ID != e.ID {
+		t.Errorf("ID = %d, want %d", got.ID, e.ID)
+	}
+	if got.Description != "Test expense" {
+		t.Errorf("Description = %q, want %q", got.Description, "Test expense")
+	}
+}
+
+func TestExpenseService_GetByID_NotFound(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	_, err := svc.GetByID(ctx, 99999)
+	if err == nil {
+		t.Error("expected error for non-existent expense")
+	}
+}
+
+func TestExpenseService_Delete_Valid(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	e := makeExpense()
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if err := svc.Delete(ctx, e.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	// Verify it's gone.
+	_, err := svc.GetByID(ctx, e.ID)
+	if err == nil {
+		t.Error("expected error after deleting expense")
+	}
+}
+
+func TestExpenseService_Delete_NotFound(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	err := svc.Delete(ctx, 99999)
+	if err == nil {
+		t.Error("expected error for non-existent expense")
+	}
+}
+
+func TestExpenseService_MarkTaxReviewed_Valid(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	e1 := makeExpense()
+	if err := svc.Create(ctx, e1); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	e2 := makeExpense()
+	if err := svc.Create(ctx, e2); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if err := svc.MarkTaxReviewed(ctx, []int64{e1.ID, e2.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() error: %v", err)
+	}
+
+	// Verify both are marked.
+	got1, err := svc.GetByID(ctx, e1.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got1.TaxReviewedAt == nil {
+		t.Error("expected TaxReviewedAt to be set for e1")
+	}
+
+	got2, err := svc.GetByID(ctx, e2.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got2.TaxReviewedAt == nil {
+		t.Error("expected TaxReviewedAt to be set for e2")
+	}
+}
+
+func TestExpenseService_MarkTaxReviewed_EmptyIDs(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	err := svc.MarkTaxReviewed(ctx, []int64{})
+	if err == nil {
+		t.Error("expected error for empty IDs")
+	}
+}
+
+func TestExpenseService_MarkTaxReviewed_TooManyIDs(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	ids := make([]int64, 501)
+	for i := range ids {
+		ids[i] = int64(i + 1)
+	}
+	err := svc.MarkTaxReviewed(ctx, ids)
+	if err == nil {
+		t.Error("expected error for too many IDs")
+	}
+}
+
+func TestExpenseService_UnmarkTaxReviewed_Valid(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	e := makeExpense()
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Mark first.
+	if err := svc.MarkTaxReviewed(ctx, []int64{e.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() error: %v", err)
+	}
+
+	// Verify marked.
+	got, err := svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.TaxReviewedAt == nil {
+		t.Fatal("expected TaxReviewedAt to be set")
+	}
+
+	// Unmark.
+	if err := svc.UnmarkTaxReviewed(ctx, []int64{e.ID}); err != nil {
+		t.Fatalf("UnmarkTaxReviewed() error: %v", err)
+	}
+
+	// Verify unmarked.
+	got, err = svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.TaxReviewedAt != nil {
+		t.Error("expected TaxReviewedAt to be nil after unmark")
+	}
+}
+
+func TestExpenseService_UnmarkTaxReviewed_EmptyIDs(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	err := svc.UnmarkTaxReviewed(ctx, []int64{})
+	if err == nil {
+		t.Error("expected error for empty IDs")
+	}
+}
+
+func TestExpenseService_UnmarkTaxReviewed_TooManyIDs(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	ids := make([]int64, 501)
+	for i := range ids {
+		ids[i] = int64(i + 1)
+	}
+	err := svc.UnmarkTaxReviewed(ctx, ids)
+	if err == nil {
+		t.Error("expected error for too many IDs")
+	}
+}
+
+func TestExpenseService_MarkTaxReviewed_DedupIDs(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	e := makeExpense()
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Pass duplicate IDs -- should not error.
+	if err := svc.MarkTaxReviewed(ctx, []int64{e.ID, e.ID, e.ID}); err != nil {
+		t.Fatalf("MarkTaxReviewed() with duplicate IDs error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.TaxReviewedAt == nil {
+		t.Error("expected TaxReviewedAt to be set")
+	}
+}
+
+func Test_dedupIDs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []int64
+		expected []int64
+	}{
+		{"empty", []int64{}, []int64{}},
+		{"no duplicates", []int64{1, 2, 3}, []int64{1, 2, 3}},
+		{"all duplicates", []int64{5, 5, 5}, []int64{5}},
+		{"mixed", []int64{1, 2, 1, 3, 2, 4}, []int64{1, 2, 3, 4}},
+		{"single", []int64{42}, []int64{42}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dedupIDs(tt.input)
+			if len(got) != len(tt.expected) {
+				t.Fatalf("len = %d, want %d", len(got), len(tt.expected))
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("got[%d] = %d, want %d", i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}

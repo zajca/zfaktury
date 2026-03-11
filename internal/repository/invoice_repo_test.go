@@ -324,6 +324,185 @@ func TestInvoiceRepository_GetNextNumber_NotFound(t *testing.T) {
 	}
 }
 
+func TestInvoiceRepository_GetRelatedInvoices(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	// Create the parent invoice.
+	parent := makeRepoInvoice(customerID, seqID)
+	if err := repo.Create(ctx, parent); err != nil {
+		t.Fatalf("Create() parent error: %v", err)
+	}
+
+	// Create a credit note referencing the parent.
+	creditNote := makeRepoInvoice(customerID, seqID)
+	creditNote.Type = domain.InvoiceTypeCreditNote
+	creditNote.RelatedInvoiceID = &parent.ID
+	creditNote.RelationType = domain.RelationTypeCreditNote
+	if err := repo.Create(ctx, creditNote); err != nil {
+		t.Fatalf("Create() credit note error: %v", err)
+	}
+
+	// Create a settlement invoice referencing the parent.
+	settlement := makeRepoInvoice(customerID, seqID)
+	settlement.RelatedInvoiceID = &parent.ID
+	settlement.RelationType = domain.RelationTypeSettlement
+	if err := repo.Create(ctx, settlement); err != nil {
+		t.Fatalf("Create() settlement error: %v", err)
+	}
+
+	// Create an unrelated invoice (should NOT appear).
+	unrelated := makeRepoInvoice(customerID, seqID)
+	if err := repo.Create(ctx, unrelated); err != nil {
+		t.Fatalf("Create() unrelated error: %v", err)
+	}
+
+	related, err := repo.GetRelatedInvoices(ctx, parent.ID)
+	if err != nil {
+		t.Fatalf("GetRelatedInvoices() error: %v", err)
+	}
+	if len(related) != 2 {
+		t.Fatalf("len(related) = %d, want 2", len(related))
+	}
+
+	// Verify the related invoices have correct IDs.
+	relatedIDs := map[int64]bool{}
+	for _, inv := range related {
+		relatedIDs[inv.ID] = true
+	}
+	if !relatedIDs[creditNote.ID] {
+		t.Errorf("expected credit note ID %d in related invoices", creditNote.ID)
+	}
+	if !relatedIDs[settlement.ID] {
+		t.Errorf("expected settlement ID %d in related invoices", settlement.ID)
+	}
+}
+
+func TestInvoiceRepository_GetRelatedInvoices_Empty(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	inv := makeRepoInvoice(customerID, seqID)
+	if err := repo.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	related, err := repo.GetRelatedInvoices(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetRelatedInvoices() error: %v", err)
+	}
+	if len(related) != 0 {
+		t.Errorf("expected empty related invoices, got %d", len(related))
+	}
+}
+
+func TestInvoiceRepository_GetRelatedInvoices_ExcludesDeleted(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	parent := makeRepoInvoice(customerID, seqID)
+	if err := repo.Create(ctx, parent); err != nil {
+		t.Fatalf("Create() parent error: %v", err)
+	}
+
+	child := makeRepoInvoice(customerID, seqID)
+	child.RelatedInvoiceID = &parent.ID
+	child.RelationType = domain.RelationTypeCreditNote
+	if err := repo.Create(ctx, child); err != nil {
+		t.Fatalf("Create() child error: %v", err)
+	}
+
+	// Soft-delete the child.
+	if err := repo.Delete(ctx, child.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	related, err := repo.GetRelatedInvoices(ctx, parent.ID)
+	if err != nil {
+		t.Fatalf("GetRelatedInvoices() error: %v", err)
+	}
+	if len(related) != 0 {
+		t.Errorf("expected 0 related after delete, got %d", len(related))
+	}
+}
+
+func TestInvoiceRepository_FindByRelatedInvoice(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	parent := makeRepoInvoice(customerID, seqID)
+	if err := repo.Create(ctx, parent); err != nil {
+		t.Fatalf("Create() parent error: %v", err)
+	}
+
+	creditNote := makeRepoInvoice(customerID, seqID)
+	creditNote.Type = domain.InvoiceTypeCreditNote
+	creditNote.RelatedInvoiceID = &parent.ID
+	creditNote.RelationType = domain.RelationTypeCreditNote
+	if err := repo.Create(ctx, creditNote); err != nil {
+		t.Fatalf("Create() credit note error: %v", err)
+	}
+
+	// Find credit note by relation.
+	found, err := repo.FindByRelatedInvoice(ctx, parent.ID, domain.RelationTypeCreditNote)
+	if err != nil {
+		t.Fatalf("FindByRelatedInvoice() error: %v", err)
+	}
+	if found == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if found.ID != creditNote.ID {
+		t.Errorf("found.ID = %d, want %d", found.ID, creditNote.ID)
+	}
+	if found.RelationType != domain.RelationTypeCreditNote {
+		t.Errorf("RelationType = %q, want %q", found.RelationType, domain.RelationTypeCreditNote)
+	}
+
+	// Search for a relation type that does not exist.
+	notFound, err := repo.FindByRelatedInvoice(ctx, parent.ID, domain.RelationTypeSettlement)
+	if err != nil {
+		t.Fatalf("FindByRelatedInvoice() error: %v", err)
+	}
+	if notFound != nil {
+		t.Errorf("expected nil for non-existent relation, got ID=%d", notFound.ID)
+	}
+}
+
+func TestInvoiceRepository_FindByRelatedInvoice_ExcludesDeleted(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	parent := makeRepoInvoice(customerID, seqID)
+	if err := repo.Create(ctx, parent); err != nil {
+		t.Fatalf("Create() parent error: %v", err)
+	}
+
+	child := makeRepoInvoice(customerID, seqID)
+	child.RelatedInvoiceID = &parent.ID
+	child.RelationType = domain.RelationTypeSettlement
+	if err := repo.Create(ctx, child); err != nil {
+		t.Fatalf("Create() child error: %v", err)
+	}
+
+	// Soft-delete the child.
+	if err := repo.Delete(ctx, child.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	found, err := repo.FindByRelatedInvoice(ctx, parent.ID, domain.RelationTypeSettlement)
+	if err != nil {
+		t.Fatalf("FindByRelatedInvoice() error: %v", err)
+	}
+	if found != nil {
+		t.Errorf("expected nil for deleted invoice, got ID=%d", found.ID)
+	}
+}
+
 func TestInvoiceRepository_List_DateFilter(t *testing.T) {
 	db, customerID, seqID := setupInvoiceTestDB(t)
 	repo := NewInvoiceRepository(db)

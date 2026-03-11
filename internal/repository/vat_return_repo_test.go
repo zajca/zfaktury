@@ -241,6 +241,100 @@ func TestVATReturnRepository_LinkInvoices(t *testing.T) {
 	}
 }
 
+func TestVATReturnRepository_LinkExpenses(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewVATReturnRepository(db)
+	ctx := context.Background()
+
+	// Create a VAT return.
+	vr := &domain.VATReturn{
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 2,
+		},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := repo.Create(ctx, vr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Seed expenses.
+	exp1 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense 1"})
+	exp2 := testutil.SeedExpense(t, db, &domain.Expense{Description: "Expense 2"})
+
+	// Link expenses.
+	if err := repo.LinkExpenses(ctx, vr.ID, []int64{exp1.ID, exp2.ID}); err != nil {
+		t.Fatalf("LinkExpenses() error: %v", err)
+	}
+
+	// Verify linked IDs.
+	ids, err := repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
+	}
+	if len(ids) != 2 {
+		t.Fatalf("GetLinkedExpenseIDs() returned %d items, want 2", len(ids))
+	}
+	expectedIDs := map[int64]bool{exp1.ID: true, exp2.ID: true}
+	for _, id := range ids {
+		if !expectedIDs[id] {
+			t.Errorf("unexpected expense ID %d in linked IDs", id)
+		}
+	}
+
+	// Re-link with just one expense should replace the list.
+	if err := repo.LinkExpenses(ctx, vr.ID, []int64{exp2.ID}); err != nil {
+		t.Fatalf("LinkExpenses() replace error: %v", err)
+	}
+	ids, err = repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
+	}
+	if len(ids) != 1 {
+		t.Fatalf("GetLinkedExpenseIDs() returned %d items, want 1", len(ids))
+	}
+	if ids[0] != exp2.ID {
+		t.Errorf("GetLinkedExpenseIDs()[0] = %d, want %d", ids[0], exp2.ID)
+	}
+
+	// Re-link with empty list should clear.
+	if err := repo.LinkExpenses(ctx, vr.ID, []int64{}); err != nil {
+		t.Fatalf("LinkExpenses() clear error: %v", err)
+	}
+	ids, err = repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
+	}
+	if len(ids) != 0 {
+		t.Errorf("expected empty linked expenses after clear, got %v", ids)
+	}
+}
+
+func TestVATReturnRepository_GetLinkedExpenseIDs_Empty(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewVATReturnRepository(db)
+	ctx := context.Background()
+
+	vr := &domain.VATReturn{
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 4,
+		},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := repo.Create(ctx, vr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	ids, err := repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
+	}
+	if len(ids) != 0 {
+		t.Errorf("expected empty linked expenses for new vat_return, got %v", ids)
+	}
+}
+
 func TestVATReturnRepository_Update(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewVATReturnRepository(db)

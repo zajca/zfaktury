@@ -8,7 +8,8 @@ vi.stubGlobal(
 	'confirm',
 	vi.fn(() => true)
 );
-vi.stubGlobal('alert', vi.fn());
+
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
 function jsonResponse(data: unknown, status = 200) {
 	return new Response(JSON.stringify(data), {
@@ -66,7 +67,6 @@ const sampleRecurring = [
 beforeEach(() => {
 	mockFetch.mockReset();
 	vi.mocked(confirm).mockReturnValue(true);
-	vi.mocked(alert).mockReset();
 });
 
 afterEach(() => {
@@ -97,29 +97,29 @@ describe('Recurring invoices list page', () => {
 		});
 
 		expect(screen.getByText('Test Corp')).toBeInTheDocument();
-		expect(screen.getByText('Mesicni')).toBeInTheDocument();
-		expect(screen.getByText('Aktivni')).toBeInTheDocument();
+		expect(screen.getByText('Měsíčně')).toBeInTheDocument();
+		expect(screen.getByText('Aktivní')).toBeInTheDocument();
 
 		expect(screen.getByText('Rocni licence')).toBeInTheDocument();
 		expect(screen.getByText('Acme')).toBeInTheDocument();
-		expect(screen.getByText('Rocni')).toBeInTheDocument();
-		expect(screen.getByText('Neaktivni')).toBeInTheDocument();
+		expect(screen.getByText('Ročně')).toBeInTheDocument();
+		expect(screen.getByText('Neaktivní')).toBeInTheDocument();
 	});
 
-	it('process due button calls POST and shows alert', async () => {
+	it('process due button calls POST and shows success message', async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleRecurring));
 
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Zpracovat splatne')).toBeInTheDocument();
+			expect(screen.getByText('Zpracovat splatné')).toBeInTheDocument();
 		});
 
 		// Process due returns count, then reload returns list
 		mockFetch.mockResolvedValueOnce(jsonResponse({ generated_count: 2 }));
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleRecurring));
 
-		await fireEvent.click(screen.getByText('Zpracovat splatne'));
+		await fireEvent.click(screen.getByText('Zpracovat splatné'));
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -129,7 +129,7 @@ describe('Recurring invoices list page', () => {
 		});
 
 		await waitFor(() => {
-			expect(alert).toHaveBeenCalledWith('Vygenerovano faktur: 2');
+			expect(screen.getByText('Vygenerováno faktur: 2')).toBeInTheDocument();
 		});
 	});
 
@@ -142,13 +142,13 @@ describe('Recurring invoices list page', () => {
 			expect(screen.getAllByText('Smazat').length).toBeGreaterThan(0);
 		});
 
-		// Delete response, then reload
-		mockFetch.mockResolvedValueOnce(jsonResponse(null, 200));
+		// Delete response (204), then reload
+		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204, statusText: 'No Content' }));
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleRecurring));
 
 		await fireEvent.click(screen.getAllByText('Smazat')[0]);
 
-		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat tuto opakujici se fakturu?');
+		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat tuto opakující se fakturu?');
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -164,7 +164,7 @@ describe('Recurring invoices list page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Zatim zadne opakujici se faktury.')).toBeInTheDocument();
+			expect(screen.getByText('Zatím žádné opakující se faktury.')).toBeInTheDocument();
 		});
 	});
 

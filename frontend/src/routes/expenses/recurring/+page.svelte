@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { recurringExpensesApi, type RecurringExpense } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import { frequencyLabels } from '$lib/utils/invoice';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
@@ -19,6 +21,7 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let generating = $state(false);
+	let successMessage = $state<string | null>(null);
 
 	async function loadItems() {
 		loading = true;
@@ -37,13 +40,15 @@
 	async function handleGenerate() {
 		generating = true;
 		error = null;
+		successMessage = null;
 		try {
 			const result = await recurringExpensesApi.generate();
 			if (result.generated > 0) {
-				alert(`Vygenerováno ${result.generated} nákladů.`);
+				successMessage = `Vygenerováno ${result.generated} nákladů.`;
 			} else {
-				alert('Žádné náklady k vygenerování.');
+				successMessage = 'Žádné náklady k vygenerování.';
 			}
+			setTimeout(() => { successMessage = null; }, 3000);
 			await loadItems();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vygenerovat náklady';
@@ -52,26 +57,12 @@
 		}
 	}
 
-	$effect(() => {
+	onMount(() => {
 		loadItems();
 	});
 
 	let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
 
-	function frequencyLabel(freq: string): string {
-		switch (freq) {
-			case 'weekly':
-				return 'Týdně';
-			case 'monthly':
-				return 'Měsíčně';
-			case 'quarterly':
-				return 'Čtvrtletně';
-			case 'yearly':
-				return 'Ročně';
-			default:
-				return freq;
-		}
-	}
 </script>
 
 <svelte:head>
@@ -96,6 +87,12 @@
 	</PageHeader>
 
 	<ErrorAlert {error} class="mt-4" />
+
+	{#if successMessage}
+		<div class="mt-4 rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-sm text-success" role="status">
+			{successMessage}
+		</div>
+	{/if}
 
 	<Card padding={false} class="mt-6 overflow-hidden">
 		{#if loading}
@@ -136,7 +133,7 @@
 								<p class="text-xs text-tertiary">{item.description}</p>
 							</td>
 							<td class="hidden px-4 py-2.5 text-secondary md:table-cell"
-								>{frequencyLabel(item.frequency)}</td
+								>{frequencyLabels[item.frequency] ?? item.frequency}</td
 							>
 							<td class="hidden px-4 py-2.5 text-secondary md:table-cell"
 								>{formatDate(item.next_issue_date)}</td

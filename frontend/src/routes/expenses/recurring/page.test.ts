@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('alert', vi.fn());
 
 import Page from './+page.svelte';
 
@@ -55,7 +54,6 @@ const emptyResponse = {
 
 beforeEach(() => {
 	mockFetch.mockReset();
-	vi.mocked(alert).mockReset();
 });
 
 afterEach(() => {
@@ -89,7 +87,7 @@ describe('Recurring expenses list page', () => {
 		expect(screen.getByText('Měsíčně')).toBeInTheDocument();
 	});
 
-	it('generate due button calls API and shows alert', async () => {
+	it('generate due button calls API and shows success message', async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleResponse));
 
 		render(Page);
@@ -114,7 +112,7 @@ describe('Recurring expenses list page', () => {
 		});
 
 		await waitFor(() => {
-			expect(alert).toHaveBeenCalledWith('Vygenerováno 3 nákladů.');
+			expect(screen.getByText('Vygenerováno 3 nákladů.')).toBeInTheDocument();
 		});
 	});
 

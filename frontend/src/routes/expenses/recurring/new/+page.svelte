@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
 		recurringExpensesApi,
@@ -40,7 +41,7 @@
 
 	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
-	$effect(() => {
+	onMount(() => {
 		loadContacts();
 	});
 

@@ -1,5 +1,9 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { formatDate } from '$lib/utils/date';
+	import { frequencyLabels } from '$lib/utils/invoice';
+	import { recurringInvoicesApi, type RecurringInvoice } from '$lib/api/client';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -8,63 +12,19 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
-	interface RecurringInvoiceItem {
-		id: number;
-		recurring_invoice_id: number;
-		description: string;
-		quantity: number;
-		unit: string;
-		unit_price: number;
-		vat_rate_percent: number;
-		sort_order: number;
-	}
-
-	interface RecurringInvoice {
-		id: number;
-		name: string;
-		customer_id: number;
-		customer?: { id: number; name: string };
-		frequency: string;
-		next_issue_date: string;
-		end_date?: string;
-		currency_code: string;
-		exchange_rate: number;
-		payment_method: string;
-		bank_account: string;
-		bank_code: string;
-		iban: string;
-		swift: string;
-		constant_symbol: string;
-		notes: string;
-		is_active: boolean;
-		items: RecurringInvoiceItem[];
-		created_at: string;
-		updated_at: string;
-	}
-
-	const API_BASE = '/api/v1/recurring-invoices';
-
 	let recurringInvoices = $state<RecurringInvoice[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let processing = $state(false);
-
-	const frequencyLabels: Record<string, string> = {
-		weekly: 'Tydenni',
-		monthly: 'Mesicni',
-		quarterly: 'Ctvrtletni',
-		yearly: 'Rocni'
-	};
+	let successMessage = $state<string | null>(null);
 
 	async function loadRecurringInvoices() {
 		loading = true;
 		error = null;
 		try {
-			const res = await fetch(API_BASE);
-			if (!res.ok) throw new Error('Nepodarilo se nacist opakujici se faktury');
-			recurringInvoices = await res.json();
+			recurringInvoices = await recurringInvoicesApi.list();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist opakujici se faktury';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst opakující se faktury';
 		} finally {
 			loading = false;
 		}
@@ -73,57 +33,61 @@
 	async function processDue() {
 		processing = true;
 		error = null;
+		successMessage = null;
 		try {
-			const res = await fetch(`${API_BASE}/process-due`, { method: 'POST' });
-			if (!res.ok) throw new Error('Nepodarilo se zpracovat splatne faktury');
-			const data = await res.json();
+			const data = await recurringInvoicesApi.processDue();
 			if (data.generated_count > 0) {
 				await loadRecurringInvoices();
 			}
-			alert(`Vygenerovano faktur: ${data.generated_count}`);
+			successMessage = `Vygenerováno faktur: ${data.generated_count}`;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se zpracovat splatne faktury';
+			error = e instanceof Error ? e.message : 'Nepodařilo se zpracovat splatné faktury';
 		} finally {
 			processing = false;
 		}
 	}
 
 	async function deleteRecurring(id: number) {
-		if (!confirm('Opravdu chcete smazat tuto opakujici se fakturu?')) return;
+		if (!confirm('Opravdu chcete smazat tuto opakující se fakturu?')) return;
 		try {
-			const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
-			if (!res.ok) throw new Error('Nepodarilo se smazat');
+			await recurringInvoicesApi.delete(id);
 			await loadRecurringInvoices();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se smazat';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat';
 		}
 	}
 
-	$effect(() => {
+	onMount(() => {
 		loadRecurringInvoices();
 	});
 </script>
 
 <svelte:head>
-	<title>Opakujici se faktury - ZFaktury</title>
+	<title>Opakující se faktury - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<PageHeader title="Opakujici se faktury" description="Sablony pro automaticke generovani faktur">
+	<PageHeader title="Opakující se faktury" description="Šablony pro automatické generování faktur">
 		{#snippet actions()}
 			<div class="flex gap-3">
 				<Button variant="secondary" onclick={processDue} disabled={processing}>
-					{processing ? 'Zpracovavam...' : 'Zpracovat splatne'}
+					{processing ? 'Zpracovávám...' : 'Zpracovat splatné'}
 				</Button>
 				<Button variant="primary" href="/recurring/new">
 					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
-					Nova opakujici se faktura
+					Nová opakující se faktura
 				</Button>
 			</div>
 		{/snippet}
 	</PageHeader>
+
+	{#if successMessage}
+		<div class="mt-4 rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-sm text-success" role="status">
+			{successMessage}
+		</div>
+	{/if}
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -131,22 +95,28 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if recurringInvoices.length === 0}
-			<EmptyState message="Zatim zadne opakujici se faktury." />
+			<EmptyState message="Zatím žádné opakující se faktury." />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="th-default">Nazev</th>
-						<th class="th-default">Zakaznik</th>
+						<th class="th-default">Název</th>
+						<th class="th-default">Zákazník</th>
 						<th class="th-default hidden md:table-cell">Frekvence</th>
-						<th class="th-default hidden md:table-cell">Dalsi vystaveni</th>
+						<th class="th-default hidden md:table-cell">Další vystavení</th>
 						<th class="th-default">Stav</th>
 						<th class="th-default text-right">Akce</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border-subtle">
 					{#each recurringInvoices as ri (ri.id)}
-						<tr class="hover:bg-hover transition-colors cursor-pointer">
+						<tr
+							class="hover:bg-hover transition-colors cursor-pointer"
+							role="link"
+							tabindex="0"
+							onclick={() => goto(`/recurring/${ri.id}`)}
+							onkeydown={(e) => { if (e.key === 'Enter') goto(`/recurring/${ri.id}`); }}
+						>
 							<td class="px-4 py-2.5">
 								<a href="/recurring/{ri.id}" class="text-accent-text hover:text-accent font-medium">
 									{ri.name}
@@ -163,12 +133,12 @@
 							</td>
 							<td class="px-4 py-2.5">
 								<Badge variant={ri.is_active ? 'success' : 'muted'}>
-									{ri.is_active ? 'Aktivni' : 'Neaktivni'}
+									{ri.is_active ? 'Aktivní' : 'Neaktivní'}
 								</Badge>
 							</td>
 							<td class="px-4 py-2.5 text-right">
 								<button
-									onclick={() => deleteRecurring(ri.id)}
+									onclick={(e) => { e.stopPropagation(); deleteRecurring(ri.id); }}
 									class="text-sm text-danger hover:text-danger/80"
 								>
 									Smazat

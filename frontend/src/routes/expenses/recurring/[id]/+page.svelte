@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
@@ -9,7 +10,7 @@
 	} from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
-	import { paymentMethodLabels } from '$lib/utils/invoice';
+	import { paymentMethodLabels, frequencyLabels } from '$lib/utils/invoice';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -49,7 +50,7 @@
 
 	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
-	$effect(() => {
+	onMount(() => {
 		loadItem();
 	});
 
@@ -173,20 +174,6 @@
 		}
 	}
 
-	function frequencyLabel(freq: string): string {
-		switch (freq) {
-			case 'weekly':
-				return 'Týdně';
-			case 'monthly':
-				return 'Měsíčně';
-			case 'quarterly':
-				return 'Čtvrtletně';
-			case 'yearly':
-				return 'Ročně';
-			default:
-				return freq;
-		}
-	}
 </script>
 
 <svelte:head>
@@ -213,7 +200,7 @@
 					{:else}
 						<Badge variant="muted">Neaktivní</Badge>
 					{/if}
-					<span class="text-sm text-tertiary">{frequencyLabel(item.frequency)}</span>
+					<span class="text-sm text-tertiary">{frequencyLabels[item.frequency] ?? item.frequency}</span>
 				</div>
 			</div>
 			{#if !editing}
@@ -455,7 +442,7 @@
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Frekvence</dt>
-							<dd class="mt-1 text-sm text-primary">{frequencyLabel(item.frequency)}</dd>
+							<dd class="mt-1 text-sm text-primary">{frequencyLabels[item.frequency] ?? item.frequency}</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Další datum</dt>

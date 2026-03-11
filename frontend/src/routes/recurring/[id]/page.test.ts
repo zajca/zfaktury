@@ -103,8 +103,8 @@ describe('Recurring invoice detail page', () => {
 		});
 
 		expect(screen.getByText('Mesicni hosting')).toBeInTheDocument();
-		expect(screen.getByText('Mesicni')).toBeInTheDocument();
-		expect(screen.getByText('Aktivni')).toBeInTheDocument();
+		expect(screen.getByText('Měsíčně')).toBeInTheDocument();
+		expect(screen.getByText('Aktivní')).toBeInTheDocument();
 	});
 
 	it('generate button calls POST /generate', async () => {
@@ -152,17 +152,16 @@ describe('Recurring invoice detail page', () => {
 			expect(screen.getByText(/Upravit: Mesicni hosting/)).toBeInTheDocument();
 		});
 
-		expect(screen.getByText('Ulozit zmeny')).toBeInTheDocument();
+		expect(screen.getByText('Uložit změny')).toBeInTheDocument();
 	});
 
 	it('error state on load failure', async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Not found' }, 404));
-		mockFetch.mockResolvedValueOnce(jsonResponse(sampleContacts));
+		mockFetch.mockRejectedValue(new Error('Network error'));
 
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Nepodarilo se nacist opakujici se fakturu')).toBeInTheDocument();
+			expect(screen.getByText('Network error')).toBeInTheDocument();
 		});
 	});
 });

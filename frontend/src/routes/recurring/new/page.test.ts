@@ -40,7 +40,7 @@ describe('New recurring invoice page', () => {
 
 		render(Page);
 
-		expect(screen.getByText('Nova opakujici se faktura')).toBeInTheDocument();
+		expect(screen.getByText('Nová opakující se faktura')).toBeInTheDocument();
 	});
 
 	it('loads contacts on mount', async () => {
@@ -91,16 +91,16 @@ describe('New recurring invoice page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Ulozit')).toBeInTheDocument();
+			expect(screen.getByText('Uložit')).toBeInTheDocument();
 		});
 
 		// Remove required attributes to bypass HTML5 validation, test custom validation
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
-		await fireEvent.click(screen.getByText('Ulozit'));
+		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadejte nazev')).toBeInTheDocument();
+			expect(screen.getByText('Zadejte název')).toBeInTheDocument();
 		});
 	});
 
@@ -110,7 +110,7 @@ describe('New recurring invoice page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Ulozit')).toBeInTheDocument();
+			expect(screen.getByText('Uložit')).toBeInTheDocument();
 		});
 
 		// Set name and desc but leave customer at 0
@@ -120,10 +120,10 @@ describe('New recurring invoice page', () => {
 		const descInput = document.querySelector('#desc-0') as HTMLInputElement;
 		await fireEvent.input(descInput, { target: { value: 'Service' } });
 
-		await fireEvent.click(screen.getByText('Ulozit'));
+		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Vyberte zakaznika')).toBeInTheDocument();
+			expect(screen.getByText('Vyberte zákazníka')).toBeInTheDocument();
 		});
 	});
 
@@ -151,7 +151,7 @@ describe('New recurring invoice page', () => {
 		// POST response
 		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1, name: 'Test template' }));
 
-		await fireEvent.click(screen.getByText('Ulozit'));
+		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
 			const postCall = mockFetch.mock.calls.find(

@@ -1,12 +1,16 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { expensesApi, contactsApi, type Expense, type Contact } from '$lib/api/client';
+	import { expensesApi, contactsApi, documentsApi, ocrApi, type Expense, type Contact, type ExpenseDocument, type OCRResult } from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import { paymentMethodLabels } from '$lib/utils/invoice';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import DocumentUpload from '$lib/components/DocumentUpload.svelte';
+	import DocumentList from '$lib/components/DocumentList.svelte';
+	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
@@ -21,6 +25,9 @@
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let editing = $state(false);
+	let documents = $state<ExpenseDocument[]>([]);
+	let ocrResult = $state<OCRResult | null>(null);
+	let ocrProcessing = $state(false);
 
 	let expenseId = $derived(Number(page.params.id));
 
@@ -41,9 +48,18 @@
 
 	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
-	$effect(() => {
+	onMount(() => {
 		loadExpense();
+		loadDocuments();
 	});
+
+	async function loadDocuments() {
+		try {
+			documents = await documentsApi.listByExpense(expenseId);
+		} catch {
+			// non-critical
+		}
+	}
 
 	async function loadExpense() {
 		loading = true;
@@ -139,6 +155,30 @@
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat náklad';
 		}
+	}
+
+	async function handleOcr(docId: number) {
+		ocrProcessing = true;
+		error = null;
+		try {
+			ocrResult = await ocrApi.processDocument(docId);
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'OCR zpracování selhalo';
+		} finally {
+			ocrProcessing = false;
+		}
+	}
+
+	function handleOcrConfirm(data: OCRResult) {
+		ocrResult = null;
+		if (!expense) return;
+		// Auto-fill form fields from OCR data and switch to edit mode
+		editing = true;
+		form.description = data.description || form.description;
+		form.amount = data.total_amount || form.amount;
+		form.vat_rate_percent = data.vat_rate_percent || form.vat_rate_percent;
+		form.currency_code = data.currency_code || form.currency_code;
+		if (data.issue_date) form.issue_date = data.issue_date;
 	}
 </script>
 
@@ -401,7 +441,28 @@
 					</dl>
 				</Card>
 
-				{#if expense.notes}
+				<!-- Documents -->
+				<Card>
+					<h2 class="text-base font-semibold text-primary">Dokumenty</h2>
+					<div class="mt-4">
+						<DocumentUpload
+							{expenseId}
+							onuploaded={() => { loadDocuments(); }}
+						/>
+						<div class="mt-4">
+							<DocumentList
+								{documents}
+								ondelete={async (id) => {
+									await documentsApi.delete(id);
+									await loadDocuments();
+								}}
+								onocr={handleOcr}
+							/>
+						</div>
+					</div>
+				</Card>
+
+			{#if expense.notes}
 					<Card>
 						<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 						<p class="mt-2 text-sm text-primary whitespace-pre-wrap">{expense.notes}</p>
@@ -412,6 +473,14 @@
 					Vytvořeno: {formatDate(expense.created_at)} | Upraveno: {formatDate(expense.updated_at)}
 				</div>
 			</div>
+
+			{#if ocrResult}
+				<OCRReviewDialog
+					{ocrResult}
+					onclose={() => { ocrResult = null; }}
+					onconfirm={handleOcrConfirm}
+				/>
+			{/if}
 		{/if}
 	{/if}
 </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { expensesApi, contactsApi, type Contact } from '$lib/api/client';
 	import { formatCZK, toHalere } from '$lib/utils/money';
@@ -34,7 +35,7 @@
 
 	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
-	$effect(() => {
+	onMount(() => {
 		loadContacts();
 	});
 

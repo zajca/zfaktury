@@ -38,14 +38,20 @@ func NewVATControlStatementService(
 
 // Create validates and persists a new control statement.
 func (s *VATControlStatementService) Create(ctx context.Context, cs *domain.VATControlStatement) error {
-	if cs.Period.Year == 0 {
-		return fmt.Errorf("year is required: %w", domain.ErrInvalidInput)
+	if cs.Period.Year < 2000 || cs.Period.Year > 2100 {
+		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
 	if cs.Period.Month < 1 || cs.Period.Month > 12 {
-		return fmt.Errorf("month must be between 1 and 12: %w", domain.ErrInvalidInput)
+		return fmt.Errorf("month must be 1-12: %w", domain.ErrInvalidInput)
 	}
 	if cs.FilingType == "" {
 		cs.FilingType = domain.FilingTypeRegular
+	}
+	switch cs.FilingType {
+	case domain.FilingTypeRegular, domain.FilingTypeCorrective, domain.FilingTypeSupplementary:
+		// ok
+	default:
+		return fmt.Errorf("invalid filing_type: %w", domain.ErrInvalidInput)
 	}
 
 	// Check for existing statement in same period with same filing type.

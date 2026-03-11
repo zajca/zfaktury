@@ -33,14 +33,20 @@ func NewVIESSummaryService(
 
 // Create validates and persists a new VIES summary.
 func (s *VIESSummaryService) Create(ctx context.Context, vs *domain.VIESSummary) error {
-	if vs.Period.Year == 0 {
-		return fmt.Errorf("creating VIES summary: %w: year is required", domain.ErrInvalidInput)
+	if vs.Period.Year < 2000 || vs.Period.Year > 2100 {
+		return fmt.Errorf("creating VIES summary: %w: year out of valid range", domain.ErrInvalidInput)
 	}
 	if vs.Period.Quarter < 1 || vs.Period.Quarter > 4 {
 		return fmt.Errorf("creating VIES summary: %w: quarter must be 1-4", domain.ErrInvalidInput)
 	}
 	if vs.FilingType == "" {
 		vs.FilingType = domain.FilingTypeRegular
+	}
+	switch vs.FilingType {
+	case domain.FilingTypeRegular, domain.FilingTypeCorrective, domain.FilingTypeSupplementary:
+		// ok
+	default:
+		return fmt.Errorf("creating VIES summary: %w: invalid filing_type", domain.ErrInvalidInput)
 	}
 
 	// Check for duplicate period.

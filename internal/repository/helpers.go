@@ -8,23 +8,31 @@ import (
 )
 
 // parseDate parses a date string and returns the time value.
-// It tries the given layout first, and if the layout is RFC3339 and parsing
-// fails, it also tries the SQLite datetime format (space instead of T separator).
+// It tries the given layout first, with fallbacks for common mismatches:
+//   - RFC3339 layout with space-separated SQLite datetime
+//   - Date-only layout ("2006-01-02") with full timestamp value
 func parseDate(layout, value string) (time.Time, error) {
 	t, err := time.Parse(layout, value)
-	if err != nil && layout == time.RFC3339 && strings.Contains(value, " ") {
-		// SQLite sometimes stores datetimes with space separator instead of T.
-		// Try replacing the first space between date and time with T.
+	if err == nil {
+		return t, nil
+	}
+
+	// Fallback: RFC3339 layout but value uses space instead of T separator.
+	if layout == time.RFC3339 && strings.Contains(value, " ") {
 		normalized := strings.Replace(value, " ", "T", 1)
-		// Truncate sub-second precision beyond 9 digits if present.
 		if t2, err2 := time.Parse(time.RFC3339Nano, normalized); err2 == nil {
 			return t2, nil
 		}
 	}
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parsing date %q: %w", value, err)
+
+	// Fallback: date-only layout but value has full timestamp (e.g. "2006-01-02T00:00:00Z").
+	if len(layout) == 10 && len(value) > 10 {
+		if t2, err2 := time.Parse(layout, value[:10]); err2 == nil {
+			return t2, nil
+		}
 	}
-	return t, nil
+
+	return time.Time{}, fmt.Errorf("parsing date %q: %w", value, err)
 }
 
 // parseDateOptional parses an optional date from a sql.NullString.

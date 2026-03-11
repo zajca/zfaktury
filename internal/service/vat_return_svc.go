@@ -36,14 +36,26 @@ func NewVATReturnService(
 
 // Create validates and persists a new VAT return.
 func (s *VATReturnService) Create(ctx context.Context, vr *domain.VATReturn) error {
-	if vr.Period.Year == 0 {
-		return fmt.Errorf("year is required: %w", domain.ErrInvalidInput)
+	if vr.Period.Year < 2000 || vr.Period.Year > 2100 {
+		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
 	if vr.Period.Month == 0 && vr.Period.Quarter == 0 {
 		return fmt.Errorf("month or quarter is required: %w", domain.ErrInvalidInput)
 	}
+	if vr.Period.Month != 0 && (vr.Period.Month < 1 || vr.Period.Month > 12) {
+		return fmt.Errorf("month must be 1-12: %w", domain.ErrInvalidInput)
+	}
+	if vr.Period.Quarter != 0 && (vr.Period.Quarter < 1 || vr.Period.Quarter > 4) {
+		return fmt.Errorf("quarter must be 1-4: %w", domain.ErrInvalidInput)
+	}
 	if vr.FilingType == "" {
 		vr.FilingType = domain.FilingTypeRegular
+	}
+	switch vr.FilingType {
+	case domain.FilingTypeRegular, domain.FilingTypeCorrective, domain.FilingTypeSupplementary:
+		// ok
+	default:
+		return fmt.Errorf("invalid filing_type: %w", domain.ErrInvalidInput)
 	}
 
 	// Check for existing filing in same period (for regular filings).

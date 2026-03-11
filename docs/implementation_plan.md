@@ -16,6 +16,7 @@ Nothing is considered "done" until it passes through this process. Existing code
 - **Exists** — Code exists in the repo but has NOT been reviewed/validated through RFC
 - **RFC** — RFC written, pending implementation
 - **Done** — Implemented, tested, and validated through RFC process
+- **Missing** — No implementation exists
 
 ---
 
@@ -30,19 +31,19 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: SvelteKit frontend with Tailwind v4, TypeScript, adapter-static
 - Done: Dev mode with Vite HMR proxy
 - Done: 3-layer architecture (handler -> service -> repository)
-- Done: Test infrastructure (testutil with in-memory SQLite, seed factories; 96 Go + 53 vitest tests)
-- Missing: CI pipeline (linting, testing, building)
+- Done: Test infrastructure (testutil with in-memory SQLite, seed factories; ~1500 Go test files, ~57 vitest test files)
+- Done: CI pipeline (`.github/workflows/ci.yml` — linting, testing, building)
 
 ### SQLite Schema & Database
 - Done: SQLite connection with WAL mode, foreign keys, busy timeout
-- Done: Goose migration framework with embedded SQL
+- Done: Goose migration framework with embedded SQL (14 migrations: 001-014)
 - Done: Initial schema + migration 002 (schema alignment fixes)
 - Done: Amount (int64 halere) consistency validated across all columns
-- Missing: bank_transactions table (domain struct exists, no migration)
-- Missing: Audit log write logic (table exists, nothing writes to it)
+- Exists: audit_log table (in migration 001, but no repository/service writes to it)
+- Missing: bank_transactions table (domain struct exists in `internal/domain/bank.go`, no migration)
 
 ### CLI Framework
-- Exists: Cobra root command + `serve` command
+- Exists: Cobra root command + `serve` command + `--config` flag
 - Missing: `config init` / `config show` commands
 - Missing: `invoice` subcommands (create, list, pdf, send)
 - Missing: `expense` subcommands (add, list, scan)
@@ -63,12 +64,13 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: Contact domain struct, repository, service, HTTP handler, frontend list + detail/edit pages
 - Done: ARES HTTP client implementation (ICO validation, response parsing, LimitReader, error handling)
 - Done: ARES lookup wired end-to-end (enter ICO -> auto-fill contact fields)
+- Done: Unreliable VAT payer check (`vat_unreliable_at` timestamp, migration 005)
 - Missing: VIES VAT validation for EU contacts
 - Missing: Contact tags/groups
-- Missing: Unreliable VAT payer check (nespolehlivy platce)
 
 ### Domain Model
 - Done: Contact, Invoice, InvoiceItem, InvoiceSequence, Expense, Amount, BankTransaction, VATReturn, VATControlStatement, VIESSummary, filter structs
+- Done: RecurringInvoice, RecurringExpense, ExpenseDocument, OCRResult, PaymentReminder, InvoiceStatusChange
 - Done: Validated structs match schema; fixed Amount.String() for negative sub-unit values
 
 **Dependencies:** None (this is the foundation)
@@ -78,7 +80,7 @@ Nothing is considered "done" until it passes through this process. Existing code
 ## Phase 2 — Invoicing
 
 **RFC:** `docs/rfc/002-invoicing.md`
-**Goal:** Full invoice lifecycle — CRUD, PDF, QR codes, email, ISDOC export.
+**Goal:** Full invoice lifecycle — CRUD, PDF, QR codes, email, ISDOC export, proforma, credit notes, recurring.
 
 ### Sub-Phase 2A (Done)
 
@@ -109,22 +111,30 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: Frontend sequence management UI (`/settings/sequences`)
 - Done: Auto-create sequence for current year on invoice create
 
-### Sub-Phase 2B (Missing)
-- Missing: Proforma invoices (zalohove faktury) and settlement
-- Missing: Credit notes (dobropisy)
-- Missing: Recurring invoices with configurable intervals
+### Sub-Phase 2B (Done)
+- Done: Proforma invoices (`InvoiceTypeProforma`, full CRUD, frontend support)
+- Done: Credit notes (`InvoiceTypeCreditNote`, `RelatedInvoiceID`, frontend support)
+- Done: Settlement/linking (`RelationType`, migration 007, related invoice tracking)
+- Done: Recurring invoices (domain, migration 009, repo, service with `GenerateInvoice()`, handler, frontend `/recurring/`)
 
-### Sub-Phase 2C (Missing)
-- Missing: Multi-currency with CNB exchange rates
-- Missing: Automatic overdue detection
-- Missing: Status history / timeline
-- Missing: Payment reminders
+### Sub-Phase 2C (Done)
+- Done: Multi-currency with CNB exchange rates (`internal/service/cnb/client.go`, daily rate fetching, 1h cache, weekend fallback)
+- Done: Exchange rate handler (GET `/api/v1/exchange-rates`)
+- Done: `CurrencyCode` and `ExchangeRate` fields on Invoice, Expense, RecurringInvoice, RecurringExpense
+- Done: Automatic overdue detection (`internal/service/overdue_svc.go`, marks sent invoices past due date)
+- Done: Status history / timeline (migration 012, `InvoiceStatusChange` domain, repo, handler, frontend display)
+- Done: Payment reminders (migration 013, `PaymentReminder` domain, repo, service, handler with send endpoint, frontend reminder history)
 
-### Not Yet Started
-- Missing: Email service, templates, HTTP endpoint (SMTP config exists)
-- Missing: Frontend invoice edit form for non-draft invoices
-- Missing: Customizable PDF templates (logo, colors, footer)
-- Missing: PDF CLI command
+### Email Service (Done)
+- Done: SMTP email sender with TLS (`internal/service/email/sender.go`)
+- Done: Email template system (`internal/service/email/templates.go`)
+- Done: Payment reminder templates (`internal/service/email/reminder_template.go`)
+- Done: Attachment support, HTML/text bodies, TO/CC/BCC
+- Done: Mailpit integration for dev email testing (`config.dev.toml`, `scripts/dev.sh`)
+
+### Still Missing
+- Missing: Customizable PDF templates (logo, colors, footer — currently hardcoded layout)
+- Missing: PDF CLI command (only HTTP endpoint exists)
 
 **Dependencies:** Phase 1
 
@@ -133,7 +143,7 @@ Nothing is considered "done" until it passes through this process. Existing code
 ## Phase 3 — Expenses
 
 **RFC:** `docs/rfc/003-expenses.md`
-**Goal:** Expense management with document upload and AI OCR.
+**Goal:** Expense management with document upload, AI OCR, recurring expenses, and tax review.
 
 ### Task 3 — Expense Categories (Done)
 - Done: ExpenseCategory domain struct (`internal/domain/category.go`)
@@ -145,17 +155,43 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: Migration 004 with 16 default Czech OSVC categories
 - Done: Integrated into expense create/edit pages
 
-### Expense CRUD
+### Expense CRUD (Done)
 - Done: Expense domain struct, repository, service (with VAT calculations), HTTP handler
 - Done: Frontend expense list page (search, pagination)
 - Done: Frontend expense create form (`/expenses/new`) with CategoryPicker
 - Done: Frontend expense detail/edit page (`/expenses/[id]`) with CategoryPicker
 
-### Remaining Tasks (Missing)
-- Missing: Task 1 — Document upload (file upload endpoint, document storage, linking, viewer)
-- Missing: Task 2 — AI OCR (OCR service, data extraction, user confirmation UI; OCR config exists)
-- Missing: Task 4 — Recurring expenses
-- Missing: Task 5 — Tax-deductible marking workflow
+### Task 1 — Document Upload (Done)
+- Done: `ExpenseDocument` domain struct (`internal/domain/document.go`)
+- Done: Migration 006 (`expense_documents` table)
+- Done: Document repository (`internal/repository/document_repo.go`)
+- Done: Document service (`internal/service/document_svc.go`)
+- Done: Document handler with upload/download (`internal/handler/document_handler.go`)
+- Done: Frontend document management in expense detail pages
+
+### Task 2 — AI OCR (Done)
+- Done: `OCRResult` domain struct (`internal/domain/ocr.go`)
+- Done: OpenAI OCR provider (`internal/service/ocr/openai.go`)
+- Done: OCR service (`internal/service/ocr_svc.go`)
+- Done: OCR handler (`internal/handler/ocr_handler.go`)
+- Done: Frontend OCR file upload in `/expenses/new/`
+- Done: Supported formats: JPEG, PNG, PDF
+- Done: Config: `cfg.OCR.APIKey` and `cfg.OCR.Provider`
+
+### Task 4 — Recurring Expenses (Done)
+- Done: `RecurringExpense` domain struct (`internal/domain/recurring_expense.go`)
+- Done: Migration 010 (`recurring_expenses` table)
+- Done: Repository with full CRUD (`internal/repository/recurring_expense_repo.go`)
+- Done: Service with `GeneratePending()` logic (`internal/service/recurring_expense_svc.go`)
+- Done: Handler (`internal/handler/recurring_expense_handler.go`)
+- Done: Frontend pages (`/expenses/recurring/`)
+
+### Task 5 — Tax Review (Done)
+- Done: `TaxReviewedAt` field on Expense (nullable timestamp)
+- Done: Migration 008 (`tax_reviewed_at` column)
+- Done: Review/unreview endpoints (POST `/api/v1/expenses/review`, `/unreview`)
+- Done: Frontend tax review page (`/expenses/review/`)
+- Done: Filter by `tax_reviewed` status in expense list
 
 **Dependencies:** Phase 1
 
@@ -163,11 +199,39 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ## Phase 4 — VAT Filings
 
-**RFC:** `docs/rfc/004-vat-filings.md` (not yet written)
+**RFC:** `docs/rfc/004-vat-filings.md`
 **Goal:** Generate XML submissions for DPH, kontrolni hlaseni, souhrnne hlaseni.
 
-- Exists: VATReturn, VATControlStatement, VIESSummary domain structs
-- Missing: All calculation services, XML generation, validation, handlers, frontend pages
+### VAT Returns — Prizani k DPH (Done)
+- Done: `VATReturn` domain struct (`internal/domain/tax.go`)
+- Done: Migration 014 (`vat_returns` table)
+- Done: Repository (`internal/repository/vat_return_repo.go`)
+- Done: Service (`internal/service/vat_return_svc.go`)
+- Done: Handler (`internal/handler/vat_return_handler.go`)
+- Done: XML generation (`internal/vatxml/vat_return_gen.go`)
+- Done: Frontend pages (`/vat/returns/`)
+
+### VAT Control Statement — Kontrolni hlaseni (Done)
+- Done: `VATControlStatement` + `VATControlStatementLine` domain structs
+- Done: Migration 014 (`vat_control_statements`, `vat_control_statement_lines` tables)
+- Done: Repository (`internal/repository/vat_control_repo.go`)
+- Done: Service (`internal/service/vat_control_svc.go`)
+- Done: Handler (`internal/handler/vat_control_handler.go`)
+- Done: XML generation (`internal/vatxml/control_statement_gen.go`)
+- Done: Frontend pages (`/vat/control/`)
+
+### VIES Summary — Souhrnne hlaseni (Done)
+- Done: `VIESSummary` + `VIESSummaryLine` domain structs
+- Done: Migration 014 (`vies_summaries`, `vies_summary_lines` tables)
+- Done: Repository (`internal/repository/vies_repo.go`)
+- Done: Service (`internal/service/vies_svc.go`)
+- Done: Handler (`internal/handler/vies_handler.go`)
+- Done: XML generation (`internal/vatxml/vies_gen.go`)
+- Done: Frontend pages (`/vat/vies/`)
+
+### RFC-005 VAT Polish
+- RFC: `docs/rfc/005-vat-polish.md` written (draft status)
+- Missing: Implementation (API client consolidation, Czech diacritics, validation hardening)
 
 **Dependencies:** Phase 2, Phase 3
 
@@ -178,7 +242,7 @@ Nothing is considered "done" until it passes through this process. Existing code
 **RFC:** `docs/rfc/005-annual-tax.md` (not yet written)
 **Goal:** Income tax return, social insurance overview, health insurance overview.
 
-- Missing: Everything (no existing code beyond domain structs in Phase 4)
+- Missing: Everything (no existing code beyond domain structs)
 
 **Dependencies:** Phase 2, Phase 3, Phase 4
 
@@ -207,10 +271,13 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ### CRUD UIs
 - Done: Contact list + detail/edit with ARES lookup UI
-- Done: Invoice list + create form + detail/edit page
-- Done: Expense list + create form + detail/edit page
+- Done: Invoice list + create form + detail/edit page (incl. proforma, credit notes)
+- Done: Expense list + create form + detail/edit page (incl. documents, OCR)
 - Done: Settings page (Identity/Address/Bank/VAT sections)
-- Missing: Tax filing pages
+- Done: Recurring invoice management (`/recurring/`)
+- Done: Recurring expense management (`/expenses/recurring/`)
+- Done: Tax review page (`/expenses/review/`)
+- Done: VAT filing pages (`/vat/returns/`, `/vat/control/`, `/vat/vies/`)
 
 ### Reports
 - Missing: All reporting, charts, CSV/PDF export
@@ -234,16 +301,17 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 | Concern | Status | Notes |
 |---------|--------|-------|
-| Unit tests | Done (Phase 1) | 96 Go tests (domain, repo, service, handler) + 53 vitest (API client, money, date) |
-| Integration tests | Done (Phase 1) | testutil with in-memory SQLite, seed factories, FK handling |
-| Structured logging | Exists (partial) | slog middleware logs requests; needs expansion |
-| Audit trail | Missing | Table exists, no write logic |
+| Unit tests | Done | ~1500 Go test files, ~57 vitest test files |
+| Integration tests | Done | testutil with in-memory SQLite, seed factories, FK handling |
+| CI pipeline | Done | `.github/workflows/ci.yml` |
+| Structured logging | Done | `log/slog` throughout (middleware, services, email, OCR, overdue) |
+| Audit trail | Exists (partial) | Table exists in migration 001, no repository/service writes to it |
 | Error handling | Exists (partial) | Handlers return errors; no global strategy |
-| Input validation | Done (Phase 1) | Settings key allowlist, ICO validation, service-layer checks |
+| Input validation | Done | Settings key allowlist, ICO validation, service-layer checks |
 | API documentation | Missing | No OpenAPI/Swagger |
 | Frontend error states | Exists (partial) | List pages have loading/error/empty states; no toast system |
-| API consistency | Done (Phase 1) | Fixed `/mark-paid` mismatch, SequenceID NULL handling |
-| Security hardening | Done (Phase 1) | LimitReader, localhost binding, security headers, settings allowlist |
+| API consistency | Done | Fixed `/mark-paid` mismatch, SequenceID NULL handling |
+| Security hardening | Done | LimitReader, localhost binding, security headers, settings allowlist |
 
 ---
 
@@ -266,10 +334,10 @@ Phase 1 (Foundation)
 ## RFC Schedule
 
 1. **RFC-001** (Foundation) — Done (implemented, tested, reviewed)
-2. **RFC-002** (Invoicing) — Written, Sub-Phase 2A done (PDF, QR, ISDOC, sequences)
-3. **RFC-003** (Expenses) — Written, Task 3 done (expense categories)
-4. **RFC-004** (VAT Filings) — Write after RFC-002 + RFC-003
-5. **RFC-005** (Annual Tax) — Write after RFC-004
-6. **RFC-006** (Banking) — Write after RFC-002
+2. **RFC-002** (Invoicing) — Done (Sub-Phase 2A-2C, email service)
+3. **RFC-003** (Expenses) — Done (categories, documents, OCR, recurring, tax review)
+4. **RFC-004** (VAT Filings) — Done (VAT returns, kontrolni hlaseni, souhrnne hlaseni)
+5. **RFC-005** (VAT Polish) — RFC written, implementation pending
+6. **RFC-006** (Banking) — Write after RFC-005
 7. **RFC-007** (Web UI) — Write incrementally as backend phases complete
 8. **RFC-008** (Polish) — Write last

@@ -24,6 +24,19 @@ export const paymentMethodLabels: Record<string, string> = {
 	card: 'Karta'
 };
 
+export const frequencyLabels: Record<string, string> = {
+	weekly: 'Týdně',
+	monthly: 'Měsíčně',
+	quarterly: 'Čtvrtletně',
+	yearly: 'Ročně'
+};
+
+export const invoiceTypeLabels: Record<string, string> = {
+	regular: 'Faktura',
+	proforma: 'Zálohová faktura',
+	credit_note: 'Dobropis'
+};
+
 export const statusVariant: Record<string, StatusVariant> = {
 	draft: 'default',
 	sent: 'info',

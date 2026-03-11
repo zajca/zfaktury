@@ -145,6 +145,10 @@ from = "jan@example.com"
 
 [fio]
 api_token = "your-fio-api-token"
+
+[ocr]
+provider = "openai"            # currently the only supported provider
+api_key = "sk-your-openai-key"
 ```
 
 Override data directory with `ZFAKTURY_DATA_DIR` environment variable.
@@ -177,6 +181,51 @@ All endpoints under `/api/v1`:
 | POST | `/api/v1/invoices/{id}/duplicate` | Duplicate invoice |
 | GET/POST | `/api/v1/expenses` | List / create expenses |
 | GET/PUT/DELETE | `/api/v1/expenses/{id}` | Get / update / delete expense |
+| POST | `/api/v1/expenses/import` | Import expense from document (OCR) |
+| POST | `/api/v1/expenses/{id}/documents` | Upload document to expense |
+| GET | `/api/v1/expenses/{id}/documents` | List documents for expense |
+| POST | `/api/v1/documents/{id}/ocr` | Run OCR on a document |
+
+## Document Import & OCR
+
+ZFaktury supports importing expenses directly from scanned documents (PDF, JPG, PNG, WebP). When OCR is configured, the system automatically extracts vendor name, invoice number, amounts, dates, and other fields.
+
+### How it works
+
+1. Go to **Naklady** (Expenses) and click **Import z dokladu**
+2. Drag & drop a document or click to select a file
+3. The system creates a skeleton expense and uploads the document
+4. If OCR is configured, extracted data is shown for review -- edit any field and confirm
+5. If OCR is not configured, you are redirected to the expense detail for manual entry
+
+### OCR setup
+
+OCR uses the OpenAI Vision API. Add the following to `~/.zfaktury/config.toml`:
+
+```toml
+[ocr]
+provider = "openai"
+api_key = "sk-your-openai-api-key"
+```
+
+| Setting | Description |
+|---------|-------------|
+| `provider` | OCR provider, currently only `"openai"` is supported. Defaults to `"openai"` if omitted. |
+| `api_key` | OpenAI API key. OCR is disabled when this is empty. |
+
+Without the `[ocr]` section (or with an empty `api_key`), the import still works -- documents are uploaded and linked to expenses, but fields must be filled in manually.
+
+### Supported file types
+
+| Format | MIME type |
+|--------|-----------|
+| PDF | `application/pdf` |
+| JPEG | `image/jpeg` |
+| PNG | `image/png` |
+| WebP | `image/webp` |
+| HEIC | `image/heic` |
+
+Maximum file size: 20 MB. Up to 10 documents per expense.
 
 ## Claude Code Agent Teams
 

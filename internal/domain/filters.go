@@ -5,6 +5,7 @@ import "time"
 // InvoiceFilter holds filtering options for listing invoices.
 type InvoiceFilter struct {
 	Status     string
+	Type       string
 	CustomerID *int64
 	DateFrom   *time.Time
 	DateTo     *time.Time

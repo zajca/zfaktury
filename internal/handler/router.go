@@ -11,6 +11,7 @@ import (
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
 	"github.com/zajca/zfaktury/internal/service/cnb"
+	"github.com/zajca/zfaktury/internal/service/email"
 )
 
 // RouterConfig holds configuration for the HTTP router.
@@ -39,6 +40,7 @@ func NewRouter(
 	vatReturnSvc *service.VATReturnService,
 	vatControlSvc *service.VATControlStatementService,
 	viesSvc *service.VIESSummaryService,
+	emailSender *email.EmailSender,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -102,6 +104,12 @@ func NewRouter(
 				reminderHandler := NewReminderHandler(reminderSvc)
 				inv.Post("/{id}/remind", reminderHandler.SendReminder)
 				inv.Get("/{id}/reminders", reminderHandler.ListReminders)
+			}
+
+			// Send invoice via email (conditional on SMTP config)
+			if emailSender != nil && emailSender.IsConfigured() {
+				emailHandler := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, emailSender)
+				inv.Post("/{id}/send-email", emailHandler.SendEmail)
 			}
 		})
 		api.Mount("/expenses", expenseHandler.Routes())

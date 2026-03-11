@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { settingsApi, type Settings } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
-	import Button from '$lib/ui/Button.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
 
 	let settings = $state<Settings>({});
 	let loading = $state(true);
@@ -57,17 +60,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<h1 class="text-xl font-semibold text-primary">Nastavení</h1>
-	<p class="mt-1 text-sm text-tertiary">Konfigurace aplikace a údaje OSVČ</p>
+	<PageHeader title="Nastavení" description="Konfigurace aplikace a údaje OSVČ" />
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-3 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if success}
 		<div class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success">
@@ -119,14 +114,7 @@
 	</Card>
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Nacitani...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8" />
 	{:else}
 		<form
 			onsubmit={(e) => {
@@ -314,11 +302,7 @@
 			</Card>
 
 			<!-- Save -->
-			<div class="flex gap-3 pb-8">
-				<Button type="submit" variant="primary" disabled={saving}>
-					{saving ? 'Ukládám...' : 'Uložit nastavení'}
-				</Button>
-			</div>
+			<FormActions {saving} saveLabel="Uložit nastavení" class="pb-8" />
 		</form>
 	{/if}
 </div>

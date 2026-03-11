@@ -3,6 +3,10 @@
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	let sequences = $state<InvoiceSequence[]>([]);
 	let loading = $state(true);
@@ -109,49 +113,23 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<div class="flex items-center justify-between">
-		<div>
-			<div class="flex items-center gap-3">
-				<a
-					href="/settings"
-					class="text-muted hover:text-secondary transition-colors"
-					aria-label="Zpet na nastaveni"
-				>
-					<svg
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-					</svg>
-				</a>
-				<h1 class="text-xl font-semibold text-primary">Číselné řady faktur</h1>
-			</div>
-			<p class="mt-1 text-sm text-tertiary">Správa číslování faktur podle roku a typu</p>
-		</div>
-		<Button
-			variant="primary"
-			onclick={() => {
-				showCreateForm = !showCreateForm;
-			}}
-		>
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-			</svg>
-			Nová řada
-		</Button>
-	</div>
+	<PageHeader title="Číselné řady faktur" description="Správa číslování faktur podle roku a typu" backHref="/settings" backLabel="Zpět na nastavení">
+		{#snippet actions()}
+			<Button
+				variant="primary"
+				onclick={() => {
+					showCreateForm = !showCreateForm;
+				}}
+			>
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+				</svg>
+				Nová řada
+			</Button>
+		{/snippet}
+	</PageHeader>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-3 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<!-- Create Form -->
 	{#if showCreateForm}
@@ -240,27 +218,18 @@
 	<!-- Table -->
 	<div class="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
 		{#if loading}
-			<div class="flex items-center justify-center p-12">
-				<div role="status">
-					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-					></div>
-					<span class="sr-only">Nacitani...</span>
-				</div>
-			</div>
+			<LoadingSpinner class="p-12" />
 		{:else if sequences.length === 0}
-			<div class="p-12 text-center text-muted">
-				Zatím žádné číselné řady. Vytvořte novou nebo se vytvoří automaticky při tvorbě faktury.
-			</div>
+			<EmptyState message="Zatím žádné číselné řady. Vytvořte novou nebo se vytvoří automaticky při tvorbě faktury." />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Prefix</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Rok</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Další číslo</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Náhled</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted text-right">Akce</th>
+						<th class="th-default">Prefix</th>
+						<th class="th-default">Rok</th>
+						<th class="th-default">Další číslo</th>
+						<th class="th-default">Náhled</th>
+						<th class="th-default text-right">Akce</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border-subtle">

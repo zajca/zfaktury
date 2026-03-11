@@ -2,6 +2,10 @@
 	import { categoriesApi, type ExpenseCategory } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
 
 	let categories = $state<ExpenseCategory[]>([]);
 	let loading = $state(true);
@@ -105,27 +109,17 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/settings" class="text-sm text-accent-text hover:text-accent">&larr; Zpět na nastavení</a>
-	<div class="mt-2 flex items-center justify-between">
-		<div>
-			<h1 class="text-xl font-semibold text-primary">Kategorie nákladů</h1>
-			<p class="mt-1 text-sm text-tertiary">Správa kategorií pro třídění nákladů</p>
-		</div>
-		{#if !showForm}
-			<Button variant="primary" onclick={startCreate}>
-				Přidat kategorii
-			</Button>
-		{/if}
-	</div>
+	<PageHeader title="Kategorie nákladů" description="Správa kategorií pro třídění nákladů" backHref="/settings" backLabel="Zpět na nastavení">
+		{#snippet actions()}
+			{#if !showForm}
+				<Button variant="primary" onclick={startCreate}>
+					Přidat kategorii
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-3 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if showForm}
 		<form
@@ -204,27 +198,13 @@
 						/>
 					</div>
 				</div>
-				<div class="mt-6 flex gap-3">
-					<Button type="submit" variant="primary" disabled={saving}>
-						{saving ? 'Ukládám...' : editingId ? 'Uložit změny' : 'Vytvořit'}
-					</Button>
-					<Button variant="secondary" onclick={cancelForm}>
-						Zrušit
-					</Button>
-				</div>
+				<FormActions {saving} saveLabel={editingId ? 'Uložit změny' : 'Vytvořit'} oncancel={cancelForm} class="mt-6" />
 			</Card>
 		</form>
 	{/if}
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Nacitani...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8" />
 	{:else}
 		<div class="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
 			<table class="min-w-full divide-y divide-border">

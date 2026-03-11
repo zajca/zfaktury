@@ -13,7 +13,9 @@
 	import { vatStatusLabels, monthLabels, quarters } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let selectedYear = $state(new Date().getFullYear());
 	let loading = $state(true);
@@ -216,26 +218,10 @@
 		</Button>
 	</div>
 
-	<!-- Error -->
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
-	<!-- Loading -->
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center p-12">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Načítání...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8 p-12" />
 	{:else}
 		<!-- Quarter sections -->
 		<div class="mt-6 space-y-6">

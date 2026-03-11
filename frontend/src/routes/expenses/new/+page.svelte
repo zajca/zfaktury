@@ -8,6 +8,10 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -87,17 +91,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/expenses" class="text-sm text-secondary hover:text-primary">&larr; Zpět na náklady</a>
-	<h1 class="mt-2 text-xl font-semibold text-primary">Nový náklad</h1>
+	<PageHeader title="Nový náklad" backHref="/expenses" backLabel="Zpět na náklady" />
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {
@@ -257,23 +253,11 @@
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 			<div class="mt-4">
-				<textarea
-					bind:value={form.notes}
-					rows="3"
-					placeholder="Volitelné poznámky..."
-					class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-				></textarea>
+				<Textarea bind:value={form.notes} rows={3} placeholder="Volitelné poznámky..." />
 			</div>
 		</Card>
 
 		<!-- Actions -->
-		<div class="flex gap-3">
-			<Button variant="primary" type="submit" disabled={saving}>
-				{saving ? 'Ukládám...' : 'Uložit náklad'}
-			</Button>
-			<Button variant="secondary" href="/expenses">
-				Zrušit
-			</Button>
-		</div>
+		<FormActions {saving} saveLabel="Uložit náklad" cancelHref="/expenses" />
 	</form>
 </div>

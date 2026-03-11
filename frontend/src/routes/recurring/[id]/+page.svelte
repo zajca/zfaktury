@@ -7,6 +7,11 @@
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
 
 	interface Contact {
 		id: number;
@@ -250,48 +255,24 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/recurring" class="text-sm text-secondary hover:text-primary"
-		>&larr; Zpet na opakujici se faktury</a
-	>
+	<PageHeader title={recurringInvoice?.name ?? 'Detail'} backHref="/recurring" backLabel="Zpet na opakujici se faktury" />
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center p-12">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Nacitani...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8 p-12" />
 	{:else if error && !recurringInvoice}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
+		<ErrorAlert {error} class="mt-4" />
 	{:else if recurringInvoice && !editing}
 		<!-- Detail view -->
-		<div class="mt-2">
-			<h1 class="text-xl font-semibold text-primary">{recurringInvoice.name}</h1>
-			<div class="mt-3 flex flex-wrap gap-2">
-				<Button variant="secondary" onclick={generateInvoice} disabled={generating}>
-					{generating ? 'Generuji...' : 'Vygenerovat fakturu'}
-				</Button>
-				<Button variant="primary" onclick={startEdit}>
-					Upravit
-				</Button>
-			</div>
+		<div class="mt-3 flex flex-wrap gap-2">
+			<Button variant="secondary" onclick={generateInvoice} disabled={generating}>
+				{generating ? 'Generuji...' : 'Vygenerovat fakturu'}
+			</Button>
+			<Button variant="primary" onclick={startEdit}>
+				Upravit
+			</Button>
 		</div>
 
-		{#if error}
-			<div
-				role="alert"
-				class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-			>
-				{error}
-			</div>
-		{/if}
+		<ErrorAlert {error} class="mt-4" />
 
 		<div class="mt-6 space-y-6">
 			<Card>
@@ -357,11 +338,11 @@
 					<table class="mt-4 w-full text-left text-sm">
 						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Mnozstvi</th>
-								<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Jednotka</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Cena/ks</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH</th>
+								<th class="th-default">Popis</th>
+								<th class="th-default text-right">Mnozstvi</th>
+								<th class="th-default">Jednotka</th>
+								<th class="th-default text-right">Cena/ks</th>
+								<th class="th-default text-right">DPH</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
@@ -387,14 +368,7 @@
 		<!-- Edit form -->
 		<h1 class="mt-2 text-xl font-semibold text-primary">Upravit: {recurringInvoice?.name}</h1>
 
-		{#if error}
-			<div
-				role="alert"
-				class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-			>
-				{error}
-			</div>
-		{/if}
+		<ErrorAlert {error} class="mt-4" />
 
 		<form
 			onsubmit={(e) => {
@@ -641,29 +615,11 @@
 					<label for="edit-notes" class="block text-sm font-medium text-secondary"
 						>Poznamka na fakture</label
 					>
-					<textarea
-						id="edit-notes"
-						bind:value={form.notes}
-						rows="2"
-						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-					></textarea>
+					<Textarea id="edit-notes" bind:value={form.notes} rows={2} />
 				</div>
 			</Card>
 
-			<div class="flex gap-3">
-				<Button type="submit" variant="primary" disabled={saving}>
-					{saving ? 'Ukladam...' : 'Ulozit zmeny'}
-				</Button>
-				<Button
-					variant="secondary"
-					onclick={() => {
-						editing = false;
-						error = null;
-					}}
-				>
-					Zrusit
-				</Button>
-			</div>
+			<FormActions {saving} saveLabel="Ulozit zmeny" savingLabel="Ukladam..." oncancel={() => { editing = false; error = null; }} />
 		</form>
 	{/if}
 </div>

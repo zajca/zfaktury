@@ -1,20 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { contactsApi, invoicesApi, type Contact, type InvoiceItem } from '$lib/api/client';
-	import { formatCZK, toHalere } from '$lib/utils/money';
+	import { toHalere } from '$lib/utils/money';
 	import { toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import Button from '$lib/ui/Button.svelte';
+	import InvoiceItemsEditor, { type FormItem, calcSubtotal, calcVatTotal, calcGrandTotal } from '$lib/components/InvoiceItemsEditor.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
-
-	interface FormItem {
-		description: string;
-		quantity: number;
-		unit: string;
-		unit_price: number; // in crowns (user input)
-		vat_rate_percent: number;
-	}
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
 
 	let dueDateOffset = $state(14);
 
@@ -53,28 +49,9 @@
 	]);
 
 	// Calculated totals derived from items
-	let subtotal = $derived(items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0));
-
-	let vatTotal = $derived(
-		items.reduce((sum, item) => {
-			const itemSubtotal = item.quantity * item.unit_price;
-			return sum + itemSubtotal * (item.vat_rate_percent / 100);
-		}, 0)
-	);
-
-	let grandTotal = $derived(subtotal + vatTotal);
-
-	function addItem() {
-		items = [
-			...items,
-			{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
-		];
-	}
-
-	function removeItem(index: number) {
-		if (items.length <= 1) return;
-		items = items.filter((_, i) => i !== index);
-	}
+	let subtotal = $derived(calcSubtotal(items));
+	let vatTotal = $derived(calcVatTotal(items));
+	let grandTotal = $derived(calcGrandTotal(items));
 
 	$effect(() => {
 		loadContacts();
@@ -142,17 +119,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/invoices" class="text-sm text-secondary hover:text-primary">&larr; Zpět na faktury</a>
-	<h1 class="mt-2 text-xl font-semibold text-primary">Nová faktura</h1>
+	<PageHeader title="Nová faktura" backHref="/invoices" backLabel="Zpět na faktury" />
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {
@@ -247,148 +216,7 @@
 		</Card>
 
 		<!-- Line Items -->
-		<Card>
-			<div class="flex items-center justify-between">
-				<h2 class="text-base font-semibold text-primary">Položky</h2>
-				<Button variant="secondary" size="sm" onclick={addItem}>
-					<svg
-						class="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-					</svg>
-					Přidat položku
-				</Button>
-			</div>
-
-			<div class="mt-4 space-y-4">
-				{#each items as item, index (index)}
-					<div class="rounded-lg border border-border bg-elevated p-4">
-						<div class="flex items-start gap-4">
-							<div class="flex-1 space-y-3">
-								<div>
-									<label for="desc-{index}" class="block text-sm font-medium text-secondary"
-										>Popis</label
-									>
-									<input
-										id="desc-{index}"
-										type="text"
-										bind:value={item.description}
-										required
-										class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-									/>
-								</div>
-								<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-									<div>
-										<label for="qty-{index}" class="block text-sm font-medium text-secondary"
-											>Množství</label
-										>
-										<input
-											id="qty-{index}"
-											type="number"
-											step="0.01"
-											min="0"
-											bind:value={item.quantity}
-											class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-										/>
-									</div>
-									<div>
-										<label for="unit-{index}" class="block text-sm font-medium text-secondary"
-											>Jednotka</label
-										>
-										<select
-											id="unit-{index}"
-											bind:value={item.unit}
-											class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-										>
-											<option value="ks">ks</option>
-											<option value="hod">hod</option>
-											<option value="m2">m2</option>
-											<option value="den">den</option>
-											<option value="mesic">měsíc</option>
-										</select>
-									</div>
-									<div>
-										<label for="price-{index}" class="block text-sm font-medium text-secondary"
-											>Cena/ks (CZK)</label
-										>
-										<input
-											id="price-{index}"
-											type="number"
-											step="0.01"
-											min="0"
-											bind:value={item.unit_price}
-											class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-										/>
-									</div>
-									<div>
-										<label for="vat-{index}" class="block text-sm font-medium text-secondary"
-											>DPH % <HelpTip topic="sazba-dph" /></label
-										>
-										<select
-											id="vat-{index}"
-											bind:value={item.vat_rate_percent}
-											class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-										>
-											<option value={21}>21%</option>
-											<option value={12}>12%</option>
-											<option value={0}>0%</option>
-										</select>
-									</div>
-								</div>
-							</div>
-							{#if items.length > 1}
-								<button
-									type="button"
-									onclick={() => removeItem(index)}
-									class="mt-6 rounded p-1 text-muted hover:text-danger transition-colors"
-									aria-label="Odebrat položku"
-								>
-									<svg
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										stroke-width="2"
-									>
-										<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-									</svg>
-								</button>
-							{/if}
-						</div>
-						<!-- Item subtotal -->
-						<div class="mt-2 text-right text-sm text-tertiary">
-							Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(
-								toHalere((item.quantity * item.unit_price * item.vat_rate_percent) / 100)
-							)} | Celkem: {formatCZK(
-								toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100))
-							)}
-						</div>
-					</div>
-				{/each}
-			</div>
-
-			<!-- Totals -->
-			<div class="mt-6 border-t border-border pt-4">
-				<div class="flex flex-col items-end gap-1 text-sm">
-					<div class="flex gap-8">
-						<span class="text-secondary">Základ:</span>
-						<span class="font-medium font-mono tabular-nums text-primary">{formatCZK(toHalere(subtotal))}</span>
-					</div>
-					<div class="flex gap-8">
-						<span class="text-secondary">DPH:</span>
-						<span class="font-medium font-mono tabular-nums text-primary">{formatCZK(toHalere(vatTotal))}</span>
-					</div>
-					<div class="flex gap-8 border-t border-border pt-1 text-base">
-						<span class="font-semibold text-primary">Celkem:</span>
-						<span class="font-bold font-mono tabular-nums text-primary">{formatCZK(toHalere(grandTotal))}</span>
-					</div>
-				</div>
-			</div>
-		</Card>
+		<InvoiceItemsEditor bind:items />
 
 		<!-- Notes -->
 		<Card>
@@ -398,35 +226,18 @@
 					<label for="notes" class="block text-sm font-medium text-secondary"
 						>Poznámka na faktuře</label
 					>
-					<textarea
-						id="notes"
-						bind:value={form.notes}
-						rows="2"
-						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-					></textarea>
+					<Textarea id="notes" bind:value={form.notes} rows={2} class="mt-1" />
 				</div>
 				<div>
 					<label for="internal_notes" class="block text-sm font-medium text-secondary"
 						>Interní poznámka</label
 					>
-					<textarea
-						id="internal_notes"
-						bind:value={form.internal_notes}
-						rows="2"
-						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-					></textarea>
+					<Textarea id="internal_notes" bind:value={form.internal_notes} rows={2} class="mt-1" />
 				</div>
 			</div>
 		</Card>
 
 		<!-- Actions -->
-		<div class="flex gap-3">
-			<Button type="submit" variant="primary" disabled={saving}>
-				{saving ? 'Ukládám...' : 'Uložit jako koncept'}
-			</Button>
-			<Button variant="secondary" href="/invoices">
-				Zrušit
-			</Button>
-		</div>
+		<FormActions {saving} saveLabel="Uložit jako koncept" cancelHref="/invoices" />
 	</form>
 </div>

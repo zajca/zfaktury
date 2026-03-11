@@ -3,9 +3,11 @@
 	import { page } from '$app/state';
 	import { vatReturnApi } from '$lib/api/client';
 	import { filingTypeLabels, monthLabels, quarterLabels } from '$lib/utils/vat';
-	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	const filingTypes = Object.entries(filingTypeLabels).map(([value, label]) => ({ value, label }));
 
@@ -62,17 +64,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-2xl">
-	<a href="/vat" class="text-sm text-secondary hover:text-primary">&larr; Zpět na DPH</a>
-	<h1 class="mt-2 text-xl font-semibold text-primary">Nové DPH přiznání</h1>
+	<PageHeader title="Nové DPH přiznání" backHref="/vat" backLabel="Zpět na DPH" />
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {
@@ -171,14 +165,6 @@
 			</div>
 		</Card>
 
-		<!-- Actions -->
-		<div class="flex gap-3">
-			<Button variant="primary" type="submit" disabled={saving}>
-				{saving ? 'Vytvářím...' : 'Vytvořit přiznání'}
-			</Button>
-			<Button variant="secondary" href="/vat">
-				Zrušit
-			</Button>
-		</div>
+		<FormActions {saving} saveLabel="Vytvořit přiznání" savingLabel="Vytvářím..." cancelHref="/vat" />
 	</form>
 </div>

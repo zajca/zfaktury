@@ -3,7 +3,12 @@
 	import { goto } from '$app/navigation';
 	import { contactsApi, type Contact } from '$lib/api/client';
 	import Button from '$lib/ui/Button.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
 
 	let contact = $state<Contact | null>(null);
 	let loading = $state(true);
@@ -127,38 +132,18 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<div class="flex items-center justify-between">
-		<div>
-			<a href="/contacts" class="text-sm text-secondary hover:text-primary">&larr; Zpet na kontakty</a>
-			<h1 class="mt-2 text-xl font-semibold text-primary">
-				{isNew ? 'Novy kontakt' : 'Upravit kontakt'}
-			</h1>
-		</div>
-		{#if !isNew}
-			<Button variant="danger" onclick={handleDelete}>
-				Smazat
-			</Button>
-		{/if}
-	</div>
+	<PageHeader title={isNew ? 'Novy kontakt' : 'Upravit kontakt'} backHref="/contacts" backLabel="Zpet na kontakty">
+		{#snippet actions()}
+			{#if !isNew}
+				<Button variant="danger" onclick={handleDelete}>Smazat</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Nacitani...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8" />
 	{:else}
 		<form
 			onsubmit={(e) => {
@@ -322,23 +307,11 @@
 			<!-- Notes -->
 			<div>
 				<label for="notes" class="block text-sm font-medium text-secondary">Poznamky</label>
-				<textarea
-					id="notes"
-					bind:value={form.notes}
-					rows="3"
-					class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-				></textarea>
+				<Textarea id="notes" bind:value={form.notes} rows={3} class="mt-1" />
 			</div>
 
 			<!-- Submit -->
-			<div class="flex gap-3 pt-4">
-				<Button variant="primary" type="submit" disabled={saving}>
-					{saving ? 'Ukladam...' : 'Ulozit'}
-				</Button>
-				<Button variant="secondary" href="/contacts">
-					Zrusit
-				</Button>
-			</div>
+			<FormActions {saving} saveLabel="Ulozit" savingLabel="Ukladam..." cancelHref="/contacts" class="pt-4" />
 		</form>
 	{/if}
 </div>

@@ -9,11 +9,16 @@
 	} from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import { paymentMethodLabels } from '$lib/utils/invoice';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
 
 	let item = $state<RecurringExpense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -193,24 +198,10 @@
 		>&larr; Zpět na opakované náklady</a
 	>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Nacitani...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8" />
 	{:else if item}
 		<!-- Header -->
 		<div class="mt-4">
@@ -424,22 +415,11 @@
 				<Card>
 					<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 					<div class="mt-4">
-						<textarea
-							bind:value={form.notes}
-							rows="3"
-							class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-						></textarea>
+						<Textarea bind:value={form.notes} rows={3} />
 					</div>
 				</Card>
 
-				<div class="flex gap-3">
-					<Button variant="primary" type="submit" disabled={saving}>
-						{saving ? 'Ukládám...' : 'Uložit změny'}
-					</Button>
-					<Button variant="secondary" onclick={cancelEditing}>
-						Zrušit
-					</Button>
-				</div>
+				<FormActions {saving} saveLabel="Uložit změny" oncancel={cancelEditing} />
 			</form>
 		{:else}
 			<!-- View mode -->
@@ -464,11 +444,7 @@
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Způsob platby</dt>
 							<dd class="mt-1 text-sm text-primary">
-								{#if item.payment_method === 'bank_transfer'}Bankovní převod
-								{:else if item.payment_method === 'cash'}Hotovost
-								{:else if item.payment_method === 'card'}Karta
-								{:else}{item.payment_method}
-								{/if}
+								{paymentMethodLabels[item.payment_method] ?? item.payment_method}
 							</dd>
 						</div>
 					</dl>

@@ -11,9 +11,12 @@
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { toHalere } from '$lib/utils/money';
 	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
-	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -99,19 +102,9 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/recurring" class="text-sm text-secondary hover:text-primary"
-		>&larr; Zpet na opakujici se faktury</a
-	>
-	<h1 class="mt-2 text-xl font-semibold text-primary">Nova opakujici se faktura</h1>
+	<PageHeader title="Nova opakujici se faktura" backHref="/recurring" backLabel="Zpet na opakujici se faktury" />
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {
@@ -209,23 +202,11 @@
 				<label for="notes" class="block text-sm font-medium text-secondary"
 					>Poznamka na fakture</label
 				>
-				<textarea
-					id="notes"
-					bind:value={form.notes}
-					rows="2"
-					class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-				></textarea>
+				<Textarea id="notes" bind:value={form.notes} rows={2} />
 			</div>
 		</Card>
 
 		<!-- Actions -->
-		<div class="flex gap-3">
-			<Button type="submit" variant="primary" disabled={saving}>
-				{saving ? 'Ukladam...' : 'Ulozit'}
-			</Button>
-			<Button variant="secondary" href="/recurring">
-				Zrusit
-			</Button>
-		</div>
+		<FormActions {saving} saveLabel="Ulozit" savingLabel="Ukladam..." cancelHref="/recurring" />
 	</form>
 </div>

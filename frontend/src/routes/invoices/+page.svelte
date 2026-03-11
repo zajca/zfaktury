@@ -6,6 +6,11 @@
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import Pagination from '$lib/ui/Pagination.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	let invoices = $state<Invoice[]>([]);
 	let total = $state(0);
@@ -70,18 +75,16 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-xl font-semibold text-primary">Faktury</h1>
-			<p class="mt-1 text-sm text-tertiary">Přehled vydaných faktur</p>
-		</div>
-		<Button variant="primary" href="/invoices/new">
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-			</svg>
-			Nová faktura
-		</Button>
-	</div>
+	<PageHeader title="Faktury" description="Přehled vydaných faktur">
+		{#snippet actions()}
+			<Button variant="primary" href="/invoices/new">
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+				</svg>
+				Nová faktura
+			</Button>
+		{/snippet}
+	</PageHeader>
 
 	<!-- Filters -->
 	<div class="mt-6 flex flex-wrap items-center gap-4">
@@ -105,40 +108,24 @@
 	</div>
 
 	<!-- Error -->
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<!-- Table -->
 	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
-			<div class="flex items-center justify-center p-12">
-				<div role="status">
-					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-					></div>
-					<span class="sr-only">Nacitani...</span>
-				</div>
-			</div>
+			<LoadingSpinner class="p-12" />
 		{:else if invoices.length === 0}
-			<div class="p-12 text-center text-muted">
-				{search || statusFilter ? 'Žádné faktury neodpovídají filtru.' : 'Zatím žádné faktury.'}
-			</div>
+			<EmptyState message="Zatím žádné faktury." filteredMessage="Žádné faktury neodpovídají filtru." isFiltered={!!(search || statusFilter)} />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Číslo</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Zákazník</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Datum vystavení</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Splatnost</th>
-						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Částka</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Stav</th>
+						<th class="th-default">Číslo</th>
+						<th class="th-default">Zákazník</th>
+						<th class="th-default hidden md:table-cell">Datum vystavení</th>
+						<th class="th-default hidden md:table-cell">Splatnost</th>
+						<th class="th-default text-right">Částka</th>
+						<th class="th-default">Stav</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border-subtle">
@@ -177,38 +164,5 @@
 	</Card>
 
 	<!-- Pagination -->
-	{#if totalPages > 1}
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-tertiary">
-				Celkem {total} faktur
-			</p>
-			<div class="flex gap-2">
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => {
-						page = Math.max(1, page - 1);
-						loadInvoices();
-					}}
-					disabled={page <= 1}
-				>
-					Předchozí
-				</Button>
-				<span class="flex items-center px-3 text-sm text-secondary">
-					{page} / {totalPages}
-				</span>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => {
-						page = Math.min(totalPages, page + 1);
-						loadInvoices();
-					}}
-					disabled={page >= totalPages}
-				>
-					Další
-				</Button>
-			</div>
-		</div>
-	{/if}
+	<Pagination {page} {totalPages} {total} label="faktur" onPageChange={(p) => { page = p; loadInvoices(); }} />
 </div>

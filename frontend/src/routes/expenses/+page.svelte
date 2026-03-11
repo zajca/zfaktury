@@ -5,6 +5,11 @@
 	import { formatDate } from '$lib/utils/date';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import Pagination from '$lib/ui/Pagination.svelte';
 
 	let expenses = $state<Expense[]>([]);
 	let total = $state(0);
@@ -59,18 +64,16 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-xl font-semibold text-primary">Náklady</h1>
-			<p class="mt-1 text-sm text-tertiary">Evidence výdajů a nákladů</p>
-		</div>
-		<Button variant="primary" href="/expenses/new">
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-			</svg>
-			Přidat náklad
-		</Button>
-	</div>
+	<PageHeader title="Náklady" description="Evidence výdajů a nákladů">
+		{#snippet actions()}
+			<Button variant="primary" href="/expenses/new">
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+				</svg>
+				Přidat náklad
+			</Button>
+		{/snippet}
+	</PageHeader>
 
 	<!-- Search -->
 	<div class="mt-6">
@@ -82,37 +85,21 @@
 		/>
 	</div>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
-			<div class="flex items-center justify-center p-12">
-				<div role="status">
-					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-					></div>
-					<span class="sr-only">Nacitani...</span>
-				</div>
-			</div>
+			<LoadingSpinner class="p-12" />
 		{:else if expenses.length === 0}
-			<div class="p-12 text-center text-muted">
-				{search ? 'Žádné náklady neodpovídají hledání.' : 'Zatím žádné náklady.'}
-			</div>
+			<EmptyState message="Zatím žádné náklady." filteredMessage="Žádné náklady neodpovídají hledání." isFiltered={!!search} />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Kategorie</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Datum</th>
-						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Částka</th>
+						<th class="th-default">Popis</th>
+						<th class="th-default hidden md:table-cell">Kategorie</th>
+						<th class="th-default hidden md:table-cell">Datum</th>
+						<th class="th-default text-right">Částka</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border-subtle">
@@ -151,34 +138,5 @@
 		{/if}
 	</Card>
 
-	{#if totalPages > 1}
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-tertiary">Celkem {total} nákladů</p>
-			<div class="flex gap-2">
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => {
-						page = Math.max(1, page - 1);
-						loadExpenses();
-					}}
-					disabled={page <= 1}
-				>
-					Předchozí
-				</Button>
-				<span class="flex items-center px-3 text-sm text-secondary">{page} / {totalPages}</span>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => {
-						page = Math.min(totalPages, page + 1);
-						loadExpenses();
-					}}
-					disabled={page >= totalPages}
-				>
-					Další
-				</Button>
-			</div>
-		</div>
-	{/if}
+	<Pagination {page} {totalPages} {total} label="nákladů" onPageChange={(p) => { page = p; loadExpenses(); }} />
 </div>

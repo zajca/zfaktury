@@ -12,6 +12,11 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import FormActions from '$lib/ui/FormActions.svelte';
+	import Textarea from '$lib/ui/Textarea.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -184,39 +189,22 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/invoices" class="text-sm text-secondary hover:text-primary">&larr; Zpět na faktury</a>
+	<PageHeader title={invoice ? `Faktura ${invoice.invoice_number}` : 'Faktura'} backHref="/invoices" backLabel="Zpět na faktury" />
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Nacitani...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8" />
 	{:else if invoice}
 		<!-- Header -->
 		<div class="mt-4">
-			<div class="flex items-center justify-between">
-				<h1 class="text-xl font-semibold text-primary">Faktura {invoice.invoice_number}</h1>
-				<div class="flex items-center gap-3">
-					<Badge variant={statusVariant[invoice.status] ?? 'default'}>
-						{statusLabels[invoice.status] ?? invoice.status}
-					</Badge>
-					{#if invoice.customer}
-						<span class="text-sm text-secondary">{invoice.customer.name}</span>
-					{/if}
-				</div>
+			<div class="flex items-center justify-end gap-3">
+				<Badge variant={statusVariant[invoice.status] ?? 'default'}>
+					{statusLabels[invoice.status] ?? invoice.status}
+				</Badge>
+				{#if invoice.customer}
+					<span class="text-sm text-secondary">{invoice.customer.name}</span>
+				{/if}
 			</div>
 			{#if !editing}
 				<div class="mt-3 flex flex-wrap gap-2">
@@ -370,36 +358,19 @@
 							<label for="edit-notes" class="block text-sm font-medium text-secondary"
 								>Poznámka na faktuře</label
 							>
-							<textarea
-								id="edit-notes"
-								bind:value={form.notes}
-								rows="2"
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							></textarea>
+							<Textarea id="edit-notes" bind:value={form.notes} rows={2} class="mt-1" />
 						</div>
 						<div>
 							<label for="edit-internal" class="block text-sm font-medium text-secondary"
 								>Interní poznámka</label
 							>
-							<textarea
-								id="edit-internal"
-								bind:value={form.internal_notes}
-								rows="2"
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							></textarea>
+							<Textarea id="edit-internal" bind:value={form.internal_notes} rows={2} class="mt-1" />
 						</div>
 					</div>
 				</Card>
 
 				<!-- Actions -->
-				<div class="flex gap-3">
-					<Button type="submit" variant="primary" disabled={saving}>
-						{saving ? 'Ukládám...' : 'Uložit změny'}
-					</Button>
-					<Button variant="secondary" onclick={cancelEditing}>
-						Zrušit
-					</Button>
-				</div>
+				<FormActions {saving} saveLabel="Uložit změny" oncancel={cancelEditing} />
 			</form>
 		{:else}
 			<!-- View mode -->

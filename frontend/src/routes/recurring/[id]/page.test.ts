@@ -99,10 +99,10 @@ describe('Recurring invoice detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Mesicni hosting')).toBeInTheDocument();
+			expect(screen.getByText('Test Corp')).toBeInTheDocument();
 		});
 
-		expect(screen.getByText('Test Corp')).toBeInTheDocument();
+		expect(screen.getByText('Mesicni hosting')).toBeInTheDocument();
 		expect(screen.getByText('Mesicni')).toBeInTheDocument();
 		expect(screen.getByText('Aktivni')).toBeInTheDocument();
 	});

@@ -7,6 +7,11 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import Pagination from '$lib/ui/Pagination.svelte';
 
 	// Extended Expense type with tax_reviewed_at field not yet in shared client.ts
 	interface ExpenseWithReview {
@@ -173,15 +178,13 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-xl font-semibold text-primary">Daňová kontrola nákladů</h1>
-			<p class="mt-1 text-sm text-tertiary">Označte výdaje jako daňově zkontrolované</p>
-		</div>
-		<Button variant="secondary" href="/expenses">
-			Zpět na náklady
-		</Button>
-	</div>
+	<PageHeader title="Daňová kontrola nákladů" description="Označte výdaje jako daňově zkontrolované">
+		{#snippet actions()}
+			<Button variant="secondary" href="/expenses">
+				Zpět na náklady
+			</Button>
+		{/snippet}
+	</PageHeader>
 
 	<!-- Filters -->
 	<Card class="mt-6">
@@ -212,14 +215,7 @@
 		</div>
 	</Card>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if successMessage}
 		<div class="mt-4 rounded-lg border border-success/20 bg-success-bg p-4 text-sm text-success">
@@ -247,16 +243,9 @@
 	<!-- Table -->
 	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
-			<div class="flex items-center justify-center p-12">
-				<div role="status">
-					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-					></div>
-					<span class="sr-only">Nacitani...</span>
-				</div>
-			</div>
+			<LoadingSpinner class="p-12" />
 		{:else if expenses.length === 0}
-			<div class="p-12 text-center text-muted">Žádné výdaje neodpovídají filtrům.</div>
+			<EmptyState message="Žádné výdaje neodpovídají filtrům." />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
@@ -270,14 +259,14 @@
 								title="Vybrat vše"
 							/>
 						</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Číslo</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Datum</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted lg:table-cell">Dodavatel</th>
-						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
-						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Kategorie</th>
-						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Částka</th>
-						<th class="hidden px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted md:table-cell">DPH</th>
-						<th class="px-4 py-2.5 text-center text-xs font-medium uppercase tracking-wider text-muted">Kontrola</th>
+						<th class="th-default">Číslo</th>
+						<th class="th-default hidden md:table-cell">Datum</th>
+						<th class="th-default hidden lg:table-cell">Dodavatel</th>
+						<th class="th-default">Popis</th>
+						<th class="th-default hidden md:table-cell">Kategorie</th>
+						<th class="th-default text-right">Částka</th>
+						<th class="th-default hidden text-right md:table-cell">DPH</th>
+						<th class="th-default text-center">Kontrola</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border-subtle">
@@ -374,34 +363,5 @@
 	{/if}
 
 	<!-- Pagination -->
-	{#if totalPages > 1}
-		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-tertiary">Celkem {total} výdajů</p>
-			<div class="flex gap-2">
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => {
-						page = Math.max(1, page - 1);
-						loadExpenses();
-					}}
-					disabled={page <= 1}
-				>
-					Předchozí
-				</Button>
-				<span class="flex items-center px-3 text-sm text-secondary">{page} / {totalPages}</span>
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => {
-						page = Math.min(totalPages, page + 1);
-						loadExpenses();
-					}}
-					disabled={page >= totalPages}
-				>
-					Další
-				</Button>
-			</div>
-		</div>
-	{/if}
+	<Pagination {page} {totalPages} {total} label="výdajů" onPageChange={(p) => { page = p; loadExpenses(); }} />
 </div>

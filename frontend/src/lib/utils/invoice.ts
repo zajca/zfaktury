@@ -18,6 +18,12 @@ export const statusColors: Record<string, string> = {
 
 export type StatusVariant = 'default' | 'info' | 'success' | 'danger' | 'muted';
 
+export const paymentMethodLabels: Record<string, string> = {
+	bank_transfer: 'Bankovní převod',
+	cash: 'Hotovost',
+	card: 'Karta'
+};
+
 export const statusVariant: Record<string, StatusVariant> = {
 	draft: 'default',
 	sent: 'info',

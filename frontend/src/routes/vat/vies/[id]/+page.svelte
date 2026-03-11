@@ -9,10 +9,12 @@
 		filingTypeLabels,
 		quarterLabels
 	} from '$lib/utils/vat';
-	import Button from '$lib/ui/Button.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
+	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let summary = $state<VIESSummary | null>(null);
 	let loading = $state(true);
@@ -125,24 +127,10 @@
 <div class="mx-auto max-w-5xl">
 	<a href="/vat" class="text-sm text-secondary hover:text-primary">&larr; Zpět na DPH</a>
 
-	{#if error}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
-		>
-			{error}
-		</div>
-	{/if}
+	<ErrorAlert {error} class="mt-4" />
 
 	{#if loading}
-		<div class="mt-8 flex items-center justify-center">
-			<div role="status">
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
-				></div>
-				<span class="sr-only">Načítání...</span>
-			</div>
-		</div>
+		<LoadingSpinner class="mt-8" />
 	{:else if summary}
 		<!-- Header -->
 		<div class="mt-4">

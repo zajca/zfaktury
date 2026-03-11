@@ -75,3 +75,9 @@
 		accent-color: var(--color-accent);
 	}
 }
+
+@layer components {
+	.th-default {
+		@apply px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted;
+	}
+}

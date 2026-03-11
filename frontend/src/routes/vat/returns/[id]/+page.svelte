@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { vatReturnApi, type VATReturn } from '$lib/api/vat';
+	import { vatReturnApi, type VATReturn } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';

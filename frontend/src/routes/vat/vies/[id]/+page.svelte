@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { viesApi, type VIESSummary } from '$lib/api/vat-vies';
+	import { viesApi, type VIESSummary } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import {
 		vatStatusLabels,

@@ -6,7 +6,7 @@
 		controlStatementApi,
 		type ControlStatement,
 		type ControlStatementLine
-	} from '$lib/api/vat-control';
+	} from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';

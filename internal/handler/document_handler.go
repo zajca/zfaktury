@@ -2,9 +2,9 @@ package handler
 
 import (
 	"log/slog"
+	"mime"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -147,16 +147,8 @@ func (h *DocumentHandler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sanitize filename for Content-Disposition header: strip quotes and control chars.
-	safeFilename := strings.Map(func(r rune) rune {
-		if r == '"' || r == '\\' || r < 32 {
-			return '_'
-		}
-		return r
-	}, doc.Filename)
-
 	w.Header().Set("Content-Type", doc.ContentType)
-	w.Header().Set("Content-Disposition", `attachment; filename="`+safeFilename+`"`)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": doc.Filename}))
 	http.ServeFile(w, r, filePath)
 }
 

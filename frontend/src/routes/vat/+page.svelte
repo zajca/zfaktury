@@ -2,9 +2,14 @@
 	import { onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
-	import { vatReturnApi, type VATReturn } from '$lib/api/vat';
-	import { controlStatementApi, type ControlStatement } from '$lib/api/vat-control';
-	import { viesApi, type VIESSummary } from '$lib/api/vat-vies';
+	import {
+		vatReturnApi,
+		controlStatementApi,
+		viesApi,
+		type VATReturn,
+		type ControlStatement,
+		type VIESSummary
+	} from '$lib/api/client';
 	import { vatStatusLabels, monthLabels, quarters } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -13,6 +18,14 @@
 	let selectedYear = $state(new Date().getFullYear());
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+
+	interface YearCache {
+		vatReturns: VATReturn[];
+		controlStatements: ControlStatement[];
+		viesSummaries: VIESSummary[];
+	}
+
+	let cache = new SvelteMap<number, YearCache>();
 
 	let vatReturns = $state<VATReturn[]>([]);
 	let controlStatements = $state<ControlStatement[]>([]);
@@ -42,6 +55,15 @@
 	}
 
 	async function loadData() {
+		const cached = cache.get(selectedYear);
+		if (cached) {
+			vatReturns = cached.vatReturns;
+			controlStatements = cached.controlStatements;
+			viesSummaries = cached.viesSummaries;
+			loading = false;
+			return;
+		}
+
 		loading = true;
 		error = null;
 		try {
@@ -53,6 +75,11 @@
 			vatReturns = returns ?? [];
 			controlStatements = controls ?? [];
 			viesSummaries = vies ?? [];
+			cache.set(selectedYear, {
+				vatReturns,
+				controlStatements,
+				viesSummaries
+			});
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
 		} finally {

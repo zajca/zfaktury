@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { viesApi } from '$lib/api/vat-vies';
+	import { viesApi } from '$lib/api/client';
 	import { filingTypeLabels, quarterLabels } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';

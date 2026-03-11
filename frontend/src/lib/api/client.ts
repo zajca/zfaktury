@@ -728,3 +728,229 @@ export const remindersApi = {
 		return get<PaymentReminder[]>(`/invoices/${invoiceId}/reminders`);
 	}
 };
+
+// --- VAT Return Types ---
+
+export interface VATReturn {
+	id: number;
+	period: TaxPeriod;
+	filing_type: string;
+	output_vat_base_21: number;
+	output_vat_amount_21: number;
+	output_vat_base_12: number;
+	output_vat_amount_12: number;
+	output_vat_base_0: number;
+	reverse_charge_base_21: number;
+	reverse_charge_amount_21: number;
+	reverse_charge_base_12: number;
+	reverse_charge_amount_12: number;
+	input_vat_base_21: number;
+	input_vat_amount_21: number;
+	input_vat_base_12: number;
+	input_vat_amount_12: number;
+	total_output_vat: number;
+	total_input_vat: number;
+	net_vat: number;
+	has_xml: boolean;
+	status: string;
+	filed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+// --- VAT Control Statement Types ---
+
+export interface ControlStatementLine {
+	id: number;
+	section: string;
+	partner_dic: string;
+	document_number: string;
+	dppd: string;
+	base: number;
+	vat: number;
+	vat_rate_percent: number;
+	invoice_id: number | null;
+	expense_id: number | null;
+}
+
+export interface ControlStatement {
+	id: number;
+	period: TaxPeriod;
+	filing_type: string;
+	lines: ControlStatementLine[] | null;
+	has_xml: boolean;
+	status: string;
+	filed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+// --- VIES Summary Types ---
+
+export interface VIESSummaryLine {
+	id: number;
+	partner_dic: string;
+	country_code: string;
+	total_amount: number;
+	service_code: string;
+}
+
+export interface VIESSummary {
+	id: number;
+	period: TaxPeriod;
+	filing_type: string;
+	lines: VIESSummaryLine[] | null;
+	has_xml: boolean;
+	status: string;
+	filed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+// --- VAT Returns API ---
+
+export const vatReturnApi = {
+	list(year?: number): Promise<VATReturn[]> {
+		const query = year ? `?year=${year}` : '';
+		return get<VATReturn[]>(`/vat-returns${query}`);
+	},
+
+	getById(id: number): Promise<VATReturn> {
+		return get<VATReturn>(`/vat-returns/${id}`);
+	},
+
+	create(data: {
+		year: number;
+		month?: number;
+		quarter?: number;
+		filing_type?: string;
+	}): Promise<VATReturn> {
+		return post<VATReturn>('/vat-returns', data);
+	},
+
+	delete(id: number): Promise<void> {
+		return del(`/vat-returns/${id}`);
+	},
+
+	recalculate(id: number): Promise<VATReturn> {
+		return post<VATReturn>(`/vat-returns/${id}/recalculate`, {});
+	},
+
+	generateXml(id: number): Promise<VATReturn> {
+		return post<VATReturn>(`/vat-returns/${id}/generate-xml`, {});
+	},
+
+	async downloadXml(id: number): Promise<Blob> {
+		const res = await fetch(`${API_BASE}/vat-returns/${id}/xml`);
+		if (!res.ok) {
+			let body: unknown;
+			try {
+				body = await res.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(res.status, res.statusText, body);
+		}
+		return res.blob();
+	},
+
+	markFiled(id: number): Promise<VATReturn> {
+		return post<VATReturn>(`/vat-returns/${id}/mark-filed`, {});
+	}
+};
+
+// --- VAT Control Statements API ---
+
+export const controlStatementApi = {
+	list(year?: number) {
+		const query = year ? `?year=${year}` : '';
+		return get<ControlStatement[]>(`/vat-control-statements${query}`);
+	},
+
+	getById(id: number) {
+		return get<ControlStatement>(`/vat-control-statements/${id}`);
+	},
+
+	create(data: { year: number; month: number; filing_type?: string }) {
+		return post<ControlStatement>('/vat-control-statements', data);
+	},
+
+	delete(id: number) {
+		return del<void>(`/vat-control-statements/${id}`);
+	},
+
+	recalculate(id: number) {
+		return post<ControlStatement>(`/vat-control-statements/${id}/recalculate`);
+	},
+
+	generateXml(id: number) {
+		return post<ControlStatement>(`/vat-control-statements/${id}/generate-xml`);
+	},
+
+	async downloadXml(id: number): Promise<Blob> {
+		const url = `${API_BASE}/vat-control-statements/${id}/xml`;
+		const response = await fetch(url, { method: 'GET' });
+		if (!response.ok) {
+			let body: unknown;
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.blob();
+	},
+
+	markFiled(id: number) {
+		return post<ControlStatement>(`/vat-control-statements/${id}/mark-filed`);
+	}
+};
+
+// --- VIES Summaries API ---
+
+export const viesApi = {
+	list(year?: number) {
+		const query = year ? `?year=${year}` : '';
+		return get<VIESSummary[]>(`/vies-summaries${query}`);
+	},
+
+	getById(id: number) {
+		return get<VIESSummary>(`/vies-summaries/${id}`);
+	},
+
+	create(data: { year: number; quarter: number; filing_type?: string }) {
+		return post<VIESSummary>('/vies-summaries', data);
+	},
+
+	delete(id: number) {
+		return del<void>(`/vies-summaries/${id}`);
+	},
+
+	recalculate(id: number) {
+		return post<VIESSummary>(`/vies-summaries/${id}/recalculate`);
+	},
+
+	generateXml(id: number) {
+		return post<VIESSummary>(`/vies-summaries/${id}/generate-xml`);
+	},
+
+	async downloadXml(id: number): Promise<Blob> {
+		const url = `${API_BASE}/vies-summaries/${id}/xml`;
+		const response = await fetch(url, { method: 'GET' });
+		if (!response.ok) {
+			let body: unknown;
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.blob();
+	},
+
+	markFiled(id: number) {
+		return post<VIESSummary>(`/vies-summaries/${id}/mark-filed`);
+	}
+};

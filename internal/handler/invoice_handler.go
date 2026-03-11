@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -207,7 +208,7 @@ func (h *InvoiceHandler) MarkAsSent(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, invoiceFromDomain(invoice))
 }
 
-// MarkAsPaid handles POST /api/v1/invoices/{id}/pay.
+// MarkAsPaid handles POST /api/v1/invoices/{id}/mark-paid.
 func (h *InvoiceHandler) MarkAsPaid(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -362,7 +363,7 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("faktura_%s.pdf", invoice.InvoiceNumber)
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
@@ -493,7 +494,7 @@ func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber)
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(xmlData)
 }

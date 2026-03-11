@@ -109,14 +109,10 @@ var serveCmd = &cobra.Command{
 		// Wire OCR service (conditional on API key).
 		var ocrSvc *service.OCRService
 		if cfg.OCR.APIKey != "" {
-			var provider ocr.Provider
-			switch cfg.OCR.Provider {
-			case "openai", "":
-				provider = ocr.NewOpenAIProvider(cfg.OCR.APIKey)
-			default:
-				slog.Warn("unknown OCR provider, OCR disabled", "provider", cfg.OCR.Provider)
-			}
-			if provider != nil {
+			provider, err := ocr.NewProvider(cfg.OCR.Provider, cfg.OCR.APIKey, cfg.OCR.Model, cfg.OCR.BaseURL)
+			if err != nil {
+				slog.Warn("OCR disabled", "error", err)
+			} else {
 				ocrSvc = service.NewOCRService(provider, documentSvc)
 				slog.Info("OCR service configured", "provider", provider.Name())
 			}

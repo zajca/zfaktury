@@ -14,35 +14,88 @@ import (
 )
 
 const (
-	openAIAPIURL    = "https://api.openai.com/v1/chat/completions"
-	openAIModel     = "gpt-4o"
-	openAITimeout   = 25 * time.Second
-	openAIMaxTokens = 4096
+	defaultTimeout   = 25 * time.Second
+	defaultMaxTokens = 4096
 )
 
-// OpenAIProvider implements the Provider interface using OpenAI's vision API.
-type OpenAIProvider struct {
+// OpenAICompatibleProvider implements the Provider interface using the OpenAI-compatible
+// Chat Completions API. Works with OpenAI, OpenRouter, Gemini, and Mistral.
+type OpenAICompatibleProvider struct {
+	name       string
 	apiKey     string
+	baseURL    string
+	model      string
 	httpClient *http.Client
 }
 
-// NewOpenAIProvider creates a new OpenAI-based OCR provider.
-func NewOpenAIProvider(apiKey string) *OpenAIProvider {
-	return &OpenAIProvider{
-		apiKey: apiKey,
-		httpClient: &http.Client{
-			Timeout: openAITimeout,
-		},
+// NewOpenAIProvider creates a provider for OpenAI's API.
+func NewOpenAIProvider(apiKey, model string) *OpenAICompatibleProvider {
+	if model == "" {
+		model = "gpt-4o"
+	}
+	return &OpenAICompatibleProvider{
+		name:       "openai",
+		apiKey:     apiKey,
+		baseURL:    "https://api.openai.com/v1/chat/completions",
+		model:      model,
+		httpClient: &http.Client{Timeout: defaultTimeout},
+	}
+}
+
+// NewOpenRouterProvider creates a provider for OpenRouter's API.
+func NewOpenRouterProvider(apiKey, model string) *OpenAICompatibleProvider {
+	if model == "" {
+		model = "google/gemini-2.0-flash-001"
+	}
+	return &OpenAICompatibleProvider{
+		name:       "openrouter",
+		apiKey:     apiKey,
+		baseURL:    "https://openrouter.ai/api/v1/chat/completions",
+		model:      model,
+		httpClient: &http.Client{Timeout: defaultTimeout},
+	}
+}
+
+// NewMistralProvider creates a provider for Mistral's API.
+func NewMistralProvider(apiKey, model string) *OpenAICompatibleProvider {
+	if model == "" {
+		model = "pixtral-large-latest"
+	}
+	return &OpenAICompatibleProvider{
+		name:       "mistral",
+		apiKey:     apiKey,
+		baseURL:    "https://api.mistral.ai/v1/chat/completions",
+		model:      model,
+		httpClient: &http.Client{Timeout: defaultTimeout},
+	}
+}
+
+// NewGeminiProvider creates a provider for Google Gemini's OpenAI-compatible API.
+func NewGeminiProvider(apiKey, model string) *OpenAICompatibleProvider {
+	if model == "" {
+		model = "gemini-2.0-flash"
+	}
+	return &OpenAICompatibleProvider{
+		name:       "gemini",
+		apiKey:     apiKey,
+		baseURL:    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+		model:      model,
+		httpClient: &http.Client{Timeout: defaultTimeout},
 	}
 }
 
 // Name returns the provider name.
-func (p *OpenAIProvider) Name() string {
-	return "openai"
+func (p *OpenAICompatibleProvider) Name() string {
+	return p.name
 }
 
-// ProcessImage sends an image to OpenAI's vision model and extracts structured invoice data.
-func (p *OpenAIProvider) ProcessImage(ctx context.Context, imageData []byte, contentType string) (*domain.OCRResult, error) {
+// SetBaseURL overrides the API endpoint URL.
+func (p *OpenAICompatibleProvider) SetBaseURL(url string) {
+	p.baseURL = url
+}
+
+// ProcessImage sends an image to the Chat Completions API and extracts structured invoice data.
+func (p *OpenAICompatibleProvider) ProcessImage(ctx context.Context, imageData []byte, contentType string) (*domain.OCRResult, error) {
 	if err := validateContentType(contentType); err != nil {
 		return nil, err
 	}
@@ -50,23 +103,23 @@ func (p *OpenAIProvider) ProcessImage(ctx context.Context, imageData []byte, con
 	b64Data := base64.StdEncoding.EncodeToString(imageData)
 	dataURL := fmt.Sprintf("data:%s;base64,%s", contentType, b64Data)
 
-	reqBody := buildChatRequest(dataURL)
+	reqBody := p.buildChatRequest(dataURL)
 
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling OpenAI request: %w", err)
+		return nil, fmt.Errorf("marshalling %s request: %w", p.name, err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, openAIAPIURL, bytes.NewReader(jsonBody))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL, bytes.NewReader(jsonBody))
 	if err != nil {
-		return nil, fmt.Errorf("creating OpenAI request: %w", err)
+		return nil, fmt.Errorf("creating %s request: %w", p.name, err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
 
 	resp, err := p.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("calling OpenAI API: %w", err)
+		return nil, fmt.Errorf("calling %s API: %w", p.name, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -74,27 +127,17 @@ func (p *OpenAIProvider) ProcessImage(ctx context.Context, imageData []byte, con
 	limited := io.LimitReader(resp.Body, maxResponseBytes+1)
 	body, err := io.ReadAll(limited)
 	if err != nil {
-		return nil, fmt.Errorf("reading OpenAI response: %w", err)
+		return nil, fmt.Errorf("reading %s response: %w", p.name, err)
 	}
 	if int64(len(body)) > maxResponseBytes {
-		return nil, fmt.Errorf("OpenAI response too large (> %d bytes)", maxResponseBytes)
+		return nil, fmt.Errorf("%s response too large (> %d bytes)", p.name, maxResponseBytes)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("OpenAI API returned status %d: %s", resp.StatusCode, truncate(string(body), 500))
+		return nil, fmt.Errorf("%s API returned status %d: %s", p.name, resp.StatusCode, truncate(string(body), 500))
 	}
 
-	return parseOpenAIResponse(body)
-}
-
-// validateContentType checks that the content type is supported for OCR processing.
-func validateContentType(contentType string) error {
-	switch contentType {
-	case "image/jpeg", "image/png", "application/pdf":
-		return nil
-	default:
-		return fmt.Errorf("unsupported content type for OCR: %q; supported: image/jpeg, image/png, application/pdf", contentType)
-	}
+	return parseChatResponse(body, p.name)
 }
 
 // chatRequest represents the OpenAI Chat Completions API request body.
@@ -120,7 +163,7 @@ type imageURL struct {
 	URL string `json:"url"`
 }
 
-// chatResponse represents the relevant parts of the OpenAI Chat Completions API response.
+// chatResponse represents the relevant parts of the Chat Completions API response.
 type chatResponse struct {
 	Choices []chatChoice `json:"choices"`
 	Error   *apiError    `json:"error,omitempty"`
@@ -138,71 +181,9 @@ type apiError struct {
 	Message string `json:"message"`
 }
 
-// ocrJSONResponse is the expected JSON structure from the model's output.
-type ocrJSONResponse struct {
-	VendorName     string            `json:"vendor_name"`
-	VendorICO      string            `json:"vendor_ico"`
-	VendorDIC      string            `json:"vendor_dic"`
-	InvoiceNumber  string            `json:"invoice_number"`
-	IssueDate      string            `json:"issue_date"`
-	DueDate        string            `json:"due_date"`
-	TotalAmount    float64           `json:"total_amount"`
-	VATAmount      float64           `json:"vat_amount"`
-	VATRatePercent int               `json:"vat_rate_percent"`
-	CurrencyCode   string            `json:"currency_code"`
-	Description    string            `json:"description"`
-	Items          []ocrItemResponse `json:"items"`
-	RawText        string            `json:"raw_text"`
-	Confidence     float64           `json:"confidence"`
-}
-
-type ocrItemResponse struct {
-	Description    string  `json:"description"`
-	Quantity       float64 `json:"quantity"`
-	UnitPrice      float64 `json:"unit_price"`
-	VATRatePercent int     `json:"vat_rate_percent"`
-	TotalAmount    float64 `json:"total_amount"`
-}
-
-const systemPrompt = `Jsi OCR asistent pro zpracovani faktur a uctenek. Analyzuj obrazek a extrahuj strukturovana data.
-
-Vrat POUZE platny JSON objekt (bez markdown, bez komentaru) s nasledujici strukturou:
-{
-  "vendor_name": "nazev dodavatele",
-  "vendor_ico": "ICO dodavatele",
-  "vendor_dic": "DIC dodavatele",
-  "invoice_number": "cislo faktury/dokladu",
-  "issue_date": "datum vystaveni ve formatu YYYY-MM-DD",
-  "due_date": "datum splatnosti ve formatu YYYY-MM-DD",
-  "total_amount": celkova castka v CZK (cislo, napr. 1234.56),
-  "vat_amount": castka DPH v CZK (cislo),
-  "vat_rate_percent": sazba DPH v procentech (cele cislo, napr. 21),
-  "currency_code": "kod meny (CZK, EUR, USD)",
-  "description": "kratky popis dokladu",
-  "items": [
-    {
-      "description": "popis polozky",
-      "quantity": mnozstvi (cislo, napr. 1.5),
-      "unit_price": jednotkova cena v CZK (cislo),
-      "vat_rate_percent": sazba DPH polozky (cele cislo),
-      "total_amount": celkova cena polozky v CZK (cislo)
-    }
-  ],
-  "raw_text": "neupraveny text z dokladu",
-  "confidence": mira jistoty 0.0-1.0
-}
-
-Dulezite:
-- Castky jsou v korunach (CZK) jako desetinna cisla (napr. 1234.56 = 1234 Kc a 56 haleru)
-- Pokud udaj neni na dokladu, pouzij prazdny retezec pro textova pole, 0 pro cisla
-- Datum vzdy ve formatu YYYY-MM-DD
-- Pro confidence pouzij hodnotu podle toho, jak jsi si jisty spravnosti extrakce`
-
-const userPrompt = `Analyzuj tento doklad (faktura/uctenka) a extrahuj vsechna dostupna data do JSON formatu podle zadane struktury.`
-
-func buildChatRequest(dataURL string) chatRequest {
+func (p *OpenAICompatibleProvider) buildChatRequest(dataURL string) chatRequest {
 	return chatRequest{
-		Model: openAIModel,
+		Model: p.model,
 		Messages: []chatMessage{
 			{
 				Role: "system",
@@ -218,107 +199,26 @@ func buildChatRequest(dataURL string) chatRequest {
 				},
 			},
 		},
-		MaxTokens:   openAIMaxTokens,
+		MaxTokens:   defaultMaxTokens,
 		Temperature: 0.1,
 	}
 }
 
-// parseOpenAIResponse extracts the OCR result from the API response body.
-func parseOpenAIResponse(body []byte) (*domain.OCRResult, error) {
+// parseChatResponse extracts the OCR result from the Chat Completions API response body.
+func parseChatResponse(body []byte, providerName string) (*domain.OCRResult, error) {
 	var chatResp chatResponse
 	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return nil, fmt.Errorf("parsing OpenAI response JSON: %w", err)
+		return nil, fmt.Errorf("parsing %s response JSON: %w", providerName, err)
 	}
 
 	if chatResp.Error != nil {
-		return nil, fmt.Errorf("OpenAI API error: %s", chatResp.Error.Message)
+		return nil, fmt.Errorf("%s API error: %s", providerName, chatResp.Error.Message)
 	}
 
 	if len(chatResp.Choices) == 0 {
-		return nil, fmt.Errorf("OpenAI returned no choices")
+		return nil, fmt.Errorf("%s returned no choices", providerName)
 	}
 
 	content := chatResp.Choices[0].Message.Content
 	return ParseOCRJSON(content)
-}
-
-// ParseOCRJSON parses the model's JSON output into a domain.OCRResult.
-// Exported for testing.
-func ParseOCRJSON(content string) (*domain.OCRResult, error) {
-	// Strip potential markdown code fences.
-	content = stripCodeFences(content)
-
-	var ocrResp ocrJSONResponse
-	if err := json.Unmarshal([]byte(content), &ocrResp); err != nil {
-		return nil, fmt.Errorf("parsing OCR JSON from model output: %w", err)
-	}
-
-	result := &domain.OCRResult{
-		VendorName:     ocrResp.VendorName,
-		VendorICO:      ocrResp.VendorICO,
-		VendorDIC:      ocrResp.VendorDIC,
-		InvoiceNumber:  ocrResp.InvoiceNumber,
-		IssueDate:      ocrResp.IssueDate,
-		DueDate:        ocrResp.DueDate,
-		TotalAmount:    domain.Amount(czkToHalere(ocrResp.TotalAmount)),
-		VATAmount:      domain.Amount(czkToHalere(ocrResp.VATAmount)),
-		VATRatePercent: ocrResp.VATRatePercent,
-		CurrencyCode:   ocrResp.CurrencyCode,
-		Description:    ocrResp.Description,
-		RawText:        ocrResp.RawText,
-		Confidence:     ocrResp.Confidence,
-	}
-
-	for _, item := range ocrResp.Items {
-		result.Items = append(result.Items, domain.OCRItem{
-			Description:    item.Description,
-			Quantity:       domain.Amount(floatToCents(item.Quantity)),
-			UnitPrice:      domain.Amount(czkToHalere(item.UnitPrice)),
-			VATRatePercent: item.VATRatePercent,
-			TotalAmount:    domain.Amount(czkToHalere(item.TotalAmount)),
-		})
-	}
-
-	return result, nil
-}
-
-// czkToHalere converts a CZK float amount to halere (int64).
-// For example, 1234.56 becomes 123456.
-func czkToHalere(czk float64) int64 {
-	return int64(czk*100 + 0.5)
-}
-
-// floatToCents converts a float quantity to cents (int64).
-// For example, 1.5 becomes 150.
-func floatToCents(f float64) int64 {
-	return int64(f*100 + 0.5)
-}
-
-// stripCodeFences removes markdown code fences from the content if present.
-func stripCodeFences(s string) string {
-	// Remove leading ```json or ``` and trailing ```
-	if len(s) > 7 && s[:7] == "```json" {
-		s = s[7:]
-	} else if len(s) > 3 && s[:3] == "```" {
-		s = s[3:]
-	}
-	if len(s) > 3 && s[len(s)-3:] == "```" {
-		s = s[:len(s)-3]
-	}
-	// Trim whitespace that may remain.
-	for len(s) > 0 && (s[0] == '\n' || s[0] == '\r' || s[0] == ' ') {
-		s = s[1:]
-	}
-	for len(s) > 0 && (s[len(s)-1] == '\n' || s[len(s)-1] == '\r' || s[len(s)-1] == ' ') {
-		s = s[:len(s)-1]
-	}
-	return s
-}
-
-// truncate returns the first n characters of s, appending "..." if truncated.
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "..."
 }

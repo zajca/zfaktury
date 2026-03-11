@@ -154,8 +154,10 @@ from = "jan@example.com"
 api_token = "your-fio-api-token"
 
 [ocr]
-provider = "openai"            # currently the only supported provider
-api_key = "sk-your-openai-key"
+provider = "openai"            # openai | openrouter | gemini | mistral | claude
+api_key = "sk-your-api-key"
+# model = ""                   # optional, each provider has a sensible default
+# base_url = ""                # optional, for custom/self-hosted endpoints
 ```
 
 Override data directory with `ZFAKTURY_DATA_DIR` environment variable.
@@ -185,18 +187,32 @@ ZFaktury supports importing expenses directly from scanned documents (PDF, JPG, 
 
 ### OCR setup
 
-OCR uses the OpenAI Vision API. Add the following to `~/.zfaktury/config.toml`:
+OCR uses vision/multimodal LLM APIs to extract data from documents. Multiple providers are supported -- all use compatible Chat Completions APIs except Claude which uses Anthropic's Messages API.
+
+Add the following to `~/.zfaktury/config.toml`:
 
 ```toml
 [ocr]
 provider = "openai"
-api_key = "sk-your-openai-api-key"
+api_key = "sk-your-api-key"
 ```
 
 | Setting | Description |
 |---------|-------------|
-| `provider` | OCR provider, currently only `"openai"` is supported. Defaults to `"openai"` if omitted. |
-| `api_key` | OpenAI API key. OCR is disabled when this is empty. |
+| `provider` | OCR provider: `openai`, `openrouter`, `gemini`, `mistral`, or `claude`. Defaults to `openai` if omitted. |
+| `api_key` | Provider API key. OCR is disabled when this is empty. |
+| `model` | Optional. Override the default model for the provider. |
+| `base_url` | Optional. Override the API endpoint URL (useful for self-hosted or proxy setups). |
+
+**Default models per provider:**
+
+| Provider | Default model |
+|----------|--------------|
+| `openai` | `gpt-4o` |
+| `openrouter` | `google/gemini-2.0-flash-001` |
+| `gemini` | `gemini-2.0-flash` |
+| `mistral` | `pixtral-large-latest` |
+| `claude` | `claude-sonnet-4-20250514` |
 
 Without the `[ocr]` section (or with an empty `api_key`), the import still works -- documents are uploaded and linked to expenses, but fields must be filled in manually.
 

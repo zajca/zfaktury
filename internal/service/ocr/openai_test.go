@@ -1,17 +1,11 @@
 package ocr
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/zajca/zfaktury/internal/domain"
 )
 
 func TestParseOCRJSON_ValidResponse(t *testing.T) {
@@ -63,11 +57,9 @@ func TestParseOCRJSON_ValidResponse(t *testing.T) {
 	if result.DueDate != "2026-02-15" {
 		t.Errorf("DueDate = %q, want %q", result.DueDate, "2026-02-15")
 	}
-	// 12100.00 CZK = 1210000 halere
 	if result.TotalAmount != 1210000 {
 		t.Errorf("TotalAmount = %d, want %d", result.TotalAmount, 1210000)
 	}
-	// 2100.00 CZK = 210000 halere
 	if result.VATAmount != 210000 {
 		t.Errorf("VATAmount = %d, want %d", result.VATAmount, 210000)
 	}
@@ -88,11 +80,9 @@ func TestParseOCRJSON_ValidResponse(t *testing.T) {
 	if item.Description != "Konzultace" {
 		t.Errorf("Items[0].Description = %q, want %q", item.Description, "Konzultace")
 	}
-	// 10.0 quantity = 1000 cents
 	if item.Quantity != 1000 {
 		t.Errorf("Items[0].Quantity = %d, want %d", item.Quantity, 1000)
 	}
-	// 1000.00 CZK = 100000 halere
 	if item.UnitPrice != 100000 {
 		t.Errorf("Items[0].UnitPrice = %d, want %d", item.UnitPrice, 100000)
 	}
@@ -124,7 +114,6 @@ func TestParseOCRJSON_EmptyItems(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseOCRJSON() error: %v", err)
 	}
-	// 500.50 CZK = 50050 halere
 	if result.TotalAmount != 50050 {
 		t.Errorf("TotalAmount = %d, want %d", result.TotalAmount, 50050)
 	}
@@ -133,15 +122,15 @@ func TestParseOCRJSON_EmptyItems(t *testing.T) {
 	}
 }
 
-func TestOpenAIProvider_ProcessImage_Success(t *testing.T) {
-	ocrResponse := ocrJSONResponse{
+func TestOpenAICompatibleProvider_ProcessImage_Success(t *testing.T) {
+	ocrResp := ocrJSONResponse{
 		VendorName:    "Mock Vendor",
 		InvoiceNumber: "FV-001",
 		TotalAmount:   1000.00,
 		CurrencyCode:  "CZK",
 		Confidence:    0.9,
 	}
-	ocrJSON, _ := json.Marshal(ocrResponse)
+	ocrJSON, _ := json.Marshal(ocrResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer test-key" {
@@ -157,20 +146,14 @@ func TestOpenAIProvider_ProcessImage_Success(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
-	provider := NewOpenAIProvider("test-key")
-	// Override the HTTP client to point at our test server.
-	provider.httpClient = server.Client()
-	// We need to also override the URL. Since the provider uses a constant,
-	// we test via the parse path instead. The HTTP integration is verified
-	// by checking headers above.
+	provider := NewOpenAIProvider("test-key", "")
+	provider.SetBaseURL(server.URL)
 
-	// Test the full flow using the test server by temporarily creating
-	// a provider that calls our mock server.
-	result, err := processImageWithURL(provider, server.URL, context.Background(), []byte{0xFF, 0xD8, 0xFF}, "image/jpeg")
+	result, err := provider.ProcessImage(context.Background(), []byte{0xFF, 0xD8, 0xFF}, "image/jpeg")
 	if err != nil {
 		t.Fatalf("ProcessImage() error: %v", err)
 	}
@@ -182,76 +165,75 @@ func TestOpenAIProvider_ProcessImage_Success(t *testing.T) {
 	}
 }
 
-func TestOpenAIProvider_ProcessImage_APIError(t *testing.T) {
+func TestOpenAICompatibleProvider_ProcessImage_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte(`{"error": {"message": "rate limit exceeded"}}`))
+		_, _ = w.Write([]byte(`{"error": {"message": "rate limit exceeded"}}`))
 	}))
 	defer server.Close()
 
-	provider := NewOpenAIProvider("test-key")
-	_, err := processImageWithURL(provider, server.URL, context.Background(), []byte{0xFF, 0xD8, 0xFF}, "image/jpeg")
+	provider := NewOpenAIProvider("test-key", "")
+	provider.SetBaseURL(server.URL)
+
+	_, err := provider.ProcessImage(context.Background(), []byte{0xFF, 0xD8, 0xFF}, "image/jpeg")
 	if err == nil {
 		t.Error("expected error for API error response")
 	}
 }
 
-func TestOpenAIProvider_ProcessImage_UnsupportedContentType(t *testing.T) {
-	provider := NewOpenAIProvider("test-key")
+func TestOpenAICompatibleProvider_ProcessImage_UnsupportedContentType(t *testing.T) {
+	provider := NewOpenAIProvider("test-key", "")
 	_, err := provider.ProcessImage(context.Background(), []byte("data"), "image/webp")
 	if err == nil {
 		t.Error("expected error for unsupported content type")
 	}
 }
 
-func TestOpenAIProvider_Name(t *testing.T) {
-	provider := NewOpenAIProvider("key")
-	if provider.Name() != "openai" {
-		t.Errorf("Name() = %q, want %q", provider.Name(), "openai")
+func TestOpenAICompatibleProvider_Name(t *testing.T) {
+	tests := []struct {
+		name     string
+		provider Provider
+		want     string
+	}{
+		{"openai", NewOpenAIProvider("key", ""), "openai"},
+		{"openrouter", NewOpenRouterProvider("key", ""), "openrouter"},
+		{"mistral", NewMistralProvider("key", ""), "mistral"},
+		{"gemini", NewGeminiProvider("key", ""), "gemini"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.provider.Name(); got != tt.want {
+				t.Errorf("Name() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
-// processImageWithURL is a test helper that calls the OpenAI API at a custom URL.
-func processImageWithURL(p *OpenAIProvider, url string, ctx context.Context, imageData []byte, contentType string) (*domain.OCRResult, error) {
-	if err := validateContentType(contentType); err != nil {
-		return nil, err
+func TestOpenAICompatibleProvider_DefaultModels(t *testing.T) {
+	tests := []struct {
+		name  string
+		prov  *OpenAICompatibleProvider
+		model string
+	}{
+		{"openai", NewOpenAIProvider("key", ""), "gpt-4o"},
+		{"openrouter", NewOpenRouterProvider("key", ""), "google/gemini-2.0-flash-001"},
+		{"mistral", NewMistralProvider("key", ""), "pixtral-large-latest"},
+		{"gemini", NewGeminiProvider("key", ""), "gemini-2.0-flash"},
 	}
 
-	b64Data := base64Encode(imageData)
-	dataURL := "data:" + contentType + ";base64," + b64Data
-
-	reqBody := buildChatRequest(dataURL)
-
-	jsonBody, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, err
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.prov.model != tt.model {
+				t.Errorf("model = %q, want %q", tt.prov.model, tt.model)
+			}
+		})
 	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
-
-	resp, err := p.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("OpenAI API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	return parseOpenAIResponse(body)
 }
 
-func base64Encode(data []byte) string {
-	return base64.StdEncoding.EncodeToString(data)
+func TestOpenAICompatibleProvider_CustomModel(t *testing.T) {
+	p := NewOpenAIProvider("key", "gpt-4o-mini")
+	if p.model != "gpt-4o-mini" {
+		t.Errorf("model = %q, want %q", p.model, "gpt-4o-mini")
+	}
 }

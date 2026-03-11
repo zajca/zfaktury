@@ -60,6 +60,8 @@ type FIOConfig struct {
 type OCRConfig struct {
 	Provider string `toml:"provider"`
 	APIKey   string `toml:"api_key"`
+	Model    string `toml:"model"`
+	BaseURL  string `toml:"base_url"`
 }
 
 // defaultDataDir returns the default data directory (~/.zfaktury).

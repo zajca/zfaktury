@@ -3,7 +3,7 @@
 	import { invoicesApi, statusHistoryApi, type Invoice } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
-	import { statusLabels, statusVariant, invoiceTypeLabels } from '$lib/utils/invoice';
+	import { statusLabels, statusVariant, invoiceTypeLabels, invoiceTypeVariant } from '$lib/utils/invoice';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -183,6 +183,11 @@
 								>
 									{invoice.invoice_number}
 								</a>
+								{#if invoice.type !== 'regular'}
+									<Badge variant={invoiceTypeVariant[invoice.type] ?? 'default'} class="ml-2">
+										{invoiceTypeLabels[invoice.type] ?? invoice.type}
+									</Badge>
+								{/if}
 							</td>
 							<td class="px-4 py-2.5 text-secondary">
 								{invoice.customer?.name ?? '-'}

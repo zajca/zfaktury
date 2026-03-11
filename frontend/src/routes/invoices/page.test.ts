@@ -18,6 +18,7 @@ const sampleInvoices = {
 		{
 			id: 1,
 			invoice_number: 'FV2026001',
+			type: 'regular',
 			status: 'draft',
 			issue_date: '2026-03-01',
 			due_date: '2026-03-15',
@@ -27,6 +28,7 @@ const sampleInvoices = {
 		{
 			id: 2,
 			invoice_number: 'FV2026002',
+			type: 'regular',
 			status: 'paid',
 			issue_date: '2026-02-01',
 			due_date: '2026-02-15',
@@ -35,6 +37,44 @@ const sampleInvoices = {
 		}
 	],
 	total: 2,
+	limit: 25,
+	offset: 0
+};
+
+const mixedTypeInvoices = {
+	data: [
+		{
+			id: 1,
+			invoice_number: 'FV2026001',
+			type: 'regular',
+			status: 'paid',
+			issue_date: '2026-03-01',
+			due_date: '2026-03-15',
+			total_amount: 121000,
+			customer: { id: 1, name: 'Test Corp' }
+		},
+		{
+			id: 2,
+			invoice_number: 'ZF2026001',
+			type: 'proforma',
+			status: 'sent',
+			issue_date: '2026-02-01',
+			due_date: '2026-02-15',
+			total_amount: 50000,
+			customer: { id: 2, name: 'Acme s.r.o.' }
+		},
+		{
+			id: 3,
+			invoice_number: 'DP2026001',
+			type: 'credit_note',
+			status: 'draft',
+			issue_date: '2026-02-10',
+			due_date: '2026-02-24',
+			total_amount: -30000,
+			customer: { id: 1, name: 'Test Corp' }
+		}
+	],
+	total: 3,
 	limit: 25,
 	offset: 0
 };
@@ -121,6 +161,42 @@ describe('Invoices list page', () => {
 		render(Page);
 
 		expect(screen.getByText('Všechny stavy')).toBeInTheDocument();
+	});
+
+	it('shows type badge for proforma and credit note invoices', async () => {
+		mockFetch.mockResolvedValue(jsonResponse(mixedTypeInvoices));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('FV2026001')).toBeInTheDocument();
+		});
+
+		// "Zálohová faktura" appears in dropdown AND as badge, "Dobropis" also in both
+		const proformaElements = screen.getAllByText('Zálohová faktura');
+		expect(proformaElements.length).toBeGreaterThanOrEqual(2); // dropdown + badge
+		const creditNoteElements = screen.getAllByText('Dobropis');
+		expect(creditNoteElements.length).toBeGreaterThanOrEqual(2); // dropdown + badge
+
+		// Verify badges are inside table cells (next to invoice numbers)
+		const proformaRow = screen.getByText('ZF2026001').closest('td');
+		expect(proformaRow?.textContent).toContain('Zálohová faktura');
+		const creditNoteRow = screen.getByText('DP2026001').closest('td');
+		expect(creditNoteRow?.textContent).toContain('Dobropis');
+	});
+
+	it('does not show type badge for regular invoices', async () => {
+		mockFetch.mockResolvedValue(jsonResponse(sampleInvoices));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('FV2026001')).toBeInTheDocument();
+		});
+
+		// Regular invoices should not have type badge in their table cell
+		const regularRow = screen.getByText('FV2026001').closest('td');
+		expect(regularRow?.textContent?.trim()).toBe('FV2026001');
 	});
 
 	it('hides pagination when single page', async () => {

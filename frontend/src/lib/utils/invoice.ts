@@ -16,7 +16,7 @@ export const statusColors: Record<string, string> = {
 	cancelled: 'bg-elevated text-muted'
 };
 
-export type StatusVariant = 'default' | 'info' | 'success' | 'danger' | 'muted';
+export type StatusVariant = 'default' | 'info' | 'success' | 'danger' | 'warning' | 'muted';
 
 export const paymentMethodLabels: Record<string, string> = {
 	bank_transfer: 'Bankovní převod',
@@ -35,6 +35,12 @@ export const invoiceTypeLabels: Record<string, string> = {
 	regular: 'Faktura',
 	proforma: 'Zálohová faktura',
 	credit_note: 'Dobropis'
+};
+
+export const invoiceTypeVariant: Record<string, StatusVariant> = {
+	regular: 'default',
+	proforma: 'warning',
+	credit_note: 'danger'
 };
 
 export const statusVariant: Record<string, StatusVariant> = {

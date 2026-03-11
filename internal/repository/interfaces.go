@@ -27,6 +27,7 @@ type InvoiceRepo interface {
 	UpdateStatus(ctx context.Context, id int64, status string) error
 	GetNextNumber(ctx context.Context, sequenceID int64) (string, error)
 	GetRelatedInvoices(ctx context.Context, invoiceID int64) ([]domain.Invoice, error)
+	FindByRelatedInvoice(ctx context.Context, relatedID int64, relationType string) (*domain.Invoice, error)
 }
 
 // ExpenseRepo defines the persistence interface for expenses.

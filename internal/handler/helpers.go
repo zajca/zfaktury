@@ -333,6 +333,14 @@ type invoiceItemResponse struct {
 	SortOrder      int    `json:"sort_order"`
 }
 
+// relatedInvoiceResponse is a compact reference to a linked invoice.
+type relatedInvoiceResponse struct {
+	ID            int64  `json:"id"`
+	InvoiceNumber string `json:"invoice_number"`
+	Type          string `json:"type"`
+	RelationType  string `json:"relation_type"`
+}
+
 // invoiceResponse is the JSON response for an invoice.
 type invoiceResponse struct {
 	ID               int64                 `json:"id"`
@@ -359,8 +367,9 @@ type invoiceResponse struct {
 	PaidAmount       int64                 `json:"paid_amount"`
 	Notes            string                `json:"notes"`
 	InternalNotes    string                `json:"internal_notes"`
-	RelatedInvoiceID *int64                `json:"related_invoice_id,omitempty"`
-	RelationType     string                `json:"relation_type,omitempty"`
+	RelatedInvoiceID *int64                   `json:"related_invoice_id,omitempty"`
+	RelationType     string                   `json:"relation_type,omitempty"`
+	RelatedInvoices  []relatedInvoiceResponse `json:"related_invoices,omitempty"`
 	SentAt           *string               `json:"sent_at,omitempty"`
 	PaidAt           *string               `json:"paid_at,omitempty"`
 	Items            []invoiceItemResponse `json:"items"`

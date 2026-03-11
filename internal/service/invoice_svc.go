@@ -185,6 +185,15 @@ func (s *InvoiceService) GetByID(ctx context.Context, id int64) (*domain.Invoice
 	return inv, nil
 }
 
+// GetRelatedInvoices returns all invoices that reference the given invoice ID.
+func (s *InvoiceService) GetRelatedInvoices(ctx context.Context, invoiceID int64) ([]domain.Invoice, error) {
+	invoices, err := s.repo.GetRelatedInvoices(ctx, invoiceID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching related invoices: %w", err)
+	}
+	return invoices, nil
+}
+
 // List retrieves invoices matching the given filter.
 // Returns the invoices, total count, and any error.
 func (s *InvoiceService) List(ctx context.Context, filter domain.InvoiceFilter) ([]domain.Invoice, int, error) {
@@ -273,6 +282,15 @@ func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (
 		return nil, errors.New("only paid proformas can be settled")
 	}
 
+	// Idempotency: return existing settlement if already created.
+	existing, err := s.repo.FindByRelatedInvoice(ctx, proformaID, domain.RelationTypeSettlement)
+	if err != nil {
+		return nil, fmt.Errorf("checking existing settlement: %w", err)
+	}
+	if existing != nil {
+		return existing, nil
+	}
+
 	today := time.Now()
 	settlement := &domain.Invoice{
 		Type:             domain.InvoiceTypeRegular,
@@ -309,6 +327,13 @@ func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (
 	// Create assigns invoice number from "FV" sequence and calculates totals.
 	if err := s.Create(ctx, settlement); err != nil {
 		return nil, fmt.Errorf("settling proforma: %w", err)
+	}
+
+	// Bidirectional link: update proforma to point back to settlement.
+	proforma.RelatedInvoiceID = &settlement.ID
+	proforma.RelationType = domain.RelationTypeSettlement
+	if err := s.repo.Update(ctx, proforma); err != nil {
+		return nil, fmt.Errorf("linking proforma to settlement: %w", err)
 	}
 
 	return settlement, nil

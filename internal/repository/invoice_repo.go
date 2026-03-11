@@ -413,6 +413,10 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 		where += " AND i.status = ?"
 		args = append(args, filter.Status)
 	}
+	if filter.Type != "" {
+		where += " AND i.type = ?"
+		args = append(args, filter.Type)
+	}
 	if filter.CustomerID != nil {
 		where += " AND i.customer_id = ?"
 		args = append(args, *filter.CustomerID)
@@ -571,4 +575,32 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 		return "", fmt.Errorf("committing sequence increment: %w", err)
 	}
 	return number, nil
+}
+
+// FindByRelatedInvoice finds a non-deleted invoice by its related_invoice_id and relation_type.
+// Returns nil, nil if no matching invoice is found.
+func (r *InvoiceRepository) FindByRelatedInvoice(ctx context.Context, relatedID int64, relationType string) (*domain.Invoice, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT
+			i.id, i.sequence_id, i.invoice_number, i.type, i.status,
+			i.issue_date, i.due_date, i.delivery_date, i.variable_symbol, i.constant_symbol,
+			i.customer_id, i.currency_code, i.exchange_rate,
+			i.payment_method, i.bank_account, i.bank_code, i.iban, i.swift,
+			i.subtotal_amount, i.vat_amount, i.total_amount, i.paid_amount,
+			i.notes, i.internal_notes, i.sent_at, i.paid_at,
+			i.related_invoice_id, i.relation_type,
+			i.created_at, i.updated_at, i.deleted_at
+		FROM invoices i
+		WHERE i.related_invoice_id = ? AND i.relation_type = ? AND i.deleted_at IS NULL
+		LIMIT 1`, relatedID, relationType,
+	)
+
+	inv, err := scanInvoiceRow(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("finding invoice by related invoice %d: %w", relatedID, err)
+	}
+	return inv, nil
 }

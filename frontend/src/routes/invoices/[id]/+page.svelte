@@ -2,12 +2,19 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { invoicesApi, contactsApi, type Invoice, type Contact } from '$lib/api/client';
+	import {
+		invoicesApi, contactsApi, statusHistoryApi,
+		type Invoice, type Contact, type InvoiceStatusChange
+	} from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate, toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import { statusLabels, statusVariant } from '$lib/utils/invoice';
+	import { statusLabels, statusVariant, invoiceTypeLabels } from '$lib/utils/invoice';
 	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
+	import StatusTimeline from '$lib/components/StatusTimeline.svelte';
+	import CreditNoteDialog from '$lib/components/CreditNoteDialog.svelte';
+	import SendEmailDialog from '$lib/components/SendEmailDialog.svelte';
+	import ReminderCard from '$lib/components/ReminderCard.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -20,11 +27,15 @@
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
+	let statusHistory = $state<InvoiceStatusChange[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let editing = $state(false);
 	let qrError = $state(false);
+	let showCreditNoteDialog = $state(false);
+	let showSendEmailDialog = $state(false);
+	let settling = $state(false);
 
 	let invoiceId = $derived(Number(page.params.id));
 
@@ -43,7 +54,14 @@
 
 	let items = $state<FormItem[]>([]);
 
+	let mounted = false;
 	onMount(() => {
+		loadInvoice();
+		mounted = true;
+	});
+	$effect(() => {
+		invoiceId;
+		if (!mounted) return;
 		loadInvoice();
 	});
 
@@ -52,7 +70,12 @@
 		error = null;
 		qrError = false;
 		try {
-			invoice = await invoicesApi.getById(invoiceId);
+			const [inv, history] = await Promise.all([
+				invoicesApi.getById(invoiceId),
+				statusHistoryApi.getHistory(invoiceId).catch(() => [] as InvoiceStatusChange[])
+			]);
+			invoice = inv;
+			statusHistory = history;
 			populateForm();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst fakturu';
@@ -182,6 +205,21 @@
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat fakturu';
 		}
 	}
+
+	async function handleSettle() {
+		settling = true;
+		error = null;
+		try {
+			const settled = await invoicesApi.settle(invoiceId);
+			goto(`/invoices/${settled.id}`);
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Nepodařilo se vyrovnat zálohu';
+		} finally {
+			settling = false;
+		}
+	}
+
+
 </script>
 
 <svelte:head>
@@ -189,7 +227,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title={invoice ? `Faktura ${invoice.invoice_number}` : 'Faktura'} backHref="/invoices" backLabel="Zpět na faktury" />
+	<PageHeader title={invoice ? `${invoiceTypeLabels[invoice.type] ?? 'Faktura'} ${invoice.invoice_number}` : 'Faktura'} backHref="/invoices" backLabel="Zpět na faktury" />
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -199,6 +237,11 @@
 		<!-- Header -->
 		<div class="mt-4">
 			<div class="flex items-center justify-end gap-3">
+				{#if invoice.type !== 'regular'}
+					<Badge variant="default">
+						{invoiceTypeLabels[invoice.type] ?? invoice.type}
+					</Badge>
+				{/if}
 				<Badge variant={statusVariant[invoice.status] ?? 'default'}>
 					{statusLabels[invoice.status] ?? invoice.status}
 				</Badge>
@@ -206,6 +249,40 @@
 					<span class="text-sm text-secondary">{invoice.customer.name}</span>
 				{/if}
 			</div>
+
+			{#if invoice.related_invoice_id}
+				<div class="mt-2 text-sm text-secondary">
+					{#if invoice.type === 'credit_note'}
+						Dobropis k faktuře:
+					{:else if invoice.type === 'proforma' && invoice.relation_type === 'settlement'}
+						Vyrovnávací faktura:
+					{:else if invoice.relation_type === 'settlement'}
+						Zálohová faktura:
+					{:else}
+						Souvisejíci faktura:
+					{/if}
+					<a href="/invoices/{invoice.related_invoice_id}" class="text-accent-text hover:text-accent font-medium">
+						#{invoice.related_invoice_id}
+					</a>
+				</div>
+			{/if}
+			{#if invoice.related_invoices?.length}
+				{#each invoice.related_invoices as rel (rel.id)}
+					<div class="mt-1 text-sm text-secondary">
+						{#if rel.type === 'credit_note'}
+							Dobropis:
+						{:else if rel.relation_type === 'settlement'}
+							Vyrovnávací faktura:
+						{:else}
+							Souvisejíci faktura:
+						{/if}
+						<a href="/invoices/{rel.id}" class="text-accent-text hover:text-accent font-medium">
+							{rel.invoice_number}
+						</a>
+					</div>
+				{/each}
+			{/if}
+
 			{#if !editing}
 				<div class="mt-3 flex flex-wrap gap-2">
 					{#if invoice.status === 'draft'}
@@ -219,6 +296,11 @@
 					{#if invoice.status === 'sent' || invoice.status === 'overdue'}
 						<Button variant="success" onclick={handleMarkPaid}>
 							Uhrazená
+						</Button>
+					{/if}
+					{#if invoice.type === 'proforma' && invoice.status === 'paid' && !invoice.related_invoice_id}
+						<Button variant="primary" onclick={handleSettle} disabled={settling}>
+							{settling ? 'Vyrovnávám...' : 'Vyrovnat zálohu'}
 						</Button>
 					{/if}
 					<Button variant="secondary" href={invoicesApi.getPdfUrl(invoiceId)}>
@@ -237,12 +319,20 @@
 						</svg>
 						Stáhnout PDF
 					</Button>
+					<Button variant="secondary" onclick={() => { showSendEmailDialog = true; }}>
+						Odeslat emailem
+					</Button>
 					<Button variant="secondary" href={invoicesApi.getIsdocUrl(invoiceId)}>
 						Export ISDOC
 					</Button>
 					<Button variant="secondary" onclick={handleDuplicate}>
 						Duplikovat
 					</Button>
+					{#if invoice.type !== 'credit_note' && invoice.status !== 'cancelled'}
+						<Button variant="secondary" onclick={() => { showCreditNoteDialog = true; }}>
+							Vytvořit dobropis
+						</Button>
+					{/if}
 					{#if invoice.status !== 'paid'}
 						<Button variant="danger" onclick={handleDelete}>
 							Smazat
@@ -573,6 +663,19 @@
 					</Card>
 				{/if}
 
+				<!-- Status History -->
+				{#if statusHistory.length > 0}
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Historie stavů</h2>
+						<div class="mt-4">
+							<StatusTimeline history={statusHistory} />
+						</div>
+					</Card>
+				{/if}
+
+				<!-- Reminders -->
+				<ReminderCard invoiceId={invoiceId} invoiceStatus={invoice.status} />
+
 				<!-- Timestamps -->
 				<div class="text-xs text-muted">
 					Vytvořeno: {formatDate(invoice.created_at)} | Upraveno: {formatDate(invoice.updated_at)}
@@ -582,6 +685,25 @@
 						| Uhrazeno: {formatDate(invoice.paid_at)}{/if}
 				</div>
 			</div>
+
+			<!-- Dialogs -->
+			{#if showCreditNoteDialog}
+				<CreditNoteDialog
+					invoiceId={invoiceId}
+					onclose={() => { showCreditNoteDialog = false; }}
+					onsuccess={(newInvoice: Invoice) => { showCreditNoteDialog = false; goto(`/invoices/${newInvoice.id}`); }}
+				/>
+			{/if}
+
+			{#if showSendEmailDialog}
+				<SendEmailDialog
+					invoiceId={invoiceId}
+					invoiceNumber={invoice.invoice_number}
+					customerEmail={invoice.customer?.email}
+					onclose={() => { showSendEmailDialog = false; }}
+					onsuccess={() => { showSendEmailDialog = false; }}
+				/>
+			{/if}
 		{/if}
 	{/if}
 </div>

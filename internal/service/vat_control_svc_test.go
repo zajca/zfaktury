@@ -119,6 +119,9 @@ func (m *vcMockInvoiceRepo) GetNextNumber(_ context.Context, _ int64) (string, e
 func (m *vcMockInvoiceRepo) GetRelatedInvoices(_ context.Context, _ int64) ([]domain.Invoice, error) {
 	return nil, nil
 }
+func (m *vcMockInvoiceRepo) FindByRelatedInvoice(_ context.Context, _ int64, _ string) (*domain.Invoice, error) {
+	return nil, nil
+}
 
 func (m *vcMockInvoiceRepo) GetByID(_ context.Context, id int64) (*domain.Invoice, error) {
 	for _, inv := range m.invoices {

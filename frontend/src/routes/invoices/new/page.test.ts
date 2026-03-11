@@ -172,9 +172,7 @@ describe('Invoice Create', () => {
 	});
 
 	it('submits invoice with correct payload', async () => {
-		let callCount = 0;
 		mockFetch.mockImplementation((url: string) => {
-			callCount++;
 			if (typeof url === 'string' && url.includes('/contacts')) {
 				return Promise.resolve(jsonResponse(sampleContacts));
 			}

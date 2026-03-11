@@ -217,7 +217,7 @@
 		<!-- Tabs -->
 		<div class="mt-6 border-b border-gray-200">
 			<nav class="-mb-px flex gap-4">
-				{#each tabs as tab}
+				{#each tabs as tab (tab)}
 					<button
 						onclick={() => {
 							activeTab = tab;
@@ -256,7 +256,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-100">
-							{#each filteredLines as line}
+							{#each filteredLines as line, i (i)}
 								<tr class="hover:bg-gray-50">
 									<td class="px-4 py-3 text-gray-900">{line.partner_dic}</td>
 									<td class="px-4 py-3 text-gray-900">{line.document_number}</td>
@@ -281,7 +281,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-100">
-							{#each filteredLines as line}
+							{#each filteredLines as line, i (i)}
 								<tr class="hover:bg-gray-50">
 									<td class="px-4 py-3 text-right text-gray-900">{formatAmountCZK(line.base)}</td>
 									<td class="px-4 py-3 text-right text-gray-900">{formatAmountCZK(line.vat)}</td>

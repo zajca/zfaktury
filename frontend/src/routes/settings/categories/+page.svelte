@@ -265,7 +265,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-200">
-					{#each categories as cat}
+					{#each categories as cat (cat.id)}
 						<tr class="hover:bg-gray-50">
 							<td class="whitespace-nowrap px-4 py-3">
 								<div

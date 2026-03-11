@@ -93,7 +93,7 @@
 						required
 						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					>
-						{#each quarters as q}
+						{#each quarters as q (q.value)}
 							<option value={q.value}>{q.label}</option>
 						{/each}
 					</select>
@@ -110,7 +110,7 @@
 					bind:value={form.filing_type}
 					class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				>
-					{#each filingTypes as ft}
+					{#each filingTypes as ft (ft.value)}
 						<option value={ft.value}>{ft.label}</option>
 					{/each}
 				</select>

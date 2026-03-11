@@ -216,7 +216,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-100">
-							{#each summary.lines as line}
+							{#each summary.lines as line, i (i)}
 								<tr class="hover:bg-gray-50">
 									<td class="px-4 py-3 text-gray-900">{line.country_code}</td>
 									<td class="px-4 py-3 text-gray-900">{line.partner_dic}</td>

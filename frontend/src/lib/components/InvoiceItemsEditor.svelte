@@ -66,7 +66,7 @@
 	</div>
 
 	<div class="mt-4 space-y-4">
-		{#each items as item, index}
+		{#each items as item, index (index)}
 			<div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
 				<div class="flex items-start gap-4">
 					<div class="flex-1 space-y-3">

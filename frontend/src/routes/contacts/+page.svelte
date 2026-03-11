@@ -29,7 +29,7 @@
 		}
 	}
 
-	function handleSearch(value: string) {
+	function handleSearch(_value: string) {
 		clearTimeout(searchTimeout);
 		searchTimeout = setTimeout(() => {
 			page = 1;
@@ -117,7 +117,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
-					{#each contacts as contact}
+					{#each contacts as contact (contact.id)}
 						<tr class="hover:bg-gray-50 transition-colors">
 							<td class="px-4 py-3">
 								<a

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { vatReturnApi, type VATReturn } from '$lib/api/vat';
 	import { controlStatementApi, type ControlStatement } from '$lib/api/vat-control';
@@ -29,8 +30,8 @@
 	let controlByMonth = $derived(buildMap(controlStatements, (r) => r.period.month));
 	let viesByQuarter = $derived(buildMap(viesSummaries, (r) => r.period.quarter));
 
-	function buildMap<T>(items: T[], keyFn: (item: T) => number): Map<number, T> {
-		const map = new Map<number, T>();
+	function buildMap<T>(items: T[], keyFn: (item: T) => number): SvelteMap<number, T> {
+		const map = new SvelteMap<number, T>();
 		for (const item of items) {
 			map.set(keyFn(item), item);
 		}
@@ -204,13 +205,13 @@
 	{:else}
 		<!-- Quarter sections -->
 		<div class="mt-6 space-y-6">
-			{#each quarters as q}
+			{#each quarters as q (q.quarter)}
 				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
 					<div class="border-b border-gray-200 bg-gray-50 px-4 py-3">
 						<h2 class="text-sm font-semibold text-gray-700">{q.label} {selectedYear}</h2>
 					</div>
 					<div class="divide-y divide-gray-100">
-						{#each q.months as month}
+						{#each q.months as month (month)}
 							<div class="flex items-center gap-3 px-4 py-3">
 								<span class="w-24 text-sm font-medium text-gray-900">{monthLabels[month]}</span>
 								<div class="flex flex-wrap gap-2">

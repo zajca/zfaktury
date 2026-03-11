@@ -7,12 +7,7 @@
 	import { formatDate, toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { statusLabels, statusColors } from '$lib/utils/invoice';
-	import InvoiceItemsEditor, {
-		calcSubtotal,
-		calcVatTotal,
-		calcGrandTotal,
-		type FormItem
-	} from '$lib/components/InvoiceItemsEditor.svelte';
+	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -311,7 +306,7 @@
 							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						>
 							<option value={0}>-- Vyberte --</option>
-							{#each contacts as contact}
+							{#each contacts as contact (contact.id)}
 								<option value={contact.id}
 									>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
 								>
@@ -525,7 +520,7 @@
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-gray-100">
-								{#each invoice.items ?? [] as item}
+								{#each invoice.items ?? [] as item (item.id)}
 									<tr>
 										<td class="py-2 text-gray-900">{item.description}</td>
 										<td class="py-2 text-right text-gray-700">{fromHalere(item.quantity)}</td>

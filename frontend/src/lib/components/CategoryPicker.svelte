@@ -102,7 +102,7 @@
 		class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 	>
 		<option value="">-- Vyberte --</option>
-		{#each categories as cat}
+		{#each categories as cat (cat.key)}
 			<option value={cat.key}>
 				{cat.label_cs}
 			</option>

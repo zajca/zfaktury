@@ -129,7 +129,7 @@
 						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					>
 						<option value={0}>-- Nevybráno --</option>
-						{#each Object.entries(monthLabels) as [value, label]}
+						{#each Object.entries(monthLabels) as [value, label] (value)}
 							<option value={Number(value)}>{label}</option>
 						{/each}
 					</select>
@@ -141,7 +141,7 @@
 						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					>
 						<option value={0}>-- Nevybráno --</option>
-						{#each Object.entries(quarterLabels) as [value, label]}
+						{#each Object.entries(quarterLabels) as [value, label] (value)}
 							<option value={Number(value)}>{label}</option>
 						{/each}
 					</select>
@@ -158,7 +158,7 @@
 					bind:value={form.filing_type}
 					class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 				>
-					{#each filingTypes as ft}
+					{#each filingTypes as ft (ft.value)}
 						<option value={ft.value}>{ft.label}</option>
 					{/each}
 				</select>

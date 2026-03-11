@@ -153,7 +153,7 @@
 							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						>
 							<option value={null}>-- Bez dodavatele --</option>
-							{#each contacts as contact}
+							{#each contacts as contact (contact.id)}
 								<option value={contact.id}
 									>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
 								>
@@ -195,7 +195,7 @@
 					</select>
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-gray-700">DPH</label>
+					<span class="block text-sm font-medium text-gray-700">DPH</span>
 					<div
 						class="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
 					>

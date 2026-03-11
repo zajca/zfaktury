@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { contactsApi, recurringInvoicesApi, type Contact } from '$lib/api/client';
+	import {
+		contactsApi,
+		recurringInvoicesApi,
+		type Contact,
+		type RecurringInvoice
+	} from '$lib/api/client';
 	import { toISODate } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { toHalere } from '$lib/utils/money';
@@ -75,7 +80,7 @@
 				items: requestItems
 			};
 
-			await recurringInvoicesApi.create(body as any);
+			await recurringInvoicesApi.create(body as Partial<RecurringInvoice>);
 
 			goto('/recurring');
 		} catch (e) {
@@ -135,7 +140,7 @@
 						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 					>
 						<option value={0}>-- Vyberte --</option>
-						{#each contacts as contact}
+						{#each contacts as contact (contact.id)}
 							<option value={contact.id}
 								>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
 							>

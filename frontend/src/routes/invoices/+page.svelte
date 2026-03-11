@@ -158,7 +158,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
-					{#each invoices as invoice}
+					{#each invoices as invoice (invoice.id)}
 						<tr class="hover:bg-gray-50 transition-colors">
 							<td class="px-4 py-3">
 								<a

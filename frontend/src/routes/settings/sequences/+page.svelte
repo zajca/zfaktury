@@ -109,7 +109,11 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<div class="flex items-center gap-3">
-				<a href="/settings" class="text-gray-400 hover:text-gray-600 transition-colors">
+				<a
+					href="/settings"
+					class="text-gray-400 hover:text-gray-600 transition-colors"
+					aria-label="Zpet na nastaveni"
+				>
 					<svg
 						class="h-5 w-5"
 						fill="none"
@@ -258,7 +262,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
-					{#each sequences as seq}
+					{#each sequences as seq (seq.id)}
 						<tr class="hover:bg-gray-50 transition-colors">
 							<td class="px-4 py-3 font-medium text-gray-900">{seq.prefix}</td>
 							<td class="px-4 py-3 text-gray-600">{seq.year}</td>

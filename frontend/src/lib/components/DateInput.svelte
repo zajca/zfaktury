@@ -87,7 +87,7 @@
 	</div>
 	{#if presets && presets.length > 0}
 		<div class="flex flex-wrap gap-1">
-			{#each presets as preset}
+			{#each presets as preset, i (i)}
 				<button
 					type="button"
 					onclick={() => applyPreset(preset)}

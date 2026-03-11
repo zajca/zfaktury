@@ -129,7 +129,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
-					{#each items as item}
+					{#each items as item (item.id)}
 						<tr
 							class="hover:bg-gray-50 transition-colors cursor-pointer"
 							role="link"

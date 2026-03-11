@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams, SvelteSet } from 'svelte/reactivity';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
@@ -41,7 +42,7 @@
 	let error = $state<string | null>(null);
 
 	// Selection state
-	let selectedIds = $state<Set<number>>(new Set());
+	let selectedIds: Set<number> = new SvelteSet();
 	let bulkLoading = $state(false);
 	let successMessage = $state<string | null>(null);
 
@@ -63,7 +64,7 @@
 		loading = true;
 		error = null;
 		try {
-			const query = new URLSearchParams();
+			const query = new SvelteURLSearchParams();
 			query.set('limit', String(perPage));
 			query.set('offset', String((page - 1) * perPage));
 			if (dateFrom) query.set('date_from', dateFrom);
@@ -79,7 +80,7 @@
 			expenses = data.data;
 			total = data.total;
 			// Clear selection when list changes
-			selectedIds = new Set();
+			selectedIds.clear();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst výdaje';
 		} finally {
@@ -89,20 +90,21 @@
 
 	function toggleSelectAll() {
 		if (allSelected) {
-			selectedIds = new Set();
+			selectedIds.clear();
 		} else {
-			selectedIds = new Set(expenses.map((e) => e.id));
+			selectedIds.clear();
+			for (const e of expenses) {
+				selectedIds.add(e.id);
+			}
 		}
 	}
 
 	function toggleSelect(id: number) {
-		const next = new Set(selectedIds);
-		if (next.has(id)) {
-			next.delete(id);
+		if (selectedIds.has(id)) {
+			selectedIds.delete(id);
 		} else {
-			next.add(id);
+			selectedIds.add(id);
 		}
-		selectedIds = next;
 	}
 
 	async function markReviewed() {

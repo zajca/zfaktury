@@ -373,7 +373,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-gray-100">
-							{#each recurringInvoice.items as item}
+							{#each recurringInvoice.items as item (item.id)}
 								<tr>
 									<td class="px-4 py-2 text-gray-900">{item.description}</td>
 									<td class="px-4 py-2 text-right text-gray-700"
@@ -436,7 +436,7 @@
 							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 						>
 							<option value={0}>-- Vyberte --</option>
-							{#each contacts as contact}
+							{#each contacts as contact (contact.id)}
 								<option value={contact.id}
 									>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
 								>
@@ -518,7 +518,7 @@
 				</div>
 
 				<div class="mt-4 space-y-4">
-					{#each items as item, index}
+					{#each items as item, index (index)}
 						<div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
 							<div class="flex items-start gap-4">
 								<div class="flex-1 space-y-3">

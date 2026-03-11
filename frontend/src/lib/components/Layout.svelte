@@ -84,14 +84,14 @@
 
 		<!-- Navigation -->
 		<nav class="flex-1 space-y-1 px-3 py-4">
-			{#each navEntries as entry}
+			{#each navEntries as entry, i (i)}
 				{#if isGroup(entry)}
 					<div class="mt-4 mb-1">
 						<span class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400"
 							>{entry.section}</span
 						>
 					</div>
-					{#each entry.items as item}
+					{#each entry.items as item (item.href)}
 						<a
 							href={item.href}
 							onclick={() => (sidebarOpen = false)}

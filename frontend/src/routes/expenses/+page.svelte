@@ -117,7 +117,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
-					{#each expenses as expense}
+					{#each expenses as expense (expense.id)}
 						<tr
 							class="hover:bg-gray-50 transition-colors cursor-pointer"
 							role="link"

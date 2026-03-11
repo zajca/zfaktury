@@ -162,7 +162,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
-					{#each recurringInvoices as ri}
+					{#each recurringInvoices as ri (ri.id)}
 						<tr class="hover:bg-gray-50 transition-colors">
 							<td class="px-4 py-3">
 								<a href="/recurring/{ri.id}" class="font-medium text-blue-600 hover:text-blue-800">

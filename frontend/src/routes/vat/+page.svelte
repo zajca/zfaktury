@@ -4,38 +4,41 @@
 	import { vatReturnApi, type VATReturn } from '$lib/api/vat';
 	import { controlStatementApi, type ControlStatement } from '$lib/api/vat-control';
 	import { viesApi, type VIESSummary } from '$lib/api/vat-vies';
-	import { formatCZK } from '$lib/utils/money';
-	import { vatStatusLabels, vatStatusColors, filingTypeLabels } from '$lib/utils/vat';
-
-	type TabKey = 'returns' | 'control' | 'vies';
+	import { vatStatusLabels, monthLabels, quarters } from '$lib/utils/vat';
 
 	let selectedYear = $state(new Date().getFullYear());
-	let activeTab = $state<TabKey>('returns');
-	let vatReturns = $state<VATReturn[]>([]);
-	let controlStatements = $state<ControlStatement[]>([]);
-	let viesSummaries = $state<VIESSummary[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	let loadedForYear: Record<TabKey, number | null> = { returns: null, control: null, vies: null };
+	let vatReturns = $state<VATReturn[]>([]);
+	let controlStatements = $state<ControlStatement[]>([]);
+	let viesSummaries = $state<VIESSummary[]>([]);
 
-	async function loadActiveTab() {
-		if (loadedForYear[activeTab] === selectedYear) return;
+	let returnsByMonth = $derived(buildMap(vatReturns.filter(r => r.period.month > 0), r => r.period.month));
+	let returnsByQuarter = $derived(buildMap(vatReturns.filter(r => r.period.month === 0 && r.period.quarter > 0), r => r.period.quarter));
+	let controlByMonth = $derived(buildMap(controlStatements, r => r.period.month));
+	let viesByQuarter = $derived(buildMap(viesSummaries, r => r.period.quarter));
+
+	function buildMap<T>(items: T[], keyFn: (item: T) => number): Map<number, T> {
+		const map = new Map<number, T>();
+		for (const item of items) {
+			map.set(keyFn(item), item);
+		}
+		return map;
+	}
+
+	async function loadData() {
 		loading = true;
 		error = null;
 		try {
-			switch (activeTab) {
-				case 'returns':
-					vatReturns = await vatReturnApi.list(selectedYear);
-					break;
-				case 'control':
-					controlStatements = await controlStatementApi.list(selectedYear);
-					break;
-				case 'vies':
-					viesSummaries = await viesApi.list(selectedYear);
-					break;
-			}
-			loadedForYear[activeTab] = selectedYear;
+			const [returns, controls, vies] = await Promise.all([
+				vatReturnApi.list(selectedYear),
+				controlStatementApi.list(selectedYear),
+				viesApi.list(selectedYear)
+			]);
+			vatReturns = returns ?? [];
+			controlStatements = controls ?? [];
+			viesSummaries = vies ?? [];
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
 		} finally {
@@ -43,89 +46,118 @@
 		}
 	}
 
-	// Reset cache when year changes
-	$effect(() => {
-		selectedYear;
-		loadedForYear = { returns: null, control: null, vies: null };
-	});
-
 	let mounted = false;
-	onMount(() => { loadActiveTab(); mounted = true; });
+	onMount(() => { loadData(); mounted = true; });
 
 	$effect(() => {
 		selectedYear;
-		activeTab;
 		if (!mounted) return;
-		loadActiveTab();
+		loadData();
 	});
 
-	function formatPeriod(vr: VATReturn): string {
-		if (vr.period.month > 0) {
-			return `${vr.period.month}/${vr.period.year}`;
-		}
-		if (vr.period.quarter > 0) {
-			return `Q${vr.period.quarter}/${vr.period.year}`;
-		}
-		return `${vr.period.year}`;
+	function isQuarterEnd(month: number): boolean {
+		return month === 3 || month === 6 || month === 9 || month === 12;
 	}
 
-	function navigateToDetail(id: number) {
-		goto(`/vat/returns/${id}`);
+	function quarterForMonth(month: number): number {
+		return Math.ceil(month / 3);
 	}
 
-	const tabs: { key: TabKey; label: string }[] = [
-		{ key: 'returns', label: 'DPH přiznání' },
-		{ key: 'control', label: 'Kontrolní hlášení' },
-		{ key: 'vies', label: 'Souhrnné hlášení' }
-	];
+	function statusBtnClass(status: string | undefined): string {
+		if (!status) return 'border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 hover:bg-gray-50';
+		switch (status) {
+			case 'filed': return 'bg-green-600 text-white hover:bg-green-700';
+			case 'ready': return 'bg-blue-600 text-white hover:bg-blue-700';
+			default: return 'bg-gray-200 text-gray-800 hover:bg-gray-300';
+		}
+	}
+
+	function handleReturnClick(month: number) {
+		const existing = returnsByMonth.get(month);
+		if (existing) {
+			goto(`/vat/returns/${existing.id}`);
+		} else {
+			goto(`/vat/returns/new?year=${selectedYear}&month=${month}`);
+		}
+	}
+
+	function handleQuarterReturnClick(quarter: number) {
+		const existing = returnsByQuarter.get(quarter);
+		if (existing) {
+			goto(`/vat/returns/${existing.id}`);
+		} else {
+			goto(`/vat/returns/new?year=${selectedYear}&quarter=${quarter}`);
+		}
+	}
+
+	function handleControlClick(month: number) {
+		const existing = controlByMonth.get(month);
+		if (existing) {
+			goto(`/vat/control/${existing.id}`);
+		} else {
+			goto(`/vat/control/new?year=${selectedYear}&month=${month}`);
+		}
+	}
+
+	function handleViesClick(quarter: number) {
+		const existing = viesByQuarter.get(quarter);
+		if (existing) {
+			goto(`/vat/vies/${existing.id}`);
+		} else {
+			goto(`/vat/vies/new?year=${selectedYear}&quarter=${quarter}`);
+		}
+	}
+
+	function statusLabel(status: string | undefined): string {
+		if (!status) return '';
+		return vatStatusLabels[status] ?? status;
+	}
+
+	function getReturnForMonth(month: number): VATReturn | undefined {
+		return returnsByMonth.get(month);
+	}
+
+	function getControlForMonth(month: number): ControlStatement | undefined {
+		return controlByMonth.get(month);
+	}
+
+	function getViesForQuarter(quarter: number): VIESSummary | undefined {
+		return viesByQuarter.get(quarter);
+	}
+
+	function getReturnForQuarter(quarter: number): VATReturn | undefined {
+		return returnsByQuarter.get(quarter);
+	}
 </script>
 
 <svelte:head>
-	<title>DPH - ZFaktury</title>
+	<title>DPH za rok {selectedYear} - ZFaktury</title>
 </svelte:head>
 
 <div>
-	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-2xl font-bold text-gray-900">DPH</h1>
-			<p class="mt-1 text-sm text-gray-500">Správa daňových přiznání a hlášení</p>
-		</div>
-		<a
-			href={activeTab === 'control' ? '/vat/control/new' : activeTab === 'vies' ? '/vat/vies/new' : '/vat/returns/new'}
-			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-		>
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-			</svg>
-			{activeTab === 'control' ? 'Nové hlášení' : activeTab === 'vies' ? 'Nové hlášení' : 'Nové přiznání'}
-		</a>
-	</div>
+	<h1 class="text-2xl font-bold text-gray-900">DPH za rok {selectedYear}</h1>
 
 	<!-- Year selector -->
-	<div class="mt-6 flex items-center gap-4">
-		<label for="year" class="text-sm font-medium text-gray-700">Rok</label>
-		<input
-			id="year"
-			type="number"
-			bind:value={selectedYear}
-			min="2020"
-			max="2099"
-			class="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-		/>
-	</div>
-
-	<!-- Tabs -->
-	<div class="mt-6 border-b border-gray-200">
-		<nav class="-mb-px flex gap-6" aria-label="Tabs">
-			{#each tabs as tab}
-				<button
-					onclick={() => { activeTab = tab.key; }}
-					class="whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors {activeTab === tab.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
-				>
-					{tab.label}
-				</button>
-			{/each}
-		</nav>
+	<div class="mt-4 flex items-center gap-3">
+		<button
+			onclick={() => { selectedYear--; }}
+			class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 transition-colors"
+			aria-label="Předchozí rok"
+		>
+			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+			</svg>
+		</button>
+		<span class="min-w-[4rem] text-center text-lg font-semibold text-gray-900">{selectedYear}</span>
+		<button
+			onclick={() => { selectedYear++; }}
+			class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 transition-colors"
+			aria-label="Následující rok"
+		>
+			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+			</svg>
+		</button>
 	</div>
 
 	<!-- Error -->
@@ -135,168 +167,120 @@
 		</div>
 	{/if}
 
-	<!-- Tab content -->
-	{#if activeTab === 'returns'}
-		<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-			{#if loading}
-				<div class="flex items-center justify-center p-12">
-					<div role="status">
-						<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-						<span class="sr-only">Načítání...</span>
+	<!-- Loading -->
+	{#if loading}
+		<div class="mt-8 flex items-center justify-center p-12">
+			<div role="status">
+				<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+				<span class="sr-only">Načítání...</span>
+			</div>
+		</div>
+	{:else}
+		<!-- Quarter sections -->
+		<div class="mt-6 space-y-6">
+			{#each quarters as q}
+				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+					<div class="border-b border-gray-200 bg-gray-50 px-4 py-3">
+						<h2 class="text-sm font-semibold text-gray-700">{q.label} {selectedYear}</h2>
 					</div>
-				</div>
-			{:else if vatReturns.length === 0}
-				<div class="p-12 text-center text-gray-400">
-					Žádná DPH přiznání pro rok {selectedYear}.
-				</div>
-			{:else}
-				<table class="w-full text-left text-sm">
-					<thead class="border-b border-gray-200 bg-gray-50">
-						<tr>
-							<th class="px-4 py-3 font-medium text-gray-600">Období</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Typ</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
-							<th class="px-4 py-3 text-right font-medium text-gray-600">DPH k odvodu</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Akce</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-100">
-						{#each vatReturns as vr}
-							<tr
-								class="hover:bg-gray-50 transition-colors cursor-pointer"
-								role="link"
-								tabindex="0"
-								onclick={() => navigateToDetail(vr.id)}
-								onkeydown={(e) => { if (e.key === 'Enter') navigateToDetail(vr.id); }}
-							>
-								<td class="px-4 py-3 font-medium text-gray-900">
-									{formatPeriod(vr)}
-								</td>
-								<td class="px-4 py-3 text-gray-700">
-									{filingTypeLabels[vr.filing_type] ?? vr.filing_type}
-								</td>
-								<td class="px-4 py-3">
-									<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[vr.status] ?? 'bg-gray-100 text-gray-700'}">
-										{vatStatusLabels[vr.status] ?? vr.status}
-									</span>
-								</td>
-								<td class="px-4 py-3 text-right font-medium text-gray-900">
-									{formatCZK(vr.net_vat)}
-								</td>
-								<td class="px-4 py-3">
-									<a
-										href="/vat/returns/{vr.id}"
-										class="text-blue-600 hover:text-blue-800 text-sm font-medium"
-										onclick={(e) => e.stopPropagation()}
+					<div class="divide-y divide-gray-100">
+						{#each q.months as month}
+							<div class="flex items-center gap-3 px-4 py-3">
+								<span class="w-24 text-sm font-medium text-gray-900">{monthLabels[month]}</span>
+								<div class="flex flex-wrap gap-2">
+									<!-- DPH button -->
+									<button
+										onclick={() => handleReturnClick(month)}
+										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(getReturnForMonth(month)?.status)}"
 									>
-										Detail
-									</a>
-								</td>
-							</tr>
+										{#if getReturnForMonth(month)?.status === 'filed'}
+											<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+											</svg>
+										{/if}
+										DPH
+										{#if getReturnForMonth(month)}
+											<span class="opacity-75">({statusLabel(getReturnForMonth(month)?.status)})</span>
+										{/if}
+									</button>
+
+									<!-- KH button -->
+									<button
+										onclick={() => handleControlClick(month)}
+										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(getControlForMonth(month)?.status)}"
+									>
+										{#if getControlForMonth(month)?.status === 'filed'}
+											<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+											</svg>
+										{/if}
+										KH
+										{#if getControlForMonth(month)}
+											<span class="opacity-75">({statusLabel(getControlForMonth(month)?.status)})</span>
+										{/if}
+									</button>
+
+									<!-- SH button (only on quarter-end months) -->
+									{#if isQuarterEnd(month)}
+										<button
+											onclick={() => handleViesClick(quarterForMonth(month))}
+											class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(getViesForQuarter(quarterForMonth(month))?.status)}"
+										>
+											{#if getViesForQuarter(quarterForMonth(month))?.status === 'filed'}
+												<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+													<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+												</svg>
+											{/if}
+											SH
+											{#if getViesForQuarter(quarterForMonth(month))}
+												<span class="opacity-75">({statusLabel(getViesForQuarter(quarterForMonth(month))?.status)})</span>
+											{/if}
+										</button>
+									{/if}
+								</div>
+							</div>
 						{/each}
-					</tbody>
-				</table>
-			{/if}
-		</div>
-	{:else if activeTab === 'control'}
-		<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-			{#if loading}
-				<div class="flex items-center justify-center p-12">
-					<div role="status">
-						<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-						<span class="sr-only">Načítání...</span>
+
+						<!-- Cele ctvrtleti row -->
+						<div class="flex items-center gap-3 bg-gray-50/50 px-4 py-3">
+							<span class="w-24 text-sm font-medium text-gray-500 italic">Celé čtvrtletí</span>
+							<div class="flex flex-wrap gap-2">
+								<!-- Quarterly DPH -->
+								<button
+									onclick={() => handleQuarterReturnClick(q.quarter)}
+									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(getReturnForQuarter(q.quarter)?.status)}"
+								>
+									{#if getReturnForQuarter(q.quarter)?.status === 'filed'}
+										<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+										</svg>
+									{/if}
+									DPH Q{q.quarter}
+									{#if getReturnForQuarter(q.quarter)}
+										<span class="opacity-75">({statusLabel(getReturnForQuarter(q.quarter)?.status)})</span>
+									{/if}
+								</button>
+
+								<!-- Quarterly SH -->
+								<button
+									onclick={() => handleViesClick(q.quarter)}
+									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(getViesForQuarter(q.quarter)?.status)}"
+								>
+									{#if getViesForQuarter(q.quarter)?.status === 'filed'}
+										<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+										</svg>
+									{/if}
+									SH Q{q.quarter}
+									{#if getViesForQuarter(q.quarter)}
+										<span class="opacity-75">({statusLabel(getViesForQuarter(q.quarter)?.status)})</span>
+									{/if}
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
-			{:else if controlStatements.length === 0}
-				<div class="p-12 text-center text-gray-400">
-					Žádná kontrolní hlášení pro rok {selectedYear}.
-				</div>
-			{:else}
-				<table class="w-full text-left text-sm">
-					<thead class="border-b border-gray-200 bg-gray-50">
-						<tr>
-							<th class="px-4 py-3 font-medium text-gray-600">Období</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Typ</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Akce</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-100">
-						{#each controlStatements as cs}
-							<tr
-								class="hover:bg-gray-50 transition-colors cursor-pointer"
-								role="link"
-								tabindex="0"
-								onclick={() => goto(`/vat/control/${cs.id}`)}
-								onkeydown={(e) => { if (e.key === 'Enter') goto(`/vat/control/${cs.id}`); }}
-							>
-								<td class="px-4 py-3 font-medium text-gray-900">{cs.period.month}/{cs.period.year}</td>
-								<td class="px-4 py-3 text-gray-700">
-									{filingTypeLabels[cs.filing_type] ?? cs.filing_type}
-								</td>
-								<td class="px-4 py-3">
-									<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[cs.status] ?? 'bg-gray-100 text-gray-700'}">
-										{vatStatusLabels[cs.status] ?? cs.status}
-									</span>
-								</td>
-								<td class="px-4 py-3">
-									<a href="/vat/control/{cs.id}" class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={(e) => e.stopPropagation()}>Detail</a>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{/if}
-		</div>
-	{:else if activeTab === 'vies'}
-		<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-			{#if loading}
-				<div class="flex items-center justify-center p-12">
-					<div role="status">
-						<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-						<span class="sr-only">Načítání...</span>
-					</div>
-				</div>
-			{:else if viesSummaries.length === 0}
-				<div class="p-12 text-center text-gray-400">
-					Žádná souhrnná hlášení pro rok {selectedYear}.
-				</div>
-			{:else}
-				<table class="w-full text-left text-sm">
-					<thead class="border-b border-gray-200 bg-gray-50">
-						<tr>
-							<th class="px-4 py-3 font-medium text-gray-600">Období</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Typ</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
-							<th class="px-4 py-3 font-medium text-gray-600">Akce</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-100">
-						{#each viesSummaries as vs}
-							<tr
-								class="hover:bg-gray-50 transition-colors cursor-pointer"
-								role="link"
-								tabindex="0"
-								onclick={() => goto(`/vat/vies/${vs.id}`)}
-								onkeydown={(e) => { if (e.key === 'Enter') goto(`/vat/vies/${vs.id}`); }}
-							>
-								<td class="px-4 py-3 font-medium text-gray-900">Q{vs.period.quarter}/{vs.period.year}</td>
-								<td class="px-4 py-3 text-gray-700">
-									{filingTypeLabels[vs.filing_type] ?? vs.filing_type}
-								</td>
-								<td class="px-4 py-3">
-									<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[vs.status] ?? 'bg-gray-100 text-gray-700'}">
-										{vatStatusLabels[vs.status] ?? vs.status}
-									</span>
-								</td>
-								<td class="px-4 py-3">
-									<a href="/vat/vies/{vs.id}" class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={(e) => e.stopPropagation()}>Detail</a>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{/if}
+			{/each}
 		</div>
 	{/if}
 </div>

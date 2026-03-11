@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { viesApi } from '$lib/api/vat-vies';
 	import { filingTypeLabels, quarterLabels } from '$lib/utils/vat';
 
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
-	const currentYear = new Date().getFullYear();
-	const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+	const paramYear = page.url.searchParams.get('year');
+	const paramQuarter = page.url.searchParams.get('quarter');
 
 	let form = $state({
-		year: currentYear,
-		quarter: currentQuarter,
+		year: paramYear ? Number(paramYear) : new Date().getFullYear(),
+		quarter: paramQuarter ? Number(paramQuarter) : Math.ceil((new Date().getMonth() + 1) / 3),
 		filing_type: 'regular'
 	});
 

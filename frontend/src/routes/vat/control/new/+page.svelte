@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { controlStatementApi } from '$lib/api/vat-control';
 	import { filingTypeLabels, monthLabels } from '$lib/utils/vat';
 
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
-	const currentYear = new Date().getFullYear();
-	const currentMonth = new Date().getMonth() + 1;
+	const paramYear = page.url.searchParams.get('year');
+	const paramMonth = page.url.searchParams.get('month');
 
 	let form = $state({
-		year: currentYear,
-		month: currentMonth,
+		year: paramYear ? Number(paramYear) : new Date().getFullYear(),
+		month: paramMonth ? Number(paramMonth) : new Date().getMonth() + 1,
 		filing_type: 'regular'
 	});
 

@@ -1,18 +1,23 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { vatReturnApi } from '$lib/api/vat';
 	import { filingTypeLabels, monthLabels, quarterLabels } from '$lib/utils/vat';
 
 	const filingTypes = Object.entries(filingTypeLabels).map(([value, label]) => ({ value, label }));
 
+	const paramYear = page.url.searchParams.get('year');
+	const paramMonth = page.url.searchParams.get('month');
+	const paramQuarter = page.url.searchParams.get('quarter');
+
 	let saving = $state(false);
 	let error = $state<string | null>(null);
-	let periodType = $state<'monthly' | 'quarterly'>('monthly');
+	let periodType = $state<'monthly' | 'quarterly'>(paramQuarter ? 'quarterly' : 'monthly');
 
 	let form = $state({
-		year: new Date().getFullYear(),
-		month: 0,
-		quarter: 0,
+		year: paramYear ? Number(paramYear) : new Date().getFullYear(),
+		month: paramMonth ? Number(paramMonth) : 0,
+		quarter: paramQuarter ? Number(paramQuarter) : 0,
 		filing_type: 'regular'
 	});
 

@@ -83,8 +83,25 @@ func (h *InvoiceHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 
+	// Validate filter values against allowlists.
+	status := r.URL.Query().Get("status")
+	if status != "" {
+		validStatuses := map[string]bool{"draft": true, "sent": true, "paid": true, "overdue": true, "cancelled": true}
+		if !validStatuses[status] {
+			status = ""
+		}
+	}
+	invType := r.URL.Query().Get("type")
+	if invType != "" {
+		validTypes := map[string]bool{"regular": true, "proforma": true, "credit_note": true}
+		if !validTypes[invType] {
+			invType = ""
+		}
+	}
+
 	filter := domain.InvoiceFilter{
-		Status:     r.URL.Query().Get("status"),
+		Status:     status,
+		Type:       invType,
 		CustomerID: parseOptionalInt64(r, "customer_id"),
 		DateFrom:   parseOptionalTime(r, "date_from"),
 		DateTo:     parseOptionalTime(r, "date_to"),
@@ -128,7 +145,29 @@ func (h *InvoiceHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, invoiceFromDomain(invoice))
+	resp := invoiceFromDomain(invoice)
+
+	// Fetch invoices that reference this invoice (credit notes, settlements, etc.).
+	// Exclude the invoice already shown via related_invoice_id to avoid duplicates.
+	related, err := h.svc.GetRelatedInvoices(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get related invoices", "error", err, "id", id)
+		// Non-critical, continue without related invoices.
+	} else {
+		for _, rel := range related {
+			if invoice.RelatedInvoiceID != nil && rel.ID == *invoice.RelatedInvoiceID {
+				continue
+			}
+			resp.RelatedInvoices = append(resp.RelatedInvoices, relatedInvoiceResponse{
+				ID:            rel.ID,
+				InvoiceNumber: rel.InvoiceNumber,
+				Type:          rel.Type,
+				RelationType:  rel.RelationType,
+			})
+		}
+	}
+
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // Update handles PUT /api/v1/invoices/{id}.

@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { invoicesApi, type Invoice } from '$lib/api/client';
+	import { onMount } from 'svelte';
+	import { invoicesApi, statusHistoryApi, type Invoice } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
-	import { statusLabels, statusVariant } from '$lib/utils/invoice';
+	import { statusLabels, statusVariant, invoiceTypeLabels } from '$lib/utils/invoice';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -18,8 +19,11 @@
 	let perPage = $state(25);
 	let search = $state('');
 	let statusFilter = $state('');
+	let typeFilter = $state('');
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let checkingOverdue = $state(false);
+	let overdueMessage = $state<string | null>(null);
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
@@ -31,7 +35,8 @@
 				limit: perPage,
 				offset: (page - 1) * perPage,
 				search: search || undefined,
-				status: statusFilter || undefined
+				status: statusFilter || undefined,
+			type: typeFilter || undefined
 			});
 			invoices = res.data;
 			total = res.total;
@@ -50,22 +55,42 @@
 		}, 300);
 	}
 
-	$effect(() => {
+	let mounted = false;
+	onMount(() => {
 		loadInvoices();
+		mounted = true;
 	});
 
 	$effect(() => {
-		// Re-trigger on search change
 		search;
+		if (!mounted) return;
 		handleSearch();
 	});
 
 	$effect(() => {
-		// Re-trigger on status filter change
 		statusFilter;
+		typeFilter;
+		if (!mounted) return;
 		page = 1;
 		loadInvoices();
 	});
+
+	async function handleCheckOverdue() {
+		checkingOverdue = true;
+		overdueMessage = null;
+		try {
+			const result = await statusHistoryApi.checkOverdue();
+			overdueMessage = result.marked > 0
+				? `Označeno ${result.marked} faktur jako po splatnosti.`
+				: 'Žádné nové faktury po splatnosti.';
+			if (result.marked > 0) await loadInvoices();
+			setTimeout(() => { overdueMessage = null; }, 5000);
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Nepodařilo se zkontrolovat splatnost';
+		} finally {
+			checkingOverdue = false;
+		}
+	}
 
 	let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
 </script>
@@ -77,14 +102,25 @@
 <div class="mx-auto max-w-6xl">
 	<PageHeader title="Faktury" description="Přehled vydaných faktur">
 		{#snippet actions()}
-			<Button variant="primary" href="/invoices/new">
-				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-				</svg>
-				Nová faktura
-			</Button>
+			<div class="flex gap-2">
+				<Button variant="secondary" onclick={handleCheckOverdue} disabled={checkingOverdue}>
+					{checkingOverdue ? 'Kontroluji...' : 'Zkontrolovat po splatnosti'}
+				</Button>
+				<Button variant="primary" href="/invoices/new">
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+					</svg>
+					Nová faktura
+				</Button>
+			</div>
 		{/snippet}
 	</PageHeader>
+
+	{#if overdueMessage}
+		<div class="mt-4 rounded-lg bg-success-bg px-4 py-3 text-sm text-success" role="status">
+			{overdueMessage}
+		</div>
+	{/if}
 
 	<!-- Filters -->
 	<div class="mt-6 flex flex-wrap items-center gap-4">
@@ -105,6 +141,15 @@
 			<option value="overdue">Po splatnosti</option>
 			<option value="cancelled">Stornovaná</option>
 		</select>
+		<select
+			bind:value={typeFilter}
+			class="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+		>
+			<option value="">Všechny typy</option>
+			<option value="regular">Faktura</option>
+			<option value="proforma">Zálohová faktura</option>
+			<option value="credit_note">Dobropis</option>
+		</select>
 	</div>
 
 	<!-- Error -->
@@ -115,7 +160,7 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if invoices.length === 0}
-			<EmptyState message="Zatím žádné faktury." filteredMessage="Žádné faktury neodpovídají filtru." isFiltered={!!(search || statusFilter)} />
+			<EmptyState message="Zatím žádné faktury." filteredMessage="Žádné faktury neodpovídají filtru." isFiltered={!!(search || statusFilter || typeFilter)} />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">

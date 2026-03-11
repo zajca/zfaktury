@@ -69,11 +69,19 @@ export interface Invoice {
 	internal_notes: string;
 	related_invoice_id?: number;
 	relation_type?: string;
+	related_invoices?: RelatedInvoice[];
 	sent_at?: string;
 	paid_at?: string;
 	items: InvoiceItem[];
 	created_at: string;
 	updated_at: string;
+}
+
+export interface RelatedInvoice {
+	id: number;
+	invoice_number: string;
+	type: string;
+	relation_type: string;
 }
 
 export interface Expense {
@@ -359,12 +367,13 @@ export const contactsApi = {
 // --- Invoices API ---
 
 export const invoicesApi = {
-	list(params?: { limit?: number; offset?: number; search?: string; status?: string }) {
+	list(params?: { limit?: number; offset?: number; search?: string; status?: string; type?: string }) {
 		const query = new URLSearchParams();
 		if (params?.limit) query.set('limit', String(params.limit));
 		if (params?.offset) query.set('offset', String(params.offset));
 		if (params?.search) query.set('search', params.search);
 		if (params?.status) query.set('status', params.status);
+		if (params?.type) query.set('type', params.type);
 		const qs = query.toString();
 		return get<ListResponse<Invoice>>(`/invoices${qs ? `?${qs}` : ''}`);
 	},
@@ -415,6 +424,10 @@ export const invoicesApi = {
 
 	getIsdocUrl(id: number): string {
 		return `${API_BASE}/invoices/${id}/isdoc`;
+	},
+
+	sendEmail(id: number, data: { to: string; subject: string; body: string }) {
+		return post<{ status: string }>(`/invoices/${id}/send-email`, data);
 	},
 
 	async exportIsdocBatch(invoiceIds: number[]): Promise<Blob> {

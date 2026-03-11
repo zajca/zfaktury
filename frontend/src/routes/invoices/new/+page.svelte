@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { contactsApi, invoicesApi, type Contact, type InvoiceItem } from '$lib/api/client';
 	import { toHalere } from '$lib/utils/money';
@@ -30,6 +31,7 @@
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
+	let invoiceType = $state<'regular' | 'proforma'>('regular');
 
 	let form = $state({
 		customer_id: 0,
@@ -53,7 +55,7 @@
 	let vatTotal = $derived(calcVatTotal(items));
 	let grandTotal = $derived(calcGrandTotal(items));
 
-	$effect(() => {
+	onMount(() => {
 		loadContacts();
 	});
 
@@ -97,7 +99,7 @@
 
 			await invoicesApi.create({
 				...form,
-				type: 'regular',
+				type: invoiceType,
 				status: 'draft',
 				subtotal_amount: toHalere(subtotal),
 				vat_amount: toHalere(vatTotal),
@@ -130,6 +132,21 @@
 		}}
 		class="mt-6 space-y-8"
 	>
+		<!-- Invoice Type -->
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Typ dokladu</h2>
+			<div class="mt-4 flex gap-4">
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input type="radio" bind:group={invoiceType} value="regular" class="accent-accent" />
+					<span class="text-sm text-primary">Faktura</span>
+				</label>
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input type="radio" bind:group={invoiceType} value="proforma" class="accent-accent" />
+					<span class="text-sm text-primary">Zálohová faktura</span>
+				</label>
+			</div>
+		</Card>
+
 		<!-- Customer -->
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Zákazník</h2>

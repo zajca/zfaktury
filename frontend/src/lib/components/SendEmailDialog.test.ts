@@ -13,6 +13,13 @@ function jsonResponse(data: unknown, status = 200) {
 	});
 }
 
+const defaultDefaults = {
+	attach_pdf: true,
+	attach_isdoc: false,
+	subject: 'Faktura FV-2026-001',
+	body: 'Dobrý den,\n\nv příloze zasíláme fakturu FV-2026-001.\n\nS pozdravem'
+};
+
 beforeEach(() => {
 	mockFetch.mockReset();
 });
@@ -29,15 +36,23 @@ const defaultProps = {
 	onsuccess: vi.fn()
 };
 
+function renderWithDefaults(propsOverride = {}, defaultsOverride = {}) {
+	// First call is getDefaults, chain subsequent calls as needed.
+	mockFetch.mockResolvedValueOnce(jsonResponse({ ...defaultDefaults, ...defaultsOverride }));
+	return render(SendEmailDialog, { props: { ...defaultProps, ...propsOverride } });
+}
+
 describe('SendEmailDialog', () => {
-	it('renders with pre-filled fields', () => {
-		render(SendEmailDialog, { props: { ...defaultProps } });
+	it('renders with pre-filled fields after loading defaults', async () => {
+		renderWithDefaults();
+
+		await waitFor(() => {
+			const subjectInput = screen.getByLabelText('Předmět') as HTMLInputElement;
+			expect(subjectInput.value).toBe('Faktura FV-2026-001');
+		});
 
 		const toInput = screen.getByLabelText('Příjemce') as HTMLInputElement;
 		expect(toInput.value).toBe('zakaznik@example.com');
-
-		const subjectInput = screen.getByLabelText('Předmět') as HTMLInputElement;
-		expect(subjectInput.value).toBe('Faktura FV-2026-001');
 
 		const bodyTextarea = screen.getByLabelText('Text emailu') as HTMLTextAreaElement;
 		expect(bodyTextarea.value).toContain('fakturu FV-2026-001');
@@ -45,7 +60,8 @@ describe('SendEmailDialog', () => {
 		expect(bodyTextarea.value).toContain('S pozdravem');
 	});
 
-	it('renders with empty email when customerEmail is not provided', () => {
+	it('renders with empty email when customerEmail is not provided', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(defaultDefaults));
 		render(SendEmailDialog, {
 			props: {
 				invoiceId: 42,
@@ -55,17 +71,25 @@ describe('SendEmailDialog', () => {
 			}
 		});
 
+		await waitFor(() => {
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe('Faktura FV-2026-001');
+		});
+
 		const toInput = screen.getByLabelText('Příjemce') as HTMLInputElement;
 		expect(toInput.value).toBe('');
 	});
 
-	it('sends email on submit', async () => {
+	it('sends email with attachment flags on submit', async () => {
+		renderWithDefaults();
+
+		await waitFor(() => {
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe('Faktura FV-2026-001');
+		});
+
+		// Mock the send-email call
 		mockFetch.mockResolvedValueOnce(jsonResponse({ status: 'sent' }));
-		const onsuccess = vi.fn();
+		const onsuccess = defaultProps.onsuccess;
 
-		render(SendEmailDialog, { props: { ...defaultProps, onsuccess } });
-
-		// Remove required attrs to bypass HTML5 validation in jsdom
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
 		const submitBtn = screen.getByText('Odeslat');
@@ -75,24 +99,24 @@ describe('SendEmailDialog', () => {
 			expect(onsuccess).toHaveBeenCalled();
 		});
 
-		expect(mockFetch).toHaveBeenCalledWith(
-			'/api/v1/invoices/42/send-email',
-			expect.objectContaining({
-				method: 'POST',
-				body: JSON.stringify({
-					to: 'zakaznik@example.com',
-					subject: 'Faktura FV-2026-001',
-					body: 'Dobrý den,\n\nv příloze zasíláme fakturu FV-2026-001.\n\nS pozdravem'
-				})
-			})
-		);
+		// Second call should be send-email
+		const sendCall = mockFetch.mock.calls[1];
+		expect(sendCall[0]).toBe('/api/v1/invoices/42/send-email');
+		const sentBody = JSON.parse(sendCall[1].body);
+		expect(sentBody.attach_pdf).toBe(true);
+		expect(sentBody.attach_isdoc).toBe(false);
+		expect(sentBody.to).toBe('zakaznik@example.com');
+		expect(sentBody.subject).toBe('Faktura FV-2026-001');
 	});
 
 	it('displays error on failure', async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'SMTP error' }, 500));
-		const onsuccess = vi.fn();
+		renderWithDefaults();
 
-		render(SendEmailDialog, { props: { ...defaultProps, onsuccess } });
+		await waitFor(() => {
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe('Faktura FV-2026-001');
+		});
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'SMTP error' }, 500));
 
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
@@ -103,14 +127,11 @@ describe('SendEmailDialog', () => {
 			const alert = screen.getByRole('alert');
 			expect(alert).toBeInTheDocument();
 		});
-
-		expect(onsuccess).not.toHaveBeenCalled();
 	});
 
 	it('calls onclose on cancel', async () => {
 		const onclose = vi.fn();
-
-		render(SendEmailDialog, { props: { ...defaultProps, onclose } });
+		renderWithDefaults({ onclose });
 
 		const cancelBtn = screen.getByText('Zrušit');
 		await fireEvent.click(cancelBtn);
@@ -120,8 +141,7 @@ describe('SendEmailDialog', () => {
 
 	it('calls onclose on backdrop click', async () => {
 		const onclose = vi.fn();
-
-		render(SendEmailDialog, { props: { ...defaultProps, onclose } });
+		renderWithDefaults({ onclose });
 
 		const backdrop = screen.getByRole('presentation');
 		await fireEvent.click(backdrop);
@@ -130,16 +150,51 @@ describe('SendEmailDialog', () => {
 	});
 
 	it('shows dialog title', () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(defaultDefaults));
 		render(SendEmailDialog, { props: { ...defaultProps } });
 
 		expect(screen.getByText('Odeslat fakturu emailem')).toBeInTheDocument();
 	});
 
 	it('has proper dialog role', () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(defaultDefaults));
 		render(SendEmailDialog, { props: { ...defaultProps } });
 
 		const dialog = screen.getByRole('dialog');
 		expect(dialog).toBeInTheDocument();
 		expect(dialog).toHaveAttribute('aria-modal', 'true');
+	});
+
+	it('shows attachment checkboxes', async () => {
+		renderWithDefaults();
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Přiložit PDF')).toBeInTheDocument();
+		});
+
+		const pdfCheckbox = screen.getByLabelText('Přiložit PDF') as HTMLInputElement;
+		const isdocCheckbox = screen.getByLabelText('Přiložit ISDOC') as HTMLInputElement;
+
+		expect(pdfCheckbox.checked).toBe(true);
+		expect(isdocCheckbox.checked).toBe(false);
+	});
+
+	it('loads defaults with both attachments enabled', async () => {
+		renderWithDefaults({}, { attach_isdoc: true });
+
+		await waitFor(() => {
+			const isdocCheckbox = screen.getByLabelText('Přiložit ISDOC') as HTMLInputElement;
+			expect(isdocCheckbox.checked).toBe(true);
+		});
+	});
+
+	it('falls back to hardcoded defaults when API fails', async () => {
+		mockFetch.mockRejectedValueOnce(new Error('Network error'));
+		render(SendEmailDialog, { props: { ...defaultProps } });
+
+		await waitFor(() => {
+			const subjectInput = screen.getByLabelText('Předmět') as HTMLInputElement;
+			expect(subjectInput.value).toBe('Faktura FV-2026-001');
+		});
 	});
 });

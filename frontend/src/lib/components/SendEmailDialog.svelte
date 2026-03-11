@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { invoicesApi } from '$lib/api/client';
+	import { invoicesApi, emailApi } from '$lib/api/client';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		invoiceId: number;
@@ -13,20 +14,49 @@
 
 	// svelte-ignore state_referenced_locally
 	let to = $state(customerEmail);
-	// svelte-ignore state_referenced_locally
-	let subject = $state(`Faktura ${invoiceNumber}`);
-	// svelte-ignore state_referenced_locally
-	let body = $state(`Dobrý den,\n\nv příloze zasíláme fakturu ${invoiceNumber}.\n\nS pozdravem`);
+	let subject = $state('');
+	let body = $state('');
+	let attachPdf = $state(true);
+	let attachIsdoc = $state(false);
 	let error = $state('');
 	let sending = $state(false);
+	let loadingDefaults = $state(true);
+
+	onMount(async () => {
+		try {
+			const defaults = await emailApi.getDefaults(invoiceNumber);
+			subject = defaults.subject;
+			body = defaults.body;
+			attachPdf = defaults.attach_pdf;
+			attachIsdoc = defaults.attach_isdoc;
+		} catch {
+			// Fallback to hardcoded defaults if loading fails.
+			subject = `Faktura ${invoiceNumber}`;
+			body = `Dobrý den,\n\nv příloze zasíláme fakturu ${invoiceNumber}.\n\nS pozdravem`;
+		} finally {
+			loadingDefaults = false;
+		}
+	});
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
+
+		if (!attachPdf && !attachIsdoc) {
+			error = 'Vyberte alespoň jednu přílohu';
+			return;
+		}
+
 		error = '';
 		sending = true;
 
 		try {
-			await invoicesApi.sendEmail(invoiceId, { to, subject, body });
+			await invoicesApi.sendEmail(invoiceId, {
+				to,
+				subject,
+				body,
+				attach_pdf: attachPdf,
+				attach_isdoc: attachIsdoc
+			});
 			onsuccess();
 		} catch (err: unknown) {
 			if (err instanceof Error) {
@@ -99,7 +129,8 @@
 					type="text"
 					bind:value={subject}
 					required
-					class="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+					disabled={loadingDefaults}
+					class="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none disabled:opacity-50"
 				/>
 			</div>
 
@@ -112,8 +143,33 @@
 					bind:value={body}
 					required
 					rows="6"
-					class="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none resize-y"
+					disabled={loadingDefaults}
+					class="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none resize-y disabled:opacity-50"
 				></textarea>
+			</div>
+
+			<div>
+				<span class="mb-1.5 block text-sm font-medium text-secondary">Přílohy</span>
+				<div class="flex gap-4">
+					<label class="flex items-center gap-2 text-sm text-primary">
+						<input
+							type="checkbox"
+							bind:checked={attachPdf}
+							disabled={loadingDefaults}
+							class="h-4 w-4 rounded border-border accent-accent"
+						/>
+						Přiložit PDF
+					</label>
+					<label class="flex items-center gap-2 text-sm text-primary">
+						<input
+							type="checkbox"
+							bind:checked={attachIsdoc}
+							disabled={loadingDefaults}
+							class="h-4 w-4 rounded border-border accent-accent"
+						/>
+						Přiložit ISDOC
+					</label>
+				</div>
 			</div>
 
 			<div class="flex justify-end gap-3 pt-2">
@@ -127,7 +183,7 @@
 				</button>
 				<button
 					type="submit"
-					disabled={sending}
+					disabled={sending || loadingDefaults}
 					class="rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-hover transition-colors disabled:opacity-50"
 				>
 					{#if sending}

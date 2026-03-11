@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/config"
+	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
@@ -34,7 +35,8 @@ func setupEmailRouter(t *testing.T) *chi.Mux {
 	// Empty SMTPConfig means IsConfigured() returns false.
 	sender := email.NewEmailSender(config.SMTPConfig{})
 
-	h := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, sender)
+	isdocGen := isdoc.NewISDOCGenerator()
+	h := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, sender)
 
 	r := chi.NewRouter()
 	r.Post("/api/v1/invoices/{id}/send-email", h.SendEmail)
@@ -94,8 +96,8 @@ func TestEmailHandler_SendEmail_UnconfiguredSMTP(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
 		t.Fatalf("decoding response: %v", err)
 	}
-	if resp.Error != "SMTP is not configured" {
-		t.Errorf("expected error %q, got %q", "SMTP is not configured", resp.Error)
+	if resp.Error != "SMTP is not configured. Configure [smtp] section in config.toml" {
+		t.Errorf("expected error %q, got %q", "SMTP is not configured. Configure [smtp] section in config.toml", resp.Error)
 	}
 }
 
@@ -124,7 +126,8 @@ func setupEmailConfiguredRouter(t *testing.T) (*chi.Mux, int64) {
 		From:     "noreply@example.com",
 	})
 
-	h := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, sender)
+	isdocGen := isdoc.NewISDOCGenerator()
+	h := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, sender)
 
 	contactHandler := NewContactHandler(contactSvc)
 	invoiceHandler := NewInvoiceHandler(invoiceSvc, nil, nil, nil)

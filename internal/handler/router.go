@@ -106,12 +106,14 @@ func NewRouter(
 				inv.Get("/{id}/reminders", reminderHandler.ListReminders)
 			}
 
-			// Send invoice via email (conditional on SMTP config)
-			if emailSender != nil && emailSender.IsConfigured() {
-				emailHandler := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, emailSender)
-				inv.Post("/{id}/send-email", emailHandler.SendEmail)
-			}
+			// Send invoice via email (always registered, checks SMTP at runtime)
+			emailHandler := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender)
+			inv.Post("/{id}/send-email", emailHandler.SendEmail)
 		})
+
+		// Email defaults (always available for frontend pre-population)
+		api.Get("/email/defaults", NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender).GetDefaults)
+
 		api.Mount("/expenses", expenseHandler.Routes())
 		api.Mount("/expense-categories", categoryHandler.Routes())
 		api.Mount("/settings", settingsHandler.Routes())

@@ -23,6 +23,12 @@ const (
 	SettingBankCode      = "bank_code"
 	SettingIBAN          = "iban"
 	SettingSWIFT         = "swift"
+
+	// Email settings.
+	SettingEmailAttachPDF      = "email_attach_pdf"
+	SettingEmailAttachISDOC    = "email_attach_isdoc"
+	SettingEmailSubjectTpl     = "email_subject_template"
+	SettingEmailBodyTpl        = "email_body_template"
 )
 
 // SettingsService provides business logic for application settings.
@@ -93,8 +99,12 @@ var knownKeys = map[string]bool{
 	SettingPhone:         true,
 	SettingBankAccount:   true,
 	SettingBankCode:      true,
-	SettingIBAN:          true,
-	SettingSWIFT:         true,
+	SettingIBAN:              true,
+	SettingSWIFT:             true,
+	SettingEmailAttachPDF:    true,
+	SettingEmailAttachISDOC:  true,
+	SettingEmailSubjectTpl:   true,
+	SettingEmailBodyTpl:      true,
 }
 
 // validateKey checks that a setting key is valid and known.

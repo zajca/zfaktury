@@ -426,7 +426,7 @@ export const invoicesApi = {
 		return `${API_BASE}/invoices/${id}/isdoc`;
 	},
 
-	sendEmail(id: number, data: { to: string; subject: string; body: string }) {
+	sendEmail(id: number, data: { to: string; subject: string; body: string; attach_pdf: boolean; attach_isdoc: boolean }) {
 		return post<{ status: string }>(`/invoices/${id}/send-email`, data);
 	},
 
@@ -443,6 +443,22 @@ export const invoicesApi = {
 		}
 
 		return response.blob();
+	}
+};
+
+// --- Email Defaults API ---
+
+export interface EmailDefaults {
+	attach_pdf: boolean;
+	attach_isdoc: boolean;
+	subject: string;
+	body: string;
+}
+
+export const emailApi = {
+	getDefaults(invoiceNumber: string) {
+		const query = new URLSearchParams({ invoice_number: invoiceNumber });
+		return get<EmailDefaults>(`/email/defaults?${query.toString()}`);
 	}
 };
 

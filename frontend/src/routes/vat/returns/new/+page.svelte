@@ -82,7 +82,7 @@
 		class="mt-6 space-y-6"
 	>
 		<Card>
-			<h2 class="text-base font-semibold text-primary">Období</h2>
+			<h2 class="text-base font-semibold text-primary">Období <HelpTip topic="zdanovaci-obdobi" /></h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
 					<label for="year" class="block text-sm font-medium text-secondary">Rok</label>

@@ -26,7 +26,16 @@ export type HelpTopicId =
 	| 'prijmy-naklady'
 	| 'neuhrazene-faktury'
 	| 'faktury-po-splatnosti'
-	| 'frekvence-opakovani';
+	| 'frekvence-opakovani'
+	| 'vystupni-dph'
+	| 'vstupni-dph'
+	| 'preneseni-danove-povinnosti'
+	| 'nadmerny-odpocet'
+	| 'zaklad-dane'
+	| 'sekce-kontrolni-hlaseni'
+	| 'dppd'
+	| 'kod-plneni'
+	| 'zdanovaci-obdobi';
 
 export interface HelpTopic {
 	title: string;
@@ -229,5 +238,68 @@ export const helpTopics: Record<HelpTopicId, HelpTopic> = {
 			'Frekvence urcuje, jak casto se opakujici faktura automaticky vytvori. Napr. mesicni frekvence znamena, ze se faktura vytvori jednou mesicne.\n\nBezne frekvence: mesicni (napr. pausalni sluzby, najem), ctvrtletni (napr. pravidelne konzultace), rocni (napr. licence, predplatne).',
 		legal:
 			'Opakujici se plneni (trvalane plneni) je upraveno v § 21 odst. 8 zakona c. 235/2004 Sb. U opakovaneho plneni se DUZP stanovi nejpozdeji poslednim dnem zdanovaciho obdobi.\n\nSmlouvy na opakovane plneni (napr. najem, servisni smlouvy) se ridi ustanovenimi o zavazkovem pravu v obcanskem zakoniku (§ 1724 a nasl. zakona c. 89/2012 Sb.).'
+	},
+	'vystupni-dph': {
+		title: 'Vystupni DPH',
+		simple:
+			'Vystupni DPH je dan, kterou uctujete svym zakaznikum na fakturach. Kdyz vystavite fakturu s DPH, tuto dan musíte odvest statu.\n\nNapr. fakturujete sluzbu za 10 000 Kc + 21 % DPH = 12 100 Kc. Tech 2 100 Kc je vystupni DPH, ktere odvedete financnimu uradu.',
+		legal:
+			'Vystupni DPH (dan na vystupu) je definovano v § 4 odst. 1 pism. c) zakona c. 235/2004 Sb. o DPH. Platce je povinen priznat dan na vystupu ke dni uskutecneni zdanitelneho plneni (§ 20a) nebo ke dni prijeti uhrady, pokud nastala drive (§ 21).\n\nDan na vystupu se uvadi v daovem priznani v radcich 1-13 formulare.'
+	},
+	'vstupni-dph': {
+		title: 'Vstupni DPH',
+		simple:
+			'Vstupni DPH je dan, kterou jste zaplatili pri svych nakupech. Tuto dan si muzete odecist od vystupniho DPH -- tim snizite castku, kterou odvedete statu.\n\nNapr. koupite notebook za 24 200 Kc (20 000 + 4 200 DPH). Tech 4 200 Kc je vstupni DPH, ktere si odectete.',
+		legal:
+			'Narok na odpocet dane na vstupu upravuji § 72-73 zakona c. 235/2004 Sb. Platce ma narok na odpocet dane u prijatych zdanitelnych plneni, ktera pouzije pro uskutecneni sve ekonomicke cinnosti (§ 72 odst. 1).\n\nPodminkou odpoctu je drzeni danoveho dokladu (§ 73 odst. 1). Narok na odpocet lze uplatnit nejdrive za zdanovaci obdobi, ve kterem jsou splneny podminky (§ 73 odst. 3).'
+	},
+	'preneseni-danove-povinnosti': {
+		title: 'Preneseni danove povinnosti',
+		simple:
+			'Preneseni danove povinnosti (reverse charge) znamena, ze DPH neplati dodavatel, ale odberatel. Dodavatel vystavi fakturu bez DPH a odberatel si DPH sam vypocita a prizna.\n\nPouziva se napr. u stavebnich praci, dodani srot a odpadu, nebo u obchodu mezi firmami v ramci EU.',
+		legal:
+			'Preneseni danove povinnosti (rezim reverse charge) upravuje § 92a zakona c. 235/2004 Sb. U tuzemskych plneni se tyka zbozi a sluzeb uvedenych v priloze c. 6 zakona (stavebni prace, srot, odpady aj.).\n\nPri preneseni danove povinnosti je odberatel povinen dan priznat a ma narok na odpocet (§ 92a odst. 1). Dodavatel uvede plneni v radku 25 danoveho priznani.'
+	},
+	'nadmerny-odpocet': {
+		title: 'Nadmerny odpocet / Danova povinnost',
+		simple:
+			'Vysledek DPH priznani je bud danova povinnost, nebo nadmerny odpocet:\n\n- Danova povinnost: vystupni DPH > vstupni DPH -- rozdil zaplatite statu\n- Nadmerny odpocet: vstupni DPH > vystupni DPH -- stat vam vrati rozdil\n\nNadmerny odpocet vznika napr. pri velkych investicich (nakup stroje, rekonstrukce).',
+		legal:
+			'Nadmerny odpocet je definovan v § 4 odst. 1 pism. d) zakona c. 235/2004 Sb. Vznikne-li nadmerny odpocet, vrati ho spravce dane platci do 30 dni od vymereni (§ 105 odst. 1).\n\nSpravce dane muze pred vracenim zahajit postup k odstraneni pochybnosti (§ 89 danoveho radu), cimz se lhuta prodlouzi. Nadmerny odpocet se prednostne pouzije na uhradu pripadnych danových nedoplatku (§ 105 odst. 2).'
+	},
+	'zaklad-dane': {
+		title: 'Zaklad dane',
+		simple:
+			'Zaklad dane je castka bez DPH, ze ktere se DPH vypocita. Napr. pokud je cena sluzby 12 100 Kc vcetne 21 % DPH, zaklad dane je 10 000 Kc a DPH 2 100 Kc.\n\nV DPH priznani se zaklad dane uvadi ve sloupcich vedle vypoctene dane.',
+		legal:
+			'Zaklad dane je definovan v § 36 zakona c. 235/2004 Sb. Zakladem dane je vse, co jako uhradu obdrzel nebo ma obdrzet platce za uskutecnene zdanitelne plneni od osoby, pro kterou plneni uskutecnil, nebo od treti osoby (§ 36 odst. 1).\n\nZaklad dane zahrnuje i vedlejsi vydaje (baleni, preprava, pojisteni) dle § 36 odst. 3.'
+	},
+	'sekce-kontrolni-hlaseni': {
+		title: 'Sekce kontrolniho hlaseni (A4/A5/B2/B3)',
+		simple:
+			'Kontrolni hlaseni se deli na sekce podle smeru a velikosti plneni:\n\n- A4: Vydane faktury nad 10 000 Kc vcetne DPH (s detailem o odberateli)\n- A5: Vydane faktury do 10 000 Kc (souhrnne, bez detailu)\n- B2: Prijate faktury nad 10 000 Kc vcetne DPH (s detailem o dodavateli)\n- B3: Prijate faktury do 10 000 Kc (souhrnne, bez detailu)\n\nU A4 a B2 se uvadi DIC partnera, cislo dokladu a dalsi udaje.',
+		legal:
+			'Cleneni kontrolniho hlaseni stanovuje § 101c-101d zakona c. 235/2004 Sb. a pokyn GFR-D-57.\n\nOddil A obsahuje udaje o uskutecnenych plnenich (vystupy): A4 = plneni nad 10 000 Kc s identifikaci odberatele, A5 = ostatni plneni. Oddil B obsahuje udaje o prijatych plnenich (vstupy): B2 = plneni nad 10 000 Kc s identifikaci dodavatele, B3 = ostatni plneni.\n\nRozhodujici castka 10 000 Kc je vcetne DPH.'
+	},
+	dppd: {
+		title: 'Datum poskytnuti danoveho plneni (DPPD)',
+		simple:
+			'DPPD je datum, ktere se uvadi v kontrolnim hlaseni. Odpovida datu uskutecneni plneni (DUZP) z faktury.\n\nPozor: DPPD neni datum vystaveni faktury ani datum splatnosti -- je to den, kdy skutecne doslo k dodani zbozi nebo poskyteni sluzby.',
+		legal:
+			'DPPD (datum poskytnuti/prijeti plneni) se uvadi v kontrolnim hlaseni dle § 101c zakona c. 235/2004 Sb. Odpovida datu uskutecneni zdanitelneho plneni (DUZP) dle § 21 tehoz zakona.\n\nV oddilech A4 a B2 kontrolniho hlaseni se DPPD uvadi u kazdeho radku. V oddilech A5 a B3 se neuvadi (plneni jsou agregovana).'
+	},
+	'kod-plneni': {
+		title: 'Kod plneni',
+		simple:
+			'Kod plneni v souhrnnem hlaseni urcuje typ obchodu s partnerem v EU:\n\n- 0: Dodani zbozi do jine clenske zeme\n- 1: Poskytnuti sluzby podle § 9 odst. 1 (misto plneni u prijemce)\n- 2: Obchod v ramci triangulace (treti strana)\n- 3: Poskytnuti sluzby podle § 54 (financni a pojistovaci sluzby)',
+		legal:
+			'Kody plneni jsou definovany v § 102 zakona c. 235/2004 Sb. a v pokynu GFR k vyplnovani souhrnneho hlaseni.\n\nKod 0: dodani zbozi osobe registrovane k DPH v jinem clenskem state (§ 102 odst. 1 pism. a). Kod 1: poskytnuti sluzby s mistem plneni dle § 9 odst. 1 (§ 102 odst. 1 pism. d). Kod 2: dodani zbozi v ramci zjednoduseneho postupu pri tristrannnem obchodu (§ 102 odst. 1 pism. c). Kod 3: poskytnuti sluzby dle § 54.'
+	},
+	'zdanovaci-obdobi': {
+		title: 'Zdanovaci obdobi',
+		simple:
+			'Zdanovaci obdobi je casovy usek, za ktery podavate DPH priznani a odvadite dan. Muze byt:\n\n- Mesicni: priznani podavate kazdy mesic (povinne pri obratu nad 10 mil. Kc)\n- Ctvrtletni: priznani podavate za kazde ctvrtleti (pro mensi platce DPH)\n\nPriznani se vzdy podava do 25. dne po skonceni obdobi.',
+		legal:
+			'Zdanovaci obdobi upravuji § 99-99a zakona c. 235/2004 Sb. Zakladnim zdanovacim obdobim je kalendarni mesic (§ 99). Platce muze zvolit ctvrtletni obdobi, pokud jeho obrat za predchazejici kalendarni rok nepresahl 10 000 000 Kc a neni nespolehlyvym platcem (§ 99a).\n\nZmena zdanovaciho obdobi se oznamuje spravci dane do konce ledna prislusneho roku (§ 99a odst. 2).'
 	}
 };

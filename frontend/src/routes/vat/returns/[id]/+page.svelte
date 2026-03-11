@@ -8,6 +8,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let vatReturn = $state<VATReturn | null>(null);
 	let loading = $state(true);
@@ -211,14 +212,14 @@
 		<div class="mt-6 space-y-6">
 			<Card padding={false}>
 				<div class="p-5 pb-0">
-					<h2 class="text-base font-semibold text-primary">Výstupní DPH</h2>
+					<h2 class="text-base font-semibold text-primary">Výstupní DPH <HelpTip topic="vystupni-dph" /></h2>
 				</div>
 				<div class="mt-4 overflow-x-auto">
 					<table class="w-full text-left text-sm">
 						<thead class="border-b border-border">
 							<tr class="bg-elevated">
-								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
-								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně</th>
+								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba <HelpTip topic="sazba-dph" /></th>
+								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně <HelpTip topic="zaklad-dane" /></th>
 								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
 							</tr>
 						</thead>
@@ -266,7 +267,7 @@
 			{#if vatReturn.reverse_charge_base_21 > 0 || vatReturn.reverse_charge_base_12 > 0}
 				<Card padding={false}>
 					<div class="p-5 pb-0">
-						<h2 class="text-base font-semibold text-primary">Přenesení daňové povinnosti</h2>
+						<h2 class="text-base font-semibold text-primary">Přenesení daňové povinnosti <HelpTip topic="preneseni-danove-povinnosti" /></h2>
 					</div>
 					<div class="mt-4 overflow-x-auto">
 						<table class="w-full text-left text-sm">
@@ -305,7 +306,7 @@
 			<!-- Input VAT -->
 			<Card padding={false}>
 				<div class="p-5 pb-0">
-					<h2 class="text-base font-semibold text-primary">Vstupní DPH</h2>
+					<h2 class="text-base font-semibold text-primary">Vstupní DPH <HelpTip topic="vstupni-dph" /></h2>
 				</div>
 				<div class="mt-4 overflow-x-auto">
 					<table class="w-full text-left text-sm">
@@ -351,7 +352,7 @@
 
 			<!-- Result -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Výsledek</h2>
+				<h2 class="text-base font-semibold text-primary">Výsledek <HelpTip topic="nadmerny-odpocet" /></h2>
 				<div class="mt-4 flex flex-col items-end gap-2 text-sm">
 					<div class="flex gap-8">
 						<span class="text-secondary">Výstupní DPH:</span>

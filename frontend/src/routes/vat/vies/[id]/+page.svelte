@@ -12,6 +12,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let summary = $state<VIESSummary | null>(null);
 	let loading = $state(true);
@@ -147,7 +148,7 @@
 		<div class="mt-4">
 			<div class="flex items-center justify-between">
 				<h1 class="text-xl font-semibold text-primary">
-					Souhrnné hlášení {summary.period.year} Q{summary.period.quarter}
+					Souhrnné hlášení <HelpTip topic="souhrnne-hlaseni" /> {summary.period.year} Q{summary.period.quarter}
 				</h1>
 				<div class="flex items-center gap-3">
 					<Badge variant={statusBadgeVariant(summary.status)}>
@@ -219,9 +220,9 @@
 						<thead class="border-b border-border bg-elevated">
 							<tr>
 								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Kód země</th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera <HelpTip topic="dic" /></th>
 								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Celková částka (CZK)</th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Kód plnění</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Kód plnění <HelpTip topic="kod-plneni" /></th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">

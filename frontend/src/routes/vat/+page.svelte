@@ -8,6 +8,7 @@
 	import { vatStatusLabels, monthLabels, quarters } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let selectedYear = $state(new Date().getFullYear());
 	let loading = $state(true);
@@ -155,7 +156,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<h1 class="text-xl font-semibold text-primary">DPH za rok {selectedYear}</h1>
+	<h1 class="text-xl font-semibold text-primary">DPH za rok {selectedYear} <HelpTip topic="priznani-dph" /></h1>
 
 	<!-- Year selector -->
 	<div class="mt-4 flex items-center gap-3">
@@ -265,7 +266,7 @@
 												<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 											</svg>
 										{/if}
-										KH
+										KH <HelpTip topic="kontrolni-hlaseni" />
 										{#if getControlForMonth(month)}
 											<span class="opacity-75"
 												>({statusLabel(getControlForMonth(month)?.status)})</span
@@ -292,7 +293,7 @@
 													<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 												</svg>
 											{/if}
-											SH
+											SH <HelpTip topic="souhrnne-hlaseni" />
 											{#if getViesForQuarter(quarterForMonth(month))}
 												<span class="opacity-75"
 													>({statusLabel(getViesForQuarter(quarterForMonth(month))?.status)})</span

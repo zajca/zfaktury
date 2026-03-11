@@ -92,7 +92,7 @@
 					/>
 				</div>
 				<div>
-					<label for="month" class="block text-sm font-medium text-secondary">Měsíc *</label>
+					<label for="month" class="block text-sm font-medium text-secondary">Měsíc <HelpTip topic="zdanovaci-obdobi" /> *</label>
 					<select
 						id="month"
 						bind:value={form.month}

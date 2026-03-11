@@ -12,6 +12,7 @@
 	import Button from '$lib/ui/Button.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let statement = $state<ControlStatement | null>(null);
 	let loading = $state(true);
@@ -166,7 +167,7 @@
 		<div class="mt-4">
 			<div class="flex items-center justify-between">
 				<h1 class="text-xl font-semibold text-primary">
-					Kontrolní hlášení {statement.period.year}/{String(statement.period.month).padStart(
+					Kontrolní hlášení <HelpTip topic="kontrolni-hlaseni" /> {statement.period.year}/{String(statement.period.month).padStart(
 						2,
 						'0'
 					)}
@@ -237,7 +238,7 @@
 							? 'border-accent text-accent-text'
 							: 'border-transparent text-tertiary hover:text-secondary hover:border-border-strong'}"
 					>
-						{tabLabels[tab]}
+						{tabLabels[tab]} <HelpTip topic="sekce-kontrolni-hlaseni" />
 					</button>
 				{/each}
 			</nav>
@@ -257,12 +258,12 @@
 					<table class="w-full text-sm">
 						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera <HelpTip topic="dic" /></th>
 								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Číslo dokladu</th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DPPD</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DPPD <HelpTip topic="dppd" /></th>
 								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ (CZK)</th>
 								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH (CZK)</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba <HelpTip topic="sazba-dph" /></th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
@@ -287,7 +288,7 @@
 							<tr>
 								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ (CZK)</th>
 								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH (CZK)</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba <HelpTip topic="sazba-dph" /></th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">

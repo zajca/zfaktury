@@ -5,7 +5,7 @@ describe('help-content', () => {
 	const topicIds = Object.keys(helpTopics) as HelpTopicId[];
 
 	it('has all expected topics', () => {
-		expect(topicIds.length).toBe(28);
+		expect(topicIds.length).toBe(37);
 	});
 
 	it.each(topicIds)('topic "%s" has non-empty title', (id) => {
@@ -52,7 +52,16 @@ describe('help-content', () => {
 			'prijmy-naklady',
 			'neuhrazene-faktury',
 			'faktury-po-splatnosti',
-			'frekvence-opakovani'
+			'frekvence-opakovani',
+			'vystupni-dph',
+			'vstupni-dph',
+			'preneseni-danove-povinnosti',
+			'nadmerny-odpocet',
+			'zaklad-dane',
+			'sekce-kontrolni-hlaseni',
+			'dppd',
+			'kod-plneni',
+			'zdanovaci-obdobi'
 		];
 		expect(topicIds.sort()).toEqual(expectedIds.sort());
 	});

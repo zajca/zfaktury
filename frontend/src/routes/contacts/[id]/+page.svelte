@@ -175,7 +175,7 @@
 						bind:value={form.ico}
 						class="flex-1 rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					/>
-					<Button variant="secondary" size="sm" onclick={lookupAres}>
+					<Button variant="secondary" size="sm" onclick={lookupAres} title="Doplní název, DIČ a adresu z registru ARES podle zadaného IČO">
 						ARES
 					</Button>
 				</div>
@@ -293,7 +293,7 @@
 			<!-- Payment terms -->
 			<div>
 				<label for="payment_terms" class="block text-sm font-medium text-secondary"
-					>Splatnost (dny)</label
+					>Splatnost (dny) <HelpTip topic="platebni-podminky" /></label
 				>
 				<input
 					id="payment_terms"

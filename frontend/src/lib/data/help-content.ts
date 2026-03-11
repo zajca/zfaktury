@@ -35,7 +35,18 @@ export type HelpTopicId =
 	| 'sekce-kontrolni-hlaseni'
 	| 'dppd'
 	| 'kod-plneni'
-	| 'zdanovaci-obdobi';
+	| 'zdanovaci-obdobi'
+	| 'typ-faktury'
+	| 'dobropis'
+	| 'vyrovnani-zalohy'
+	| 'isdoc-export'
+	| 'danova-kontrola'
+	| 'ocr-import'
+	| 'platebni-podminky'
+	| 'email-sablony'
+	| 'opakovane-faktury'
+	| 'kategorie-nakladu'
+	| 'duplikace-faktury';
 
 export interface HelpTopic {
 	title: string;
@@ -301,5 +312,82 @@ export const helpTopics: Record<HelpTopicId, HelpTopic> = {
 			'Zdanovaci obdobi je casovy usek, za ktery podavate DPH priznani a odvadite dan. Muze byt:\n\n- Mesicni: priznani podavate kazdy mesic (povinne pri obratu nad 10 mil. Kc)\n- Ctvrtletni: priznani podavate za kazde ctvrtleti (pro mensi platce DPH)\n\nPriznani se vzdy podava do 25. dne po skonceni obdobi.',
 		legal:
 			'Zdanovaci obdobi upravuji § 99-99a zakona c. 235/2004 Sb. Zakladnim zdanovacim obdobim je kalendarni mesic (§ 99). Platce muze zvolit ctvrtletni obdobi, pokud jeho obrat za predchazejici kalendarni rok nepresahl 10 000 000 Kc a neni nespolehlyvym platcem (§ 99a).\n\nZmena zdanovaciho obdobi se oznamuje spravci dane do konce ledna prislusneho roku (§ 99a odst. 2).'
+	},
+	'typ-faktury': {
+		title: 'Typ dokladu',
+		simple:
+			'Faktura je danovy doklad, ktery vystavujete za dodane zbozi nebo sluzby. Zalohova faktura (proforma) je vyzva k platbe -- neni danovym dokladem a neslouzi k uplatneni DPH.\n\nPokud jste platce DPH, po uhrade zalohove faktury musite vystavit radnou fakturu (vyrovnani zalohy).',
+		legal:
+			'Danovy doklad je definovan v § 26 zakona c. 235/2004 Sb. o DPH. Zalohova faktura neni danovym dokladem ve smyslu tohoto zakona -- jedna se o obchodni dokument vyzyvajici k platbe.\n\nPovinne nalezitosti danoveho dokladu upravuje § 29 tehoz zakona. Po prijeti uhrady zalohove faktury vznika povinnost vystavit radny danovy doklad dle § 28 odst. 2.'
+	},
+	'dobropis': {
+		title: 'Dobropis (opravny danovy doklad)',
+		simple:
+			'Dobropis je opravny doklad, ktery vystavujete, kdyz potrebujete snizit castku na jiz vydane fakture. Typicke duvody: sleva, reklamace, chybne uctovana castka nebo vraceni zbozi.\n\nDobropis odkazuje na puvodni fakturu a obsahuje zapornou castku. Po jeho vystaveni se snizi vase danove zavazky.',
+		legal:
+			'Opravny danovy doklad upravuje § 42 zakona c. 235/2004 Sb. o DPH. Platce je povinen vystavit opravny danovy doklad do 15 dni ode dne zjisteni skutecnosti rozhodnych pro provedeni opravy (§ 42 odst. 2).\n\nOpravny doklad musi obsahovat duvod opravy, rozdil mezi puvodni a novou castkou a odkaz na puvodni danovy doklad (§ 45 odst. 1).'
+	},
+	'vyrovnani-zalohy': {
+		title: 'Vyrovnani zalohy',
+		simple:
+			'Po zaplaceni zalohove faktury (proformy) je treba vystavit radnou fakturu. Tato faktura obsahuje celkovou castku za dodane zbozi ci sluzby, od ktere se odecte jiz uhrazena zaloha.\n\nVysledkem je doplatek, ktery zakaznik jeste uhradi, nebo nulova castka, pokud zaloha pokryla vse.',
+		legal:
+			'Povinnost vystavit danovy doklad po prijeti uhrady vyplyva z § 21 odst. 1 zakona c. 235/2004 Sb. o DPH. Dnem prijeti uhrady vznika povinnost priznat dan na vystupu.\n\nPri vyrovnani se na radne fakture uvede celkova castka plneni a odecte se drive uhrazena zaloha. Zaklad dane a DPH se vypoctou z celkove castky plneni.'
+	},
+	'isdoc-export': {
+		title: 'Export ISDOC',
+		simple:
+			'ISDOC je cesky standard pro elektronickou fakturaci. Soubor ve formatu ISDOC (.isdoc) obsahuje vsechna data faktury ve strojove citelne podobe.\n\nKdyz poslete fakturu ve formatu ISDOC, odberateluv ucetni system ji muze automaticky nacist bez rucniho prepisovani.',
+		legal:
+			'ISDOC (Information System Document) je cesky narodni standard elektronicke fakturace definovany ICT Unii. Format je zalozeny na UN/CEFACT a je kompatibilni s evropskou normou EN 16931.\n\nPouzivani elektronickych faktur upravuje § 26 odst. 3 a § 34 zakona c. 235/2004 Sb. Elektronicka faktura musi byt opatrena zarucenymi prostredky pro overeni puvodu a neporusenosti obsahu.'
+	},
+	'danova-kontrola': {
+		title: 'Danova kontrola nakladu',
+		simple:
+			'Danova kontrola nakladu je proces, kdy systematicky projdete sve vydaje a overite, ze kazdy naklad je spravne dolozen, spravne zarazen a danove uznatelny.\n\nOznacenim nakladu jako "zkontrolovany" si udrzujete prehled o tom, ktere vydaje jste jiz overili a ktere jeste cekaji na kontrolu.',
+		legal:
+			'Danove uznatelne naklady jsou definovany v § 24-25 zakona c. 586/1992 Sb. o danich z prijmu. Podnikatel je povinen prokazat, ze vydaj byl vynalozen na dosazeni, zajisteni a udrzeni zdanitelnych prijmu.\n\nSpravce dane muze v ramci danove kontroly (§ 85 zakona c. 280/2009 Sb.) pozadovat prokazani opravnenosti vsech uplatnenych nakladu. Pravidelna kontrola minimalizuje riziko doplaceni dane.'
+	},
+	'ocr-import': {
+		title: 'Import z dokladu (OCR)',
+		simple:
+			'OCR (opticke rozpoznavani znaku) automaticky precte text z nahrane faktury nebo uctenky. Staci nahrat soubor (PDF, JPG, PNG nebo WebP) a system se pokusi rozpoznat dodavatele, castku, datum a dalsi udaje.\n\nRozpoznana data muzete pred ulozenim zkontrolovat a upravit.',
+		legal:
+			'Archivace danovych dokladu v elektronicke podobe je upravena v § 35a zakona c. 235/2004 Sb. a § 31-32 zakona c. 563/1991 Sb. o ucetnictvi. Elektronicka kopie musi zachovat vernost a citelnost puvodniho dokladu.\n\nPovinnost uchovat danove doklady je 10 let od konce zdanovaciho obdobi (§ 35 zakona c. 235/2004 Sb.).'
+	},
+	'platebni-podminky': {
+		title: 'Platebni podminky',
+		simple:
+			'Splatnost ve dnech urcuje, kolik dni od vystaveni faktury ma zakaznik na zaplaceni. Tato hodnota se automaticky nastavi na novych fakturach pro tohoto zakaznika.\n\nBezna splatnost je 14 nebo 30 dni. Pro stale zakazniky muzete nastavit individualni splatnost.',
+		legal:
+			'Splatnost je smluvni ujednani dle § 1958-1964 zakona c. 89/2012 Sb. (obcansky zakonik). Pro obchodni vztahy mezi podnikateli je maximalni smluvni splatnost 60 dni dle § 1963a OZ.\n\nPro vztahy s verejnym sektorem plati maximalni splatnost 30 dni (§ 1963 OZ). Delsi splatnost je mozna jen pokud to neni vuci veriteli hrube nespravedlive.'
+	},
+	'email-sablony': {
+		title: 'Sablony emailu',
+		simple:
+			'Sablona emailu urcuje predmet a text zpravy, ktera se odesle zakaznikovi spolu s fakturou. Pouzijte {invoice_number} a system automaticky vlozi cislo faktury.\n\nSablonu nastavite jednou a pak se pouzije pro vsechny odeslane faktury. Pred odeslanim muzete text jeste upravit.',
+		legal:
+			'Odeslani faktury emailem je beznou obchodni praxi. Elektronicke doruceni danoveho dokladu je upraveno v § 34 zakona c. 235/2004 Sb. -- odberatel musi s elektronickym dorucenim souhlasit.\n\nElektronicka faktura musi splnovat podminky pro overeni puvodu a neporusenosti obsahu (§ 34 odst. 1).'
+	},
+	'opakovane-faktury': {
+		title: 'Opakovane faktury',
+		simple:
+			'Opakovane faktury jsou sablony, ze kterych se automaticky generuji nove faktury v pravidelnych intervalech (mesicne, ctvrtletne, rocne).\n\nHodi se pro pausalni sluzby, najem, predplatne nebo jakoukoli pravidelnou fakturaci. Sablona obsahuje zakaznika, polozky a frekvenci -- system pak sam vytvori fakturu kdyz prisel cas.',
+		legal:
+			'Opakovane plneni je upraveno v § 21 odst. 8 zakona c. 235/2004 Sb. o DPH. U opakujiciho se plneni se DUZP stanovi nejpozdeji poslednim dnem zdanovaciho obdobi.\n\nSmlouvy na opakovane plneni (najem, servisni smlouvy) se ridi ustanovenimi o zavazkovem pravu v obcanskem zakoniku (§ 1724 a nasl. zakona c. 89/2012 Sb.).'
+	},
+	'kategorie-nakladu': {
+		title: 'Kategorie nakladu',
+		simple:
+			'Kategorie pomahaji tridit naklady podle typu (kancelar, cestovne, sluzby, material apod.). Dobre roztridene naklady usnadnuji prehled o vydajich, pripravu danoveho priznani a komunikaci s ucetnim.\n\nMuzete pouzit vychozi kategorie nebo si vytvorit vlastni.',
+		legal:
+			'Trideni nakladu podle kategorii neni zakonem predepsano, ale vyplyva z povinnosti vest ucetnictvi prehledne a prukaze (§ 8 zakona c. 563/1991 Sb.).\n\nPro ucely danoveho priznani je vhodne clenit naklady dle § 24 zakona c. 586/1992 Sb. (danove uznatelne) a § 25 (neuznatelne), prip. dle povahy vydaje pro spravne vyplneni priloh priznani.'
+	},
+	'duplikace-faktury': {
+		title: 'Duplikace faktury',
+		simple:
+			'Duplikace vytvori novou fakturu jako kopii stavajici. Zkopiruje se zakaznik, polozky, zpusob platby a dalsi nastaveni. Nova faktura dostane nove cislo a aktualni datumy.\n\nHodi se, kdyz vystavujete podobnou fakturu jako minule -- nemusite vse vyplnovat znovu.',
+		legal:
+			'Duplikovana faktura je novy, samostatny danovy doklad s vlastnim poradovym cislem dle § 29 zakona c. 235/2004 Sb. Jedna se o zcela nezavisly doklad, nikoliv o kopii puvodniho.\n\nPoradove cislo musi byt unikatni v ramci ciselne rady (§ 29 odst. 1 pism. b).'
 	}
 };

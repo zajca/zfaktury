@@ -104,7 +104,7 @@
 		{#snippet actions()}
 			<div class="flex gap-2">
 				<Button variant="secondary" href="/recurring">Šablony</Button>
-				<Button variant="secondary" onclick={handleCheckOverdue} disabled={checkingOverdue}>
+				<Button variant="secondary" onclick={handleCheckOverdue} disabled={checkingOverdue} title="Zkontroluje odeslané faktury a označí ty po splatnosti">
 					{checkingOverdue ? 'Kontroluji...' : 'Zkontrolovat po splatnosti'}
 				</Button>
 				<Button variant="primary" href="/invoices/new">
@@ -161,7 +161,7 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if invoices.length === 0}
-			<EmptyState message="Zatím žádné faktury." filteredMessage="Žádné faktury neodpovídají filtru." isFiltered={!!(search || statusFilter || typeFilter)} />
+			<EmptyState message="Zatím žádné faktury." filteredMessage="Žádné faktury neodpovídají filtru." isFiltered={!!(search || statusFilter || typeFilter)} actionHref="/invoices/new" actionLabel="Vytvořit první fakturu" />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">

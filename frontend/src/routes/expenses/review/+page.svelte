@@ -12,6 +12,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Pagination from '$lib/ui/Pagination.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	// Extended Expense type with tax_reviewed_at field not yet in shared client.ts
 	interface ExpenseWithReview {
@@ -185,6 +186,11 @@
 			</Button>
 		{/snippet}
 	</PageHeader>
+
+	<p class="mt-2 text-sm text-tertiary">
+		Ověření správnosti dokladů, daňové uznatelnosti a zařazení.
+		<HelpTip topic="danova-kontrola" />
+	</p>
 
 	<!-- Filters -->
 	<Card class="mt-6">

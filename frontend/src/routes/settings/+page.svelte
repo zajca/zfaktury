@@ -303,7 +303,7 @@
 
 			<!-- Email -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Email</h2>
+				<h2 class="text-base font-semibold text-primary">Email <HelpTip topic="email-sablony" /></h2>
 				<p class="mt-1 text-sm text-tertiary">Výchozí nastavení pro odesílání faktur emailem.</p>
 				<div class="mt-4 space-y-4">
 					<div class="flex gap-6">

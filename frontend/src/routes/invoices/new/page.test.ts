@@ -154,8 +154,8 @@ describe('Invoice Create', () => {
 
 	it('renders notes textareas', () => {
 		render(Page);
-		expect(screen.getByLabelText('Poznámka na faktuře')).toBeInTheDocument();
-		expect(screen.getByLabelText('Interní poznámka')).toBeInTheDocument();
+		expect(screen.getByRole('textbox', { name: /Poznámka na faktuře/ })).toBeInTheDocument();
+		expect(screen.getByRole('textbox', { name: /Interní poznámka/ })).toBeInTheDocument();
 	});
 
 	it('renders submit and cancel buttons', () => {

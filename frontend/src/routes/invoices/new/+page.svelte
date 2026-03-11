@@ -134,7 +134,7 @@
 	>
 		<!-- Invoice Type -->
 		<Card>
-			<h2 class="text-base font-semibold text-primary">Typ dokladu</h2>
+			<h2 class="text-base font-semibold text-primary">Typ dokladu <HelpTip topic="typ-faktury" /></h2>
 			<div class="mt-4 flex gap-4">
 				<label class="flex items-center gap-2 cursor-pointer">
 					<input type="radio" bind:group={invoiceType} value="regular" class="accent-accent" />
@@ -241,13 +241,13 @@
 			<div class="mt-4 space-y-4">
 				<div>
 					<label for="notes" class="block text-sm font-medium text-secondary"
-						>Poznámka na faktuře</label
+						>Poznámka na faktuře <HelpTip topic="poznamka-faktura" /></label
 					>
 					<Textarea id="notes" bind:value={form.notes} rows={2} class="mt-1" />
 				</div>
 				<div>
 					<label for="internal_notes" class="block text-sm font-medium text-secondary"
-						>Interní poznámka</label
+						>Interní poznámka <HelpTip topic="poznamka-interni" /></label
 					>
 					<Textarea id="internal_notes" bind:value={form.internal_notes} rows={2} class="mt-1" />
 				</div>

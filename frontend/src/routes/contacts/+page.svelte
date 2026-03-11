@@ -89,7 +89,7 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if contacts.length === 0}
-			<EmptyState message="Zatím žádné kontakty." filteredMessage="Žádné kontakty neodpovídají hledání." isFiltered={!!search} />
+			<EmptyState message="Zatím žádné kontakty." filteredMessage="Žádné kontakty neodpovídají hledání." isFiltered={!!search} actionHref="/contacts/new" actionLabel="Přidat první kontakt" />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">

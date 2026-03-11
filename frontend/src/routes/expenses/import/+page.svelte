@@ -3,6 +3,7 @@
 	import { importApi, expensesApi, type OCRResult } from '$lib/api/client';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
@@ -123,6 +124,11 @@
 			<Button variant="secondary" href="/expenses">Zpet na naklady</Button>
 		{/snippet}
 	</PageHeader>
+
+	<p class="mt-2 text-sm text-tertiary">
+		Nahrání faktury nebo účtenky (PDF, JPG, PNG, WebP) s automatickým rozpoznáním dat.
+		<HelpTip topic="ocr-import" />
+	</p>
 
 	<ErrorAlert {error} class="mt-4" />
 

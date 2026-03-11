@@ -11,6 +11,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let recurringInvoices = $state<RecurringInvoice[]>([]);
 	let loading = $state(true);
@@ -70,7 +71,7 @@
 	<PageHeader title="Opakující se faktury" description="Šablony pro automatické generování faktur">
 		{#snippet actions()}
 			<div class="flex gap-3">
-				<Button variant="secondary" onclick={processDue} disabled={processing}>
+				<Button variant="secondary" onclick={processDue} disabled={processing} title="Vygeneruje nové faktury ze všech aktivních šablon, jejichž datum dalšího vystavení už nastalo">
 					{processing ? 'Zpracovávám...' : 'Zpracovat splatné'}
 				</Button>
 				<Button variant="primary" href="/recurring/new">
@@ -82,6 +83,11 @@
 			</div>
 		{/snippet}
 	</PageHeader>
+
+	<p class="mt-2 text-sm text-tertiary">
+		Šablony se automaticky převedou na nové faktury podle nastavené frekvence.
+		<HelpTip topic="opakovane-faktury" />
+	</p>
 
 	{#if successMessage}
 		<div class="mt-4 rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-sm text-success" role="status">
@@ -95,7 +101,7 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if recurringInvoices.length === 0}
-			<EmptyState message="Zatím žádné opakující se faktury." />
+			<EmptyState message="Zatím žádné opakující se faktury." actionHref="/recurring/new" actionLabel="Vytvořit šablonu" />
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">

@@ -289,18 +289,18 @@
 						<Button variant="secondary" onclick={startEditing}>
 							Upravit
 						</Button>
-						<Button variant="primary" onclick={handleSend}>
+						<Button variant="primary" onclick={handleSend} title="Změní stav faktury na 'Odeslaná'. Pro odeslání emailem použijte 'Odeslat emailem'">
 							Odeslat
 						</Button>
 					{/if}
 					{#if invoice.status === 'sent' || invoice.status === 'overdue'}
-						<Button variant="success" onclick={handleMarkPaid}>
+						<Button variant="success" onclick={handleMarkPaid} title="Označí fakturu jako uhrazenou k dnešnímu datu">
 							Uhrazená
 						</Button>
 					{/if}
 					{#if invoice.type === 'proforma' && invoice.status === 'paid' && !invoice.related_invoice_id}
-						<Button variant="primary" onclick={handleSettle} disabled={settling}>
-							{settling ? 'Vyrovnávám...' : 'Vyrovnat zálohu'}
+						<Button variant="primary" onclick={handleSettle} disabled={settling} title="Vytvoří řádnou fakturu s odečtenou zálohou">
+							{settling ? 'Vyrovnávám...' : 'Vyrovnat zálohu'} <HelpTip topic="vyrovnani-zalohy" />
 						</Button>
 					{/if}
 					<Button variant="secondary" href={invoicesApi.getPdfUrl(invoiceId)}>
@@ -322,15 +322,15 @@
 					<Button variant="secondary" onclick={() => { showSendEmailDialog = true; }}>
 						Odeslat emailem
 					</Button>
-					<Button variant="secondary" href={invoicesApi.getIsdocUrl(invoiceId)}>
-						Export ISDOC
+					<Button variant="secondary" href={invoicesApi.getIsdocUrl(invoiceId)} title="Stáhne fakturu ve formátu ISDOC (český standard elektronické fakturace)">
+						Export ISDOC <HelpTip topic="isdoc-export" />
 					</Button>
-					<Button variant="secondary" onclick={handleDuplicate}>
+					<Button variant="secondary" onclick={handleDuplicate} title="Vytvoří novou fakturu jako kopii -- zkopíruje zákazníka, položky a nastavení, přiřadí nové číslo">
 						Duplikovat
 					</Button>
 					{#if invoice.type === 'regular' && (invoice.status === 'sent' || invoice.status === 'paid')}
-						<Button variant="secondary" onclick={() => { showCreditNoteDialog = true; }}>
-							Vytvořit dobropis
+						<Button variant="secondary" onclick={() => { showCreditNoteDialog = true; }} title="Vytvoří opravný daňový doklad, který stornuje tuto fakturu">
+							Vytvořit dobropis <HelpTip topic="dobropis" />
 						</Button>
 					{/if}
 					{#if invoice.status !== 'paid'}
@@ -446,13 +446,13 @@
 					<div class="mt-4 space-y-4">
 						<div>
 							<label for="edit-notes" class="block text-sm font-medium text-secondary"
-								>Poznámka na faktuře</label
+								>Poznámka na faktuře <HelpTip topic="poznamka-faktura" /></label
 							>
 							<Textarea id="edit-notes" bind:value={form.notes} rows={2} class="mt-1" />
 						</div>
 						<div>
 							<label for="edit-internal" class="block text-sm font-medium text-secondary"
-								>Interní poznámka</label
+								>Interní poznámka <HelpTip topic="poznamka-interni" /></label
 							>
 							<Textarea id="edit-internal" bind:value={form.internal_notes} rows={2} class="mt-1" />
 						</div>

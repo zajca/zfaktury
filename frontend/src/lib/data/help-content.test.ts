@@ -5,7 +5,7 @@ describe('help-content', () => {
 	const topicIds = Object.keys(helpTopics) as HelpTopicId[];
 
 	it('has all expected topics', () => {
-		expect(topicIds.length).toBe(37);
+		expect(topicIds.length).toBe(48);
 	});
 
 	it.each(topicIds)('topic "%s" has non-empty title', (id) => {
@@ -61,7 +61,18 @@ describe('help-content', () => {
 			'sekce-kontrolni-hlaseni',
 			'dppd',
 			'kod-plneni',
-			'zdanovaci-obdobi'
+			'zdanovaci-obdobi',
+			'typ-faktury',
+			'dobropis',
+			'vyrovnani-zalohy',
+			'isdoc-export',
+			'danova-kontrola',
+			'ocr-import',
+			'platebni-podminky',
+			'email-sablony',
+			'opakovane-faktury',
+			'kategorie-nakladu',
+			'duplikace-faktury'
 		];
 		expect(topicIds.sort()).toEqual(expectedIds.sort());
 	});

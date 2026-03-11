@@ -5,6 +5,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 
 	let categories = $state<ExpenseCategory[]>([]);
@@ -118,6 +119,11 @@
 			{/if}
 		{/snippet}
 	</PageHeader>
+
+	<p class="mt-2 text-sm text-tertiary">
+		Kategorie pomáhají třídit náklady podle typu pro přehlednou evidenci.
+		<HelpTip topic="kategorie-nakladu" />
+	</p>
 
 	<ErrorAlert {error} class="mt-4" />
 

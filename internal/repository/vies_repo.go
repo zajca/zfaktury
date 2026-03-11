@@ -175,7 +175,7 @@ func (r *VIESSummaryRepository) List(ctx context.Context, year int) ([]domain.VI
 	if err != nil {
 		return nil, fmt.Errorf("listing VIES summaries: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.VIESSummary
 	for rows.Next() {
@@ -247,7 +247,7 @@ func (r *VIESSummaryRepository) GetLines(ctx context.Context, viesSummaryID int6
 	if err != nil {
 		return nil, fmt.Errorf("listing VIES summary lines: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.VIESSummaryLine
 	for rows.Next() {

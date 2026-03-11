@@ -96,9 +96,9 @@ func TestAmount_String(t *testing.T) {
 
 func TestAmount_Add(t *testing.T) {
 	tests := []struct {
-		name  string
-		a, b  Amount
-		want  Amount
+		name string
+		a, b Amount
+		want Amount
 	}{
 		{"both zero", 0, 0, 0},
 		{"add to zero", 0, 100, 100},
@@ -117,9 +117,9 @@ func TestAmount_Add(t *testing.T) {
 
 func TestAmount_Sub(t *testing.T) {
 	tests := []struct {
-		name  string
-		a, b  Amount
-		want  Amount
+		name string
+		a, b Amount
+		want Amount
 	}{
 		{"both zero", 0, 0, 0},
 		{"positive result", 1500, 500, 1000},

@@ -17,17 +17,17 @@ type InvoiceEmailItem struct {
 
 // InvoiceEmailData holds all data needed to render an invoice email.
 type InvoiceEmailData struct {
-	InvoiceNumber   string
-	CustomerName    string
-	IssueDate       string
-	DueDate         string
-	TotalFormatted  string
-	CurrencyCode    string
-	PaymentMethod   string
-	BankAccount     string
-	VariableSymbol  string
-	SenderName      string
-	Items           []InvoiceEmailItem
+	InvoiceNumber  string
+	CustomerName   string
+	IssueDate      string
+	DueDate        string
+	TotalFormatted string
+	CurrencyCode   string
+	PaymentMethod  string
+	BankAccount    string
+	VariableSymbol string
+	SenderName     string
+	Items          []InvoiceEmailItem
 }
 
 // RenderInvoiceEmail renders the invoice email templates and returns the

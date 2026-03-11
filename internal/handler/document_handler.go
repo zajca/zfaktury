@@ -64,7 +64,7 @@ func (h *DocumentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "missing file field in form")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	contentType := header.Header.Get("Content-Type")
 	if contentType == "" {

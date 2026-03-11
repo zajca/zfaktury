@@ -10,21 +10,21 @@ import (
 // aresResponse represents the top-level response from the ARES API
 // endpoint /ekonomicke-subjekty/{ICO}.
 type aresResponse struct {
-	ICO            string       `json:"ico"`
-	ObchodniJmeno  string       `json:"obchodniJmeno"`
-	DIC            string       `json:"dic"`
-	Sidlo          aresSidlo    `json:"sidlo"`
+	ICO           string    `json:"ico"`
+	ObchodniJmeno string    `json:"obchodniJmeno"`
+	DIC           string    `json:"dic"`
+	Sidlo         aresSidlo `json:"sidlo"`
 }
 
 // aresSidlo represents the registered address in the ARES response.
 type aresSidlo struct {
-	TextovaAdresa  string `json:"textovaAdresa"`
-	NazevObce      string `json:"nazevObce"`
-	PSC            int    `json:"psc"`
-	NazevUlice     string `json:"nazevUlice"`
-	CisloDomovni   int    `json:"cisloDomovni"`
-	CisloOrientacni int   `json:"cisloOrientacni"`
-	NazevCastiObce string `json:"nazevCastiObce"`
+	TextovaAdresa   string `json:"textovaAdresa"`
+	NazevObce       string `json:"nazevObce"`
+	PSC             int    `json:"psc"`
+	NazevUlice      string `json:"nazevUlice"`
+	CisloDomovni    int    `json:"cisloDomovni"`
+	CisloOrientacni int    `json:"cisloOrientacni"`
+	NazevCastiObce  string `json:"nazevCastiObce"`
 }
 
 // toContact maps the ARES API response to a domain.Contact.

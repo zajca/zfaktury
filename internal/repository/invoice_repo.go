@@ -133,7 +133,7 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 	if err != nil {
 		return fmt.Errorf("beginning transaction for invoice create: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Use NULL for zero sequence_id to avoid FK constraint violation.
 	var seqID any
@@ -221,7 +221,7 @@ func (r *InvoiceRepository) Update(ctx context.Context, inv *domain.Invoice) err
 	if err != nil {
 		return fmt.Errorf("beginning transaction for invoice update: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var updateSeqID any
 	if inv.SequenceID > 0 {
@@ -387,7 +387,7 @@ func (r *InvoiceRepository) GetByID(ctx context.Context, id int64) (*domain.Invo
 	if err != nil {
 		return nil, fmt.Errorf("querying items for invoice %d: %w", id, err)
 	}
-	defer itemRows.Close()
+	defer func() { _ = itemRows.Close() }()
 
 	for itemRows.Next() {
 		item, err := scanInvoiceItem(itemRows)
@@ -461,7 +461,7 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing invoices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var invoices []domain.Invoice
 	for rows.Next() {
@@ -521,7 +521,7 @@ func (r *InvoiceRepository) GetRelatedInvoices(ctx context.Context, invoiceID in
 	if err != nil {
 		return nil, fmt.Errorf("querying related invoices for invoice %d: %w", invoiceID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var invoices []domain.Invoice
 	for rows.Next() {
@@ -543,7 +543,7 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 	if err != nil {
 		return "", fmt.Errorf("beginning transaction for next number: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var seq domain.InvoiceSequence
 	err = tx.QueryRowContext(ctx, `

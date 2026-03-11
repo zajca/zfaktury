@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, formatDateTime, formatMonthYear, toISODate, relativeDate, formatDateLong, addDays } from './date';
+import {
+	formatDate,
+	formatDateTime,
+	formatMonthYear,
+	toISODate,
+	relativeDate,
+	formatDateLong,
+	addDays
+} from './date';
 
 describe('formatDate', () => {
 	it('formats a Date object', () => {

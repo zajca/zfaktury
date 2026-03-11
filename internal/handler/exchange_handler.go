@@ -30,9 +30,9 @@ func (h *ExchangeHandler) Routes() chi.Router {
 
 // exchangeRateResponse is the JSON response for an exchange rate query.
 type exchangeRateResponse struct {
-	CurrencyCode string       `json:"currency_code"`
+	CurrencyCode string        `json:"currency_code"`
 	Rate         domain.Amount `json:"rate"`
-	Date         string       `json:"date"`
+	Date         string        `json:"date"`
 }
 
 var currencyCodeRegex = regexp.MustCompile(`^[A-Z]{3}$`)

@@ -126,7 +126,7 @@ func (s *EmailSender) sendTLS(addr, from string, recipients []string, raw []byte
 	if err != nil {
 		return fmt.Errorf("SMTP client over TLS: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return sendWithClient(client, from, recipients, raw, auth)
 }
 
@@ -136,7 +136,7 @@ func (s *EmailSender) sendSTARTTLS(addr, from string, recipients []string, raw [
 	if err != nil {
 		return fmt.Errorf("SMTP dial %s: %w", addr, err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	tlsCfg := &tls.Config{
 		ServerName: s.cfg.Host,
@@ -154,7 +154,7 @@ func (s *EmailSender) sendPlain(addr, from string, recipients []string, raw []by
 	if err != nil {
 		return fmt.Errorf("SMTP dial %s: %w", addr, err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	return sendWithClient(client, from, recipients, raw, auth)
 }
 

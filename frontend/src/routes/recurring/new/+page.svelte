@@ -91,23 +91,41 @@
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<a href="/recurring" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na opakujici se faktury</a>
+	<a href="/recurring" class="text-sm text-blue-600 hover:text-blue-800"
+		>&larr; Zpet na opakujici se faktury</a
+	>
 	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nova opakujici se faktura</h1>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-8">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="mt-6 space-y-8"
+	>
 		<!-- Basic info -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Zakladni udaje</h2>
 			<div class="mt-4 space-y-4">
 				<div>
 					<label for="name" class="block text-sm font-medium text-gray-700">Nazev sablony</label>
-					<input id="name" type="text" bind:value={form.name} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" placeholder="napr. Mesicni hosting" />
+					<input
+						id="name"
+						type="text"
+						bind:value={form.name}
+						required
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						placeholder="napr. Mesicni hosting"
+					/>
 				</div>
 				<div>
 					<label for="customer" class="block text-sm font-medium text-gray-700">Zakaznik</label>
@@ -118,7 +136,9 @@
 					>
 						<option value={0}>-- Vyberte --</option>
 						{#each contacts as contact}
-							<option value={contact.id}>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option>
+							<option value={contact.id}
+								>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
+							>
 						{/each}
 					</select>
 				</div>
@@ -131,7 +151,11 @@
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
 					<label for="frequency" class="block text-sm font-medium text-gray-700">Frekvence</label>
-					<select id="frequency" bind:value={form.frequency} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+					<select
+						id="frequency"
+						bind:value={form.frequency}
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					>
 						<option value="weekly">Tydenni</option>
 						<option value="monthly">Mesicni</option>
 						<option value="quarterly">Ctvrtletni</option>
@@ -139,18 +163,26 @@
 					</select>
 				</div>
 				<div>
-					<label for="next_issue_date" class="block text-sm font-medium text-gray-700">Dalsi vystaveni</label>
+					<label for="next_issue_date" class="block text-sm font-medium text-gray-700"
+						>Dalsi vystaveni</label
+					>
 					<DateInput id="next_issue_date" bind:value={form.next_issue_date} required />
 				</div>
 				<div>
-					<label for="end_date" class="block text-sm font-medium text-gray-700">Konec opakovani (volitelne)</label>
+					<label for="end_date" class="block text-sm font-medium text-gray-700"
+						>Konec opakovani (volitelne)</label
+					>
 					<DateInput id="end_date" bind:value={form.end_date} />
 				</div>
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
 					<label for="payment" class="block text-sm font-medium text-gray-700">Zpusob platby</label>
-					<select id="payment" bind:value={form.payment_method} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+					<select
+						id="payment"
+						bind:value={form.payment_method}
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					>
 						<option value="bank_transfer">Bankovni prevod</option>
 						<option value="cash">Hotovost</option>
 						<option value="card">Karta</option>
@@ -166,8 +198,15 @@
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
 			<div class="mt-4">
-				<label for="notes" class="block text-sm font-medium text-gray-700">Poznamka na fakture</label>
-				<textarea id="notes" bind:value={form.notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
+				<label for="notes" class="block text-sm font-medium text-gray-700"
+					>Poznamka na fakture</label
+				>
+				<textarea
+					id="notes"
+					bind:value={form.notes}
+					rows="2"
+					class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+				></textarea>
 			</div>
 		</div>
 

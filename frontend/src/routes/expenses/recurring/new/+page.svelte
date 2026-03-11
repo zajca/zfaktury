@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { recurringExpensesApi, contactsApi, type Contact, type RecurringExpense } from '$lib/api/client';
+	import {
+		recurringExpensesApi,
+		contactsApi,
+		type Contact,
+		type RecurringExpense
+	} from '$lib/api/client';
 	import { formatCZK, toHalere } from '$lib/utils/money';
 	import { toISODate } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
@@ -28,9 +33,7 @@
 		is_active: true
 	});
 
-	let vatAmount = $derived(
-		form.amount * form.vat_rate_percent / (100 + form.vat_rate_percent)
-	);
+	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
 	$effect(() => {
 		loadContacts();
@@ -96,16 +99,27 @@
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<a href="/expenses/recurring" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na opakované náklady</a>
+	<a href="/expenses/recurring" class="text-sm text-blue-600 hover:text-blue-800"
+		>&larr; Zpět na opakované náklady</a
+	>
 	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nový opakovaný náklad</h1>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-6">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="mt-6 space-y-6"
+	>
 		<!-- Name & Schedule -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Základní údaje</h2>
@@ -122,7 +136,9 @@
 					/>
 				</div>
 				<div>
-					<label for="description" class="block text-sm font-medium text-gray-700">Popis nákladu *</label>
+					<label for="description" class="block text-sm font-medium text-gray-700"
+						>Popis nákladu *</label
+					>
 					<input
 						id="description"
 						type="text"
@@ -137,7 +153,9 @@
 						<CategoryPicker
 							id="category"
 							value={form.category}
-							onchange={(v) => { form.category = v; }}
+							onchange={(v) => {
+								form.category = v;
+							}}
 						/>
 					</div>
 					<div>
@@ -149,7 +167,9 @@
 						>
 							<option value={null}>-- Bez dodavatele --</option>
 							{#each contacts as contact}
-								<option value={contact.id}>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option>
+								<option value={contact.id}
+									>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
+								>
 							{/each}
 						</select>
 					</div>
@@ -175,11 +195,15 @@
 					</select>
 				</div>
 				<div>
-					<label for="next_issue_date" class="block text-sm font-medium text-gray-700">Další datum *</label>
+					<label for="next_issue_date" class="block text-sm font-medium text-gray-700"
+						>Další datum *</label
+					>
 					<DateInput id="next_issue_date" bind:value={form.next_issue_date} required />
 				</div>
 				<div>
-					<label for="end_date" class="block text-sm font-medium text-gray-700">Datum ukončení</label>
+					<label for="end_date" class="block text-sm font-medium text-gray-700"
+						>Datum ukončení</label
+					>
 					<DateInput id="end_date" bind:value={form.end_date} />
 				</div>
 			</div>
@@ -190,7 +214,9 @@
 			<h2 class="text-lg font-semibold text-gray-900">Částka a DPH</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="amount" class="block text-sm font-medium text-gray-700">Částka s DPH (CZK) *</label>
+					<label for="amount" class="block text-sm font-medium text-gray-700"
+						>Částka s DPH (CZK) *</label
+					>
 					<input
 						id="amount"
 						type="number"
@@ -215,7 +241,9 @@
 				</div>
 				<div>
 					<label class="block text-sm font-medium text-gray-700">DPH</label>
-					<div class="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+					<div
+						class="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+					>
 						{formatCZK(toHalere(vatAmount))}
 					</div>
 				</div>
@@ -233,10 +261,14 @@
 						bind:checked={form.is_tax_deductible}
 						class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 					/>
-					<label for="tax_deductible" class="text-sm font-medium text-gray-700">Daňově uznatelný náklad</label>
+					<label for="tax_deductible" class="text-sm font-medium text-gray-700"
+						>Daňově uznatelný náklad</label
+					>
 				</div>
 				<div>
-					<label for="business_percent" class="block text-sm font-medium text-gray-700">Podíl pro podnikání (%)</label>
+					<label for="business_percent" class="block text-sm font-medium text-gray-700"
+						>Podíl pro podnikání (%)</label
+					>
 					<input
 						id="business_percent"
 						type="number"
@@ -247,7 +279,9 @@
 					/>
 				</div>
 				<div>
-					<label for="payment_method" class="block text-sm font-medium text-gray-700">Způsob platby</label>
+					<label for="payment_method" class="block text-sm font-medium text-gray-700"
+						>Způsob platby</label
+					>
 					<select
 						id="payment_method"
 						bind:value={form.payment_method}

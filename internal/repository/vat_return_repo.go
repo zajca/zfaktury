@@ -183,7 +183,7 @@ func (r *VATReturnRepository) List(ctx context.Context, year int) ([]domain.VATR
 	if err != nil {
 		return nil, fmt.Errorf("listing vat_returns for year %d: %w", year, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.VATReturn
 	for rows.Next() {
@@ -221,7 +221,7 @@ func (r *VATReturnRepository) LinkInvoices(ctx context.Context, vatReturnID int6
 	if err != nil {
 		return fmt.Errorf("beginning transaction for linking invoices: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx, `DELETE FROM vat_return_invoices WHERE vat_return_id = ?`, vatReturnID)
 	if err != nil {
@@ -250,7 +250,7 @@ func (r *VATReturnRepository) LinkExpenses(ctx context.Context, vatReturnID int6
 	if err != nil {
 		return fmt.Errorf("beginning transaction for linking expenses: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx, `DELETE FROM vat_return_expenses WHERE vat_return_id = ?`, vatReturnID)
 	if err != nil {
@@ -282,7 +282,7 @@ func (r *VATReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, vatReturn
 	if err != nil {
 		return nil, fmt.Errorf("querying linked invoices for vat_return %d: %w", vatReturnID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var ids []int64
 	for rows.Next() {
@@ -307,7 +307,7 @@ func (r *VATReturnRepository) GetLinkedExpenseIDs(ctx context.Context, vatReturn
 	if err != nil {
 		return nil, fmt.Errorf("querying linked expenses for vat_return %d: %w", vatReturnID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var ids []int64
 	for rows.Next() {

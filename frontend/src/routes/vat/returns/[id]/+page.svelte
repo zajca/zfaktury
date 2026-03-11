@@ -119,7 +119,10 @@
 	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -127,7 +130,9 @@
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
 			<div role="status">
-				<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
 				<span class="sr-only">Načítání...</span>
 			</div>
 		</div>
@@ -137,7 +142,11 @@
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900">DPH přiznání - {formatPeriod(vatReturn)}</h1>
 				<div class="mt-2 flex items-center gap-3">
-					<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[vatReturn.status] ?? 'bg-gray-100 text-gray-700'}">
+					<span
+						class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[
+							vatReturn.status
+						] ?? 'bg-gray-100 text-gray-700'}"
+					>
 						{vatStatusLabels[vatReturn.status] ?? vatReturn.status}
 					</span>
 					<span class="text-sm text-gray-600">
@@ -204,17 +213,27 @@
 						<tbody class="divide-y divide-gray-100">
 							<tr>
 								<td class="py-2 text-gray-900">21 %</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.output_vat_base_21)}</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.output_vat_amount_21)}</td>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.output_vat_base_21)}</td
+								>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.output_vat_amount_21)}</td
+								>
 							</tr>
 							<tr>
 								<td class="py-2 text-gray-900">12 %</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.output_vat_base_12)}</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.output_vat_amount_12)}</td>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.output_vat_base_12)}</td
+								>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.output_vat_amount_12)}</td
+								>
 							</tr>
 							<tr>
 								<td class="py-2 text-gray-900">0 % (osvobozeno)</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.output_vat_base_0)}</td>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.output_vat_base_0)}</td
+								>
 								<td class="py-2 text-right text-gray-400">-</td>
 							</tr>
 						</tbody>
@@ -222,7 +241,9 @@
 							<tr>
 								<td class="py-2 font-semibold text-gray-900">Celkem výstupní DPH</td>
 								<td></td>
-								<td class="py-2 text-right font-semibold text-gray-900">{formatCZK(vatReturn.total_output_vat)}</td>
+								<td class="py-2 text-right font-semibold text-gray-900"
+									>{formatCZK(vatReturn.total_output_vat)}</td
+								>
 							</tr>
 						</tfoot>
 					</table>
@@ -245,13 +266,21 @@
 							<tbody class="divide-y divide-gray-100">
 								<tr>
 									<td class="py-2 text-gray-900">21 %</td>
-									<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.reverse_charge_base_21)}</td>
-									<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.reverse_charge_amount_21)}</td>
+									<td class="py-2 text-right text-gray-700"
+										>{formatCZK(vatReturn.reverse_charge_base_21)}</td
+									>
+									<td class="py-2 text-right text-gray-700"
+										>{formatCZK(vatReturn.reverse_charge_amount_21)}</td
+									>
 								</tr>
 								<tr>
 									<td class="py-2 text-gray-900">12 %</td>
-									<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.reverse_charge_base_12)}</td>
-									<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.reverse_charge_amount_12)}</td>
+									<td class="py-2 text-right text-gray-700"
+										>{formatCZK(vatReturn.reverse_charge_base_12)}</td
+									>
+									<td class="py-2 text-right text-gray-700"
+										>{formatCZK(vatReturn.reverse_charge_amount_12)}</td
+									>
 								</tr>
 							</tbody>
 						</table>
@@ -274,20 +303,30 @@
 						<tbody class="divide-y divide-gray-100">
 							<tr>
 								<td class="py-2 text-gray-900">21 %</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.input_vat_base_21)}</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.input_vat_amount_21)}</td>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.input_vat_base_21)}</td
+								>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.input_vat_amount_21)}</td
+								>
 							</tr>
 							<tr>
 								<td class="py-2 text-gray-900">12 %</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.input_vat_base_12)}</td>
-								<td class="py-2 text-right text-gray-700">{formatCZK(vatReturn.input_vat_amount_12)}</td>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.input_vat_base_12)}</td
+								>
+								<td class="py-2 text-right text-gray-700"
+									>{formatCZK(vatReturn.input_vat_amount_12)}</td
+								>
 							</tr>
 						</tbody>
 						<tfoot class="border-t border-gray-300">
 							<tr>
 								<td class="py-2 font-semibold text-gray-900">Celkem vstupní DPH</td>
 								<td></td>
-								<td class="py-2 text-right font-semibold text-gray-900">{formatCZK(vatReturn.total_input_vat)}</td>
+								<td class="py-2 text-right font-semibold text-gray-900"
+									>{formatCZK(vatReturn.total_input_vat)}</td
+								>
 							</tr>
 						</tfoot>
 					</table>
@@ -307,7 +346,9 @@
 						<span class="font-medium text-gray-900">{formatCZK(vatReturn.total_input_vat)}</span>
 					</div>
 					<div class="flex gap-8 border-t border-gray-200 pt-2 text-base">
-						<span class="font-semibold text-gray-900">{vatReturn.net_vat >= 0 ? 'Vlastní daňová povinnost:' : 'Nadměrný odpočet:'}</span>
+						<span class="font-semibold text-gray-900"
+							>{vatReturn.net_vat >= 0 ? 'Vlastní daňová povinnost:' : 'Nadměrný odpočet:'}</span
+						>
 						<span class="font-bold {vatReturn.net_vat >= 0 ? 'text-red-600' : 'text-green-600'}">
 							{formatCZK(Math.abs(vatReturn.net_vat))}
 						</span>
@@ -317,9 +358,11 @@
 
 			<!-- Timestamps -->
 			<div class="text-xs text-gray-400">
-				Vytvořeno: {new Date(vatReturn.created_at).toLocaleDateString('cs-CZ')} |
-				Upraveno: {new Date(vatReturn.updated_at).toLocaleDateString('cs-CZ')}
-				{#if vatReturn.filed_at} | Podáno: {new Date(vatReturn.filed_at).toLocaleDateString('cs-CZ')}{/if}
+				Vytvořeno: {new Date(vatReturn.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(
+					vatReturn.updated_at
+				).toLocaleDateString('cs-CZ')}
+				{#if vatReturn.filed_at}
+					| Podáno: {new Date(vatReturn.filed_at).toLocaleDateString('cs-CZ')}{/if}
 			</div>
 		</div>
 	{/if}

@@ -4,7 +4,10 @@ import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 vi.stubGlobal('alert', vi.fn());
 
 function jsonResponse(data: unknown, status = 200) {

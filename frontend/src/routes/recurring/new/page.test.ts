@@ -52,8 +52,8 @@ describe('New recurring invoice page', () => {
 			expect(mockFetch).toHaveBeenCalled();
 		});
 
-		const contactCall = mockFetch.mock.calls.find(
-			(call) => (call[0] as string).includes('/api/v1/contacts')
+		const contactCall = mockFetch.mock.calls.find((call) =>
+			(call[0] as string).includes('/api/v1/contacts')
 		);
 		expect(contactCall).toBeTruthy();
 	});
@@ -67,7 +67,7 @@ describe('New recurring invoice page', () => {
 			expect(screen.getByLabelText('Popis')).toBeInTheDocument();
 		});
 
-		expect(screen.getByLabelText('Mnozstvi')).toBeInTheDocument();
+		expect(screen.getByLabelText('Množství')).toBeInTheDocument();
 	});
 
 	it('adds a line item when Pridat polozku is clicked', async () => {
@@ -76,10 +76,10 @@ describe('New recurring invoice page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Pridat polozku')).toBeInTheDocument();
+			expect(screen.getByText('Přidat položku')).toBeInTheDocument();
 		});
 
-		await fireEvent.click(screen.getByText('Pridat polozku'));
+		await fireEvent.click(screen.getByText('Přidat položku'));
 
 		const descriptionInputs = screen.getAllByLabelText(/Popis/);
 		expect(descriptionInputs.length).toBe(2);
@@ -156,8 +156,7 @@ describe('New recurring invoice page', () => {
 		await waitFor(() => {
 			const postCall = mockFetch.mock.calls.find(
 				(call) =>
-					(call[0] as string).includes('/api/v1/recurring-invoices') &&
-					call[1]?.method === 'POST'
+					(call[0] as string).includes('/api/v1/recurring-invoices') && call[1]?.method === 'POST'
 			);
 			expect(postCall).toBeTruthy();
 		});

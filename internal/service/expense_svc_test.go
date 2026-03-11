@@ -19,12 +19,12 @@ func newExpenseTestStack(t *testing.T) *ExpenseService {
 
 func makeExpense() *domain.Expense {
 	return &domain.Expense{
-		Description:    "Test expense",
-		Amount:         domain.NewAmount(1000, 0),
-		IssueDate:      time.Now(),
-		CurrencyCode:   domain.CurrencyCZK,
+		Description:     "Test expense",
+		Amount:          domain.NewAmount(1000, 0),
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
 		BusinessPercent: 100,
-		PaymentMethod:  "bank_transfer",
+		PaymentMethod:   "bank_transfer",
 	}
 }
 

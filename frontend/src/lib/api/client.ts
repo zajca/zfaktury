@@ -260,7 +260,10 @@ export class ApiError extends Error {
 		public body?: unknown
 	) {
 		const detail =
-			body && typeof body === 'object' && 'error' in body && typeof (body as Record<string, unknown>).error === 'string'
+			body &&
+			typeof body === 'object' &&
+			'error' in body &&
+			typeof (body as Record<string, unknown>).error === 'string'
 				? (body as Record<string, string>).error
 				: null;
 		super(detail ?? `API Error ${status}: ${statusText}`);
@@ -306,7 +309,10 @@ export function get<T>(path: string): Promise<T> {
 }
 
 export function post<T>(path: string, body?: unknown): Promise<T> {
-	return request<T>(path, { method: 'POST', body: body != null ? JSON.stringify(body) : undefined });
+	return request<T>(path, {
+		method: 'POST',
+		body: body != null ? JSON.stringify(body) : undefined
+	});
 }
 
 export function put<T>(path: string, body: unknown): Promise<T> {
@@ -430,7 +436,14 @@ export const invoicesApi = {
 // --- Expenses API ---
 
 export const expensesApi = {
-	list(params?: { limit?: number; offset?: number; search?: string; date_from?: string; date_to?: string; tax_reviewed?: string }) {
+	list(params?: {
+		limit?: number;
+		offset?: number;
+		search?: string;
+		date_from?: string;
+		date_to?: string;
+		tax_reviewed?: string;
+	}) {
 		const query = new URLSearchParams();
 		if (params?.limit) query.set('limit', String(params.limit));
 		if (params?.offset) query.set('offset', String(params.offset));
@@ -529,7 +542,11 @@ export const documentsApi = {
 		const response = await fetch(url, { method: 'POST', body: formData });
 		if (!response.ok) {
 			let body: unknown;
-			try { body = await response.json(); } catch { /* ignore */ }
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
 			throw new ApiError(response.status, response.statusText, body);
 		}
 		return response.json();
@@ -624,7 +641,9 @@ export const recurringExpensesApi = {
 	},
 
 	generate(asOfDate?: string) {
-		return post<{ generated: number }>('/recurring-expenses/generate', { as_of_date: asOfDate || '' });
+		return post<{ generated: number }>('/recurring-expenses/generate', {
+			as_of_date: asOfDate || ''
+		});
 	}
 };
 

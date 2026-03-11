@@ -56,9 +56,7 @@ const sampleRecurringInvoice = {
 };
 
 const sampleContacts = {
-	data: [
-		{ id: 1, name: 'Test Corp', ico: '12345678' }
-	],
+	data: [{ id: 1, name: 'Test Corp', ico: '12345678' }],
 	total: 1,
 	limit: 1000,
 	offset: 0

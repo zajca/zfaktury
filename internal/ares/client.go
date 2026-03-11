@@ -81,7 +81,7 @@ func (c *Client) LookupByICO(ctx context.Context, ico string) (*domain.Contact, 
 		}
 		return nil, fmt.Errorf("ARES service error: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusOK:

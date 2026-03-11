@@ -124,7 +124,9 @@
 <div class="mx-auto max-w-3xl">
 	<div class="flex items-center justify-between">
 		<div>
-			<a href="/contacts" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na kontakty</a>
+			<a href="/contacts" class="text-sm text-blue-600 hover:text-blue-800"
+				>&larr; Zpet na kontakty</a
+			>
 			<h1 class="mt-2 text-2xl font-bold text-gray-900">
 				{isNew ? 'Novy kontakt' : 'Upravit kontakt'}
 			</h1>
@@ -140,17 +142,31 @@
 	</div>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Nacitani...</span>
+			</div>
 		</div>
 	{:else}
-		<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-6">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSubmit();
+			}}
+			class="mt-6 space-y-6"
+		>
 			<!-- Type -->
 			<div>
 				<label for="type" class="block text-sm font-medium text-gray-700">Typ</label>
@@ -212,16 +228,31 @@
 				<legend class="text-sm font-semibold text-gray-900">Adresa</legend>
 				<div>
 					<label for="street" class="block text-sm font-medium text-gray-700">Ulice</label>
-					<input id="street" type="text" bind:value={form.street} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+					<input
+						id="street"
+						type="text"
+						bind:value={form.street}
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					/>
 				</div>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="city" class="block text-sm font-medium text-gray-700">Mesto</label>
-						<input id="city" type="text" bind:value={form.city} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<input
+							id="city"
+							type="text"
+							bind:value={form.city}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 					<div>
 						<label for="zip" class="block text-sm font-medium text-gray-700">PSC</label>
-						<input id="zip" type="text" bind:value={form.zip} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<input
+							id="zip"
+							type="text"
+							bind:value={form.zip}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 				</div>
 			</fieldset>
@@ -232,11 +263,21 @@
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-						<input id="email" type="email" bind:value={form.email} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<input
+							id="email"
+							type="email"
+							bind:value={form.email}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 					<div>
 						<label for="phone" class="block text-sm font-medium text-gray-700">Telefon</label>
-						<input id="phone" type="text" bind:value={form.phone} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<input
+							id="phone"
+							type="text"
+							bind:value={form.phone}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 				</div>
 			</fieldset>
@@ -246,19 +287,33 @@
 				<legend class="text-sm font-semibold text-gray-900">Bankovni udaje</legend>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="bank_account" class="block text-sm font-medium text-gray-700">Cislo uctu</label>
-						<input id="bank_account" type="text" bind:value={form.bank_account} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<label for="bank_account" class="block text-sm font-medium text-gray-700"
+							>Cislo uctu</label
+						>
+						<input
+							id="bank_account"
+							type="text"
+							bind:value={form.bank_account}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 					<div>
 						<label for="bank_code" class="block text-sm font-medium text-gray-700">Kod banky</label>
-						<input id="bank_code" type="text" bind:value={form.bank_code} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<input
+							id="bank_code"
+							type="text"
+							bind:value={form.bank_code}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 				</div>
 			</fieldset>
 
 			<!-- Payment terms -->
 			<div>
-				<label for="payment_terms" class="block text-sm font-medium text-gray-700">Splatnost (dny)</label>
+				<label for="payment_terms" class="block text-sm font-medium text-gray-700"
+					>Splatnost (dny)</label
+				>
 				<input
 					id="payment_terms"
 					type="number"

@@ -211,9 +211,7 @@ describe('Invoice Create', () => {
 		await waitFor(() => {
 			const invoiceCall = mockFetch.mock.calls.find(
 				(call: any[]) =>
-					typeof call[0] === 'string' &&
-					call[0].includes('/invoices') &&
-					call[1]?.method === 'POST'
+					typeof call[0] === 'string' && call[0].includes('/invoices') && call[1]?.method === 'POST'
 			);
 			expect(invoiceCall).toBeDefined();
 			if (invoiceCall) {

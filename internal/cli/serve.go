@@ -24,8 +24,8 @@ import (
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
-	"github.com/zajca/zfaktury/internal/service/email"
 	"github.com/zajca/zfaktury/internal/service/cnb"
+	"github.com/zajca/zfaktury/internal/service/email"
 	"github.com/zajca/zfaktury/internal/service/ocr"
 	"github.com/zajca/zfaktury/web"
 )
@@ -58,7 +58,7 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("opening database: %w", err)
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		if err := database.Migrate(db); err != nil {
 			return fmt.Errorf("running migrations: %w", err)
@@ -209,7 +209,7 @@ func mountEmbeddedFrontend(r *chi.Mux) {
 			// Fall back to index.html for SPA routing
 			req.URL.Path = "/"
 		} else {
-			f.Close()
+			_ = f.Close()
 		}
 		fileServer.ServeHTTP(w, req)
 	})

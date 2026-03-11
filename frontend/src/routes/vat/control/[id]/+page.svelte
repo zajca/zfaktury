@@ -2,7 +2,11 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { controlStatementApi, type ControlStatement, type ControlStatementLine } from '$lib/api/vat-control';
+	import {
+		controlStatementApi,
+		type ControlStatement,
+		type ControlStatementLine
+	} from '$lib/api/vat-control';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, vatStatusColors, filingTypeLabels } from '$lib/utils/vat';
 
@@ -16,10 +20,10 @@
 
 	const tabs = ['A4', 'A5', 'B2', 'B3'];
 	const tabLabels: Record<string, string> = {
-		'A4': 'A4 - Výstup nad 10 000',
-		'A5': 'A5 - Výstup do 10 000',
-		'B2': 'B2 - Vstup nad 10 000',
-		'B3': 'B3 - Vstup do 10 000'
+		A4: 'A4 - Výstup nad 10 000',
+		A5: 'A5 - Výstup do 10 000',
+		B2: 'B2 - Vstup nad 10 000',
+		B3: 'B3 - Vstup do 10 000'
 	};
 
 	let filteredLines = $derived(
@@ -115,31 +119,50 @@
 </script>
 
 <svelte:head>
-	<title>{statement ? `Kontrolní hlášení ${statement.period.year}/${statement.period.month}` : 'Kontrolní hlášení'} - ZFaktury</title>
+	<title
+		>{statement
+			? `Kontrolní hlášení ${statement.period.year}/${statement.period.month}`
+			: 'Kontrolní hlášení'} - ZFaktury</title
+	>
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
 	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Načítání...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Načítání...</span>
+			</div>
 		</div>
 	{:else if statement}
 		<!-- Header -->
 		<div class="mt-4 flex items-start justify-between">
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900">
-					Kontrolní hlášení {statement.period.year}/{String(statement.period.month).padStart(2, '0')}
+					Kontrolní hlášení {statement.period.year}/{String(statement.period.month).padStart(
+						2,
+						'0'
+					)}
 				</h1>
 				<div class="mt-2 flex items-center gap-3">
-					<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[statement.status] || 'bg-gray-100 text-gray-700'}">
+					<span
+						class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[
+							statement.status
+						] || 'bg-gray-100 text-gray-700'}"
+					>
 						{vatStatusLabels[statement.status] || statement.status}
 					</span>
 					<span class="text-sm text-gray-500">
@@ -196,8 +219,13 @@
 			<nav class="-mb-px flex gap-4">
 				{#each tabs as tab}
 					<button
-						onclick={() => { activeTab = tab; }}
-						class="whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors {activeTab === tab ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+						onclick={() => {
+							activeTab = tab;
+						}}
+						class="whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors {activeTab ===
+						tab
+							? 'border-blue-500 text-blue-600'
+							: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
 					>
 						{tabLabels[tab]}
 					</button>
@@ -208,7 +236,9 @@
 		<!-- Lines table -->
 		<div class="mt-4">
 			{#if filteredLines.length === 0}
-				<div class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+				<div
+					class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500"
+				>
 					Žádné řádky v sekci {activeTab}
 				</div>
 			{:else if isDetailSection}
@@ -265,7 +295,9 @@
 		</div>
 
 		<div class="mt-4 text-xs text-gray-400">
-			Vytvořeno: {new Date(statement.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(statement.updated_at).toLocaleDateString('cs-CZ')}
+			Vytvořeno: {new Date(statement.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(
+				statement.updated_at
+			).toLocaleDateString('cs-CZ')}
 		</div>
 	{/if}
 </div>

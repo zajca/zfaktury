@@ -47,7 +47,12 @@ export const vatReturnApi = {
 		return get<VATReturn>(`/vat-returns/${id}`);
 	},
 
-	create(data: { year: number; month?: number; quarter?: number; filing_type?: string }): Promise<VATReturn> {
+	create(data: {
+		year: number;
+		month?: number;
+		quarter?: number;
+		filing_type?: string;
+	}): Promise<VATReturn> {
 		return post<VATReturn>('/vat-returns', data);
 	},
 
@@ -67,7 +72,11 @@ export const vatReturnApi = {
 		const res = await fetch(`${API_BASE}/vat-returns/${id}/xml`);
 		if (!res.ok) {
 			let body: unknown;
-			try { body = await res.json(); } catch { /* ignore */ }
+			try {
+				body = await res.json();
+			} catch {
+				/* ignore */
+			}
 			throw new ApiError(res.status, res.statusText, body);
 		}
 		return res.blob();

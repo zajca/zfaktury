@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -114,7 +114,7 @@ func (r *SequenceRepository) List(ctx context.Context) ([]domain.InvoiceSequence
 	if err != nil {
 		return nil, fmt.Errorf("listing invoice sequences: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sequences []domain.InvoiceSequence
 	for rows.Next() {

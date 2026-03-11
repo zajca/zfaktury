@@ -37,5 +37,9 @@ logs/
 # Temporary
 tmp/
 
+# Coverage
+coverage.html
+frontend/coverage/
+
 # Claude
 docs/AGENT-REPORTS

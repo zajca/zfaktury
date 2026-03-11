@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({

@@ -124,7 +124,7 @@ func TestDocumentRepository_ListByExpenseID_Empty(t *testing.T) {
 		t.Fatalf("ListByExpenseID() error: %v", err)
 	}
 
-	if docs != nil && len(docs) != 0 {
+	if len(docs) != 0 {
 		t.Errorf("expected empty list, got %d docs", len(docs))
 	}
 }

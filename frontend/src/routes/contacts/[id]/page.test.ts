@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -116,9 +119,7 @@ describe('Contact detail page - new mode', () => {
 		const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
 		await fireEvent.input(nameInput, { target: { value: 'New Company' } });
 
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ ...sampleContact, id: 2, name: 'New Company' })
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleContact, id: 2, name: 'New Company' }));
 
 		const submitBtn = screen.getByText('Ulozit');
 		await fireEvent.click(submitBtn);
@@ -243,9 +244,7 @@ describe('Contact detail page - edit mode', () => {
 	});
 
 	it('error on load failure', async () => {
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ error: 'Contact not found' }, 404)
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Contact not found' }, 404));
 
 		render(Page);
 

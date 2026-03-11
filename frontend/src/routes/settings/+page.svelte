@@ -30,7 +30,9 @@
 		try {
 			settings = await settingsApi.update(settings);
 			success = true;
-			setTimeout(() => { success = false; }, 3000);
+			setTimeout(() => {
+				success = false;
+			}, 3000);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení';
 		} finally {
@@ -56,7 +58,10 @@
 	<p class="mt-1 text-sm text-gray-500">Konfigurace aplikace a údaje OSVČ</p>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -79,7 +84,13 @@
 					<span class="text-gray-900">Číselné řady faktur</span>
 					<p class="mt-0.5 text-xs text-gray-500">Správa číselných řad pro faktury</p>
 				</div>
-				<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<svg
+					class="h-5 w-5 text-gray-400"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 				</svg>
 			</a>
@@ -91,7 +102,13 @@
 					<span class="text-gray-900">Kategorie nákladů</span>
 					<p class="mt-0.5 text-xs text-gray-500">Správa kategorií pro třídění nákladů</p>
 				</div>
-				<svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<svg
+					class="h-5 w-5 text-gray-400"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 				</svg>
 			</a>
@@ -100,17 +117,30 @@
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Nacitani...</span>
+			</div>
 		</div>
 	{:else}
-		<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 space-y-6">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSave();
+			}}
+			class="mt-6 space-y-6"
+		>
 			<!-- Identity -->
 			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 				<h2 class="text-lg font-semibold text-gray-900">Údaje podnikatele</h2>
 				<p class="mt-1 text-sm text-gray-500">Tyto údaje se budou zobrazovat na fakturách.</p>
 				<div class="mt-4 space-y-4">
 					<div>
-						<label for="company_name" class="block text-sm font-medium text-gray-700">Název / Jméno *</label>
+						<label for="company_name" class="block text-sm font-medium text-gray-700"
+							>Název / Jméno *</label
+						>
 						<input
 							id="company_name"
 							type="text"
@@ -146,7 +176,11 @@
 							id="vat_registered"
 							type="checkbox"
 							checked={field('vat_registered') === 'true'}
-							onchange={(e) => setField('vat_registered', (e.target as HTMLInputElement).checked ? 'true' : 'false')}
+							onchange={(e) =>
+								setField(
+									'vat_registered',
+									(e.target as HTMLInputElement).checked ? 'true' : 'false'
+								)}
 							class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 						/>
 						<label for="vat_registered" class="text-sm font-medium text-gray-700">Plátce DPH</label>
@@ -227,7 +261,9 @@
 				<div class="mt-4 space-y-4">
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="bank_account" class="block text-sm font-medium text-gray-700">Číslo účtu</label>
+							<label for="bank_account" class="block text-sm font-medium text-gray-700"
+								>Číslo účtu</label
+							>
 							<input
 								id="bank_account"
 								type="text"
@@ -237,7 +273,9 @@
 							/>
 						</div>
 						<div>
-							<label for="bank_code" class="block text-sm font-medium text-gray-700">Kód banky</label>
+							<label for="bank_code" class="block text-sm font-medium text-gray-700"
+								>Kód banky</label
+							>
 							<input
 								id="bank_code"
 								type="text"

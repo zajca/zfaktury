@@ -55,7 +55,7 @@ func (r *ReminderRepository) ListByInvoiceID(ctx context.Context, invoiceID int6
 	if err != nil {
 		return nil, fmt.Errorf("listing reminders for invoice %d: %w", invoiceID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var reminders []domain.PaymentReminder
 	for rows.Next() {

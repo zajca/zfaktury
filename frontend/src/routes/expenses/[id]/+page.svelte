@@ -31,9 +31,7 @@
 		notes: ''
 	});
 
-	let vatAmount = $derived(
-		form.amount * form.vat_rate_percent / (100 + form.vat_rate_percent)
-	);
+	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
 	$effect(() => {
 		loadExpense();
@@ -144,14 +142,22 @@
 	<a href="/expenses" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na náklady</a>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Nacitani...</span>
+			</div>
 		</div>
 	{:else if expense}
 		<!-- Header -->
@@ -164,10 +170,16 @@
 			</div>
 			<div class="flex gap-2">
 				{#if !editing}
-					<button onclick={startEditing} class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+					<button
+						onclick={startEditing}
+						class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+					>
 						Upravit
 					</button>
-					<button onclick={handleDelete} class="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+					<button
+						onclick={handleDelete}
+						class="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+					>
 						Smazat
 					</button>
 				{/if}
@@ -176,26 +188,49 @@
 
 		{#if editing}
 			<!-- Edit mode -->
-			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 space-y-6">
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleSave();
+				}}
+				class="mt-6 space-y-6"
+			>
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 					<h2 class="text-lg font-semibold text-gray-900">Základní údaje</h2>
 					<div class="mt-4 space-y-4">
 						<div>
 							<label for="edit-desc" class="block text-sm font-medium text-gray-700">Popis *</label>
-							<input id="edit-desc" type="text" bind:value={form.description} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<input
+								id="edit-desc"
+								type="text"
+								bind:value={form.description}
+								required
+								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							/>
 						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
-								<label for="edit-cat" class="block text-sm font-medium text-gray-700">Kategorie</label>
+								<label for="edit-cat" class="block text-sm font-medium text-gray-700"
+									>Kategorie</label
+								>
 								<CategoryPicker
 									id="edit-cat"
 									value={form.category}
-									onchange={(v) => { form.category = v; }}
+									onchange={(v) => {
+										form.category = v;
+									}}
 								/>
 							</div>
 							<div>
-								<label for="edit-num" class="block text-sm font-medium text-gray-700">Číslo dokladu</label>
-								<input id="edit-num" type="text" bind:value={form.expense_number} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+								<label for="edit-num" class="block text-sm font-medium text-gray-700"
+									>Číslo dokladu</label
+								>
+								<input
+									id="edit-num"
+									type="text"
+									bind:value={form.expense_number}
+									class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+								/>
 							</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -204,8 +239,14 @@
 								<DateInput id="edit-date" bind:value={form.issue_date} required />
 							</div>
 							<div>
-								<label for="edit-vendor" class="block text-sm font-medium text-gray-700">Dodavatel</label>
-								<select id="edit-vendor" bind:value={form.vendor_id} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+								<label for="edit-vendor" class="block text-sm font-medium text-gray-700"
+									>Dodavatel</label
+								>
+								<select
+									id="edit-vendor"
+									bind:value={form.vendor_id}
+									class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+								>
 									<option value={null}>-- Bez dodavatele --</option>
 									{#each contacts as contact}
 										<option value={contact.id}>{contact.name}</option>
@@ -220,12 +261,26 @@
 					<h2 class="text-lg font-semibold text-gray-900">Částka a DPH</h2>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<label for="edit-amount" class="block text-sm font-medium text-gray-700">Částka s DPH (CZK)</label>
-							<input id="edit-amount" type="number" step="0.01" min="0" bind:value={form.amount} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<label for="edit-amount" class="block text-sm font-medium text-gray-700"
+								>Částka s DPH (CZK)</label
+							>
+							<input
+								id="edit-amount"
+								type="number"
+								step="0.01"
+								min="0"
+								bind:value={form.amount}
+								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							/>
 						</div>
 						<div>
-							<label for="edit-vat" class="block text-sm font-medium text-gray-700">Sazba DPH</label>
-							<select id="edit-vat" bind:value={form.vat_rate_percent} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+							<label for="edit-vat" class="block text-sm font-medium text-gray-700">Sazba DPH</label
+							>
+							<select
+								id="edit-vat"
+								bind:value={form.vat_rate_percent}
+								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							>
 								<option value={21}>21%</option>
 								<option value={12}>12%</option>
 								<option value={0}>0%</option>
@@ -233,7 +288,9 @@
 						</div>
 						<div>
 							<label class="block text-sm font-medium text-gray-700">DPH</label>
-							<div class="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+							<div
+								class="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+							>
 								{formatCZK(toHalere(vatAmount))}
 							</div>
 						</div>
@@ -244,16 +301,38 @@
 					<h2 class="text-lg font-semibold text-gray-900">Daňové nastavení</h2>
 					<div class="mt-4 space-y-4">
 						<div class="flex items-center gap-3">
-							<input id="edit-deductible" type="checkbox" bind:checked={form.is_tax_deductible} class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-							<label for="edit-deductible" class="text-sm font-medium text-gray-700">Daňově uznatelný náklad</label>
+							<input
+								id="edit-deductible"
+								type="checkbox"
+								bind:checked={form.is_tax_deductible}
+								class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+							/>
+							<label for="edit-deductible" class="text-sm font-medium text-gray-700"
+								>Daňově uznatelný náklad</label
+							>
 						</div>
 						<div>
-							<label for="edit-biz" class="block text-sm font-medium text-gray-700">Podíl pro podnikání (%)</label>
-							<input id="edit-biz" type="number" min="0" max="100" bind:value={form.business_percent} class="mt-1 w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+							<label for="edit-biz" class="block text-sm font-medium text-gray-700"
+								>Podíl pro podnikání (%)</label
+							>
+							<input
+								id="edit-biz"
+								type="number"
+								min="0"
+								max="100"
+								bind:value={form.business_percent}
+								class="mt-1 w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							/>
 						</div>
 						<div>
-							<label for="edit-pm" class="block text-sm font-medium text-gray-700">Způsob platby</label>
-							<select id="edit-pm" bind:value={form.payment_method} class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+							<label for="edit-pm" class="block text-sm font-medium text-gray-700"
+								>Způsob platby</label
+							>
+							<select
+								id="edit-pm"
+								bind:value={form.payment_method}
+								class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							>
 								<option value="bank_transfer">Bankovní převod</option>
 								<option value="cash">Hotovost</option>
 								<option value="card">Karta</option>
@@ -265,15 +344,27 @@
 				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 					<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 					<div class="mt-4">
-						<textarea bind:value={form.notes} rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
+						<textarea
+							bind:value={form.notes}
+							rows="3"
+							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						></textarea>
 					</div>
 				</div>
 
 				<div class="flex gap-3">
-					<button type="submit" disabled={saving} class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors">
+					<button
+						type="submit"
+						disabled={saving}
+						class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+					>
 						{saving ? 'Ukládám...' : 'Uložit změny'}
 					</button>
-					<button type="button" onclick={cancelEditing} class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+					<button
+						type="button"
+						onclick={cancelEditing}
+						class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+					>
 						Zrušit
 					</button>
 				</div>
@@ -324,7 +415,9 @@
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-gray-500">Základ</dt>
-							<dd class="mt-1 text-sm text-gray-900">{formatCZK(expense.amount - expense.vat_amount)}</dd>
+							<dd class="mt-1 text-sm text-gray-900">
+								{formatCZK(expense.amount - expense.vat_amount)}
+							</dd>
 						</div>
 					</dl>
 				</div>

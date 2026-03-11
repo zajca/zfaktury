@@ -54,4 +54,3 @@ func TestInvoiceRepository_ListOverdueCandidateIDs(t *testing.T) {
 		t.Errorf("expected candidate ID %d, got %d", inv1.ID, ids[0])
 	}
 }
-

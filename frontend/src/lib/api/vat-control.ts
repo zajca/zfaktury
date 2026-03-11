@@ -66,7 +66,11 @@ export const controlStatementApi = {
 		const response = await fetch(url, { method: 'GET' });
 		if (!response.ok) {
 			let body: unknown;
-			try { body = await response.json(); } catch { /* ignore */ }
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
 			throw new ApiError(response.status, response.statusText, body);
 		}
 		return response.blob();

@@ -36,7 +36,9 @@
 	<!-- Recent activity placeholder -->
 	<div class="mt-8">
 		<h2 class="text-lg font-semibold text-gray-900">Posledni aktivita</h2>
-		<div class="mt-4 rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-400 shadow-sm">
+		<div
+			class="mt-4 rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-400 shadow-sm"
+		>
 			Zatim zadna aktivita. Zacnete vytvorenim prvni faktury.
 		</div>
 	</div>

@@ -365,7 +365,7 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
 	w.WriteHeader(http.StatusOK)
-	w.Write(pdfBytes)
+	_, _ = w.Write(pdfBytes)
 }
 
 // QRPayment handles GET /api/v1/invoices/{id}/qr.
@@ -412,7 +412,7 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(qrBytes)))
 	w.WriteHeader(http.StatusOK)
-	w.Write(qrBytes)
+	_, _ = w.Write(qrBytes)
 }
 
 // loadPDFSupplierInfo reads supplier information from application settings for PDF generation.
@@ -495,7 +495,7 @@ func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.WriteHeader(http.StatusOK)
-	w.Write(xmlData)
+	_, _ = w.Write(xmlData)
 }
 
 // isdocBatchRequest is the JSON request body for batch ISDOC export.
@@ -569,5 +569,5 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Disposition", `attachment; filename="isdoc-export.zip"`)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
 	w.WriteHeader(http.StatusOK)
-	w.Write(buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 }

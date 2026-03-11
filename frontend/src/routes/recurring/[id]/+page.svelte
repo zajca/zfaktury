@@ -91,9 +91,7 @@
 		yearly: 'Rocni'
 	};
 
-	let subtotal = $derived(
-		items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
-	);
+	let subtotal = $derived(items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0));
 
 	let vatTotal = $derived(
 		items.reduce((sum, item) => {
@@ -105,7 +103,10 @@
 	let grandTotal = $derived(subtotal + vatTotal);
 
 	function addItem() {
-		items = [...items, { description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }];
+		items = [
+			...items,
+			{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
+		];
 	}
 
 	function removeItem(index: number) {
@@ -131,7 +132,7 @@
 			notes: recurringInvoice.notes,
 			is_active: recurringInvoice.is_active
 		};
-		items = (recurringInvoice.items ?? []).map(item => ({
+		items = (recurringInvoice.items ?? []).map((item) => ({
 			description: item.description,
 			quantity: item.quantity / 100,
 			unit: item.unit,
@@ -246,14 +247,24 @@
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<a href="/recurring" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na opakujici se faktury</a>
+	<a href="/recurring" class="text-sm text-blue-600 hover:text-blue-800"
+		>&larr; Zpet na opakujici se faktury</a
+	>
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center p-12">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Nacitani...</span>
+			</div>
 		</div>
 	{:else if error && !recurringInvoice}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{:else if recurringInvoice && !editing}
@@ -278,7 +289,10 @@
 		</div>
 
 		{#if error}
-			<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+			<div
+				role="alert"
+				class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			>
 				{error}
 			</div>
 		{/if}
@@ -289,33 +303,51 @@
 				<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
 						<dt class="text-sm text-gray-500">Zakaznik</dt>
-						<dd class="mt-1 text-sm font-medium text-gray-900">{recurringInvoice.customer?.name ?? '-'}</dd>
+						<dd class="mt-1 text-sm font-medium text-gray-900">
+							{recurringInvoice.customer?.name ?? '-'}
+						</dd>
 					</div>
 					<div>
 						<dt class="text-sm text-gray-500">Stav</dt>
 						<dd class="mt-1">
-							<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {recurringInvoice.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+							<span
+								class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {recurringInvoice.is_active
+									? 'bg-green-100 text-green-700'
+									: 'bg-gray-100 text-gray-500'}"
+							>
 								{recurringInvoice.is_active ? 'Aktivni' : 'Neaktivni'}
 							</span>
 						</dd>
 					</div>
 					<div>
 						<dt class="text-sm text-gray-500">Frekvence</dt>
-						<dd class="mt-1 text-sm font-medium text-gray-900">{frequencyLabels[recurringInvoice.frequency] ?? recurringInvoice.frequency}</dd>
+						<dd class="mt-1 text-sm font-medium text-gray-900">
+							{frequencyLabels[recurringInvoice.frequency] ?? recurringInvoice.frequency}
+						</dd>
 					</div>
 					<div>
 						<dt class="text-sm text-gray-500">Dalsi vystaveni</dt>
-						<dd class="mt-1 text-sm font-medium text-gray-900">{formatDate(recurringInvoice.next_issue_date)}</dd>
+						<dd class="mt-1 text-sm font-medium text-gray-900">
+							{formatDate(recurringInvoice.next_issue_date)}
+						</dd>
 					</div>
 					{#if recurringInvoice.end_date}
 						<div>
 							<dt class="text-sm text-gray-500">Konec opakovani</dt>
-							<dd class="mt-1 text-sm font-medium text-gray-900">{formatDate(recurringInvoice.end_date)}</dd>
+							<dd class="mt-1 text-sm font-medium text-gray-900">
+								{formatDate(recurringInvoice.end_date)}
+							</dd>
 						</div>
 					{/if}
 					<div>
 						<dt class="text-sm text-gray-500">Zpusob platby</dt>
-						<dd class="mt-1 text-sm font-medium text-gray-900">{recurringInvoice.payment_method === 'bank_transfer' ? 'Bankovni prevod' : recurringInvoice.payment_method === 'cash' ? 'Hotovost' : 'Karta'}</dd>
+						<dd class="mt-1 text-sm font-medium text-gray-900">
+							{recurringInvoice.payment_method === 'bank_transfer'
+								? 'Bankovni prevod'
+								: recurringInvoice.payment_method === 'cash'
+									? 'Hotovost'
+									: 'Karta'}
+						</dd>
 					</div>
 				</dl>
 				{#if recurringInvoice.notes}
@@ -344,7 +376,9 @@
 							{#each recurringInvoice.items as item}
 								<tr>
 									<td class="px-4 py-2 text-gray-900">{item.description}</td>
-									<td class="px-4 py-2 text-right text-gray-700">{(item.quantity / 100).toFixed(2)}</td>
+									<td class="px-4 py-2 text-right text-gray-700"
+										>{(item.quantity / 100).toFixed(2)}</td
+									>
 									<td class="px-4 py-2 text-gray-700">{item.unit}</td>
 									<td class="px-4 py-2 text-right text-gray-700">{formatCZK(item.unit_price)}</td>
 									<td class="px-4 py-2 text-right text-gray-700">{item.vat_rate_percent}%</td>
@@ -362,30 +396,60 @@
 		<h1 class="mt-2 text-2xl font-bold text-gray-900">Upravit: {recurringInvoice?.name}</h1>
 
 		{#if error}
-			<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+			<div
+				role="alert"
+				class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			>
 				{error}
 			</div>
 		{/if}
 
-		<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 space-y-8">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSave();
+			}}
+			class="mt-6 space-y-8"
+		>
 			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 				<h2 class="text-lg font-semibold text-gray-900">Zakladni udaje</h2>
 				<div class="mt-4 space-y-4">
 					<div>
-						<label for="edit-name" class="block text-sm font-medium text-gray-700">Nazev sablony</label>
-						<input id="edit-name" type="text" bind:value={form.name} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+						<label for="edit-name" class="block text-sm font-medium text-gray-700"
+							>Nazev sablony</label
+						>
+						<input
+							id="edit-name"
+							type="text"
+							bind:value={form.name}
+							required
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						/>
 					</div>
 					<div>
-						<label for="edit-customer" class="block text-sm font-medium text-gray-700">Zakaznik</label>
-						<select id="edit-customer" bind:value={form.customer_id} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+						<label for="edit-customer" class="block text-sm font-medium text-gray-700"
+							>Zakaznik</label
+						>
+						<select
+							id="edit-customer"
+							bind:value={form.customer_id}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						>
 							<option value={0}>-- Vyberte --</option>
 							{#each contacts as contact}
-								<option value={contact.id}>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option>
+								<option value={contact.id}
+									>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
+								>
 							{/each}
 						</select>
 					</div>
 					<div class="flex items-center gap-2">
-						<input id="edit-active" type="checkbox" bind:checked={form.is_active} class="rounded border-gray-300" />
+						<input
+							id="edit-active"
+							type="checkbox"
+							bind:checked={form.is_active}
+							class="rounded border-gray-300"
+						/>
 						<label for="edit-active" class="text-sm font-medium text-gray-700">Aktivni</label>
 					</div>
 				</div>
@@ -395,8 +459,14 @@
 				<h2 class="text-lg font-semibold text-gray-900">Opakovani</h2>
 				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 					<div>
-						<label for="edit-frequency" class="block text-sm font-medium text-gray-700">Frekvence</label>
-						<select id="edit-frequency" bind:value={form.frequency} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+						<label for="edit-frequency" class="block text-sm font-medium text-gray-700"
+							>Frekvence</label
+						>
+						<select
+							id="edit-frequency"
+							bind:value={form.frequency}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						>
 							<option value="weekly">Tydenni</option>
 							<option value="monthly">Mesicni</option>
 							<option value="quarterly">Ctvrtletni</option>
@@ -404,18 +474,28 @@
 						</select>
 					</div>
 					<div>
-						<label for="edit-next-date" class="block text-sm font-medium text-gray-700">Dalsi vystaveni</label>
+						<label for="edit-next-date" class="block text-sm font-medium text-gray-700"
+							>Dalsi vystaveni</label
+						>
 						<DateInput id="edit-next-date" bind:value={form.next_issue_date} required />
 					</div>
 					<div>
-						<label for="edit-end-date" class="block text-sm font-medium text-gray-700">Konec opakovani</label>
+						<label for="edit-end-date" class="block text-sm font-medium text-gray-700"
+							>Konec opakovani</label
+						>
 						<DateInput id="edit-end-date" bind:value={form.end_date} />
 					</div>
 				</div>
 				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="edit-payment" class="block text-sm font-medium text-gray-700">Zpusob platby</label>
-						<select id="edit-payment" bind:value={form.payment_method} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+						<label for="edit-payment" class="block text-sm font-medium text-gray-700"
+							>Zpusob platby</label
+						>
+						<select
+							id="edit-payment"
+							bind:value={form.payment_method}
+							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						>
 							<option value="bank_transfer">Bankovni prevod</option>
 							<option value="cash">Hotovost</option>
 							<option value="card">Karta</option>
@@ -443,17 +523,40 @@
 							<div class="flex items-start gap-4">
 								<div class="flex-1 space-y-3">
 									<div>
-										<label for="edit-desc-{index}" class="block text-sm font-medium text-gray-700">Popis</label>
-										<input id="edit-desc-{index}" type="text" bind:value={item.description} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+										<label for="edit-desc-{index}" class="block text-sm font-medium text-gray-700"
+											>Popis</label
+										>
+										<input
+											id="edit-desc-{index}"
+											type="text"
+											bind:value={item.description}
+											required
+											class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+										/>
 									</div>
 									<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 										<div>
-											<label for="edit-qty-{index}" class="block text-sm font-medium text-gray-700">Mnozstvi</label>
-											<input id="edit-qty-{index}" type="number" step="0.01" min="0" bind:value={item.quantity} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+											<label for="edit-qty-{index}" class="block text-sm font-medium text-gray-700"
+												>Mnozstvi</label
+											>
+											<input
+												id="edit-qty-{index}"
+												type="number"
+												step="0.01"
+												min="0"
+												bind:value={item.quantity}
+												class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+											/>
 										</div>
 										<div>
-											<label for="edit-unit-{index}" class="block text-sm font-medium text-gray-700">Jednotka</label>
-											<select id="edit-unit-{index}" bind:value={item.unit} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+											<label for="edit-unit-{index}" class="block text-sm font-medium text-gray-700"
+												>Jednotka</label
+											>
+											<select
+												id="edit-unit-{index}"
+												bind:value={item.unit}
+												class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+											>
 												<option value="ks">ks</option>
 												<option value="hod">hod</option>
 												<option value="m2">m2</option>
@@ -462,12 +565,28 @@
 											</select>
 										</div>
 										<div>
-											<label for="edit-price-{index}" class="block text-sm font-medium text-gray-700">Cena/ks (CZK)</label>
-											<input id="edit-price-{index}" type="number" step="0.01" min="0" bind:value={item.unit_price} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+											<label
+												for="edit-price-{index}"
+												class="block text-sm font-medium text-gray-700">Cena/ks (CZK)</label
+											>
+											<input
+												id="edit-price-{index}"
+												type="number"
+												step="0.01"
+												min="0"
+												bind:value={item.unit_price}
+												class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+											/>
 										</div>
 										<div>
-											<label for="edit-vat-{index}" class="block text-sm font-medium text-gray-700">DPH %</label>
-											<select id="edit-vat-{index}" bind:value={item.vat_rate_percent} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+											<label for="edit-vat-{index}" class="block text-sm font-medium text-gray-700"
+												>DPH %</label
+											>
+											<select
+												id="edit-vat-{index}"
+												bind:value={item.vat_rate_percent}
+												class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+											>
 												<option value={21}>21%</option>
 												<option value={12}>12%</option>
 												<option value={0}>0%</option>
@@ -482,14 +601,28 @@
 										class="mt-6 rounded p-1 text-gray-400 hover:text-red-500 transition-colors"
 										aria-label="Odebrat polozku"
 									>
-										<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-											<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+										<svg
+											class="h-5 w-5"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M6 18L18 6M6 6l12 12"
+											/>
 										</svg>
 									</button>
 								{/if}
 							</div>
 							<div class="mt-2 text-right text-sm text-gray-500">
-								Zaklad: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
+								Zaklad: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(
+									toHalere((item.quantity * item.unit_price * item.vat_rate_percent) / 100)
+								)} | Celkem: {formatCZK(
+									toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100))
+								)}
 							</div>
 						</div>
 					{/each}
@@ -517,8 +650,15 @@
 			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 				<h2 class="text-lg font-semibold text-gray-900">Poznamky</h2>
 				<div class="mt-4">
-					<label for="edit-notes" class="block text-sm font-medium text-gray-700">Poznamka na fakture</label>
-					<textarea id="edit-notes" bind:value={form.notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
+					<label for="edit-notes" class="block text-sm font-medium text-gray-700"
+						>Poznamka na fakture</label
+					>
+					<textarea
+						id="edit-notes"
+						bind:value={form.notes}
+						rows="2"
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					></textarea>
 				</div>
 			</div>
 
@@ -532,7 +672,10 @@
 				</button>
 				<button
 					type="button"
-					onclick={() => { editing = false; error = null; }}
+					onclick={() => {
+						editing = false;
+						error = null;
+					}}
 					class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 				>
 					Zrusit

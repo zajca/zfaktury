@@ -15,13 +15,13 @@ func TestExpenseRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	e := &domain.Expense{
-		Description:    "Office supplies",
-		Amount:         domain.NewAmount(500, 0),
-		IssueDate:      time.Now(),
-		CurrencyCode:   domain.CurrencyCZK,
-		Category:       "supplies",
+		Description:     "Office supplies",
+		Amount:          domain.NewAmount(500, 0),
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
+		Category:        "supplies",
 		BusinessPercent: 100,
-		PaymentMethod:  "bank_transfer",
+		PaymentMethod:   "bank_transfer",
 	}
 
 	if err := repo.Create(ctx, e); err != nil {

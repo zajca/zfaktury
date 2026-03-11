@@ -35,34 +35,6 @@ func setupDocumentRouter(t *testing.T) (*chi.Mux, int64) {
 	return r, expense.ID
 }
 
-// buildUploadRequest constructs a multipart/form-data request for file upload.
-func buildUploadRequest(t *testing.T, url string, filename string, contentType string, content []byte) *http.Request {
-	t.Helper()
-
-	var buf bytes.Buffer
-	mw := multipart.NewWriter(&buf)
-
-	part, err := mw.CreateFormFile("file", filename)
-	if err != nil {
-		t.Fatalf("creating form file: %v", err)
-	}
-	if _, err := io.Copy(part, bytes.NewReader(content)); err != nil {
-		t.Fatalf("copying file content: %v", err)
-	}
-	mw.Close()
-
-	req := httptest.NewRequest(http.MethodPost, url, &buf)
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-
-	// Patch the file's Content-Type in the multipart form (normally set by browser).
-	// In tests we rely on the service content-type validation path, so set it manually.
-	// The handler reads header.Header.Get("Content-Type"); multipart.CreateFormFile sets
-	// it to "application/octet-stream", so we rebuild the request using ReplaceAll trick
-	// for the content-type field of the part. Simpler approach: rebuild with correct part.
-	_ = contentType // The multipart library sets octet-stream; in handler tests we validate at service level.
-	return req
-}
-
 // buildUploadRequestWithContentType creates a multipart request with an explicit content-type header on the file part.
 func buildUploadRequestWithContentType(t *testing.T, url string, filename string, fileContentType string, content []byte) *http.Request {
 	t.Helper()

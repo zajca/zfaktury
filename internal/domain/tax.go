@@ -108,17 +108,17 @@ type VATControlStatement struct {
 
 // VATControlStatementLine represents a single line in a control statement.
 type VATControlStatementLine struct {
-	ID                    int64
-	ControlStatementID    int64
-	Section               string // A4, A5, B2, B3
-	PartnerDIC            string
-	DocumentNumber        string // evidence number (cislo dokladu)
-	DPPD                  string // datum povinnosti priznat dan (YYYY-MM-DD)
-	Base                  Amount
-	VAT                   Amount
-	VATRatePercent        int
-	InvoiceID             *int64  // source invoice (nullable for expenses)
-	ExpenseID             *int64  // source expense (nullable for invoices)
+	ID                 int64
+	ControlStatementID int64
+	Section            string // A4, A5, B2, B3
+	PartnerDIC         string
+	DocumentNumber     string // evidence number (cislo dokladu)
+	DPPD               string // datum povinnosti priznat dan (YYYY-MM-DD)
+	Base               Amount
+	VAT                Amount
+	VATRatePercent     int
+	InvoiceID          *int64 // source invoice (nullable for expenses)
+	ExpenseID          *int64 // source expense (nullable for invoices)
 }
 
 // VIESSummary represents a VIES recapitulative statement (Souhrnne hlaseni).

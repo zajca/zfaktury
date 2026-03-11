@@ -120,13 +120,22 @@
 	</div>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
 	{#if showForm}
-		<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSave();
+			}}
+			class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+		>
 			<h2 class="text-lg font-semibold text-gray-900">
 				{editingId ? 'Upravit kategorii' : 'Nová kategorie'}
 			</h2>
@@ -160,7 +169,9 @@
 				</div>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="cat-label-cs" class="block text-sm font-medium text-gray-700">Český název *</label>
+						<label for="cat-label-cs" class="block text-sm font-medium text-gray-700"
+							>Český název *</label
+						>
 						<input
 							id="cat-label-cs"
 							type="text"
@@ -170,7 +181,9 @@
 						/>
 					</div>
 					<div>
-						<label for="cat-label-en" class="block text-sm font-medium text-gray-700">Anglický název *</label>
+						<label for="cat-label-en" class="block text-sm font-medium text-gray-700"
+							>Anglický název *</label
+						>
 						<input
 							id="cat-label-en"
 							type="text"
@@ -181,7 +194,8 @@
 					</div>
 				</div>
 				<div>
-					<label for="cat-sort" class="block text-sm font-medium text-gray-700">Pořadí řazení</label>
+					<label for="cat-sort" class="block text-sm font-medium text-gray-700">Pořadí řazení</label
+					>
 					<input
 						id="cat-sort"
 						type="number"
@@ -197,7 +211,7 @@
 					disabled={saving}
 					class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 				>
-					{saving ? 'Ukládám...' : (editingId ? 'Uložit změny' : 'Vytvořit')}
+					{saving ? 'Ukládám...' : editingId ? 'Uložit změny' : 'Vytvořit'}
 				</button>
 				<button
 					type="button"
@@ -212,19 +226,42 @@
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Nacitani...</span>
+			</div>
 		</div>
 	{:else}
 		<div class="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 			<table class="min-w-full divide-y divide-gray-200">
 				<thead class="bg-gray-50">
 					<tr>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Barva</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Klíč</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Název (CZ)</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Název (EN)</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Pořadí</th>
-						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Akce</th>
+						<th
+							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Barva</th
+						>
+						<th
+							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Klíč</th
+						>
+						<th
+							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Název (CZ)</th
+						>
+						<th
+							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Název (EN)</th
+						>
+						<th
+							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Pořadí</th
+						>
+						<th
+							class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Akce</th
+						>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-200">
@@ -248,10 +285,7 @@
 									Upravit
 								</button>
 								{#if !cat.is_default}
-									<button
-										onclick={() => handleDelete(cat)}
-										class="text-red-600 hover:text-red-800"
-									>
+									<button onclick={() => handleDelete(cat)} class="text-red-600 hover:text-red-800">
 										Smazat
 									</button>
 								{:else}

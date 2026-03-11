@@ -9,9 +9,9 @@ func TestInvoice_CalculateTotals_NoVAT(t *testing.T) {
 	inv := &Invoice{
 		Items: []InvoiceItem{
 			{
-				Description: "Service",
-				Quantity:    100, // 1.00
-				UnitPrice:   50000, // 500.00 CZK
+				Description:    "Service",
+				Quantity:       100,   // 1.00
+				UnitPrice:      50000, // 500.00 CZK
 				VATRatePercent: 0,
 			},
 		},
@@ -36,7 +36,7 @@ func TestInvoice_CalculateTotals_WithVAT21(t *testing.T) {
 		Items: []InvoiceItem{
 			{
 				Description:    "Consulting",
-				Quantity:       200, // 2.00
+				Quantity:       200,    // 2.00
 				UnitPrice:      100000, // 1000.00 CZK
 				VATRatePercent: 21,
 			},
@@ -74,13 +74,13 @@ func TestInvoice_CalculateTotals_MultipleItems(t *testing.T) {
 		Items: []InvoiceItem{
 			{
 				Description:    "Item A",
-				Quantity:       100, // 1.00
+				Quantity:       100,   // 1.00
 				UnitPrice:      10000, // 100.00 CZK
 				VATRatePercent: 21,
 			},
 			{
 				Description:    "Item B",
-				Quantity:       300, // 3.00
+				Quantity:       300,  // 3.00
 				UnitPrice:      5000, // 50.00 CZK
 				VATRatePercent: 12,
 			},
@@ -123,9 +123,9 @@ func TestInvoice_CalculateTotals_NoItems(t *testing.T) {
 
 func TestInvoice_IsOverdue(t *testing.T) {
 	tests := []struct {
-		name   string
-		inv    Invoice
-		want   bool
+		name string
+		inv  Invoice
+		want bool
 	}{
 		{
 			name: "past due date, draft",

@@ -182,7 +182,9 @@
 	</div>
 
 	<!-- Filters -->
-	<div class="mt-6 flex flex-wrap items-end gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+	<div
+		class="mt-6 flex flex-wrap items-end gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+	>
 		<div class="flex flex-col gap-1">
 			<label for="date-from" class="text-xs font-medium text-gray-600">Datum od</label>
 			<DateInput id="date-from" bind:value={dateFrom} />
@@ -212,7 +214,10 @@
 	</div>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -225,7 +230,9 @@
 
 	<!-- Bulk actions -->
 	{#if someSelected}
-		<div class="mt-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+		<div
+			class="mt-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3"
+		>
 			<span class="text-sm font-medium text-blue-800">
 				Vybráno: {selectedIds.size} výdajů
 			</span>
@@ -250,12 +257,15 @@
 	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
-				<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+				<div role="status">
+					<div
+						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					></div>
+					<span class="sr-only">Nacitani...</span>
+				</div>
 			</div>
 		{:else if expenses.length === 0}
-			<div class="p-12 text-center text-gray-400">
-				Žádné výdaje neodpovídají filtrům.
-			</div>
+			<div class="p-12 text-center text-gray-400">Žádné výdaje neodpovídají filtrům.</div>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-gray-200 bg-gray-50">
@@ -325,13 +335,21 @@
 										class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
 										title={formatDate(expense.tax_reviewed_at)}
 									>
-										<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+										<svg
+											class="h-3 w-3"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											stroke-width="3"
+										>
 											<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 										</svg>
 										Zkontrolováno
 									</span>
 								{:else}
-									<span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+									<span
+										class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
+									>
 										Nekontrolováno
 									</span>
 								{/if}
@@ -373,7 +391,10 @@
 			<p class="text-sm text-gray-500">Celkem {total} výdajů</p>
 			<div class="flex gap-2">
 				<button
-					onclick={() => { page = Math.max(1, page - 1); loadExpenses(); }}
+					onclick={() => {
+						page = Math.max(1, page - 1);
+						loadExpenses();
+					}}
 					disabled={page <= 1}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
@@ -381,7 +402,10 @@
 				</button>
 				<span class="flex items-center px-3 text-sm text-gray-600">{page} / {totalPages}</span>
 				<button
-					onclick={() => { page = Math.min(totalPages, page + 1); loadExpenses(); }}
+					onclick={() => {
+						page = Math.min(totalPages, page + 1);
+						loadExpenses();
+					}}
 					disabled={page >= totalPages}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>

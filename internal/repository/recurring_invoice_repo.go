@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,7 +30,7 @@ func (r *RecurringInvoiceRepository) Create(ctx context.Context, ri *domain.Recu
 	if err != nil {
 		return fmt.Errorf("beginning transaction for recurring invoice create: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var endDate any
 	if ri.EndDate != nil {
@@ -97,7 +97,7 @@ func (r *RecurringInvoiceRepository) Update(ctx context.Context, ri *domain.Recu
 	if err != nil {
 		return fmt.Errorf("beginning transaction for recurring invoice update: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var endDate any
 	if ri.EndDate != nil {
@@ -270,7 +270,7 @@ func (r *RecurringInvoiceRepository) GetByID(ctx context.Context, id int64) (*do
 	if err != nil {
 		return nil, fmt.Errorf("querying items for recurring invoice %d: %w", id, err)
 	}
-	defer itemRows.Close()
+	defer func() { _ = itemRows.Close() }()
 
 	for itemRows.Next() {
 		var item domain.RecurringInvoiceItem
@@ -306,7 +306,7 @@ func (r *RecurringInvoiceRepository) List(ctx context.Context) ([]domain.Recurri
 	if err != nil {
 		return nil, fmt.Errorf("listing recurring invoices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.RecurringInvoice
 	for rows.Next() {
@@ -378,7 +378,7 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, date time.Time
 	if err != nil {
 		return nil, fmt.Errorf("listing due recurring invoices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.RecurringInvoice
 	for rows.Next() {
@@ -425,7 +425,7 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, date time.Time
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterating due recurring invoice rows: %w", err)
 	}
-	rows.Close()
+	_ = rows.Close()
 
 	// Load items for each due recurring invoice (after closing the outer cursor
 	// to avoid SQLite single-connection issues).
@@ -447,12 +447,12 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, date time.Time
 				&item.ID, &item.RecurringInvoiceID, &item.Description, &item.Quantity, &item.Unit, &item.UnitPrice,
 				&item.VATRatePercent, &item.SortOrder,
 			); err != nil {
-				itemRows.Close()
+				_ = itemRows.Close() //nolint:sqlclosecheck // closed explicitly below after loop
 				return nil, fmt.Errorf("scanning due recurring invoice item row: %w", err)
 			}
 			ri.Items = append(ri.Items, item)
 		}
-		itemRows.Close()
+		_ = itemRows.Close()
 		if err := itemRows.Err(); err != nil {
 			return nil, fmt.Errorf("iterating due recurring invoice item rows: %w", err)
 		}

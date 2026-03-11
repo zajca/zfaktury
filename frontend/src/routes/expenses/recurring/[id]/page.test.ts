@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -48,17 +51,13 @@ const sampleItem = {
 };
 
 const sampleContacts = {
-	data: [
-		{ id: 1, name: 'Provider', ico: '12345678' }
-	],
+	data: [{ id: 1, name: 'Provider', ico: '12345678' }],
 	total: 1,
 	limit: 1000,
 	offset: 0
 };
 
-const sampleCategories = [
-	{ key: 'services', label_cs: 'Sluzby' }
-];
+const sampleCategories = [{ key: 'services', label_cs: 'Sluzby' }];
 
 beforeEach(async () => {
 	mockFetch.mockReset();

@@ -206,9 +206,9 @@ func TestContactDateRoundtrip(t *testing.T) {
 
 	vatAt := time.Date(2026, 1, 15, 8, 0, 0, 0, time.UTC)
 	c := &domain.Contact{
-		Type:           domain.ContactTypeCompany,
-		Name:           "Date Test s.r.o.",
-		Country:        "CZ",
+		Type:            domain.ContactTypeCompany,
+		Name:            "Date Test s.r.o.",
+		Country:         "CZ",
 		VATUnreliableAt: &vatAt,
 	}
 

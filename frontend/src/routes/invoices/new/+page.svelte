@@ -50,9 +50,7 @@
 	]);
 
 	// Calculated totals derived from items
-	let subtotal = $derived(
-		items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
-	);
+	let subtotal = $derived(items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0));
 
 	let vatTotal = $derived(
 		items.reduce((sum, item) => {
@@ -64,7 +62,10 @@
 	let grandTotal = $derived(subtotal + vatTotal);
 
 	function addItem() {
-		items = [...items, { description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }];
+		items = [
+			...items,
+			{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
+		];
 	}
 
 	function removeItem(index: number) {
@@ -142,17 +143,28 @@
 	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nová faktura</h1>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-8">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="mt-6 space-y-8"
+	>
 		<!-- Customer -->
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Zákazník</h2>
 			<div class="mt-4">
-				<label for="customer" class="block text-sm font-medium text-gray-700">Vyberte zákazníka</label>
+				<label for="customer" class="block text-sm font-medium text-gray-700"
+					>Vyberte zákazníka</label
+				>
 				<select
 					id="customer"
 					bind:value={form.customer_id}
@@ -160,7 +172,9 @@
 				>
 					<option value={0}>-- Vyberte --</option>
 					{#each contacts as contact}
-						<option value={contact.id}>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option>
+						<option value={contact.id}
+							>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
+						>
 					{/each}
 				</select>
 			</div>
@@ -171,12 +185,33 @@
 			<h2 class="text-lg font-semibold text-gray-900">Údaje faktury</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="issue_date" class="block text-sm font-medium text-gray-700">Datum vystavení</label>
-					<DateInput id="issue_date" bind:value={form.issue_date} required onchange={handleIssueDateChange} />
+					<label for="issue_date" class="block text-sm font-medium text-gray-700"
+						>Datum vystavení</label
+					>
+					<DateInput
+						id="issue_date"
+						bind:value={form.issue_date}
+						required
+						onchange={handleIssueDateChange}
+					/>
 				</div>
 				<div>
-					<label for="due_date" class="block text-sm font-medium text-gray-700">Datum splatnosti</label>
-					<DateInput id="due_date" bind:value={form.due_date} required onchange={handleDueDateChange} presets={[{label: '+7 dni', days: 7}, {label: '+14 dni', days: 14}, {label: '+30 dni', days: 30}, {label: '+60 dni', days: 60}]} relativeToValue={form.issue_date} />
+					<label for="due_date" class="block text-sm font-medium text-gray-700"
+						>Datum splatnosti</label
+					>
+					<DateInput
+						id="due_date"
+						bind:value={form.due_date}
+						required
+						onchange={handleDueDateChange}
+						presets={[
+							{ label: '+7 dni', days: 7 },
+							{ label: '+14 dni', days: 14 },
+							{ label: '+30 dni', days: 30 },
+							{ label: '+60 dni', days: 60 }
+						]}
+						relativeToValue={form.issue_date}
+					/>
 				</div>
 				<div>
 					<label for="delivery_date" class="block text-sm font-medium text-gray-700">DUZP</label>
@@ -186,11 +221,20 @@
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
 					<label for="vs" class="block text-sm font-medium text-gray-700">Variabilní symbol</label>
-					<input id="vs" type="text" bind:value={form.variable_symbol} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+					<input
+						id="vs"
+						type="text"
+						bind:value={form.variable_symbol}
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					/>
 				</div>
 				<div>
 					<label for="payment" class="block text-sm font-medium text-gray-700">Způsob platby</label>
-					<select id="payment" bind:value={form.payment_method} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+					<select
+						id="payment"
+						bind:value={form.payment_method}
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					>
 						<option value="bank_transfer">Bankovní převod</option>
 						<option value="cash">Hotovost</option>
 						<option value="card">Karta</option>
@@ -208,7 +252,13 @@
 					onclick={addItem}
 					class="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
 					Přidat položku
@@ -221,17 +271,40 @@
 						<div class="flex items-start gap-4">
 							<div class="flex-1 space-y-3">
 								<div>
-									<label for="desc-{index}" class="block text-sm font-medium text-gray-700">Popis</label>
-									<input id="desc-{index}" type="text" bind:value={item.description} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+									<label for="desc-{index}" class="block text-sm font-medium text-gray-700"
+										>Popis</label
+									>
+									<input
+										id="desc-{index}"
+										type="text"
+										bind:value={item.description}
+										required
+										class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+									/>
 								</div>
 								<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 									<div>
-										<label for="qty-{index}" class="block text-sm font-medium text-gray-700">Množství</label>
-										<input id="qty-{index}" type="number" step="0.01" min="0" bind:value={item.quantity} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+										<label for="qty-{index}" class="block text-sm font-medium text-gray-700"
+											>Množství</label
+										>
+										<input
+											id="qty-{index}"
+											type="number"
+											step="0.01"
+											min="0"
+											bind:value={item.quantity}
+											class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+										/>
 									</div>
 									<div>
-										<label for="unit-{index}" class="block text-sm font-medium text-gray-700">Jednotka</label>
-										<select id="unit-{index}" bind:value={item.unit} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+										<label for="unit-{index}" class="block text-sm font-medium text-gray-700"
+											>Jednotka</label
+										>
+										<select
+											id="unit-{index}"
+											bind:value={item.unit}
+											class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+										>
 											<option value="ks">ks</option>
 											<option value="hod">hod</option>
 											<option value="m2">m2</option>
@@ -240,12 +313,27 @@
 										</select>
 									</div>
 									<div>
-										<label for="price-{index}" class="block text-sm font-medium text-gray-700">Cena/ks (CZK)</label>
-										<input id="price-{index}" type="number" step="0.01" min="0" bind:value={item.unit_price} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+										<label for="price-{index}" class="block text-sm font-medium text-gray-700"
+											>Cena/ks (CZK)</label
+										>
+										<input
+											id="price-{index}"
+											type="number"
+											step="0.01"
+											min="0"
+											bind:value={item.unit_price}
+											class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+										/>
 									</div>
 									<div>
-										<label for="vat-{index}" class="block text-sm font-medium text-gray-700">DPH %</label>
-										<select id="vat-{index}" bind:value={item.vat_rate_percent} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+										<label for="vat-{index}" class="block text-sm font-medium text-gray-700"
+											>DPH %</label
+										>
+										<select
+											id="vat-{index}"
+											bind:value={item.vat_rate_percent}
+											class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+										>
 											<option value={21}>21%</option>
 											<option value={12}>12%</option>
 											<option value={0}>0%</option>
@@ -260,7 +348,13 @@
 									class="mt-6 rounded p-1 text-gray-400 hover:text-red-500 transition-colors"
 									aria-label="Odebrat položku"
 								>
-									<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<svg
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
 										<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 									</svg>
 								</button>
@@ -268,7 +362,11 @@
 						</div>
 						<!-- Item subtotal -->
 						<div class="mt-2 text-right text-sm text-gray-500">
-							Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
+							Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(
+								toHalere((item.quantity * item.unit_price * item.vat_rate_percent) / 100)
+							)} | Celkem: {formatCZK(
+								toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100))
+							)}
 						</div>
 					</div>
 				{/each}
@@ -298,12 +396,26 @@
 			<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
 			<div class="mt-4 space-y-4">
 				<div>
-					<label for="notes" class="block text-sm font-medium text-gray-700">Poznámka na faktuře</label>
-					<textarea id="notes" bind:value={form.notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
+					<label for="notes" class="block text-sm font-medium text-gray-700"
+						>Poznámka na faktuře</label
+					>
+					<textarea
+						id="notes"
+						bind:value={form.notes}
+						rows="2"
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					></textarea>
 				</div>
 				<div>
-					<label for="internal_notes" class="block text-sm font-medium text-gray-700">Interní poznámka</label>
-					<textarea id="internal_notes" bind:value={form.internal_notes} rows="2" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
+					<label for="internal_notes" class="block text-sm font-medium text-gray-700"
+						>Interní poznámka</label
+					>
+					<textarea
+						id="internal_notes"
+						bind:value={form.internal_notes}
+						rows="2"
+						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					></textarea>
 				</div>
 			</div>
 		</div>

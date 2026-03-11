@@ -17,7 +17,10 @@
 	});
 
 	const filingTypes = Object.entries(filingTypeLabels).map(([value, label]) => ({ value, label }));
-	const months = Object.entries(monthLabels).map(([value, label]) => ({ value: Number(value), label }));
+	const months = Object.entries(monthLabels).map(([value, label]) => ({
+		value: Number(value),
+		label
+	}));
 
 	async function handleSubmit() {
 		if (!form.year || form.year < 2000) {
@@ -52,12 +55,21 @@
 	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nové kontrolní hlášení</h1>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-6">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="mt-6 space-y-6"
+	>
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Období</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

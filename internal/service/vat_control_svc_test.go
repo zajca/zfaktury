@@ -286,7 +286,7 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 				TotalAmount:   domain.NewAmount(15000, 0), // 15000 CZK > threshold
 				Items: []domain.InvoiceItem{
 					{
-						Quantity:       domain.NewAmount(1, 0), // 100 = 1.00
+						Quantity:       domain.NewAmount(1, 0),      // 100 = 1.00
 						UnitPrice:      domain.NewAmount(12396, 69), // 12396.69 CZK
 						VATRatePercent: 21,
 						VATAmount:      domain.NewAmount(2603, 31),

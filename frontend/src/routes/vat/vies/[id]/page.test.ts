@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -218,9 +221,7 @@ describe('VIES Summary Detail', () => {
 	});
 
 	it('shows error on load failure', async () => {
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ error: 'Not found' }, 404)
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Not found' }, 404));
 
 		render(Page);
 

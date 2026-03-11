@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	baseURL       = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.txt"
-	cacheTTL      = 1 * time.Hour
-	maxFallback   = 5 // max days to try backwards for weekends/holidays
+	baseURL     = "https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.txt"
+	cacheTTL    = 1 * time.Hour
+	maxFallback = 5 // max days to try backwards for weekends/holidays
 )
 
 // cacheEntry holds cached exchange rates for a specific date.
@@ -115,7 +115,7 @@ func (c *Client) fetchRates(ctx context.Context, dateKey string) (map[string]Exc
 	if err != nil {
 		return nil, fmt.Errorf("fetching CNB rates: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("CNB returned status %d", resp.StatusCode)

@@ -50,7 +50,7 @@ func (r *StatusHistoryRepository) ListByInvoiceID(ctx context.Context, invoiceID
 	if err != nil {
 		return nil, fmt.Errorf("listing status history for invoice %d: %w", invoiceID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var changes []domain.InvoiceStatusChange
 	for rows.Next() {

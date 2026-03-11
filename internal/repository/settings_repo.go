@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -24,7 +24,7 @@ func (r *SettingsRepository) GetAll(ctx context.Context) (map[string]string, err
 	if err != nil {
 		return nil, fmt.Errorf("querying all settings: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	settings := make(map[string]string)
 	for rows.Next() {
@@ -73,7 +73,7 @@ func (r *SettingsRepository) SetBulk(ctx context.Context, settings map[string]st
 	if err != nil {
 		return fmt.Errorf("beginning transaction for bulk settings: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	stmt, err := tx.PrepareContext(ctx, `
@@ -82,7 +82,7 @@ func (r *SettingsRepository) SetBulk(ctx context.Context, settings map[string]st
 	if err != nil {
 		return fmt.Errorf("preparing bulk settings statement: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for key, value := range settings {
 		if _, err := stmt.ExecContext(ctx, key, value, now); err != nil {

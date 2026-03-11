@@ -17,7 +17,7 @@ func (r *InvoiceRepository) ListOverdueCandidateIDs(ctx context.Context, beforeD
 	if err != nil {
 		return nil, fmt.Errorf("listing overdue candidate invoices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var ids []int64
 	for rows.Next() {
@@ -32,4 +32,3 @@ func (r *InvoiceRepository) ListOverdueCandidateIDs(ctx context.Context, beforeD
 	}
 	return ids, nil
 }
-

@@ -193,12 +193,12 @@ func TestVIESAmountToWholeCZK(t *testing.T) {
 		input    domain.Amount
 		expected int64
 	}{
-		{domain.NewAmount(100, 0), 100},    // 100.00 -> 100
-		{domain.NewAmount(100, 49), 100},   // 100.49 -> 100
-		{domain.NewAmount(100, 50), 100},   // 100.50 -> 100 (truncated)
-		{domain.NewAmount(100, 99), 100},   // 100.99 -> 100 (truncated)
-		{domain.NewAmount(0, 0), 0},        // 0.00 -> 0
-		{domain.Amount(-10050), -100},       // -100.50 -> -100 (truncated toward zero)
+		{domain.NewAmount(100, 0), 100},  // 100.00 -> 100
+		{domain.NewAmount(100, 49), 100}, // 100.49 -> 100
+		{domain.NewAmount(100, 50), 100}, // 100.50 -> 100 (truncated)
+		{domain.NewAmount(100, 99), 100}, // 100.99 -> 100 (truncated)
+		{domain.NewAmount(0, 0), 0},      // 0.00 -> 0
+		{domain.Amount(-10050), -100},    // -100.50 -> -100 (truncated toward zero)
 	}
 
 	for _, tt := range tests {

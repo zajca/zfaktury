@@ -2,6 +2,7 @@ package email
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -50,7 +51,7 @@ func TestSend_ContextCancelled(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for cancelled context")
 	}
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected context.Canceled, got: %v", err)
 	}
 }
@@ -194,8 +195,8 @@ func TestBuildRawMessage_NoCcWhenEmpty(t *testing.T) {
 
 func TestEncodeHeader(t *testing.T) {
 	cases := []struct {
-		input     string
-		wantEnc   bool // whether RFC 2047 encoding is expected
+		input   string
+		wantEnc bool // whether RFC 2047 encoding is expected
 	}{
 		{"Hello World", false},
 		{"Faktura Novák", true},

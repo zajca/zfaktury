@@ -28,7 +28,7 @@ func NewTestDB(t *testing.T) *sql.DB {
 	}
 
 	if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
-		db.Close()
+		_ = db.Close()
 		t.Fatalf("setting foreign_keys pragma: %v", err)
 	}
 
@@ -36,16 +36,16 @@ func NewTestDB(t *testing.T) *sql.DB {
 	goose.SetBaseFS(database.MigrationsFS())
 
 	if err := goose.SetDialect("sqlite3"); err != nil {
-		db.Close()
+		_ = db.Close()
 		t.Fatalf("setting goose dialect: %v", err)
 	}
 
 	if err := goose.Up(db, "migrations"); err != nil {
-		db.Close()
+		_ = db.Close()
 		t.Fatalf("running migrations: %v", err)
 	}
 
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
 

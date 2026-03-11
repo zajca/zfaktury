@@ -32,14 +32,14 @@ func New(cfg *config.Config) (*sql.DB, error) {
 
 	for _, p := range pragmas {
 		if _, err := db.Exec(p.query); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("setting pragma %s: %w", p.name, err)
 		}
 	}
 
 	// Verify the connection is working
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("pinging database: %w", err)
 	}
 

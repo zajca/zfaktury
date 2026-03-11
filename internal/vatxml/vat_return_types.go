@@ -7,21 +7,21 @@ import "encoding/xml"
 
 // DPHPisemnost is the root element of the EPO VAT return XML document.
 type DPHPisemnost struct {
-	XMLName xml.Name  `xml:"Pisemnost"`
-	Xmlns   string    `xml:"xmlns,attr,omitempty"`
-	DPHDAP3 *DPHDAP3  `xml:"DPHDAP3,omitempty"`
+	XMLName xml.Name `xml:"Pisemnost"`
+	Xmlns   string   `xml:"xmlns,attr,omitempty"`
+	DPHDAP3 *DPHDAP3 `xml:"DPHDAP3,omitempty"`
 }
 
 // DPHDAP3 represents the VAT return form (Priznani k DPH).
 type DPHDAP3 struct {
-	VetaD DPHVetaD  `xml:"VetaD"`
-	VetaP DPHVetaP  `xml:"VetaP"`
-	Veta1 *Veta1    `xml:"Veta1,omitempty"`
-	Veta2 *Veta2    `xml:"Veta2,omitempty"`
-	Veta3 *Veta3    `xml:"Veta3,omitempty"`
-	Veta4 *Veta4    `xml:"Veta4,omitempty"`
-	Veta5 *Veta5    `xml:"Veta5,omitempty"`
-	Veta6 *Veta6    `xml:"Veta6,omitempty"`
+	VetaD DPHVetaD `xml:"VetaD"`
+	VetaP DPHVetaP `xml:"VetaP"`
+	Veta1 *Veta1   `xml:"Veta1,omitempty"`
+	Veta2 *Veta2   `xml:"Veta2,omitempty"`
+	Veta3 *Veta3   `xml:"Veta3,omitempty"`
+	Veta4 *Veta4   `xml:"Veta4,omitempty"`
+	Veta5 *Veta5   `xml:"Veta5,omitempty"`
+	Veta6 *Veta6   `xml:"Veta6,omitempty"`
 }
 
 // DPHVetaD contains filing metadata for VAT return.

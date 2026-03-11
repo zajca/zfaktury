@@ -4,7 +4,10 @@ import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 function jsonResponse(data: unknown, status = 200) {
 	return new Response(JSON.stringify(data), {
@@ -15,8 +18,26 @@ function jsonResponse(data: unknown, status = 200) {
 }
 
 const sampleCategories = [
-	{ id: 1, key: 'office', label_cs: 'Kancelář', label_en: 'Office', color: '#3B82F6', sort_order: 0, is_default: true, created_at: '2026-01-01' },
-	{ id: 2, key: 'travel', label_cs: 'Cestovné', label_en: 'Travel', color: '#10B981', sort_order: 1, is_default: false, created_at: '2026-01-01' }
+	{
+		id: 1,
+		key: 'office',
+		label_cs: 'Kancelář',
+		label_en: 'Office',
+		color: '#3B82F6',
+		sort_order: 0,
+		is_default: true,
+		created_at: '2026-01-01'
+	},
+	{
+		id: 2,
+		key: 'travel',
+		label_cs: 'Cestovné',
+		label_en: 'Travel',
+		color: '#10B981',
+		sort_order: 1,
+		is_default: false,
+		created_at: '2026-01-01'
+	}
 ];
 
 beforeEach(() => {
@@ -111,7 +132,17 @@ describe('Categories Settings Page', () => {
 		await fireEvent.input(labelCsInput, { target: { value: 'Jídlo' } });
 		await fireEvent.input(labelEnInput, { target: { value: 'Food' } });
 
-		mockFetch.mockResolvedValue(jsonResponse({ id: 3, key: 'food', label_cs: 'Jídlo', label_en: 'Food', color: '#6B7280', sort_order: 0, is_default: false }));
+		mockFetch.mockResolvedValue(
+			jsonResponse({
+				id: 3,
+				key: 'food',
+				label_cs: 'Jídlo',
+				label_en: 'Food',
+				color: '#6B7280',
+				sort_order: 0,
+				is_default: false
+			})
+		);
 
 		const form = document.querySelector('form')!;
 		await fireEvent.submit(form);

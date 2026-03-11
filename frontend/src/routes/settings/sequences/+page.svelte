@@ -96,7 +96,9 @@
 		}
 	}
 
-	let createPreview = $derived(`${createPrefix}${createYear}${String(createNextNumber).padStart(4, '0')}`);
+	let createPreview = $derived(
+		`${createPrefix}${createYear}${String(createNextNumber).padStart(4, '0')}`
+	);
 </script>
 
 <svelte:head>
@@ -108,7 +110,13 @@
 		<div>
 			<div class="flex items-center gap-3">
 				<a href="/settings" class="text-gray-400 hover:text-gray-600 transition-colors">
-					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
 					</svg>
 				</a>
@@ -117,7 +125,9 @@
 			<p class="mt-1 text-sm text-gray-500">Správa číslování faktur podle roku a typu</p>
 		</div>
 		<button
-			onclick={() => { showCreateForm = !showCreateForm; }}
+			onclick={() => {
+				showCreateForm = !showCreateForm;
+			}}
 			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -128,7 +138,10 @@
 	</div>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -137,10 +150,17 @@
 	{#if showCreateForm}
 		<div class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Nová číselná řada</h2>
-			<form onsubmit={(e) => { e.preventDefault(); handleCreate(); }} class="mt-4 space-y-4">
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleCreate();
+				}}
+				class="mt-4 space-y-4"
+			>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					<div>
-						<label for="create-prefix" class="block text-sm font-medium text-gray-700">Prefix</label>
+						<label for="create-prefix" class="block text-sm font-medium text-gray-700">Prefix</label
+						>
 						<input
 							id="create-prefix"
 							type="text"
@@ -162,7 +182,9 @@
 						/>
 					</div>
 					<div>
-						<label for="create-next" class="block text-sm font-medium text-gray-700">Počáteční číslo</label>
+						<label for="create-next" class="block text-sm font-medium text-gray-700"
+							>Počáteční číslo</label
+						>
 						<input
 							id="create-next"
 							type="number"
@@ -172,7 +194,8 @@
 						/>
 					</div>
 					<div>
-						<label for="create-format" class="block text-sm font-medium text-gray-700">Formát</label>
+						<label for="create-format" class="block text-sm font-medium text-gray-700">Formát</label
+						>
 						<input
 							id="create-format"
 							type="text"
@@ -188,7 +211,9 @@
 					<div class="ml-auto flex gap-2">
 						<button
 							type="button"
-							onclick={() => { showCreateForm = false; }}
+							onclick={() => {
+								showCreateForm = false;
+							}}
 							class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 						>
 							Zrušit
@@ -210,7 +235,12 @@
 	<div class="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
-				<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+				<div role="status">
+					<div
+						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					></div>
+					<span class="sr-only">Nacitani...</span>
+				</div>
 			</div>
 		{:else if sequences.length === 0}
 			<div class="p-12 text-center text-gray-400">
@@ -241,7 +271,9 @@
 											min="1"
 											class="w-24 rounded-lg border border-gray-300 px-2 py-1 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 										/>
-										<span class="text-xs text-amber-600">Pozor: Změna čísla může způsobit duplicity!</span>
+										<span class="text-xs text-amber-600"
+											>Pozor: Změna čísla může způsobit duplicity!</span
+										>
 									</div>
 								{:else}
 									<span class="text-gray-600">{seq.next_number}</span>

@@ -15,7 +15,11 @@
 		loading = true;
 		error = null;
 		try {
-			const res = await contactsApi.list({ limit: perPage, offset: (page - 1) * perPage, search: search || undefined });
+			const res = await contactsApi.list({
+				limit: perPage,
+				offset: (page - 1) * perPage,
+				search: search || undefined
+			});
 			contacts = res.data;
 			total = res.total;
 		} catch (e) {
@@ -77,7 +81,10 @@
 
 	<!-- Error -->
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -86,7 +93,12 @@
 	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
-				<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+				<div role="status">
+					<div
+						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					></div>
+					<span class="sr-only">Nacitani...</span>
+				</div>
 			</div>
 		{:else if contacts.length === 0}
 			<div class="p-12 text-center text-gray-400">
@@ -108,7 +120,10 @@
 					{#each contacts as contact}
 						<tr class="hover:bg-gray-50 transition-colors">
 							<td class="px-4 py-3">
-								<a href="/contacts/{contact.id}" class="font-medium text-blue-600 hover:text-blue-800">
+								<a
+									href="/contacts/{contact.id}"
+									class="font-medium text-blue-600 hover:text-blue-800"
+								>
 									{contact.name}
 								</a>
 							</td>
@@ -132,7 +147,10 @@
 			</p>
 			<div class="flex gap-2">
 				<button
-					onclick={() => { page = Math.max(1, page - 1); loadContacts(); }}
+					onclick={() => {
+						page = Math.max(1, page - 1);
+						loadContacts();
+					}}
 					disabled={page <= 1}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
@@ -142,7 +160,10 @@
 					{page} / {totalPages}
 				</span>
 				<button
-					onclick={() => { page = Math.min(totalPages, page + 1); loadContacts(); }}
+					onclick={() => {
+						page = Math.min(totalPages, page + 1);
+						loadContacts();
+					}}
 					disabled={page >= totalPages}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>

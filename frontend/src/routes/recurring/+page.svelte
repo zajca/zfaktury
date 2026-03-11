@@ -128,7 +128,10 @@
 	</div>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -136,12 +139,15 @@
 	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
-				<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+				<div role="status">
+					<div
+						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					></div>
+					<span class="sr-only">Nacitani...</span>
+				</div>
 			</div>
 		{:else if recurringInvoices.length === 0}
-			<div class="p-12 text-center text-gray-400">
-				Zatim zadne opakujici se faktury.
-			</div>
+			<div class="p-12 text-center text-gray-400">Zatim zadne opakujici se faktury.</div>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-gray-200 bg-gray-50">
@@ -149,7 +155,8 @@
 						<th class="px-4 py-3 font-medium text-gray-600">Nazev</th>
 						<th class="px-4 py-3 font-medium text-gray-600">Zakaznik</th>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Frekvence</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Dalsi vystaveni</th>
+						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Dalsi vystaveni</th
+						>
 						<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
 						<th class="px-4 py-3 text-right font-medium text-gray-600">Akce</th>
 					</tr>
@@ -172,7 +179,11 @@
 								{formatDate(ri.next_issue_date)}
 							</td>
 							<td class="px-4 py-3">
-								<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {ri.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+								<span
+									class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {ri.is_active
+										? 'bg-green-100 text-green-700'
+										: 'bg-gray-100 text-gray-500'}"
+								>
 									{ri.is_active ? 'Aktivni' : 'Neaktivni'}
 								</span>
 							</td>

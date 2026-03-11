@@ -60,12 +60,21 @@
 	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nové DPH přiznání</h1>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-6">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="mt-6 space-y-6"
+	>
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 			<h2 class="text-lg font-semibold text-gray-900">Období</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -86,15 +95,25 @@
 					<div class="mt-1 flex rounded-lg border border-gray-300 overflow-hidden">
 						<button
 							type="button"
-							onclick={() => { periodType = 'monthly'; }}
-							class="flex-1 px-3 py-2 text-sm font-medium transition-colors {periodType === 'monthly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+							onclick={() => {
+								periodType = 'monthly';
+							}}
+							class="flex-1 px-3 py-2 text-sm font-medium transition-colors {periodType ===
+							'monthly'
+								? 'bg-blue-600 text-white'
+								: 'bg-white text-gray-700 hover:bg-gray-50'}"
 						>
 							Měsíční
 						</button>
 						<button
 							type="button"
-							onclick={() => { periodType = 'quarterly'; }}
-							class="flex-1 px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 {periodType === 'quarterly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"
+							onclick={() => {
+								periodType = 'quarterly';
+							}}
+							class="flex-1 px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 {periodType ===
+							'quarterly'
+								? 'bg-blue-600 text-white'
+								: 'bg-white text-gray-700 hover:bg-gray-50'}"
 						>
 							Čtvrtletní
 						</button>

@@ -47,7 +47,7 @@ func testInvoice() *domain.Invoice {
 				ID:             1,
 				InvoiceID:      1,
 				Description:    "Web development",
-				Quantity:       domain.NewAmount(10, 0),  // 10.00
+				Quantity:       domain.NewAmount(10, 0), // 10.00
 				Unit:           "hod",
 				UnitPrice:      domain.NewAmount(1500, 0), // 1500.00 CZK
 				VATRatePercent: 21,
@@ -57,9 +57,9 @@ func testInvoice() *domain.Invoice {
 				ID:             2,
 				InvoiceID:      1,
 				Description:    "Hosting",
-				Quantity:       domain.NewAmount(1, 0),    // 1.00
+				Quantity:       domain.NewAmount(1, 0), // 1.00
 				Unit:           "ks",
-				UnitPrice:      domain.NewAmount(500, 0),  // 500.00 CZK
+				UnitPrice:      domain.NewAmount(500, 0), // 500.00 CZK
 				VATRatePercent: 21,
 				SortOrder:      2,
 			},

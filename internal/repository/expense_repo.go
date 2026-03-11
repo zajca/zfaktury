@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -255,7 +255,7 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var expenses []domain.Expense
 	for rows.Next() {

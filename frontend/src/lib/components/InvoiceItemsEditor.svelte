@@ -38,7 +38,10 @@
 	let grandTotal = $derived(calcGrandTotal(items));
 
 	function addItem() {
-		items = [...items, { description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }];
+		items = [
+			...items,
+			{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
+		];
 	}
 
 	function removeItem(index: number) {
@@ -68,17 +71,40 @@
 				<div class="flex items-start gap-4">
 					<div class="flex-1 space-y-3">
 						<div>
-							<label for="{idPrefix}desc-{index}" class="block text-sm font-medium text-gray-700">Popis</label>
-							<input id="{idPrefix}desc-{index}" type="text" bind:value={item.description} required class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+							<label for="{idPrefix}desc-{index}" class="block text-sm font-medium text-gray-700"
+								>Popis</label
+							>
+							<input
+								id="{idPrefix}desc-{index}"
+								type="text"
+								bind:value={item.description}
+								required
+								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+							/>
 						</div>
 						<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 							<div>
-								<label for="{idPrefix}qty-{index}" class="block text-sm font-medium text-gray-700">Množství</label>
-								<input id="{idPrefix}qty-{index}" type="number" step="0.01" min="0" bind:value={item.quantity} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+								<label for="{idPrefix}qty-{index}" class="block text-sm font-medium text-gray-700"
+									>Množství</label
+								>
+								<input
+									id="{idPrefix}qty-{index}"
+									type="number"
+									step="0.01"
+									min="0"
+									bind:value={item.quantity}
+									class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+								/>
 							</div>
 							<div>
-								<label for="{idPrefix}unit-{index}" class="block text-sm font-medium text-gray-700">Jednotka</label>
-								<select id="{idPrefix}unit-{index}" bind:value={item.unit} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+								<label for="{idPrefix}unit-{index}" class="block text-sm font-medium text-gray-700"
+									>Jednotka</label
+								>
+								<select
+									id="{idPrefix}unit-{index}"
+									bind:value={item.unit}
+									class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+								>
 									<option value="ks">ks</option>
 									<option value="hod">hod</option>
 									<option value="m2">m2</option>
@@ -87,12 +113,27 @@
 								</select>
 							</div>
 							<div>
-								<label for="{idPrefix}price-{index}" class="block text-sm font-medium text-gray-700">Cena/ks (CZK)</label>
-								<input id="{idPrefix}price-{index}" type="number" step="0.01" min="0" bind:value={item.unit_price} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" />
+								<label for="{idPrefix}price-{index}" class="block text-sm font-medium text-gray-700"
+									>Cena/ks (CZK)</label
+								>
+								<input
+									id="{idPrefix}price-{index}"
+									type="number"
+									step="0.01"
+									min="0"
+									bind:value={item.unit_price}
+									class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+								/>
 							</div>
 							<div>
-								<label for="{idPrefix}vat-{index}" class="block text-sm font-medium text-gray-700">DPH %</label>
-								<select id="{idPrefix}vat-{index}" bind:value={item.vat_rate_percent} class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+								<label for="{idPrefix}vat-{index}" class="block text-sm font-medium text-gray-700"
+									>DPH %</label
+								>
+								<select
+									id="{idPrefix}vat-{index}"
+									bind:value={item.vat_rate_percent}
+									class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white"
+								>
 									<option value={21}>21%</option>
 									<option value={12}>12%</option>
 									<option value={0}>0%</option>
@@ -107,7 +148,13 @@
 							class="mt-6 rounded p-1 text-gray-400 hover:text-red-500 transition-colors"
 							aria-label="Odebrat položku"
 						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<svg
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
 								<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 							</svg>
 						</button>
@@ -115,7 +162,11 @@
 				</div>
 				<!-- Item subtotal -->
 				<div class="mt-2 text-right text-sm text-gray-500">
-					Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(toHalere(item.quantity * item.unit_price * item.vat_rate_percent / 100))} | Celkem: {formatCZK(toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100)))}
+					Základ: {formatCZK(toHalere(item.quantity * item.unit_price))} | DPH: {formatCZK(
+						toHalere((item.quantity * item.unit_price * item.vat_rate_percent) / 100)
+					)} | Celkem: {formatCZK(
+						toHalere(item.quantity * item.unit_price * (1 + item.vat_rate_percent / 100))
+					)}
 				</div>
 			</div>
 		{/each}

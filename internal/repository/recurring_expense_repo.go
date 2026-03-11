@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -250,7 +250,7 @@ func (r *RecurringExpenseRepository) ListDue(ctx context.Context, asOfDate time.
 	if err != nil {
 		return nil, fmt.Errorf("listing due recurring expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	return r.scanRows(rows)
 }
@@ -294,7 +294,7 @@ func (r *RecurringExpenseRepository) scanList(ctx context.Context, query string,
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing recurring expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	items, err := r.scanRows(rows)
 	if err != nil {

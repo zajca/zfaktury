@@ -4,12 +4,12 @@ import "time"
 
 // Expense represents a business expense / received invoice.
 type Expense struct {
-	ID             int64
-	VendorID       *int64
-	Vendor         *Contact
-	ExpenseNumber  string
-	Category       string
-	Description    string
+	ID            int64
+	VendorID      *int64
+	Vendor        *Contact
+	ExpenseNumber string
+	Category      string
+	Description   string
 
 	IssueDate    time.Time
 	Amount       Amount
@@ -20,7 +20,7 @@ type Expense struct {
 	VATAmount      Amount
 
 	IsTaxDeductible bool
-	BusinessPercent int    // 0-100, percentage used for business
+	BusinessPercent int // 0-100, percentage used for business
 	PaymentMethod   string
 
 	DocumentPath string

@@ -79,6 +79,6 @@ func (g *VIESSummaryGenerator) Generate(
 	}
 
 	xmlDecl := []byte(xml.Header)
-	result := append(xmlDecl, output...)
-	return result, nil
+	xmlDecl = append(xmlDecl, output...)
+	return xmlDecl, nil
 }

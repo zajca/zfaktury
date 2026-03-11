@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -191,7 +191,7 @@ func (r *ContactRepository) List(ctx context.Context, filter domain.ContactFilte
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing contacts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var contacts []domain.Contact
 	for rows.Next() {

@@ -66,8 +66,8 @@ describe('New recurring expense page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			const contactCall = mockFetch.mock.calls.find(
-				(call) => (call[0] as string).includes('/api/v1/contacts')
+			const contactCall = mockFetch.mock.calls.find((call) =>
+				(call[0] as string).includes('/api/v1/contacts')
 			);
 			expect(contactCall).toBeTruthy();
 		});

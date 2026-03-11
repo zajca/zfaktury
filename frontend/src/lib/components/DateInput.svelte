@@ -69,7 +69,7 @@
 			bind:this={inputEl}
 			{id}
 			type="date"
-			value={value}
+			{value}
 			{required}
 			onclick={handleClick}
 			oninput={handleInput}

@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	openAIAPIURL       = "https://api.openai.com/v1/chat/completions"
-	openAIModel        = "gpt-4o"
-	openAITimeout      = 25 * time.Second
-	openAIMaxTokens    = 4096
+	openAIAPIURL    = "https://api.openai.com/v1/chat/completions"
+	openAIModel     = "gpt-4o"
+	openAITimeout   = 25 * time.Second
+	openAIMaxTokens = 4096
 )
 
 // OpenAIProvider implements the Provider interface using OpenAI's vision API.
@@ -68,7 +68,7 @@ func (p *OpenAIProvider) ProcessImage(ctx context.Context, imageData []byte, con
 	if err != nil {
 		return nil, fmt.Errorf("calling OpenAI API: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	const maxResponseBytes = 2 << 20 // 2 MB
 	limited := io.LimitReader(resp.Body, maxResponseBytes+1)

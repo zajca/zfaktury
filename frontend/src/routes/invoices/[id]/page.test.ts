@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -160,9 +163,7 @@ describe('Invoice detail page', () => {
 		});
 
 		// Mock contacts list for startEditing
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ data: [], total: 0, limit: 1000, offset: 0 })
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ data: [], total: 0, limit: 1000, offset: 0 }));
 
 		await fireEvent.click(screen.getByText('Upravit'));
 
@@ -226,9 +227,7 @@ describe('Invoice detail page', () => {
 	});
 
 	it('shows error on load failure', async () => {
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ error: 'Invoice not found' }, 404)
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Invoice not found' }, 404));
 
 		render(Page);
 

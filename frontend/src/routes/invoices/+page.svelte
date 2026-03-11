@@ -121,7 +121,10 @@
 
 	<!-- Error -->
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
@@ -130,7 +133,12 @@
 	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
-				<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+				<div role="status">
+					<div
+						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					></div>
+					<span class="sr-only">Nacitani...</span>
+				</div>
 			</div>
 		{:else if invoices.length === 0}
 			<div class="p-12 text-center text-gray-400">
@@ -142,7 +150,8 @@
 					<tr>
 						<th class="px-4 py-3 font-medium text-gray-600">Číslo</th>
 						<th class="px-4 py-3 font-medium text-gray-600">Zákazník</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum vystavení</th>
+						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum vystavení</th
+						>
 						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Splatnost</th>
 						<th class="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
 						<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
@@ -152,7 +161,10 @@
 					{#each invoices as invoice}
 						<tr class="hover:bg-gray-50 transition-colors">
 							<td class="px-4 py-3">
-								<a href="/invoices/{invoice.id}" class="font-medium text-blue-600 hover:text-blue-800">
+								<a
+									href="/invoices/{invoice.id}"
+									class="font-medium text-blue-600 hover:text-blue-800"
+								>
 									{invoice.invoice_number}
 								</a>
 							</td>
@@ -169,7 +181,11 @@
 								{formatCZK(invoice.total_amount)}
 							</td>
 							<td class="px-4 py-3">
-								<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[invoice.status] ?? 'bg-gray-100 text-gray-700'}">
+								<span
+									class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[
+										invoice.status
+									] ?? 'bg-gray-100 text-gray-700'}"
+								>
 									{statusLabels[invoice.status] ?? invoice.status}
 								</span>
 							</td>
@@ -188,7 +204,10 @@
 			</p>
 			<div class="flex gap-2">
 				<button
-					onclick={() => { page = Math.max(1, page - 1); loadInvoices(); }}
+					onclick={() => {
+						page = Math.max(1, page - 1);
+						loadInvoices();
+					}}
 					disabled={page <= 1}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
@@ -198,7 +217,10 @@
 					{page} / {totalPages}
 				</span>
 				<button
-					onclick={() => { page = Math.min(totalPages, page + 1); loadInvoices(); }}
+					onclick={() => {
+						page = Math.min(totalPages, page + 1);
+						loadInvoices();
+					}}
 					disabled={page >= totalPages}
 					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>

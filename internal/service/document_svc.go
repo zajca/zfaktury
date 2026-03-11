@@ -25,9 +25,9 @@ var allowedContentTypes = map[string]bool{
 }
 
 const (
-	maxDocumentSize  = 20 << 20 // 20 MB
+	maxDocumentSize   = 20 << 20 // 20 MB
 	maxDocsPerExpense = 10
-	maxFilenameLen   = 255
+	maxFilenameLen    = 255
 )
 
 // DocumentService handles business logic for expense document management.

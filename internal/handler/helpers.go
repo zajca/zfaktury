@@ -169,29 +169,29 @@ func (r *contactRequest) toDomain() *domain.Contact {
 
 // contactResponse is the JSON response for a contact.
 type contactResponse struct {
-	ID               int64  `json:"id"`
-	Type             string `json:"type"`
-	Name             string `json:"name"`
-	ICO              string `json:"ico"`
-	DIC              string `json:"dic"`
-	Street           string `json:"street"`
-	City             string `json:"city"`
-	ZIP              string `json:"zip"`
-	Country          string `json:"country"`
-	Email            string `json:"email"`
-	Phone            string `json:"phone"`
-	Web              string `json:"web"`
-	BankAccount      string `json:"bank_account"`
-	BankCode         string `json:"bank_code"`
-	IBAN             string `json:"iban"`
-	SWIFT            string `json:"swift"`
-	PaymentTermsDays int    `json:"payment_terms_days"`
-	Tags             string `json:"tags"`
-	Notes            string `json:"notes"`
-	IsFavorite       bool   `json:"is_favorite"`
+	ID               int64   `json:"id"`
+	Type             string  `json:"type"`
+	Name             string  `json:"name"`
+	ICO              string  `json:"ico"`
+	DIC              string  `json:"dic"`
+	Street           string  `json:"street"`
+	City             string  `json:"city"`
+	ZIP              string  `json:"zip"`
+	Country          string  `json:"country"`
+	Email            string  `json:"email"`
+	Phone            string  `json:"phone"`
+	Web              string  `json:"web"`
+	BankAccount      string  `json:"bank_account"`
+	BankCode         string  `json:"bank_code"`
+	IBAN             string  `json:"iban"`
+	SWIFT            string  `json:"swift"`
+	PaymentTermsDays int     `json:"payment_terms_days"`
+	Tags             string  `json:"tags"`
+	Notes            string  `json:"notes"`
+	IsFavorite       bool    `json:"is_favorite"`
 	VATUnreliableAt  *string `json:"vat_unreliable_at,omitempty"`
-	CreatedAt        string `json:"created_at"`
-	UpdatedAt        string `json:"updated_at"`
+	CreatedAt        string  `json:"created_at"`
+	UpdatedAt        string  `json:"updated_at"`
 }
 
 // contactFromDomain converts a domain.Contact to a contactResponse.
@@ -228,9 +228,9 @@ func contactFromDomain(c *domain.Contact) contactResponse {
 // invoiceItemRequest is the JSON request body for an invoice line item.
 type invoiceItemRequest struct {
 	Description    string `json:"description"`
-	Quantity       int64  `json:"quantity"`       // in smallest unit (cents), e.g. 250 = 2.50
+	Quantity       int64  `json:"quantity"` // in smallest unit (cents), e.g. 250 = 2.50
 	Unit           string `json:"unit"`
-	UnitPrice      int64  `json:"unit_price"`     // in halere
+	UnitPrice      int64  `json:"unit_price"` // in halere
 	VATRatePercent int    `json:"vat_rate_percent"`
 	SortOrder      int    `json:"sort_order"`
 }
@@ -255,7 +255,7 @@ type invoiceRequest struct {
 	SWIFT          string               `json:"swift"`
 	Notes          string               `json:"notes"`
 	InternalNotes  string               `json:"internal_notes"`
-	Items          []invoiceItemRequest  `json:"items"`
+	Items          []invoiceItemRequest `json:"items"`
 }
 
 // toDomain converts an invoiceRequest to a domain.Invoice.
@@ -363,8 +363,8 @@ type invoiceResponse struct {
 	RelationType     string                `json:"relation_type,omitempty"`
 	SentAt           *string               `json:"sent_at,omitempty"`
 	PaidAt           *string               `json:"paid_at,omitempty"`
-	Items            []invoiceItemResponse  `json:"items"`
-	Customer         *contactResponse       `json:"customer,omitempty"`
+	Items            []invoiceItemResponse `json:"items"`
+	Customer         *contactResponse      `json:"customer,omitempty"`
 	CreatedAt        string                `json:"created_at"`
 	UpdatedAt        string                `json:"updated_at"`
 }
@@ -570,9 +570,9 @@ type vatReturnRequest struct {
 
 // vatReturnResponse is the JSON response for a VAT return.
 type vatReturnResponse struct {
-	ID     int64             `json:"id"`
-	Period taxPeriodResponse `json:"period"`
-	FilingType string        `json:"filing_type"`
+	ID         int64             `json:"id"`
+	Period     taxPeriodResponse `json:"period"`
+	FilingType string            `json:"filing_type"`
 
 	OutputVATBase21   int64 `json:"output_vat_base_21"`
 	OutputVATAmount21 int64 `json:"output_vat_amount_21"`

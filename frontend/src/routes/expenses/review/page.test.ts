@@ -84,9 +84,7 @@ describe('Expense Tax Review', () => {
 	it('renders page heading', async () => {
 		render(Page);
 		expect(screen.getByText('Daňová kontrola nákladů')).toBeInTheDocument();
-		expect(
-			screen.getByText('Označte výdaje jako daňově zkontrolované')
-		).toBeInTheDocument();
+		expect(screen.getByText('Označte výdaje jako daňově zkontrolované')).toBeInTheDocument();
 	});
 
 	it('renders back link to expenses', () => {
@@ -99,9 +97,7 @@ describe('Expense Tax Review', () => {
 	it('loads expenses on mount', async () => {
 		render(Page);
 		await waitFor(() => {
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/v1/expenses')
-			);
+			expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/expenses'));
 		});
 	});
 
@@ -150,9 +146,7 @@ describe('Expense Tax Review', () => {
 
 		render(Page);
 		await waitFor(() => {
-			expect(
-				screen.getByText('Žádné výdaje neodpovídají filtrům.')
-			).toBeInTheDocument();
+			expect(screen.getByText('Žádné výdaje neodpovídají filtrům.')).toBeInTheDocument();
 		});
 	});
 
@@ -188,9 +182,7 @@ describe('Expense Tax Review', () => {
 		await fireEvent.click(filterBtn);
 
 		await waitFor(() => {
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/v1/expenses')
-			);
+			expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/expenses'));
 		});
 	});
 
@@ -274,8 +266,7 @@ describe('Expense Tax Review', () => {
 
 		await waitFor(() => {
 			const reviewCall = mockFetch.mock.calls.find(
-				(call: any[]) =>
-					typeof call[0] === 'string' && call[0].includes('/api/v1/expenses/review')
+				(call: any[]) => typeof call[0] === 'string' && call[0].includes('/api/v1/expenses/review')
 			);
 			expect(reviewCall).toBeDefined();
 			if (reviewCall) {
@@ -310,8 +301,7 @@ describe('Expense Tax Review', () => {
 		await waitFor(() => {
 			const unreviewCall = mockFetch.mock.calls.find(
 				(call: any[]) =>
-					typeof call[0] === 'string' &&
-					call[0].includes('/api/v1/expenses/unreview')
+					typeof call[0] === 'string' && call[0].includes('/api/v1/expenses/unreview')
 			);
 			expect(unreviewCall).toBeDefined();
 			if (unreviewCall) {
@@ -340,9 +330,7 @@ describe('Expense Tax Review', () => {
 		await fireEvent.click(markBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText('1 výdajů označeno jako zkontrolováno')
-			).toBeInTheDocument();
+			expect(screen.getByText('1 výdajů označeno jako zkontrolováno')).toBeInTheDocument();
 		});
 	});
 

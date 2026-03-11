@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -119,9 +122,7 @@ describe('Expense detail page', () => {
 		});
 
 		// startEditing loads contacts and CategoryPicker loads categories
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ data: [], total: 0, limit: 1000, offset: 0 })
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ data: [], total: 0, limit: 1000, offset: 0 }));
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleCategories));
 
 		await fireEvent.click(screen.getByText('Upravit'));
@@ -160,9 +161,7 @@ describe('Expense detail page', () => {
 	});
 
 	it('error on load failure', async () => {
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ error: 'Expense not found' }, 404)
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Expense not found' }, 404));
 
 		render(Page);
 

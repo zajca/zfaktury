@@ -4,7 +4,10 @@ import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 function jsonResponse(data: unknown, status = 200) {
 	return new Response(JSON.stringify(data), {
@@ -15,8 +18,22 @@ function jsonResponse(data: unknown, status = 200) {
 }
 
 const sampleSequences = [
-	{ id: 1, prefix: 'FV', year: 2026, next_number: 5, format_pattern: '{prefix}{year}{number:04d}', preview: 'FV20260005' },
-	{ id: 2, prefix: 'ZF', year: 2026, next_number: 1, format_pattern: '{prefix}{year}{number:04d}', preview: 'ZF20260001' }
+	{
+		id: 1,
+		prefix: 'FV',
+		year: 2026,
+		next_number: 5,
+		format_pattern: '{prefix}{year}{number:04d}',
+		preview: 'FV20260005'
+	},
+	{
+		id: 2,
+		prefix: 'ZF',
+		year: 2026,
+		next_number: 1,
+		format_pattern: '{prefix}{year}{number:04d}',
+		preview: 'ZF20260001'
+	}
 ];
 
 beforeEach(() => {
@@ -107,7 +124,16 @@ describe('Sequences Settings Page', () => {
 
 		await fireEvent.click(screen.getByText('Nová řada'));
 
-		mockFetch.mockResolvedValue(jsonResponse({ id: 3, prefix: 'DN', year: 2026, next_number: 1, format_pattern: '{prefix}{year}{number:04d}', preview: 'DN20260001' }));
+		mockFetch.mockResolvedValue(
+			jsonResponse({
+				id: 3,
+				prefix: 'DN',
+				year: 2026,
+				next_number: 1,
+				format_pattern: '{prefix}{year}{number:04d}',
+				preview: 'DN20260001'
+			})
+		);
 
 		const form = document.querySelector('form')!;
 		await fireEvent.submit(form);

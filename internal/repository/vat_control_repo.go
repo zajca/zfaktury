@@ -142,7 +142,7 @@ func (r *VATControlStatementRepository) Delete(ctx context.Context, id int64) er
 	if err != nil {
 		return fmt.Errorf("beginning transaction for control statement delete: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx, `DELETE FROM vat_control_statement_lines WHERE control_statement_id = ?`, id)
 	if err != nil {
@@ -195,7 +195,7 @@ func (r *VATControlStatementRepository) List(ctx context.Context, year int) ([]d
 	if err != nil {
 		return nil, fmt.Errorf("listing control statements for year %d: %w", year, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.VATControlStatement
 	for rows.Next() {
@@ -239,7 +239,7 @@ func (r *VATControlStatementRepository) CreateLines(ctx context.Context, lines [
 	if err != nil {
 		return fmt.Errorf("beginning transaction for control statement lines: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO vat_control_statement_lines (
@@ -249,7 +249,7 @@ func (r *VATControlStatementRepository) CreateLines(ctx context.Context, lines [
 	if err != nil {
 		return fmt.Errorf("preparing control statement line insert: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for i, line := range lines {
 		result, err := stmt.ExecContext(ctx,
@@ -295,7 +295,7 @@ func (r *VATControlStatementRepository) GetLines(ctx context.Context, controlSta
 	if err != nil {
 		return nil, fmt.Errorf("querying control statement lines for %d: %w", controlStatementID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []domain.VATControlStatementLine
 	for rows.Next() {

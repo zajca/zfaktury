@@ -203,7 +203,7 @@ func (h *VATReturnHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(xmlData)))
 	w.WriteHeader(http.StatusOK)
-	w.Write(xmlData)
+	_, _ = w.Write(xmlData)
 }
 
 // MarkFiled handles POST /api/v1/vat-returns/{id}/mark-filed.

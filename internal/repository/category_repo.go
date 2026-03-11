@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -160,7 +160,7 @@ func (r *CategoryRepository) List(ctx context.Context) ([]domain.ExpenseCategory
 	if err != nil {
 		return nil, fmt.Errorf("listing expense categories: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var categories []domain.ExpenseCategory
 	for rows.Next() {

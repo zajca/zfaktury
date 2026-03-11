@@ -4,7 +4,12 @@
 	import { onMount } from 'svelte';
 	import { viesApi, type VIESSummary } from '$lib/api/vat-vies';
 	import { formatCZK } from '$lib/utils/money';
-	import { vatStatusLabels, vatStatusColors, filingTypeLabels, quarterLabels } from '$lib/utils/vat';
+	import {
+		vatStatusLabels,
+		vatStatusColors,
+		filingTypeLabels,
+		quarterLabels
+	} from '$lib/utils/vat';
 
 	let summary = $state<VIESSummary | null>(null);
 	let loading = $state(true);
@@ -96,21 +101,33 @@
 </script>
 
 <svelte:head>
-	<title>{summary ? `Souhrnné hlášení ${summary.period.year} Q${summary.period.quarter}` : 'Souhrnné hlášení'} - ZFaktury</title>
+	<title
+		>{summary
+			? `Souhrnné hlášení ${summary.period.year} Q${summary.period.quarter}`
+			: 'Souhrnné hlášení'} - ZFaktury</title
+	>
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
 	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
 
 	{#if error}
-		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+		>
 			{error}
 		</div>
 	{/if}
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Načítání...</span></div>
+			<div role="status">
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+				></div>
+				<span class="sr-only">Načítání...</span>
+			</div>
 		</div>
 	{:else if summary}
 		<!-- Header -->
@@ -120,7 +137,11 @@
 					Souhrnné hlášení {summary.period.year} Q{summary.period.quarter}
 				</h1>
 				<div class="mt-2 flex items-center gap-3">
-					<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[summary.status] || 'bg-gray-100 text-gray-700'}">
+					<span
+						class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[
+							summary.status
+						] || 'bg-gray-100 text-gray-700'}"
+					>
 						{vatStatusLabels[summary.status] || summary.status}
 					</span>
 					<span class="text-sm text-gray-500">
@@ -178,7 +199,9 @@
 		<!-- Lines table -->
 		<div class="mt-6">
 			{#if !summary.lines || summary.lines.length === 0}
-				<div class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+				<div
+					class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500"
+				>
 					Žádné řádky v souhrnném hlášení
 				</div>
 			{:else}
@@ -208,7 +231,9 @@
 		</div>
 
 		<div class="mt-4 text-xs text-gray-400">
-			Vytvořeno: {new Date(summary.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(summary.updated_at).toLocaleDateString('cs-CZ')}
+			Vytvořeno: {new Date(summary.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(
+				summary.updated_at
+			).toLocaleDateString('cs-CZ')}
 		</div>
 	{/if}
 </div>

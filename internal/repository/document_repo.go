@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"errors"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -86,7 +86,7 @@ func (r *DocumentRepository) ListByExpenseID(ctx context.Context, expenseID int6
 	if err != nil {
 		return nil, fmt.Errorf("listing expense documents for expense %d: %w", expenseID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var docs []domain.ExpenseDocument
 	for rows.Next() {

@@ -21,29 +21,53 @@ const sampleVatReturns = [
 		id: 1,
 		period: { year: 2026, month: 3, quarter: 1 },
 		filing_type: 'regular',
-		output_vat_base_21: 100000, output_vat_amount_21: 21000,
-		output_vat_base_12: 0, output_vat_amount_12: 0, output_vat_base_0: 0,
-		reverse_charge_base_21: 0, reverse_charge_amount_21: 0,
-		reverse_charge_base_12: 0, reverse_charge_amount_12: 0,
-		input_vat_base_21: 50000, input_vat_amount_21: 10500,
-		input_vat_base_12: 0, input_vat_amount_12: 0,
-		total_output_vat: 21000, total_input_vat: 10500, net_vat: 10500,
-		has_xml: false, status: 'draft', filed_at: null,
-		created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z'
+		output_vat_base_21: 100000,
+		output_vat_amount_21: 21000,
+		output_vat_base_12: 0,
+		output_vat_amount_12: 0,
+		output_vat_base_0: 0,
+		reverse_charge_base_21: 0,
+		reverse_charge_amount_21: 0,
+		reverse_charge_base_12: 0,
+		reverse_charge_amount_12: 0,
+		input_vat_base_21: 50000,
+		input_vat_amount_21: 10500,
+		input_vat_base_12: 0,
+		input_vat_amount_12: 0,
+		total_output_vat: 21000,
+		total_input_vat: 10500,
+		net_vat: 10500,
+		has_xml: false,
+		status: 'draft',
+		filed_at: null,
+		created_at: '2026-03-01T00:00:00Z',
+		updated_at: '2026-03-01T00:00:00Z'
 	},
 	{
 		id: 2,
 		period: { year: 2026, month: 0, quarter: 1 },
 		filing_type: 'regular',
-		output_vat_base_21: 200000, output_vat_amount_21: 42000,
-		output_vat_base_12: 0, output_vat_amount_12: 0, output_vat_base_0: 0,
-		reverse_charge_base_21: 0, reverse_charge_amount_21: 0,
-		reverse_charge_base_12: 0, reverse_charge_amount_12: 0,
-		input_vat_base_21: 100000, input_vat_amount_21: 21000,
-		input_vat_base_12: 0, input_vat_amount_12: 0,
-		total_output_vat: 42000, total_input_vat: 21000, net_vat: 21000,
-		has_xml: true, status: 'filed', filed_at: '2026-03-10T00:00:00Z',
-		created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-10T00:00:00Z'
+		output_vat_base_21: 200000,
+		output_vat_amount_21: 42000,
+		output_vat_base_12: 0,
+		output_vat_amount_12: 0,
+		output_vat_base_0: 0,
+		reverse_charge_base_21: 0,
+		reverse_charge_amount_21: 0,
+		reverse_charge_base_12: 0,
+		reverse_charge_amount_12: 0,
+		input_vat_base_21: 100000,
+		input_vat_amount_21: 21000,
+		input_vat_base_12: 0,
+		input_vat_amount_12: 0,
+		total_output_vat: 42000,
+		total_input_vat: 21000,
+		net_vat: 21000,
+		has_xml: true,
+		status: 'filed',
+		filed_at: '2026-03-10T00:00:00Z',
+		created_at: '2026-03-01T00:00:00Z',
+		updated_at: '2026-03-10T00:00:00Z'
 	}
 ];
 
@@ -52,8 +76,12 @@ const sampleControlStatements = [
 		id: 10,
 		period: { year: 2026, month: 3, quarter: 0 },
 		filing_type: 'regular',
-		lines: null, has_xml: false, status: 'ready', filed_at: null,
-		created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-01T00:00:00Z'
+		lines: null,
+		has_xml: false,
+		status: 'ready',
+		filed_at: null,
+		created_at: '2026-03-01T00:00:00Z',
+		updated_at: '2026-03-01T00:00:00Z'
 	}
 ];
 
@@ -62,8 +90,12 @@ const sampleViesSummaries = [
 		id: 20,
 		period: { year: 2026, month: 0, quarter: 1 },
 		filing_type: 'regular',
-		lines: null, has_xml: false, status: 'filed', filed_at: '2026-03-15T00:00:00Z',
-		created_at: '2026-03-01T00:00:00Z', updated_at: '2026-03-15T00:00:00Z'
+		lines: null,
+		has_xml: false,
+		status: 'filed',
+		filed_at: '2026-03-15T00:00:00Z',
+		created_at: '2026-03-01T00:00:00Z',
+		updated_at: '2026-03-15T00:00:00Z'
 	}
 ];
 
@@ -73,9 +105,12 @@ function mockAllApis(
 	vies = sampleViesSummaries
 ) {
 	mockFetch.mockImplementation((url: string) => {
-		if (typeof url === 'string' && url.includes('/vat-returns')) return Promise.resolve(jsonResponse(vatReturns));
-		if (typeof url === 'string' && url.includes('/vat-control-statements')) return Promise.resolve(jsonResponse(controls));
-		if (typeof url === 'string' && url.includes('/vies-summaries')) return Promise.resolve(jsonResponse(vies));
+		if (typeof url === 'string' && url.includes('/vat-returns'))
+			return Promise.resolve(jsonResponse(vatReturns));
+		if (typeof url === 'string' && url.includes('/vat-control-statements'))
+			return Promise.resolve(jsonResponse(controls));
+		if (typeof url === 'string' && url.includes('/vies-summaries'))
+			return Promise.resolve(jsonResponse(vies));
 		return Promise.resolve(jsonResponse([]));
 	});
 }

@@ -26,11 +26,11 @@ const (
 
 // Invoice represents an issued invoice.
 type Invoice struct {
-	ID             int64
-	SequenceID     int64
-	InvoiceNumber  string
-	Type           string   // regular, proforma, credit_note
-	Status         string // draft, sent, paid, overdue, cancelled
+	ID            int64
+	SequenceID    int64
+	InvoiceNumber string
+	Type          string // regular, proforma, credit_note
+	Status        string // draft, sent, paid, overdue, cancelled
 
 	IssueDate      time.Time
 	DueDate        time.Time
@@ -85,9 +85,9 @@ type InvoiceItem struct {
 	ID             int64
 	InvoiceID      int64
 	Description    string
-	Quantity       Amount        // stored as cents for decimal precision (e.g. 250 = 2.50)
-	Unit           string            // ks, hod, m2, etc.
-	UnitPrice      Amount      // price per unit in halere
+	Quantity       Amount // stored as cents for decimal precision (e.g. 250 = 2.50)
+	Unit           string // ks, hod, m2, etc.
+	UnitPrice      Amount // price per unit in halere
 	VATRatePercent int    // 0, 12, 21
 	VATAmount      Amount
 	TotalAmount    Amount // including VAT
@@ -97,10 +97,10 @@ type InvoiceItem struct {
 // InvoiceSequence defines a numbering sequence for invoices.
 type InvoiceSequence struct {
 	ID            int64
-	Prefix        string         // e.g. "FV"
-	NextNumber    int        // next number to assign
-	Year          int               // sequence year
-	FormatPattern string  // e.g. "{prefix}{year}{number:04d}"
+	Prefix        string // e.g. "FV"
+	NextNumber    int    // next number to assign
+	Year          int    // sequence year
+	FormatPattern string // e.g. "{prefix}{year}{number:04d}"
 }
 
 // CalculateTotals recalculates subtotal, VAT, and total from invoice items.

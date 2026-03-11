@@ -7,27 +7,27 @@ const ISDOCNamespace = "urn:isdoc:invoice:6.0.2"
 
 // Invoice is the root element of an ISDOC 6.0.2 document.
 type Invoice struct {
-	XMLName            xml.Name            `xml:"Invoice"`
-	Xmlns              string              `xml:"xmlns,attr"`
-	Version            string              `xml:"version,attr"`
-	DocumentType       int                 `xml:"DocumentType"`
-	ID                 string              `xml:"ID"`
-	UUID               string              `xml:"UUID"`
-	IssuingSystem      string              `xml:"IssuingSystem"`
-	IssueDate          string              `xml:"IssueDate"`
-	TaxPointDate       string              `xml:"TaxPointDate"`
-	VATApplicable      bool                `xml:"VATApplicable"`
-	Note               string              `xml:"Note,omitempty"`
-	LocalCurrencyCode  string              `xml:"LocalCurrencyCode"`
-	ForeignCurrencyCode string             `xml:"ForeignCurrencyCode,omitempty"`
-	CurrRate           string              `xml:"CurrRate,omitempty"`
-	RefCurrRate        string              `xml:"RefCurrRate,omitempty"`
-	AccountingSupplierParty AccountingParty `xml:"AccountingSupplierParty"`
-	AccountingCustomerParty AccountingParty `xml:"AccountingCustomerParty"`
-	InvoiceLines       InvoiceLines        `xml:"InvoiceLines"`
-	TaxTotal           TaxTotal            `xml:"TaxTotal"`
-	LegalMonetaryTotal LegalMonetaryTotal  `xml:"LegalMonetaryTotal"`
-	PaymentMeans       *PaymentMeans       `xml:"PaymentMeans,omitempty"`
+	XMLName                 xml.Name           `xml:"Invoice"`
+	Xmlns                   string             `xml:"xmlns,attr"`
+	Version                 string             `xml:"version,attr"`
+	DocumentType            int                `xml:"DocumentType"`
+	ID                      string             `xml:"ID"`
+	UUID                    string             `xml:"UUID"`
+	IssuingSystem           string             `xml:"IssuingSystem"`
+	IssueDate               string             `xml:"IssueDate"`
+	TaxPointDate            string             `xml:"TaxPointDate"`
+	VATApplicable           bool               `xml:"VATApplicable"`
+	Note                    string             `xml:"Note,omitempty"`
+	LocalCurrencyCode       string             `xml:"LocalCurrencyCode"`
+	ForeignCurrencyCode     string             `xml:"ForeignCurrencyCode,omitempty"`
+	CurrRate                string             `xml:"CurrRate,omitempty"`
+	RefCurrRate             string             `xml:"RefCurrRate,omitempty"`
+	AccountingSupplierParty AccountingParty    `xml:"AccountingSupplierParty"`
+	AccountingCustomerParty AccountingParty    `xml:"AccountingCustomerParty"`
+	InvoiceLines            InvoiceLines       `xml:"InvoiceLines"`
+	TaxTotal                TaxTotal           `xml:"TaxTotal"`
+	LegalMonetaryTotal      LegalMonetaryTotal `xml:"LegalMonetaryTotal"`
+	PaymentMeans            *PaymentMeans      `xml:"PaymentMeans,omitempty"`
 }
 
 // AccountingParty represents either the supplier or customer party.
@@ -57,11 +57,11 @@ type PartyName struct {
 
 // PostalAddress represents a postal address.
 type PostalAddress struct {
-	StreetName   string `xml:"StreetName"`
-	BuildingNumber string `xml:"BuildingNumber,omitempty"`
-	CityName     string `xml:"CityName"`
-	PostalZone   string `xml:"PostalZone"`
-	Country      Country `xml:"Country"`
+	StreetName     string  `xml:"StreetName"`
+	BuildingNumber string  `xml:"BuildingNumber,omitempty"`
+	CityName       string  `xml:"CityName"`
+	PostalZone     string  `xml:"PostalZone"`
+	Country        Country `xml:"Country"`
 }
 
 // Country holds a country identification code.
@@ -83,8 +83,8 @@ type TaxScheme struct {
 
 // PartyContact holds contact details for a party.
 type PartyContact struct {
-	Telephone       string `xml:"Telephone,omitempty"`
-	ElectronicMail  string `xml:"ElectronicMail,omitempty"`
+	Telephone      string `xml:"Telephone,omitempty"`
+	ElectronicMail string `xml:"ElectronicMail,omitempty"`
 }
 
 // InvoiceLines is a container for invoice line items.
@@ -100,21 +100,21 @@ type InvoicedQuantity struct {
 
 // InvoiceLine represents a single line item on the invoice.
 type InvoiceLine struct {
-	ID                    string            `xml:"ID"`
-	InvoicedQuantity      InvoicedQuantity  `xml:"InvoicedQuantity"`
-	LineExtensionAmount   string            `xml:"LineExtensionAmount"`
-	LineExtensionAmountTaxInclusive string `xml:"LineExtensionAmountTaxInclusive"`
-	LineExtensionTaxAmount string     `xml:"LineExtensionTaxAmount"`
-	UnitPrice             string      `xml:"UnitPrice"`
-	UnitPriceTaxInclusive string      `xml:"UnitPriceTaxInclusive"`
-	ClassifiedTaxCategory ClassifiedTaxCategory `xml:"ClassifiedTaxCategory"`
-	Item                  Item        `xml:"Item,omitempty"`
+	ID                              string                `xml:"ID"`
+	InvoicedQuantity                InvoicedQuantity      `xml:"InvoicedQuantity"`
+	LineExtensionAmount             string                `xml:"LineExtensionAmount"`
+	LineExtensionAmountTaxInclusive string                `xml:"LineExtensionAmountTaxInclusive"`
+	LineExtensionTaxAmount          string                `xml:"LineExtensionTaxAmount"`
+	UnitPrice                       string                `xml:"UnitPrice"`
+	UnitPriceTaxInclusive           string                `xml:"UnitPriceTaxInclusive"`
+	ClassifiedTaxCategory           ClassifiedTaxCategory `xml:"ClassifiedTaxCategory"`
+	Item                            Item                  `xml:"Item,omitempty"`
 }
 
 // ClassifiedTaxCategory holds the VAT rate for a line item.
 type ClassifiedTaxCategory struct {
-	Percent       string    `xml:"Percent"`
-	VATCalculationMethod int `xml:"VATCalculationMethod"`
+	Percent              string `xml:"Percent"`
+	VATCalculationMethod int    `xml:"VATCalculationMethod"`
 }
 
 // Item holds line item description.
@@ -130,16 +130,16 @@ type TaxTotal struct {
 
 // TaxSubTotal is a breakdown of tax by rate.
 type TaxSubTotal struct {
-	TaxableAmount string      `xml:"TaxableAmount"`
-	TaxAmount     string      `xml:"TaxAmount"`
-	TaxInclusiveAmount string `xml:"TaxInclusiveAmount"`
-	AlreadyClaimedTaxableAmount string `xml:"AlreadyClaimedTaxableAmount"`
-	AlreadyClaimedTaxAmount string `xml:"AlreadyClaimedTaxAmount"`
-	AlreadyClaimedTaxInclusiveAmount string `xml:"AlreadyClaimedTaxInclusiveAmount"`
-	DifferenceTaxableAmount string `xml:"DifferenceTaxableAmount"`
-	DifferenceTaxAmount string `xml:"DifferenceTaxAmount"`
-	DifferenceTaxInclusiveAmount string `xml:"DifferenceTaxInclusiveAmount"`
-	TaxCategory  TaxCategory `xml:"TaxCategory"`
+	TaxableAmount                    string      `xml:"TaxableAmount"`
+	TaxAmount                        string      `xml:"TaxAmount"`
+	TaxInclusiveAmount               string      `xml:"TaxInclusiveAmount"`
+	AlreadyClaimedTaxableAmount      string      `xml:"AlreadyClaimedTaxableAmount"`
+	AlreadyClaimedTaxAmount          string      `xml:"AlreadyClaimedTaxAmount"`
+	AlreadyClaimedTaxInclusiveAmount string      `xml:"AlreadyClaimedTaxInclusiveAmount"`
+	DifferenceTaxableAmount          string      `xml:"DifferenceTaxableAmount"`
+	DifferenceTaxAmount              string      `xml:"DifferenceTaxAmount"`
+	DifferenceTaxInclusiveAmount     string      `xml:"DifferenceTaxInclusiveAmount"`
+	TaxCategory                      TaxCategory `xml:"TaxCategory"`
 }
 
 // TaxCategory identifies a tax rate category.
@@ -149,26 +149,26 @@ type TaxCategory struct {
 
 // LegalMonetaryTotal holds the invoice totals.
 type LegalMonetaryTotal struct {
-	TaxExclusiveAmount string `xml:"TaxExclusiveAmount"`
-	TaxInclusiveAmount string `xml:"TaxInclusiveAmount"`
+	TaxExclusiveAmount               string `xml:"TaxExclusiveAmount"`
+	TaxInclusiveAmount               string `xml:"TaxInclusiveAmount"`
 	AlreadyClaimedTaxExclusiveAmount string `xml:"AlreadyClaimedTaxExclusiveAmount"`
 	AlreadyClaimedTaxInclusiveAmount string `xml:"AlreadyClaimedTaxInclusiveAmount"`
-	DifferenceTaxExclusiveAmount string `xml:"DifferenceTaxExclusiveAmount"`
-	DifferenceTaxInclusiveAmount string `xml:"DifferenceTaxInclusiveAmount"`
-	PaidDepositsAmount string `xml:"PaidDepositsAmount"`
-	PayableAmount      string `xml:"PayableAmount"`
+	DifferenceTaxExclusiveAmount     string `xml:"DifferenceTaxExclusiveAmount"`
+	DifferenceTaxInclusiveAmount     string `xml:"DifferenceTaxInclusiveAmount"`
+	PaidDepositsAmount               string `xml:"PaidDepositsAmount"`
+	PayableAmount                    string `xml:"PayableAmount"`
 }
 
 // PaymentMeans holds payment information.
 type PaymentMeans struct {
-	Payment    Payment    `xml:"Payment"`
-	PaymentDueDate string `xml:"PaymentDueDate"`
+	Payment        Payment `xml:"Payment"`
+	PaymentDueDate string  `xml:"PaymentDueDate"`
 }
 
 // Payment contains payment details like bank account.
 type Payment struct {
-	PaidAmount       string        `xml:"PaidAmount"`
-	PaymentMeansCode int           `xml:"PaymentMeansCode"`
+	PaidAmount       string          `xml:"PaidAmount"`
+	PaymentMeansCode int             `xml:"PaymentMeansCode"`
 	Details          *PaymentDetails `xml:"Details,omitempty"`
 }
 

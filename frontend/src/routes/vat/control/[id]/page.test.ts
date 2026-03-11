@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+	'confirm',
+	vi.fn(() => true)
+);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -219,7 +222,11 @@ describe('Control Statement Detail', () => {
 	});
 
 	it('disables buttons when status is filed', async () => {
-		const filedStatement = { ...sampleStatement, status: 'filed', filed_at: '2026-03-15T00:00:00Z' };
+		const filedStatement = {
+			...sampleStatement,
+			status: 'filed',
+			filed_at: '2026-03-15T00:00:00Z'
+		};
 		mockFetch.mockResolvedValueOnce(jsonResponse(filedStatement));
 
 		render(Page);
@@ -289,9 +296,7 @@ describe('Control Statement Detail', () => {
 	});
 
 	it('shows error on load failure', async () => {
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ error: 'Not found' }, 404)
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'Not found' }, 404));
 
 		render(Page);
 
@@ -319,7 +324,11 @@ describe('Control Statement Detail', () => {
 	});
 
 	it('shows filed date when statement is filed', async () => {
-		const filedStatement = { ...sampleStatement, status: 'filed', filed_at: '2026-03-15T00:00:00Z' };
+		const filedStatement = {
+			...sampleStatement,
+			status: 'filed',
+			filed_at: '2026-03-15T00:00:00Z'
+		};
 		mockFetch.mockResolvedValueOnce(jsonResponse(filedStatement));
 
 		render(Page);

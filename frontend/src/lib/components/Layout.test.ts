@@ -17,6 +17,7 @@ describe('Layout', () => {
 		expect(screen.getByText('Faktury')).toBeInTheDocument();
 		expect(screen.getByText('Kontakty')).toBeInTheDocument();
 		expect(screen.getByText('Naklady')).toBeInTheDocument();
+		expect(screen.getByText('DPH')).toBeInTheDocument();
 		expect(screen.getByText('Nastaveni')).toBeInTheDocument();
 		expect(screen.getByText('Dashboard')).toBeInTheDocument();
 	});
@@ -82,6 +83,11 @@ describe('Layout', () => {
 		expect(screen.getByText('ZFaktury v0.1.0')).toBeInTheDocument();
 	});
 
+	it('renders section header for grouped navigation', () => {
+		render(LayoutTestWrapper);
+		expect(screen.getByText('Ucetnictvi')).toBeInTheDocument();
+	});
+
 	it('navigation links have correct hrefs', () => {
 		render(LayoutTestWrapper);
 
@@ -93,6 +99,9 @@ describe('Layout', () => {
 
 		const expensesLink = screen.getByText('Naklady').closest('a');
 		expect(expensesLink?.getAttribute('href')).toBe('/expenses');
+
+		const vatLink = screen.getByText('DPH').closest('a');
+		expect(vatLink?.getAttribute('href')).toBe('/vat');
 
 		const contactsLink = screen.getByText('Kontakty').closest('a');
 		expect(contactsLink?.getAttribute('href')).toBe('/contacts');

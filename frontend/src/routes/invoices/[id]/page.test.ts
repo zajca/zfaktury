@@ -258,4 +258,64 @@ describe('Invoice detail page', () => {
 		const pdfLink = screen.getByText('Stáhnout PDF').closest('a');
 		expect(pdfLink).toHaveAttribute('href', '/api/v1/invoices/1/pdf');
 	});
+
+	it('shows credit note button for regular sent invoice', async () => {
+		const sentInvoice = { ...sampleInvoice, status: 'sent' };
+		mockFetch.mockResolvedValueOnce(jsonResponse(sentInvoice));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Vytvořit dobropis')).toBeInTheDocument();
+		});
+	});
+
+	it('shows credit note button for regular paid invoice', async () => {
+		const paidInvoice = { ...sampleInvoice, status: 'paid' };
+		mockFetch.mockResolvedValueOnce(jsonResponse(paidInvoice));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Vytvořit dobropis')).toBeInTheDocument();
+		});
+	});
+
+	it('hides credit note button for draft invoice', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleInvoice));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Faktura FV2026001')).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText('Vytvořit dobropis')).not.toBeInTheDocument();
+	});
+
+	it('hides credit note button for proforma invoice', async () => {
+		const proformaInvoice = { ...sampleInvoice, type: 'proforma', status: 'sent' };
+		mockFetch.mockResolvedValueOnce(jsonResponse(proformaInvoice));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Zálohová faktura FV2026001')).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText('Vytvořit dobropis')).not.toBeInTheDocument();
+	});
+
+	it('hides credit note button for credit_note type', async () => {
+		const creditNote = { ...sampleInvoice, type: 'credit_note', status: 'sent' };
+		mockFetch.mockResolvedValueOnce(jsonResponse(creditNote));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Dobropis FV2026001')).toBeInTheDocument();
+		});
+
+		expect(screen.queryByText('Vytvořit dobropis')).not.toBeInTheDocument();
+	});
 });

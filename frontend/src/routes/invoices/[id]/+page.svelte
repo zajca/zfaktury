@@ -328,7 +328,7 @@
 					<Button variant="secondary" onclick={handleDuplicate}>
 						Duplikovat
 					</Button>
-					{#if invoice.type !== 'credit_note' && invoice.status !== 'cancelled'}
+					{#if invoice.type === 'regular' && (invoice.status === 'sent' || invoice.status === 'paid')}
 						<Button variant="secondary" onclick={() => { showCreditNoteDialog = true; }}>
 							Vytvořit dobropis
 						</Button>

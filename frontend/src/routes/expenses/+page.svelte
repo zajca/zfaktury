@@ -66,12 +66,16 @@
 <div class="mx-auto max-w-6xl">
 	<PageHeader title="Náklady" description="Evidence výdajů a nákladů">
 		{#snippet actions()}
-			<Button variant="primary" href="/expenses/new">
-				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-				</svg>
-				Přidat náklad
-			</Button>
+			<div class="flex gap-2">
+				<Button variant="secondary" href="/expenses/recurring">Opakované</Button>
+				<Button variant="secondary" href="/expenses/review">Daňový audit</Button>
+				<Button variant="primary" href="/expenses/new">
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+					</svg>
+					Přidat náklad
+				</Button>
+			</div>
 		{/snippet}
 	</PageHeader>
 

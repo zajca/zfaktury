@@ -103,6 +103,7 @@
 	<PageHeader title="Faktury" description="Přehled vydaných faktur">
 		{#snippet actions()}
 			<div class="flex gap-2">
+				<Button variant="secondary" href="/recurring">Šablony</Button>
 				<Button variant="secondary" onclick={handleCheckOverdue} disabled={checkingOverdue}>
 					{checkingOverdue ? 'Kontroluji...' : 'Zkontrolovat po splatnosti'}
 				</Button>

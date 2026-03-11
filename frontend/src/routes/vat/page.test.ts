@@ -99,14 +99,14 @@ const sampleViesSummaries = [
 	}
 ];
 
-// Mock all 3 API calls. The page calls them via Promise.all so order is:
-// vat-returns, vat-control-statements, vies-summaries
-function mockAllApis(vatReturns = sampleVatReturns, cs = sampleControlStatements, vies = sampleViesSummaries) {
+// With lazy loading, the page only fetches the active tab on mount.
+// It fetches other tabs when switched to.
+function mockReturnsApi(vatReturns = sampleVatReturns) {
 	mockFetch.mockImplementation((url: string) => {
-		if (typeof url === 'string' && url.includes('/vat-control-statements')) return Promise.resolve(jsonResponse(cs));
-		if (typeof url === 'string' && url.includes('/vies-summaries')) return Promise.resolve(jsonResponse(vies));
-		// Default to vat-returns for any URL containing vat-returns or as fallback
-		return Promise.resolve(jsonResponse(vatReturns));
+		if (typeof url === 'string' && url.includes('/vat-returns')) return Promise.resolve(jsonResponse(vatReturns));
+		if (typeof url === 'string' && url.includes('/vat-control-statements')) return Promise.resolve(jsonResponse(sampleControlStatements));
+		if (typeof url === 'string' && url.includes('/vies-summaries')) return Promise.resolve(jsonResponse(sampleViesSummaries));
+		return Promise.resolve(jsonResponse([]));
 	});
 }
 
@@ -120,18 +120,17 @@ afterEach(() => {
 
 describe('VAT dashboard page', () => {
 	it('loads data on mount', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
 		await waitFor(() => {
-			// Verify data was loaded by checking rendered content
 			expect(screen.getByText('3/2026')).toBeInTheDocument();
 		});
 	});
 
 	it('renders page title and heading', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
@@ -141,7 +140,7 @@ describe('VAT dashboard page', () => {
 	});
 
 	it('renders VAT return rows with period and status', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
@@ -151,16 +150,16 @@ describe('VAT dashboard page', () => {
 
 		expect(screen.getByText('Q1/2026')).toBeInTheDocument();
 		expect(screen.getByText('Koncept')).toBeInTheDocument();
-		expect(screen.getByText('Podano')).toBeInTheDocument();
+		expect(screen.getByText('Podáno')).toBeInTheDocument();
 	});
 
 	it('shows empty state when no VAT returns', async () => {
-		mockAllApis([], [], []);
+		mockReturnsApi([]);
 
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Zadna DPH priznani/)).toBeInTheDocument();
+			expect(screen.getByText(/Žádná DPH přiznání/)).toBeInTheDocument();
 		});
 	});
 
@@ -183,17 +182,17 @@ describe('VAT dashboard page', () => {
 	});
 
 	it('renders tab buttons', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
-		expect(screen.getByText('DPH Priznani')).toBeInTheDocument();
-		expect(screen.getByText('Kontrolni hlaseni')).toBeInTheDocument();
-		expect(screen.getByText('Souhrnne hlaseni')).toBeInTheDocument();
+		expect(screen.getByText('DPH přiznání')).toBeInTheDocument();
+		expect(screen.getByText('Kontrolní hlášení')).toBeInTheDocument();
+		expect(screen.getByText('Souhrnné hlášení')).toBeInTheDocument();
 	});
 
 	it('switches to control statement tab and shows list', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
@@ -201,14 +200,16 @@ describe('VAT dashboard page', () => {
 			expect(screen.getByText('3/2026')).toBeInTheDocument();
 		});
 
-		const controlTab = screen.getByText('Kontrolni hlaseni');
+		const controlTab = screen.getByText('Kontrolní hlášení');
 		await fireEvent.click(controlTab);
 
-		expect(screen.getByText('3/2026')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText('3/2026')).toBeInTheDocument();
+		});
 	});
 
 	it('switches to VIES tab and shows list', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
@@ -216,25 +217,27 @@ describe('VAT dashboard page', () => {
 			expect(screen.getByText('3/2026')).toBeInTheDocument();
 		});
 
-		const viesTab = screen.getByText('Souhrnne hlaseni');
+		const viesTab = screen.getByText('Souhrnné hlášení');
 		await fireEvent.click(viesTab);
 
-		expect(screen.getByText('Q1/2026')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText('Q1/2026')).toBeInTheDocument();
+		});
 	});
 
 	it('has link to create new filing', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 
 		await waitFor(() => {
-			const link = screen.getByText('Nove priznani');
+			const link = screen.getByText('Nové přiznání');
 			expect(link.closest('a')).toHaveAttribute('href', '/vat/returns/new');
 		});
 	});
 
 	it('clickable rows navigate to detail on Enter', async () => {
-		mockAllApis();
+		mockReturnsApi();
 
 		render(Page);
 

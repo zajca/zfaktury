@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strconv"
 	"time"
@@ -257,7 +258,7 @@ func (h *VIESHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 
 	filename := "vies_" + strconv.Itoa(vs.Period.Year) + "_Q" + strconv.Itoa(vs.Period.Quarter) + ".xml"
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 	w.WriteHeader(http.StatusOK)
 	if _, writeErr := w.Write(vs.XMLData); writeErr != nil {
 		slog.Error("failed to write XML response", "error", writeErr)

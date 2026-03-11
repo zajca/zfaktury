@@ -55,22 +55,24 @@ describe('New VAT return page', () => {
 	it('renders page heading', () => {
 		render(Page);
 
-		expect(screen.getByText('Nove DPH priznani')).toBeInTheDocument();
+		expect(screen.getByText('Nové DPH přiznání')).toBeInTheDocument();
 	});
 
-	it('renders form fields for year, month, quarter, and filing type', () => {
+	it('renders form fields for year, period type toggle, and filing type', () => {
 		render(Page);
 
 		expect(screen.getByLabelText('Rok')).toBeInTheDocument();
-		expect(screen.getByLabelText('Mesic')).toBeInTheDocument();
-		expect(screen.getByLabelText('Ctvrtleti')).toBeInTheDocument();
-		expect(screen.getByLabelText('Typ podani')).toBeInTheDocument();
+		// Month/quarter are behind a toggle; month is shown by default
+		expect(screen.getByText('Měsíční')).toBeInTheDocument();
+		expect(screen.getByText('Čtvrtletní')).toBeInTheDocument();
+		expect(screen.getByLabelText('Měsíc')).toBeInTheDocument();
+		expect(screen.getByLabelText('Typ podání')).toBeInTheDocument();
 	});
 
 	it('has back link to VAT dashboard', () => {
 		render(Page);
 
-		const backLink = screen.getByText(/Zpet na DPH/);
+		const backLink = screen.getByText(/Zpět na DPH/);
 		expect(backLink.closest('a')).toHaveAttribute('href', '/vat');
 	});
 
@@ -82,7 +84,7 @@ describe('New VAT return page', () => {
 		// Remove required attrs to bypass HTML5 validation
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
-		const submitButton = screen.getByText('Vytvorit priznani');
+		const submitButton = screen.getByText('Vytvořit přiznání');
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
@@ -100,7 +102,7 @@ describe('New VAT return page', () => {
 
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
-		const submitButton = screen.getByText('Vytvorit priznani');
+		const submitButton = screen.getByText('Vytvořit přiznání');
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
@@ -111,14 +113,14 @@ describe('New VAT return page', () => {
 	it('has cancel link back to VAT dashboard', () => {
 		render(Page);
 
-		const cancelLink = screen.getByText('Zrusit');
+		const cancelLink = screen.getByText('Zrušit');
 		expect(cancelLink.closest('a')).toHaveAttribute('href', '/vat');
 	});
 
 	it('renders filing type options', () => {
 		render(Page);
 
-		const select = screen.getByLabelText('Typ podani') as HTMLSelectElement;
+		const select = screen.getByLabelText('Typ podání') as HTMLSelectElement;
 		const options = Array.from(select.options);
 		const values = options.map((o) => o.value);
 

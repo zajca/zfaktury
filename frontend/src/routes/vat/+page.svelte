@@ -5,18 +5,7 @@
 	import { controlStatementApi, type ControlStatement } from '$lib/api/vat-control';
 	import { viesApi, type VIESSummary } from '$lib/api/vat-vies';
 	import { formatCZK } from '$lib/utils/money';
-
-	const vatStatusLabels: Record<string, string> = {
-		draft: 'Koncept',
-		ready: 'Pripraveno',
-		filed: 'Podano'
-	};
-
-	const vatStatusColors: Record<string, string> = {
-		draft: 'bg-gray-100 text-gray-700',
-		ready: 'bg-blue-100 text-blue-700',
-		filed: 'bg-green-100 text-green-700'
-	};
+	import { vatStatusLabels, vatStatusColors, filingTypeLabels } from '$lib/utils/vat';
 
 	type TabKey = 'returns' | 'control' | 'vies';
 
@@ -28,37 +17,47 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	let mounted = false;
+	let loadedForYear: Record<TabKey, number | null> = { returns: null, control: null, vies: null };
 
-	onMount(() => {
-		loadData();
-		mounted = true;
-	});
-
-	$effect(() => {
-		selectedYear;
-		if (!mounted) return;
-		loadData();
-	});
-
-	async function loadData() {
+	async function loadActiveTab() {
+		if (loadedForYear[activeTab] === selectedYear) return;
 		loading = true;
 		error = null;
 		try {
-			const [vr, cs, vs] = await Promise.all([
-				vatReturnApi.list(selectedYear),
-				controlStatementApi.list(selectedYear),
-				viesApi.list(selectedYear),
-			]);
-			vatReturns = vr;
-			controlStatements = cs;
-			viesSummaries = vs;
+			switch (activeTab) {
+				case 'returns':
+					vatReturns = await vatReturnApi.list(selectedYear);
+					break;
+				case 'control':
+					controlStatements = await controlStatementApi.list(selectedYear);
+					break;
+				case 'vies':
+					viesSummaries = await viesApi.list(selectedYear);
+					break;
+			}
+			loadedForYear[activeTab] = selectedYear;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist data';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
 		} finally {
 			loading = false;
 		}
 	}
+
+	// Reset cache when year changes
+	$effect(() => {
+		selectedYear;
+		loadedForYear = { returns: null, control: null, vies: null };
+	});
+
+	let mounted = false;
+	onMount(() => { loadActiveTab(); mounted = true; });
+
+	$effect(() => {
+		selectedYear;
+		activeTab;
+		if (!mounted) return;
+		loadActiveTab();
+	});
 
 	function formatPeriod(vr: VATReturn): string {
 		if (vr.period.month > 0) {
@@ -75,9 +74,9 @@
 	}
 
 	const tabs: { key: TabKey; label: string }[] = [
-		{ key: 'returns', label: 'DPH Priznani' },
-		{ key: 'control', label: 'Kontrolni hlaseni' },
-		{ key: 'vies', label: 'Souhrnne hlaseni' }
+		{ key: 'returns', label: 'DPH přiznání' },
+		{ key: 'control', label: 'Kontrolní hlášení' },
+		{ key: 'vies', label: 'Souhrnné hlášení' }
 	];
 </script>
 
@@ -89,7 +88,7 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900">DPH</h1>
-			<p class="mt-1 text-sm text-gray-500">Sprava danovych priznani a hlaseni</p>
+			<p class="mt-1 text-sm text-gray-500">Správa daňových přiznání a hlášení</p>
 		</div>
 		<a
 			href={activeTab === 'control' ? '/vat/control/new' : activeTab === 'vies' ? '/vat/vies/new' : '/vat/returns/new'}
@@ -98,7 +97,7 @@
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
-			{activeTab === 'control' ? 'Nove hlaseni' : activeTab === 'vies' ? 'Nove hlaseni' : 'Nove priznani'}
+			{activeTab === 'control' ? 'Nové hlášení' : activeTab === 'vies' ? 'Nové hlášení' : 'Nové přiznání'}
 		</a>
 	</div>
 
@@ -143,18 +142,18 @@
 				<div class="flex items-center justify-center p-12">
 					<div role="status">
 						<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-						<span class="sr-only">Nacitani...</span>
+						<span class="sr-only">Načítání...</span>
 					</div>
 				</div>
 			{:else if vatReturns.length === 0}
 				<div class="p-12 text-center text-gray-400">
-					Zadna DPH priznani pro rok {selectedYear}.
+					Žádná DPH přiznání pro rok {selectedYear}.
 				</div>
 			{:else}
 				<table class="w-full text-left text-sm">
 					<thead class="border-b border-gray-200 bg-gray-50">
 						<tr>
-							<th class="px-4 py-3 font-medium text-gray-600">Obdobi</th>
+							<th class="px-4 py-3 font-medium text-gray-600">Období</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Typ</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
 							<th class="px-4 py-3 text-right font-medium text-gray-600">DPH k odvodu</th>
@@ -174,7 +173,7 @@
 									{formatPeriod(vr)}
 								</td>
 								<td class="px-4 py-3 text-gray-700">
-									{vr.filing_type === 'regular' ? 'Radne' : vr.filing_type === 'corrective' ? 'Nasledne' : vr.filing_type === 'supplementary' ? 'Opravne' : vr.filing_type}
+									{filingTypeLabels[vr.filing_type] ?? vr.filing_type}
 								</td>
 								<td class="px-4 py-3">
 									<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[vr.status] ?? 'bg-gray-100 text-gray-700'}">
@@ -205,18 +204,18 @@
 				<div class="flex items-center justify-center p-12">
 					<div role="status">
 						<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-						<span class="sr-only">Nacitani...</span>
+						<span class="sr-only">Načítání...</span>
 					</div>
 				</div>
 			{:else if controlStatements.length === 0}
 				<div class="p-12 text-center text-gray-400">
-					Zadna kontrolni hlaseni pro rok {selectedYear}.
+					Žádná kontrolní hlášení pro rok {selectedYear}.
 				</div>
 			{:else}
 				<table class="w-full text-left text-sm">
 					<thead class="border-b border-gray-200 bg-gray-50">
 						<tr>
-							<th class="px-4 py-3 font-medium text-gray-600">Obdobi</th>
+							<th class="px-4 py-3 font-medium text-gray-600">Období</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Typ</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Akce</th>
@@ -233,7 +232,7 @@
 							>
 								<td class="px-4 py-3 font-medium text-gray-900">{cs.period.month}/{cs.period.year}</td>
 								<td class="px-4 py-3 text-gray-700">
-									{cs.filing_type === 'regular' ? 'Radne' : cs.filing_type === 'corrective' ? 'Nasledne' : 'Opravne'}
+									{filingTypeLabels[cs.filing_type] ?? cs.filing_type}
 								</td>
 								<td class="px-4 py-3">
 									<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[cs.status] ?? 'bg-gray-100 text-gray-700'}">
@@ -255,18 +254,18 @@
 				<div class="flex items-center justify-center p-12">
 					<div role="status">
 						<div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-						<span class="sr-only">Nacitani...</span>
+						<span class="sr-only">Načítání...</span>
 					</div>
 				</div>
 			{:else if viesSummaries.length === 0}
 				<div class="p-12 text-center text-gray-400">
-					Zadna souhrnna hlaseni pro rok {selectedYear}.
+					Žádná souhrnná hlášení pro rok {selectedYear}.
 				</div>
 			{:else}
 				<table class="w-full text-left text-sm">
 					<thead class="border-b border-gray-200 bg-gray-50">
 						<tr>
-							<th class="px-4 py-3 font-medium text-gray-600">Obdobi</th>
+							<th class="px-4 py-3 font-medium text-gray-600">Období</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Typ</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
 							<th class="px-4 py-3 font-medium text-gray-600">Akce</th>
@@ -283,7 +282,7 @@
 							>
 								<td class="px-4 py-3 font-medium text-gray-900">Q{vs.period.quarter}/{vs.period.year}</td>
 								<td class="px-4 py-3 text-gray-700">
-									{vs.filing_type === 'regular' ? 'Radne' : vs.filing_type === 'corrective' ? 'Nasledne' : 'Opravne'}
+									{filingTypeLabels[vs.filing_type] ?? vs.filing_type}
 								</td>
 								<td class="px-4 py-3">
 									<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[vs.status] ?? 'bg-gray-100 text-gray-700'}">

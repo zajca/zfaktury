@@ -59,6 +59,8 @@ const filedVatReturn = {
 
 beforeEach(async () => {
 	mockFetch.mockReset();
+	const { goto } = await import('$app/navigation');
+	(goto as ReturnType<typeof vi.fn>).mockReset();
 	const { page } = await import('$app/state');
 	(page as any).params = { id: '1' };
 });
@@ -87,7 +89,7 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText(/DPH Priznani - 3\/2026/)).toBeInTheDocument();
+			expect(screen.getByText(/DPH přiznání - 3\/2026/)).toBeInTheDocument();
 		});
 	});
 
@@ -107,7 +109,7 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Vystupni DPH')).toBeInTheDocument();
+			expect(screen.getByText('Výstupní DPH')).toBeInTheDocument();
 		});
 	});
 
@@ -117,7 +119,7 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Vstupni DPH')).toBeInTheDocument();
+			expect(screen.getByText('Vstupní DPH')).toBeInTheDocument();
 		});
 	});
 
@@ -127,10 +129,10 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Vysledek')).toBeInTheDocument();
+			expect(screen.getByText('Výsledek')).toBeInTheDocument();
 		});
 
-		expect(screen.getByText(/Vlastni danova povinnost/)).toBeInTheDocument();
+		expect(screen.getByText(/Vlastní daňová povinnost/)).toBeInTheDocument();
 	});
 
 	it('shows loading spinner while fetching', () => {
@@ -156,7 +158,7 @@ describe('VAT return detail page', () => {
 
 		render(Page);
 
-		const backLink = screen.getByText(/Zpet na DPH/);
+		const backLink = screen.getByText(/Zpět na DPH/);
 		expect(backLink.closest('a')).toHaveAttribute('href', '/vat');
 	});
 
@@ -166,11 +168,11 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
 		expect(screen.getByText('Generovat XML')).toBeInTheDocument();
-		expect(screen.getByText('Oznacit za podane')).toBeInTheDocument();
+		expect(screen.getByText('Označit za podané')).toBeInTheDocument();
 		expect(screen.getByText('Smazat')).toBeInTheDocument();
 	});
 
@@ -180,10 +182,10 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
-		const recalcBtn = screen.getByText('Prepocitat');
+		const recalcBtn = screen.getByText('Přepočítat');
 		expect(recalcBtn).toBeDisabled();
 
 		const generateBtn = screen.getByText('Generovat XML');
@@ -196,10 +198,10 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
-		expect(screen.queryByText('Oznacit za podane')).not.toBeInTheDocument();
+		expect(screen.queryByText('Označit za podané')).not.toBeInTheDocument();
 		expect(screen.queryByText('Smazat')).not.toBeInTheDocument();
 	});
 
@@ -209,7 +211,7 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Stahnout XML')).toBeInTheDocument();
+			expect(screen.getByText('Stáhnout XML')).toBeInTheDocument();
 		});
 	});
 
@@ -219,10 +221,10 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
-		expect(screen.queryByText('Stahnout XML')).not.toBeInTheDocument();
+		expect(screen.queryByText('Stáhnout XML')).not.toBeInTheDocument();
 	});
 
 	it('recalculate button calls API', async () => {
@@ -231,13 +233,13 @@ describe('VAT return detail page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
 		const recalculated = { ...sampleVatReturn, net_vat: 9000 };
 		mockFetch.mockResolvedValueOnce(jsonResponse(recalculated));
 
-		const btn = screen.getByText('Prepocitat');
+		const btn = screen.getByText('Přepočítat');
 		await fireEvent.click(btn);
 
 		await waitFor(() => {
@@ -257,7 +259,7 @@ describe('VAT return detail page', () => {
 			expect(screen.getByText('Smazat')).toBeInTheDocument();
 		});
 
-		mockFetch.mockResolvedValueOnce(new Response(null, { status: 200, statusText: 'OK' }));
+		mockFetch.mockResolvedValueOnce(jsonResponse(null, 200));
 
 		const btn = screen.getByText('Smazat');
 		await fireEvent.click(btn);
@@ -267,6 +269,8 @@ describe('VAT return detail page', () => {
 		});
 
 		const { goto } = await import('$app/navigation');
-		expect(goto).toHaveBeenCalledWith('/vat');
+		await waitFor(() => {
+			expect(goto).toHaveBeenCalledWith('/vat');
+		});
 	});
 });

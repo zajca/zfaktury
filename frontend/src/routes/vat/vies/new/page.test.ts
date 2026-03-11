@@ -32,7 +32,7 @@ afterEach(() => {
 describe('VIES Summary Create', () => {
 	it('renders form with heading', () => {
 		render(Page);
-		expect(screen.getByText('Nove souhrnne hlaseni')).toBeInTheDocument();
+		expect(screen.getByText('Nové souhrnné hlášení')).toBeInTheDocument();
 	});
 
 	it('renders year input with current year default', () => {
@@ -52,28 +52,28 @@ describe('VIES Summary Create', () => {
 
 	it('renders all 4 quarters', () => {
 		render(Page);
-		expect(screen.getByText('Q1 (leden - brezen)')).toBeInTheDocument();
-		expect(screen.getByText('Q2 (duben - cerven)')).toBeInTheDocument();
-		expect(screen.getByText('Q3 (cervenec - zari)')).toBeInTheDocument();
-		expect(screen.getByText('Q4 (rijen - prosinec)')).toBeInTheDocument();
+		expect(screen.getByText(/Q1.*leden.*březen/)).toBeInTheDocument();
+		expect(screen.getByText(/Q2.*duben.*červen/)).toBeInTheDocument();
+		expect(screen.getByText(/Q3.*červenec.*září/)).toBeInTheDocument();
+		expect(screen.getByText(/Q4.*říjen.*prosinec/)).toBeInTheDocument();
 	});
 
 	it('renders filing type select with options', () => {
 		render(Page);
-		expect(screen.getByText('Radne')).toBeInTheDocument();
-		expect(screen.getByText('Nasledne')).toBeInTheDocument();
-		expect(screen.getByText('Opravne')).toBeInTheDocument();
+		expect(screen.getByText('Řádné')).toBeInTheDocument();
+		expect(screen.getByText('Následné')).toBeInTheDocument();
+		expect(screen.getByText('Opravné')).toBeInTheDocument();
 	});
 
 	it('renders submit and cancel buttons', () => {
 		render(Page);
-		expect(screen.getByText('Vytvorit hlaseni')).toBeInTheDocument();
-		expect(screen.getByText('Zrusit')).toBeInTheDocument();
+		expect(screen.getByText('Vytvořit hlášení')).toBeInTheDocument();
+		expect(screen.getByText('Zrušit')).toBeInTheDocument();
 	});
 
 	it('renders back link to VAT page', () => {
 		render(Page);
-		const backLink = screen.getByText(/Zpet na DPH/);
+		const backLink = screen.getByText(/Zpět na DPH/);
 		expect(backLink).toBeInTheDocument();
 		expect(backLink.closest('a')?.getAttribute('href')).toBe('/vat');
 	});
@@ -144,7 +144,7 @@ describe('VIES Summary Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadejte platny rok')).toBeInTheDocument();
+			expect(screen.getByText('Zadejte platný rok')).toBeInTheDocument();
 		});
 	});
 
@@ -157,7 +157,7 @@ describe('VIES Summary Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Vytvari se...')).toBeInTheDocument();
+			expect(screen.getByText('Vytvářím...')).toBeInTheDocument();
 		});
 	});
 });

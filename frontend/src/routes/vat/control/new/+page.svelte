@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { controlStatementApi } from '$lib/api/vat-control';
+	import { filingTypeLabels, monthLabels } from '$lib/utils/vat';
 
 	let saving = $state(false);
 	let error = $state<string | null>(null);
@@ -14,30 +15,12 @@
 		filing_type: 'regular'
 	});
 
-	const filingTypes = [
-		{ value: 'regular', label: 'Radne' },
-		{ value: 'corrective', label: 'Nasledne' },
-		{ value: 'supplementary', label: 'Opravne' }
-	];
-
-	const months = [
-		{ value: 1, label: 'Leden' },
-		{ value: 2, label: 'Unor' },
-		{ value: 3, label: 'Brezen' },
-		{ value: 4, label: 'Duben' },
-		{ value: 5, label: 'Kveten' },
-		{ value: 6, label: 'Cerven' },
-		{ value: 7, label: 'Cervenec' },
-		{ value: 8, label: 'Srpen' },
-		{ value: 9, label: 'Zari' },
-		{ value: 10, label: 'Rijen' },
-		{ value: 11, label: 'Listopad' },
-		{ value: 12, label: 'Prosinec' }
-	];
+	const filingTypes = Object.entries(filingTypeLabels).map(([value, label]) => ({ value, label }));
+	const months = Object.entries(monthLabels).map(([value, label]) => ({ value: Number(value), label }));
 
 	async function handleSubmit() {
 		if (!form.year || form.year < 2000) {
-			error = 'Zadejte platny rok';
+			error = 'Zadejte platný rok';
 			return;
 		}
 
@@ -52,7 +35,7 @@
 			});
 			goto(`/vat/control/${result.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se vytvorit kontrolni hlaseni';
+			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit kontrolní hlášení';
 		} finally {
 			saving = false;
 		}
@@ -60,12 +43,12 @@
 </script>
 
 <svelte:head>
-	<title>Nove kontrolni hlaseni - ZFaktury</title>
+	<title>Nové kontrolní hlášení - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-xl">
-	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na DPH</a>
-	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nove kontrolni hlaseni</h1>
+	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
+	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nové kontrolní hlášení</h1>
 
 	{#if error}
 		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -75,7 +58,7 @@
 
 	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="mt-6 space-y-6">
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Obdobi</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Období</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
 					<label for="year" class="block text-sm font-medium text-gray-700">Rok *</label>
@@ -90,7 +73,7 @@
 					/>
 				</div>
 				<div>
-					<label for="month" class="block text-sm font-medium text-gray-700">Mesic *</label>
+					<label for="month" class="block text-sm font-medium text-gray-700">Měsíc *</label>
 					<select
 						id="month"
 						bind:value={form.month}
@@ -106,7 +89,7 @@
 		</div>
 
 		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Typ podani</h2>
+			<h2 class="text-lg font-semibold text-gray-900">Typ podání</h2>
 			<div class="mt-4">
 				<label for="filing_type" class="block text-sm font-medium text-gray-700">Typ</label>
 				<select
@@ -127,13 +110,13 @@
 				disabled={saving}
 				class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
 			>
-				{saving ? 'Vytvari se...' : 'Vytvorit hlaseni'}
+				{saving ? 'Vytvářím...' : 'Vytvořit hlášení'}
 			</button>
 			<a
 				href="/vat"
 				class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
 			>
-				Zrusit
+				Zrušit
 			</a>
 		</div>
 	</form>

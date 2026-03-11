@@ -105,7 +105,7 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Kontrolni hlaseni 2026\/03/)).toBeInTheDocument();
+			expect(screen.getByText(/Kontrolní hlášení 2026\/03/)).toBeInTheDocument();
 		});
 	});
 
@@ -115,7 +115,7 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Pripraveno')).toBeInTheDocument();
+			expect(screen.getByText('Připraveno')).toBeInTheDocument();
 		});
 	});
 
@@ -125,7 +125,7 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Radne')).toBeInTheDocument();
+			expect(screen.getByText('Řádné')).toBeInTheDocument();
 		});
 	});
 
@@ -135,9 +135,9 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('A4 - Vystup nad 10 000')).toBeInTheDocument();
+			expect(screen.getByText('A4 - Výstup nad 10 000')).toBeInTheDocument();
 		});
-		expect(screen.getByText('A5 - Vystup do 10 000')).toBeInTheDocument();
+		expect(screen.getByText('A5 - Výstup do 10 000')).toBeInTheDocument();
 		expect(screen.getByText('B2 - Vstup nad 10 000')).toBeInTheDocument();
 		expect(screen.getByText('B3 - Vstup do 10 000')).toBeInTheDocument();
 	});
@@ -159,10 +159,10 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('A4 - Vystup nad 10 000')).toBeInTheDocument();
+			expect(screen.getByText('A4 - Výstup nad 10 000')).toBeInTheDocument();
 		});
 
-		await fireEvent.click(screen.getByText('A5 - Vystup do 10 000'));
+		await fireEvent.click(screen.getByText('A5 - Výstup do 10 000'));
 
 		await waitFor(() => {
 			// A5 should not show partner DIC column header
@@ -178,7 +178,7 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('A4 - Vystup nad 10 000')).toBeInTheDocument();
+			expect(screen.getByText('A4 - Výstup nad 10 000')).toBeInTheDocument();
 		});
 
 		await fireEvent.click(screen.getByText('B2 - Vstup nad 10 000'));
@@ -194,13 +194,13 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('A4 - Vystup nad 10 000')).toBeInTheDocument();
+			expect(screen.getByText('A4 - Výstup nad 10 000')).toBeInTheDocument();
 		});
 
 		await fireEvent.click(screen.getByText('B3 - Vstup do 10 000'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadne radky v sekci B3')).toBeInTheDocument();
+			expect(screen.getByText('Žádné řádky v sekci B3')).toBeInTheDocument();
 		});
 	});
 
@@ -210,11 +210,11 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 		expect(screen.getByText('Generovat XML')).toBeInTheDocument();
-		expect(screen.getByText('Stahnout XML')).toBeInTheDocument();
-		expect(screen.getByText('Oznacit za podane')).toBeInTheDocument();
+		expect(screen.getByText('Stáhnout XML')).toBeInTheDocument();
+		expect(screen.getByText('Označit za podané')).toBeInTheDocument();
 		expect(screen.getByText('Smazat')).toBeInTheDocument();
 	});
 
@@ -225,16 +225,16 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Podano')).toBeInTheDocument();
+			expect(screen.getByText('Podáno')).toBeInTheDocument();
 		});
 
-		const recalcBtn = screen.getByText('Prepocitat');
+		const recalcBtn = screen.getByText('Přepočítat');
 		expect(recalcBtn).toBeDisabled();
 
 		const genXmlBtn = screen.getByText('Generovat XML');
 		expect(genXmlBtn).toBeDisabled();
 
-		const markFiledBtn = screen.getByText('Oznacit za podane');
+		const markFiledBtn = screen.getByText('Označit za podané');
 		expect(markFiledBtn).toBeDisabled();
 
 		const deleteBtn = screen.getByText('Smazat');
@@ -247,12 +247,12 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleStatement));
 
-		await fireEvent.click(screen.getByText('Prepocitat'));
+		await fireEvent.click(screen.getByText('Přepočítat'));
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -275,7 +275,7 @@ describe('Control Statement Detail', () => {
 
 		await fireEvent.click(screen.getByText('Smazat'));
 
-		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat toto kontrolni hlaseni?');
+		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat toto kontrolní hlášení?');
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -313,7 +313,7 @@ describe('Control Statement Detail', () => {
 
 		render(Page);
 
-		const backLink = screen.getByText(/Zpet na DPH/);
+		const backLink = screen.getByText(/Zpět na DPH/);
 		expect(backLink).toBeInTheDocument();
 		expect(backLink.closest('a')?.getAttribute('href')).toBe('/vat');
 	});
@@ -325,7 +325,7 @@ describe('Control Statement Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Podano:/)).toBeInTheDocument();
+			expect(screen.getByText(/Podáno:/)).toBeInTheDocument();
 		});
 	});
 });

@@ -32,7 +32,7 @@ afterEach(() => {
 describe('Control Statement Create', () => {
 	it('renders form with heading', () => {
 		render(Page);
-		expect(screen.getByText('Nove kontrolni hlaseni')).toBeInTheDocument();
+		expect(screen.getByText('Nové kontrolní hlášení')).toBeInTheDocument();
 	});
 
 	it('renders year input with current year default', () => {
@@ -52,35 +52,35 @@ describe('Control Statement Create', () => {
 	it('renders all 12 months', () => {
 		render(Page);
 		expect(screen.getByText('Leden')).toBeInTheDocument();
-		expect(screen.getByText('Unor')).toBeInTheDocument();
-		expect(screen.getByText('Brezen')).toBeInTheDocument();
+		expect(screen.getByText('Únor')).toBeInTheDocument();
+		expect(screen.getByText('Březen')).toBeInTheDocument();
 		expect(screen.getByText('Duben')).toBeInTheDocument();
-		expect(screen.getByText('Kveten')).toBeInTheDocument();
-		expect(screen.getByText('Cerven')).toBeInTheDocument();
-		expect(screen.getByText('Cervenec')).toBeInTheDocument();
+		expect(screen.getByText('Květen')).toBeInTheDocument();
+		expect(screen.getByText('Červen')).toBeInTheDocument();
+		expect(screen.getByText('Červenec')).toBeInTheDocument();
 		expect(screen.getByText('Srpen')).toBeInTheDocument();
-		expect(screen.getByText('Zari')).toBeInTheDocument();
-		expect(screen.getByText('Rijen')).toBeInTheDocument();
+		expect(screen.getByText('Září')).toBeInTheDocument();
+		expect(screen.getByText('Říjen')).toBeInTheDocument();
 		expect(screen.getByText('Listopad')).toBeInTheDocument();
 		expect(screen.getByText('Prosinec')).toBeInTheDocument();
 	});
 
 	it('renders filing type select with options', () => {
 		render(Page);
-		expect(screen.getByText('Radne')).toBeInTheDocument();
-		expect(screen.getByText('Nasledne')).toBeInTheDocument();
-		expect(screen.getByText('Opravne')).toBeInTheDocument();
+		expect(screen.getByText('Řádné')).toBeInTheDocument();
+		expect(screen.getByText('Následné')).toBeInTheDocument();
+		expect(screen.getByText('Opravné')).toBeInTheDocument();
 	});
 
 	it('renders submit and cancel buttons', () => {
 		render(Page);
-		expect(screen.getByText('Vytvorit hlaseni')).toBeInTheDocument();
-		expect(screen.getByText('Zrusit')).toBeInTheDocument();
+		expect(screen.getByText('Vytvořit hlášení')).toBeInTheDocument();
+		expect(screen.getByText('Zrušit')).toBeInTheDocument();
 	});
 
 	it('renders back link to VAT page', () => {
 		render(Page);
-		const backLink = screen.getByText(/Zpet na DPH/);
+		const backLink = screen.getByText(/Zpět na DPH/);
 		expect(backLink).toBeInTheDocument();
 		expect(backLink.closest('a')?.getAttribute('href')).toBe('/vat');
 	});
@@ -151,7 +151,7 @@ describe('Control Statement Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadejte platny rok')).toBeInTheDocument();
+			expect(screen.getByText('Zadejte platný rok')).toBeInTheDocument();
 		});
 	});
 
@@ -164,7 +164,7 @@ describe('Control Statement Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Vytvari se...')).toBeInTheDocument();
+			expect(screen.getByText('Vytvářím...')).toBeInTheDocument();
 		});
 	});
 });

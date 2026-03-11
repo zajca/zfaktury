@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { controlStatementApi, type ControlStatement, type ControlStatementLine } from '$lib/api/vat-control';
 	import { formatCZK } from '$lib/utils/money';
+	import { vatStatusLabels, vatStatusColors, filingTypeLabels } from '$lib/utils/vat';
 
 	let statement = $state<ControlStatement | null>(null);
 	let loading = $state(true);
@@ -15,28 +16,10 @@
 
 	const tabs = ['A4', 'A5', 'B2', 'B3'];
 	const tabLabels: Record<string, string> = {
-		'A4': 'A4 - Vystup nad 10 000',
-		'A5': 'A5 - Vystup do 10 000',
+		'A4': 'A4 - Výstup nad 10 000',
+		'A5': 'A5 - Výstup do 10 000',
 		'B2': 'B2 - Vstup nad 10 000',
 		'B3': 'B3 - Vstup do 10 000'
-	};
-
-	const filingTypeLabels: Record<string, string> = {
-		regular: 'Radne',
-		corrective: 'Nasledne',
-		supplementary: 'Opravne'
-	};
-
-	const statusColors: Record<string, string> = {
-		draft: 'bg-gray-100 text-gray-700',
-		ready: 'bg-blue-100 text-blue-700',
-		filed: 'bg-green-100 text-green-700'
-	};
-
-	const statusLabels: Record<string, string> = {
-		draft: 'Koncept',
-		ready: 'Pripraveno',
-		filed: 'Podano'
 	};
 
 	let filteredLines = $derived(
@@ -55,7 +38,7 @@
 		try {
 			statement = await controlStatementApi.getById(statementId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist kontrolni hlaseni';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst kontrolní hlášení';
 		} finally {
 			loading = false;
 		}
@@ -67,7 +50,7 @@
 		try {
 			statement = await controlStatementApi.recalculate(statementId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se prepocitat';
+			error = e instanceof Error ? e.message : 'Nepodařilo se přepočítat';
 		} finally {
 			actionLoading = false;
 		}
@@ -79,7 +62,7 @@
 		try {
 			statement = await controlStatementApi.generateXml(statementId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se generovat XML';
+			error = e instanceof Error ? e.message : 'Nepodařilo se generovat XML';
 		} finally {
 			actionLoading = false;
 		}
@@ -98,31 +81,31 @@
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se stahnout XML';
+			error = e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML';
 		}
 	}
 
 	async function handleMarkFiled() {
-		if (!confirm('Opravdu chcete oznacit kontrolni hlaseni jako podane?')) return;
+		if (!confirm('Opravdu chcete označit kontrolní hlášení jako podané?')) return;
 		actionLoading = true;
 		error = null;
 		try {
 			statement = await controlStatementApi.markFiled(statementId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se oznacit jako podane';
+			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako podané';
 		} finally {
 			actionLoading = false;
 		}
 	}
 
 	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat toto kontrolni hlaseni?')) return;
+		if (!confirm('Opravdu chcete smazat toto kontrolní hlášení?')) return;
 		error = null;
 		try {
 			await controlStatementApi.delete(statementId);
 			goto('/vat');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se smazat kontrolni hlaseni';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kontrolní hlášení';
 		}
 	}
 
@@ -132,11 +115,11 @@
 </script>
 
 <svelte:head>
-	<title>{statement ? `Kontrolni hlaseni ${statement.period.year}/${statement.period.month}` : 'Kontrolni hlaseni'} - ZFaktury</title>
+	<title>{statement ? `Kontrolní hlášení ${statement.period.year}/${statement.period.month}` : 'Kontrolní hlášení'} - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpet na DPH</a>
+	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
 
 	{#if error}
 		<div role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -146,25 +129,25 @@
 
 	{#if loading}
 		<div class="mt-8 flex items-center justify-center">
-			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Nacitani...</span></div>
+			<div role="status"><div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div><span class="sr-only">Načítání...</span></div>
 		</div>
 	{:else if statement}
 		<!-- Header -->
 		<div class="mt-4 flex items-start justify-between">
 			<div>
 				<h1 class="text-2xl font-bold text-gray-900">
-					Kontrolni hlaseni {statement.period.year}/{String(statement.period.month).padStart(2, '0')}
+					Kontrolní hlášení {statement.period.year}/{String(statement.period.month).padStart(2, '0')}
 				</h1>
 				<div class="mt-2 flex items-center gap-3">
-					<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[statement.status] || 'bg-gray-100 text-gray-700'}">
-						{statusLabels[statement.status] || statement.status}
+					<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[statement.status] || 'bg-gray-100 text-gray-700'}">
+						{vatStatusLabels[statement.status] || statement.status}
 					</span>
 					<span class="text-sm text-gray-500">
 						{filingTypeLabels[statement.filing_type] || statement.filing_type}
 					</span>
 					{#if statement.filed_at}
 						<span class="text-sm text-gray-500">
-							Podano: {new Date(statement.filed_at).toLocaleDateString('cs-CZ')}
+							Podáno: {new Date(statement.filed_at).toLocaleDateString('cs-CZ')}
 						</span>
 					{/if}
 				</div>
@@ -175,7 +158,7 @@
 					disabled={actionLoading || statement.status === 'filed'}
 					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
 				>
-					Prepocitat
+					Přepočítat
 				</button>
 				<button
 					onclick={handleGenerateXml}
@@ -189,14 +172,14 @@
 					disabled={!statement.has_xml}
 					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
 				>
-					Stahnout XML
+					Stáhnout XML
 				</button>
 				<button
 					onclick={handleMarkFiled}
 					disabled={actionLoading || statement.status === 'filed' || !statement.has_xml}
 					class="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
 				>
-					Oznacit za podane
+					Označit za podané
 				</button>
 				<button
 					onclick={handleDelete}
@@ -226,7 +209,7 @@
 		<div class="mt-4">
 			{#if filteredLines.length === 0}
 				<div class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-					Zadne radky v sekci {activeTab}
+					Žádné řádky v sekci {activeTab}
 				</div>
 			{:else if isDetailSection}
 				<!-- A4/B2: detailed lines with partner info -->
@@ -235,9 +218,9 @@
 						<thead class="border-b border-gray-200 bg-gray-50">
 							<tr>
 								<th class="px-4 py-3 text-left font-medium text-gray-700">DIC partnera</th>
-								<th class="px-4 py-3 text-left font-medium text-gray-700">Cislo dokladu</th>
+								<th class="px-4 py-3 text-left font-medium text-gray-700">Číslo dokladu</th>
 								<th class="px-4 py-3 text-left font-medium text-gray-700">DPPD</th>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">Zaklad (CZK)</th>
+								<th class="px-4 py-3 text-right font-medium text-gray-700">Základ (CZK)</th>
 								<th class="px-4 py-3 text-right font-medium text-gray-700">DPH (CZK)</th>
 								<th class="px-4 py-3 text-right font-medium text-gray-700">Sazba</th>
 							</tr>
@@ -262,7 +245,7 @@
 					<table class="w-full text-sm">
 						<thead class="border-b border-gray-200 bg-gray-50">
 							<tr>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">Zaklad (CZK)</th>
+								<th class="px-4 py-3 text-right font-medium text-gray-700">Základ (CZK)</th>
 								<th class="px-4 py-3 text-right font-medium text-gray-700">DPH (CZK)</th>
 								<th class="px-4 py-3 text-right font-medium text-gray-700">Sazba</th>
 							</tr>
@@ -282,7 +265,7 @@
 		</div>
 
 		<div class="mt-4 text-xs text-gray-400">
-			Vytvoreno: {new Date(statement.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(statement.updated_at).toLocaleDateString('cs-CZ')}
+			Vytvořeno: {new Date(statement.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(statement.updated_at).toLocaleDateString('cs-CZ')}
 		</div>
 	{/if}
 </div>

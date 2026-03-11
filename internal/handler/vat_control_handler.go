@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strconv"
 	"time"
@@ -255,7 +256,7 @@ func (h *VATControlStatementHandler) DownloadXML(w http.ResponseWriter, r *http.
 
 	filename := "kh_" + strconv.Itoa(cs.Period.Year) + "_" + strconv.Itoa(cs.Period.Month) + ".xml"
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 	w.Header().Set("Content-Length", strconv.Itoa(len(cs.XMLData)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(cs.XMLData)

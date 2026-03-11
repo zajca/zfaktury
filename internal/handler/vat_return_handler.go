@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strconv"
 
@@ -198,7 +199,8 @@ func (h *VATReturnHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"dph-priznani-%d.xml\"", id))
+	filename := fmt.Sprintf("dph-priznani-%d.xml", id)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(xmlData)))
 	w.WriteHeader(http.StatusOK)
 	w.Write(xmlData)

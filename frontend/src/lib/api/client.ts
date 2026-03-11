@@ -245,6 +245,14 @@ export interface Settings {
 
 // --- API Error ---
 
+// --- Tax Period ---
+
+export interface TaxPeriod {
+	year: number;
+	month: number;
+	quarter: number;
+}
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,
@@ -264,7 +272,7 @@ export class ApiError extends Error {
 
 const API_BASE = '/api/v1';
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
 	const url = `${API_BASE}${path}`;
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
@@ -293,19 +301,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 	return response.json();
 }
 
-function get<T>(path: string): Promise<T> {
+export function get<T>(path: string): Promise<T> {
 	return request<T>(path, { method: 'GET' });
 }
 
-function post<T>(path: string, body: unknown): Promise<T> {
-	return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
+export function post<T>(path: string, body?: unknown): Promise<T> {
+	return request<T>(path, { method: 'POST', body: body != null ? JSON.stringify(body) : undefined });
 }
 
-function put<T>(path: string, body: unknown): Promise<T> {
+export function put<T>(path: string, body: unknown): Promise<T> {
 	return request<T>(path, { method: 'PUT', body: JSON.stringify(body) });
 }
 
-function del<T>(path: string): Promise<T> {
+export function del<T>(path: string): Promise<T> {
 	return request<T>(path, { method: 'DELETE' });
 }
 

@@ -1,35 +1,12 @@
 // VAT Returns API client
 
-const BASE = '/api/v1';
+import { get, post, del, ApiError, type TaxPeriod } from './client';
 
-async function get<T>(path: string): Promise<T> {
-	const res = await fetch(`${BASE}${path}`);
-	if (!res.ok) throw new Error(await res.text());
-	return res.json();
-}
-
-async function post<T>(path: string, body: unknown): Promise<T> {
-	const res = await fetch(`${BASE}${path}`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(body)
-	});
-	if (!res.ok) throw new Error(await res.text());
-	return res.json();
-}
-
-async function del(path: string): Promise<void> {
-	const res = await fetch(`${BASE}${path}`, { method: 'DELETE' });
-	if (!res.ok) throw new Error(await res.text());
-}
+const API_BASE = '/api/v1';
 
 // --- Types ---
 
-export interface TaxPeriod {
-	year: number;
-	month: number;
-	quarter: number;
-}
+export type { TaxPeriod };
 
 export interface VATReturn {
 	id: number;
@@ -87,8 +64,12 @@ export const vatReturnApi = {
 	},
 
 	async downloadXml(id: number): Promise<Blob> {
-		const res = await fetch(`${BASE}/vat-returns/${id}/xml`);
-		if (!res.ok) throw new Error(await res.text());
+		const res = await fetch(`${API_BASE}/vat-returns/${id}/xml`);
+		if (!res.ok) {
+			let body: unknown;
+			try { body = await res.json(); } catch { /* ignore */ }
+			throw new ApiError(res.status, res.statusText, body);
+		}
 		return res.blob();
 	},
 

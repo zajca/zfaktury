@@ -83,7 +83,7 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Souhrnne hlaseni 2026 Q1/)).toBeInTheDocument();
+			expect(screen.getByText(/Souhrnné hlášení 2026 Q1/)).toBeInTheDocument();
 		});
 	});
 
@@ -93,7 +93,7 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Pripraveno')).toBeInTheDocument();
+			expect(screen.getByText('Připraveno')).toBeInTheDocument();
 		});
 	});
 
@@ -103,7 +103,7 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Radne')).toBeInTheDocument();
+			expect(screen.getByText('Řádné')).toBeInTheDocument();
 		});
 	});
 
@@ -113,11 +113,11 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Kod zeme')).toBeInTheDocument();
+			expect(screen.getByText('Kód země')).toBeInTheDocument();
 		});
 		expect(screen.getByText('DIC partnera')).toBeInTheDocument();
-		expect(screen.getByText('Celkova castka (CZK)')).toBeInTheDocument();
-		expect(screen.getByText('Kod plneni')).toBeInTheDocument();
+		expect(screen.getByText('Celková částka (CZK)')).toBeInTheDocument();
+		expect(screen.getByText('Kód plnění')).toBeInTheDocument();
 	});
 
 	it('shows line data', async () => {
@@ -139,11 +139,11 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 		expect(screen.getByText('Generovat XML')).toBeInTheDocument();
-		expect(screen.getByText('Stahnout XML')).toBeInTheDocument();
-		expect(screen.getByText('Oznacit za podane')).toBeInTheDocument();
+		expect(screen.getByText('Stáhnout XML')).toBeInTheDocument();
+		expect(screen.getByText('Označit za podané')).toBeInTheDocument();
 		expect(screen.getByText('Smazat')).toBeInTheDocument();
 	});
 
@@ -154,16 +154,16 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Podano')).toBeInTheDocument();
+			expect(screen.getByText('Podáno')).toBeInTheDocument();
 		});
 
-		const recalcBtn = screen.getByText('Prepocitat');
+		const recalcBtn = screen.getByText('Přepočítat');
 		expect(recalcBtn).toBeDisabled();
 
 		const genXmlBtn = screen.getByText('Generovat XML');
 		expect(genXmlBtn).toBeDisabled();
 
-		const markFiledBtn = screen.getByText('Oznacit za podane');
+		const markFiledBtn = screen.getByText('Označit za podané');
 		expect(markFiledBtn).toBeDisabled();
 
 		const deleteBtn = screen.getByText('Smazat');
@@ -176,12 +176,12 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Prepocitat')).toBeInTheDocument();
+			expect(screen.getByText('Přepočítat')).toBeInTheDocument();
 		});
 
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleSummary));
 
-		await fireEvent.click(screen.getByText('Prepocitat'));
+		await fireEvent.click(screen.getByText('Přepočítat'));
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -204,7 +204,7 @@ describe('VIES Summary Detail', () => {
 
 		await fireEvent.click(screen.getByText('Smazat'));
 
-		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat toto souhrnne hlaseni?');
+		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat toto souhrnné hlášení?');
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -242,7 +242,7 @@ describe('VIES Summary Detail', () => {
 
 		render(Page);
 
-		const backLink = screen.getByText(/Zpet na DPH/);
+		const backLink = screen.getByText(/Zpět na DPH/);
 		expect(backLink).toBeInTheDocument();
 		expect(backLink.closest('a')?.getAttribute('href')).toBe('/vat');
 	});
@@ -254,7 +254,7 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadne radky v souhrnnem hlaseni')).toBeInTheDocument();
+			expect(screen.getByText('Žádné řádky v souhrnném hlášení')).toBeInTheDocument();
 		});
 	});
 
@@ -265,7 +265,7 @@ describe('VIES Summary Detail', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Podano:/)).toBeInTheDocument();
+			expect(screen.getByText(/Podáno:/)).toBeInTheDocument();
 		});
 	});
 });

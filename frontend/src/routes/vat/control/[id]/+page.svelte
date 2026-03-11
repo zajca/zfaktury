@@ -8,7 +8,10 @@
 		type ControlStatementLine
 	} from '$lib/api/vat-control';
 	import { formatCZK } from '$lib/utils/money';
-	import { vatStatusLabels, vatStatusColors, filingTypeLabels } from '$lib/utils/vat';
+	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
+	import Button from '$lib/ui/Button.svelte';
+	import Badge from '$lib/ui/Badge.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let statement = $state<ControlStatement | null>(null);
 	let loading = $state(true);
@@ -116,6 +119,17 @@
 	function formatAmountCZK(halere: number): string {
 		return formatCZK(halere);
 	}
+
+	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+		switch (status) {
+			case 'filed':
+				return 'success';
+			case 'ready':
+				return 'info';
+			default:
+				return 'default';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -127,12 +141,12 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
+	<a href="/vat" class="text-sm text-secondary hover:text-primary">&larr; Zpět na DPH</a>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
@@ -142,80 +156,76 @@
 		<div class="mt-8 flex items-center justify-center">
 			<div role="status">
 				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 				></div>
 				<span class="sr-only">Načítání...</span>
 			</div>
 		</div>
 	{:else if statement}
 		<!-- Header -->
-		<div class="mt-4 flex items-start justify-between">
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900">
+		<div class="mt-4">
+			<div class="flex items-center justify-between">
+				<h1 class="text-xl font-semibold text-primary">
 					Kontrolní hlášení {statement.period.year}/{String(statement.period.month).padStart(
 						2,
 						'0'
 					)}
 				</h1>
-				<div class="mt-2 flex items-center gap-3">
-					<span
-						class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[
-							statement.status
-						] || 'bg-gray-100 text-gray-700'}"
-					>
+				<div class="flex items-center gap-3">
+					<Badge variant={statusBadgeVariant(statement.status)}>
 						{vatStatusLabels[statement.status] || statement.status}
-					</span>
-					<span class="text-sm text-gray-500">
+					</Badge>
+					<span class="text-sm text-tertiary">
 						{filingTypeLabels[statement.filing_type] || statement.filing_type}
 					</span>
 					{#if statement.filed_at}
-						<span class="text-sm text-gray-500">
+						<span class="text-sm text-tertiary">
 							Podáno: {new Date(statement.filed_at).toLocaleDateString('cs-CZ')}
 						</span>
 					{/if}
 				</div>
 			</div>
-			<div class="flex flex-wrap gap-2">
-				<button
+			<div class="mt-3 flex flex-wrap gap-2">
+				<Button
+					variant="secondary"
 					onclick={handleRecalculate}
 					disabled={actionLoading || statement.status === 'filed'}
-					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
 				>
 					Přepočítat
-				</button>
-				<button
+				</Button>
+				<Button
+					variant="secondary"
 					onclick={handleGenerateXml}
 					disabled={actionLoading || statement.status === 'filed'}
-					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
 				>
 					Generovat XML
-				</button>
-				<button
+				</Button>
+				<Button
+					variant="secondary"
 					onclick={handleDownloadXml}
 					disabled={!statement.has_xml}
-					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
 				>
 					Stáhnout XML
-				</button>
-				<button
+				</Button>
+				<Button
+					variant="success"
 					onclick={handleMarkFiled}
 					disabled={actionLoading || statement.status === 'filed' || !statement.has_xml}
-					class="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
 				>
 					Označit za podané
-				</button>
-				<button
+				</Button>
+				<Button
+					variant="danger"
 					onclick={handleDelete}
 					disabled={statement.status === 'filed'}
-					class="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
 				>
 					Smazat
-				</button>
+				</Button>
 			</div>
 		</div>
 
 		<!-- Tabs -->
-		<div class="mt-6 border-b border-gray-200">
+		<div class="mt-6 border-b border-border">
 			<nav class="-mb-px flex gap-4">
 				{#each tabs as tab (tab)}
 					<button
@@ -224,8 +234,8 @@
 						}}
 						class="whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors {activeTab ===
 						tab
-							? 'border-blue-500 text-blue-600'
-							: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+							? 'border-accent text-accent-text'
+							: 'border-transparent text-tertiary hover:text-secondary hover:border-border-strong'}"
 					>
 						{tabLabels[tab]}
 					</button>
@@ -236,65 +246,65 @@
 		<!-- Lines table -->
 		<div class="mt-4">
 			{#if filteredLines.length === 0}
-				<div
-					class="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500"
-				>
-					Žádné řádky v sekci {activeTab}
-				</div>
+				<Card>
+					<div class="py-4 text-center text-sm text-muted">
+						Žádné řádky v sekci {activeTab}
+					</div>
+				</Card>
 			{:else if isDetailSection}
 				<!-- A4/B2: detailed lines with partner info -->
-				<div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+				<Card padding={false} class="overflow-x-auto">
 					<table class="w-full text-sm">
-						<thead class="border-b border-gray-200 bg-gray-50">
+						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-3 text-left font-medium text-gray-700">DIC partnera</th>
-								<th class="px-4 py-3 text-left font-medium text-gray-700">Číslo dokladu</th>
-								<th class="px-4 py-3 text-left font-medium text-gray-700">DPPD</th>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">Základ (CZK)</th>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">DPH (CZK)</th>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">Sazba</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Číslo dokladu</th>
+								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DPPD</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ (CZK)</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH (CZK)</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							{#each filteredLines as line, i (i)}
-								<tr class="hover:bg-gray-50">
-									<td class="px-4 py-3 text-gray-900">{line.partner_dic}</td>
-									<td class="px-4 py-3 text-gray-900">{line.document_number}</td>
-									<td class="px-4 py-3 text-gray-900">{line.dppd}</td>
-									<td class="px-4 py-3 text-right text-gray-900">{formatAmountCZK(line.base)}</td>
-									<td class="px-4 py-3 text-right text-gray-900">{formatAmountCZK(line.vat)}</td>
-									<td class="px-4 py-3 text-right text-gray-900">{line.vat_rate_percent}%</td>
+								<tr class="hover:bg-hover transition-colors">
+									<td class="px-4 py-2.5 font-mono text-xs text-primary">{line.partner_dic}</td>
+									<td class="px-4 py-2.5 text-primary">{line.document_number}</td>
+									<td class="px-4 py-2.5 text-primary">{line.dppd}</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.base)}</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.vat)}</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{line.vat_rate_percent}%</td>
 								</tr>
 							{/each}
 						</tbody>
 					</table>
-				</div>
+				</Card>
 			{:else}
 				<!-- A5/B3: aggregated lines without partner info -->
-				<div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+				<Card padding={false} class="overflow-x-auto">
 					<table class="w-full text-sm">
-						<thead class="border-b border-gray-200 bg-gray-50">
+						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">Základ (CZK)</th>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">DPH (CZK)</th>
-								<th class="px-4 py-3 text-right font-medium text-gray-700">Sazba</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ (CZK)</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH (CZK)</th>
+								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							{#each filteredLines as line, i (i)}
-								<tr class="hover:bg-gray-50">
-									<td class="px-4 py-3 text-right text-gray-900">{formatAmountCZK(line.base)}</td>
-									<td class="px-4 py-3 text-right text-gray-900">{formatAmountCZK(line.vat)}</td>
-									<td class="px-4 py-3 text-right text-gray-900">{line.vat_rate_percent}%</td>
+								<tr class="hover:bg-hover transition-colors">
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.base)}</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.vat)}</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{line.vat_rate_percent}%</td>
 								</tr>
 							{/each}
 						</tbody>
 					</table>
-				</div>
+				</Card>
 			{/if}
 		</div>
 
-		<div class="mt-4 text-xs text-gray-400">
+		<div class="mt-4 text-xs text-muted">
 			Vytvořeno: {new Date(statement.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(
 				statement.updated_at
 			).toLocaleDateString('cs-CZ')}

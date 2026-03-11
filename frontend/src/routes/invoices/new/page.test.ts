@@ -132,7 +132,7 @@ describe('Invoice Create', () => {
 		// Advance fake timers to let Svelte flush updates
 		await vi.advanceTimersByTimeAsync(10);
 
-		const errorDiv = document.querySelector('.text-red-700');
+		const errorDiv = document.querySelector('.text-danger');
 		expect(errorDiv).toBeInTheDocument();
 		expect(errorDiv?.textContent).toContain('Vyberte zákazníka');
 	});
@@ -274,7 +274,7 @@ describe('Invoice Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-red-700');
+			const errorDiv = document.querySelector('.text-danger');
 			expect(errorDiv).toBeInTheDocument();
 		});
 	});

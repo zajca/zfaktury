@@ -93,7 +93,7 @@ describe('DateInput', () => {
 	it('displays formatted Czech date', () => {
 		render(DateInput, { props: { value: '2026-03-10' } });
 
-		const formatted = document.querySelector('.text-xs.text-gray-400');
+		const formatted = document.querySelector('.text-xs.text-muted');
 		expect(formatted).toBeInTheDocument();
 		expect(formatted?.textContent).toContain('2026');
 	});

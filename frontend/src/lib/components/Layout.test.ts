@@ -6,6 +6,10 @@ vi.mock('$app/state', () => ({
 	page: { params: {}, url: { pathname: '/invoices', searchParams: new URLSearchParams() } }
 }));
 
+vi.mock('$app/environment', () => ({
+	browser: false
+}));
+
 afterEach(() => {
 	cleanup();
 });
@@ -14,12 +18,13 @@ describe('Layout', () => {
 	it('renders navigation links', () => {
 		render(LayoutTestWrapper);
 
-		expect(screen.getByText('Faktury')).toBeInTheDocument();
-		expect(screen.getByText('Kontakty')).toBeInTheDocument();
-		expect(screen.getByText('Naklady')).toBeInTheDocument();
-		expect(screen.getByText('DPH')).toBeInTheDocument();
-		expect(screen.getByText('Nastaveni')).toBeInTheDocument();
-		expect(screen.getByText('Dashboard')).toBeInTheDocument();
+		// Desktop + mobile sidebars both have nav links, so use getAllByText
+		expect(screen.getAllByText('Faktury').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Kontakty').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Naklady').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('DPH').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Nastaveni').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('renders children content', () => {
@@ -42,8 +47,10 @@ describe('Layout', () => {
 
 	it('sidebar starts closed (translated off-screen)', () => {
 		render(LayoutTestWrapper);
-		const aside = document.querySelector('aside');
-		expect(aside?.className).toContain('-translate-x-full');
+		// Mobile sidebar (the one with lg:hidden)
+		const asides = document.querySelectorAll('aside');
+		const mobileSidebar = Array.from(asides).find((a) => a.className.includes('lg:hidden'));
+		expect(mobileSidebar?.className).toContain('-translate-x-full');
 	});
 
 	it('sidebar opens on toggle click', async () => {
@@ -51,8 +58,9 @@ describe('Layout', () => {
 		const toggleBtn = screen.getByLabelText('Toggle menu');
 		await fireEvent.click(toggleBtn);
 
-		const aside = document.querySelector('aside');
-		expect(aside?.className).toContain('translate-x-0');
+		const asides = document.querySelectorAll('aside');
+		const mobileSidebar = Array.from(asides).find((a) => a.className.includes('lg:hidden'));
+		expect(mobileSidebar?.className).toContain('translate-x-0');
 	});
 
 	it('sidebar closes on second toggle click', async () => {
@@ -61,52 +69,57 @@ describe('Layout', () => {
 		await fireEvent.click(toggleBtn);
 		await fireEvent.click(toggleBtn);
 
-		const aside = document.querySelector('aside');
-		expect(aside?.className).toContain('-translate-x-full');
+		const asides = document.querySelectorAll('aside');
+		const mobileSidebar = Array.from(asides).find((a) => a.className.includes('lg:hidden'));
+		expect(mobileSidebar?.className).toContain('-translate-x-full');
 	});
 
 	it('highlights active navigation item for /invoices', () => {
 		render(LayoutTestWrapper);
-		const invoicesLink = screen.getByText('Faktury').closest('a');
-		expect(invoicesLink?.className).toContain('bg-blue-50');
-		expect(invoicesLink?.className).toContain('text-blue-700');
+		const invoicesLinks = screen.getAllByText('Faktury');
+		const invoicesLink = invoicesLinks[0].closest('a');
+		expect(invoicesLink?.className).toContain('bg-accent-muted');
+		expect(invoicesLink?.className).toContain('text-accent-text');
 	});
 
 	it('does not highlight non-active navigation items', () => {
 		render(LayoutTestWrapper);
-		const contactsLink = screen.getByText('Kontakty').closest('a');
-		expect(contactsLink?.className).not.toContain('bg-blue-50');
+		const contactsLinks = screen.getAllByText('Kontakty');
+		const contactsLink = contactsLinks[0].closest('a');
+		expect(contactsLink?.className).not.toContain('bg-accent-muted');
 	});
 
 	it('renders version info in footer', () => {
 		render(LayoutTestWrapper);
-		expect(screen.getByText('ZFaktury v0.1.0')).toBeInTheDocument();
+		const versions = screen.getAllByText('ZFaktury v0.1.0');
+		expect(versions.length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('renders section header for grouped navigation', () => {
 		render(LayoutTestWrapper);
-		expect(screen.getByText('Ucetnictvi')).toBeInTheDocument();
+		const sections = screen.getAllByText('Ucetnictvi');
+		expect(sections.length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('navigation links have correct hrefs', () => {
 		render(LayoutTestWrapper);
 
-		const dashboardLink = screen.getByText('Dashboard').closest('a');
+		const dashboardLink = screen.getAllByText('Dashboard')[0].closest('a');
 		expect(dashboardLink?.getAttribute('href')).toBe('/');
 
-		const invoicesLink = screen.getByText('Faktury').closest('a');
+		const invoicesLink = screen.getAllByText('Faktury')[0].closest('a');
 		expect(invoicesLink?.getAttribute('href')).toBe('/invoices');
 
-		const expensesLink = screen.getByText('Naklady').closest('a');
+		const expensesLink = screen.getAllByText('Naklady')[0].closest('a');
 		expect(expensesLink?.getAttribute('href')).toBe('/expenses');
 
-		const vatLink = screen.getByText('DPH').closest('a');
+		const vatLink = screen.getAllByText('DPH')[0].closest('a');
 		expect(vatLink?.getAttribute('href')).toBe('/vat');
 
-		const contactsLink = screen.getByText('Kontakty').closest('a');
+		const contactsLink = screen.getAllByText('Kontakty')[0].closest('a');
 		expect(contactsLink?.getAttribute('href')).toBe('/contacts');
 
-		const settingsLink = screen.getByText('Nastaveni').closest('a');
+		const settingsLink = screen.getAllByText('Nastaveni')[0].closest('a');
 		expect(settingsLink?.getAttribute('href')).toBe('/settings');
 	});
 });

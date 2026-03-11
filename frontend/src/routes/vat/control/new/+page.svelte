@@ -3,6 +3,8 @@
 	import { page } from '$app/state';
 	import { controlStatementApi } from '$lib/api/vat-control';
 	import { filingTypeLabels, monthLabels } from '$lib/utils/vat';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let saving = $state(false);
 	let error = $state<string | null>(null);
@@ -44,20 +46,23 @@
 			saving = false;
 		}
 	}
+
+	const inputClass =
+		'mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none';
 </script>
 
 <svelte:head>
 	<title>Nové kontrolní hlášení - ZFaktury</title>
 </svelte:head>
 
-<div class="mx-auto max-w-xl">
-	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
-	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nové kontrolní hlášení</h1>
+<div class="mx-auto max-w-2xl">
+	<a href="/vat" class="text-sm text-secondary hover:text-primary">&larr; Zpět na DPH</a>
+	<h1 class="mt-2 text-xl font-semibold text-primary">Nové kontrolní hlášení</h1>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
@@ -70,11 +75,11 @@
 		}}
 		class="mt-6 space-y-6"
 	>
-		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Období</h2>
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Období</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
-					<label for="year" class="block text-sm font-medium text-gray-700">Rok *</label>
+					<label for="year" class="block text-sm font-medium text-secondary">Rok *</label>
 					<input
 						id="year"
 						type="number"
@@ -82,16 +87,16 @@
 						max="2099"
 						bind:value={form.year}
 						required
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class={inputClass}
 					/>
 				</div>
 				<div>
-					<label for="month" class="block text-sm font-medium text-gray-700">Měsíc *</label>
+					<label for="month" class="block text-sm font-medium text-secondary">Měsíc *</label>
 					<select
 						id="month"
 						bind:value={form.month}
 						required
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class={inputClass}
 					>
 						{#each months as m (m.value)}
 							<option value={m.value}>{m.label}</option>
@@ -99,38 +104,31 @@
 					</select>
 				</div>
 			</div>
-		</div>
+		</Card>
 
-		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Typ podání</h2>
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Typ podání</h2>
 			<div class="mt-4">
-				<label for="filing_type" class="block text-sm font-medium text-gray-700">Typ</label>
+				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ</label>
 				<select
 					id="filing_type"
 					bind:value={form.filing_type}
-					class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					class="{inputClass} max-w-xs"
 				>
 					{#each filingTypes as ft (ft.value)}
 						<option value={ft.value}>{ft.label}</option>
 					{/each}
 				</select>
 			</div>
-		</div>
+		</Card>
 
 		<div class="flex gap-3">
-			<button
-				type="submit"
-				disabled={saving}
-				class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-			>
+			<Button variant="primary" type="submit" disabled={saving}>
 				{saving ? 'Vytvářím...' : 'Vytvořit hlášení'}
-			</button>
-			<a
-				href="/vat"
-				class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-			>
+			</Button>
+			<Button variant="secondary" href="/vat">
 				Zrušit
-			</a>
+			</Button>
 		</div>
 	</form>
 </div>

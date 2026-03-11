@@ -4,7 +4,10 @@
 	import { goto } from '$app/navigation';
 	import { vatReturnApi, type VATReturn } from '$lib/api/vat';
 	import { formatCZK } from '$lib/utils/money';
-	import { vatStatusLabels, vatStatusColors, filingTypeLabels } from '$lib/utils/vat';
+	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
+	import Button from '$lib/ui/Button.svelte';
+	import Badge from '$lib/ui/Badge.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let vatReturn = $state<VATReturn | null>(null);
 	let loading = $state(true);
@@ -109,19 +112,30 @@
 		}
 		return `${vr.period.year}`;
 	}
+
+	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+		switch (status) {
+			case 'filed':
+				return 'success';
+			case 'ready':
+				return 'info';
+			default:
+				return 'default';
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>{vatReturn ? `DPH ${formatPeriod(vatReturn)}` : 'DPH přiznání'} - ZFaktury</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl">
-	<a href="/vat" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na DPH</a>
+<div class="mx-auto max-w-5xl">
+	<a href="/vat" class="text-sm text-secondary hover:text-primary">&larr; Zpět na DPH</a>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
@@ -131,233 +145,235 @@
 		<div class="mt-8 flex items-center justify-center">
 			<div role="status">
 				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 				></div>
 				<span class="sr-only">Načítání...</span>
 			</div>
 		</div>
 	{:else if vatReturn}
 		<!-- Header -->
-		<div class="mt-4 flex items-start justify-between">
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900">DPH přiznání - {formatPeriod(vatReturn)}</h1>
-				<div class="mt-2 flex items-center gap-3">
-					<span
-						class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {vatStatusColors[
-							vatReturn.status
-						] ?? 'bg-gray-100 text-gray-700'}"
-					>
+		<div class="mt-4">
+			<div class="flex items-center justify-between">
+				<h1 class="text-xl font-semibold text-primary">DPH přiznání - {formatPeriod(vatReturn)}</h1>
+				<div class="flex items-center gap-3">
+					<Badge variant={statusBadgeVariant(vatReturn.status)}>
 						{vatStatusLabels[vatReturn.status] ?? vatReturn.status}
-					</span>
-					<span class="text-sm text-gray-600">
+					</Badge>
+					<span class="text-sm text-secondary">
 						{filingTypeLabels[vatReturn.filing_type] ?? vatReturn.filing_type}
 					</span>
 				</div>
 			</div>
-			<div class="flex flex-wrap gap-2">
-				<button
+			<div class="mt-3 flex flex-wrap gap-2">
+				<Button
+					variant="secondary"
 					onclick={handleRecalculate}
 					disabled={vatReturn.status === 'filed' || actionLoading !== null}
-					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 				>
 					{actionLoading === 'recalculate' ? 'Přepočítávám...' : 'Přepočítat'}
-				</button>
-				<button
+				</Button>
+				<Button
+					variant="secondary"
 					onclick={handleGenerateXml}
 					disabled={vatReturn.status === 'filed' || actionLoading !== null}
-					class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 				>
 					{actionLoading === 'generate' ? 'Generuji...' : 'Generovat XML'}
-				</button>
+				</Button>
 				{#if vatReturn.has_xml}
-					<button
+					<Button
+						variant="secondary"
 						onclick={handleDownloadXml}
 						disabled={actionLoading !== null}
-						class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 					>
 						{actionLoading === 'download' ? 'Stahuji...' : 'Stáhnout XML'}
-					</button>
+					</Button>
 				{/if}
 				{#if vatReturn.status !== 'filed'}
-					<button
+					<Button
+						variant="success"
 						onclick={handleMarkFiled}
 						disabled={actionLoading !== null}
-						class="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 					>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit za podané'}
-					</button>
-					<button
+					</Button>
+					<Button
+						variant="danger"
 						onclick={handleDelete}
 						disabled={actionLoading !== null}
-						class="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 					>
 						Smazat
-					</button>
+					</Button>
 				{/if}
 			</div>
 		</div>
 
 		<!-- Output VAT -->
 		<div class="mt-6 space-y-6">
-			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-				<h2 class="text-lg font-semibold text-gray-900">Výstupní DPH</h2>
+			<Card padding={false}>
+				<div class="p-5 pb-0">
+					<h2 class="text-base font-semibold text-primary">Výstupní DPH</h2>
+				</div>
 				<div class="mt-4 overflow-x-auto">
 					<table class="w-full text-left text-sm">
-						<thead class="border-b border-gray-200">
-							<tr>
-								<th class="pb-2 font-medium text-gray-600">Sazba</th>
-								<th class="pb-2 text-right font-medium text-gray-600">Základ daně</th>
-								<th class="pb-2 text-right font-medium text-gray-600">Daň</th>
+						<thead class="border-b border-border">
+							<tr class="bg-elevated">
+								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
+								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně</th>
+								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							<tr>
-								<td class="py-2 text-gray-900">21 %</td>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-primary">21 %</td>
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.output_vat_base_21)}</td
 								>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.output_vat_amount_21)}</td
 								>
 							</tr>
 							<tr>
-								<td class="py-2 text-gray-900">12 %</td>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-primary">12 %</td>
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.output_vat_base_12)}</td
 								>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.output_vat_amount_12)}</td
 								>
 							</tr>
 							<tr>
-								<td class="py-2 text-gray-900">0 % (osvobozeno)</td>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-primary">0 % (osvobozeno)</td>
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.output_vat_base_0)}</td
 								>
-								<td class="py-2 text-right text-gray-400">-</td>
+								<td class="px-5 py-2.5 text-right text-muted">-</td>
 							</tr>
 						</tbody>
-						<tfoot class="border-t border-gray-300">
+						<tfoot class="border-t border-border">
 							<tr>
-								<td class="py-2 font-semibold text-gray-900">Celkem výstupní DPH</td>
+								<td class="px-5 py-2.5 font-medium text-primary">Celkem výstupní DPH</td>
 								<td></td>
-								<td class="py-2 text-right font-semibold text-gray-900"
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums font-medium text-primary"
 									>{formatCZK(vatReturn.total_output_vat)}</td
 								>
 							</tr>
 						</tfoot>
 					</table>
 				</div>
-			</div>
+			</Card>
 
 			<!-- Reverse charge -->
 			{#if vatReturn.reverse_charge_base_21 > 0 || vatReturn.reverse_charge_base_12 > 0}
-				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Přenesení daňové povinnosti</h2>
+				<Card padding={false}>
+					<div class="p-5 pb-0">
+						<h2 class="text-base font-semibold text-primary">Přenesení daňové povinnosti</h2>
+					</div>
 					<div class="mt-4 overflow-x-auto">
 						<table class="w-full text-left text-sm">
-							<thead class="border-b border-gray-200">
-								<tr>
-									<th class="pb-2 font-medium text-gray-600">Sazba</th>
-									<th class="pb-2 text-right font-medium text-gray-600">Základ daně</th>
-									<th class="pb-2 text-right font-medium text-gray-600">Daň</th>
+							<thead class="border-b border-border">
+								<tr class="bg-elevated">
+									<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
+									<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně</th>
+									<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-100">
+							<tbody class="divide-y divide-border-subtle">
 								<tr>
-									<td class="py-2 text-gray-900">21 %</td>
-									<td class="py-2 text-right text-gray-700"
+									<td class="px-5 py-2.5 text-primary">21 %</td>
+									<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 										>{formatCZK(vatReturn.reverse_charge_base_21)}</td
 									>
-									<td class="py-2 text-right text-gray-700"
+									<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 										>{formatCZK(vatReturn.reverse_charge_amount_21)}</td
 									>
 								</tr>
 								<tr>
-									<td class="py-2 text-gray-900">12 %</td>
-									<td class="py-2 text-right text-gray-700"
+									<td class="px-5 py-2.5 text-primary">12 %</td>
+									<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 										>{formatCZK(vatReturn.reverse_charge_base_12)}</td
 									>
-									<td class="py-2 text-right text-gray-700"
+									<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 										>{formatCZK(vatReturn.reverse_charge_amount_12)}</td
 									>
 								</tr>
 							</tbody>
 						</table>
 					</div>
-				</div>
+				</Card>
 			{/if}
 
 			<!-- Input VAT -->
-			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-				<h2 class="text-lg font-semibold text-gray-900">Vstupní DPH</h2>
+			<Card padding={false}>
+				<div class="p-5 pb-0">
+					<h2 class="text-base font-semibold text-primary">Vstupní DPH</h2>
+				</div>
 				<div class="mt-4 overflow-x-auto">
 					<table class="w-full text-left text-sm">
-						<thead class="border-b border-gray-200">
-							<tr>
-								<th class="pb-2 font-medium text-gray-600">Sazba</th>
-								<th class="pb-2 text-right font-medium text-gray-600">Základ daně</th>
-								<th class="pb-2 text-right font-medium text-gray-600">Daň</th>
+						<thead class="border-b border-border">
+							<tr class="bg-elevated">
+								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
+								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně</th>
+								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-gray-100">
+						<tbody class="divide-y divide-border-subtle">
 							<tr>
-								<td class="py-2 text-gray-900">21 %</td>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-primary">21 %</td>
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.input_vat_base_21)}</td
 								>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.input_vat_amount_21)}</td
 								>
 							</tr>
 							<tr>
-								<td class="py-2 text-gray-900">12 %</td>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-primary">12 %</td>
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.input_vat_base_12)}</td
 								>
-								<td class="py-2 text-right text-gray-700"
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums text-secondary"
 									>{formatCZK(vatReturn.input_vat_amount_12)}</td
 								>
 							</tr>
 						</tbody>
-						<tfoot class="border-t border-gray-300">
+						<tfoot class="border-t border-border">
 							<tr>
-								<td class="py-2 font-semibold text-gray-900">Celkem vstupní DPH</td>
+								<td class="px-5 py-2.5 font-medium text-primary">Celkem vstupní DPH</td>
 								<td></td>
-								<td class="py-2 text-right font-semibold text-gray-900"
+								<td class="px-5 py-2.5 text-right font-mono tabular-nums font-medium text-primary"
 									>{formatCZK(vatReturn.total_input_vat)}</td
 								>
 							</tr>
 						</tfoot>
 					</table>
 				</div>
-			</div>
+			</Card>
 
 			<!-- Result -->
-			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-				<h2 class="text-lg font-semibold text-gray-900">Výsledek</h2>
+			<Card>
+				<h2 class="text-base font-semibold text-primary">Výsledek</h2>
 				<div class="mt-4 flex flex-col items-end gap-2 text-sm">
 					<div class="flex gap-8">
-						<span class="text-gray-600">Výstupní DPH:</span>
-						<span class="font-medium text-gray-900">{formatCZK(vatReturn.total_output_vat)}</span>
+						<span class="text-secondary">Výstupní DPH:</span>
+						<span class="font-mono tabular-nums font-medium text-primary">{formatCZK(vatReturn.total_output_vat)}</span>
 					</div>
 					<div class="flex gap-8">
-						<span class="text-gray-600">Vstupní DPH:</span>
-						<span class="font-medium text-gray-900">{formatCZK(vatReturn.total_input_vat)}</span>
+						<span class="text-secondary">Vstupní DPH:</span>
+						<span class="font-mono tabular-nums font-medium text-primary">{formatCZK(vatReturn.total_input_vat)}</span>
 					</div>
-					<div class="flex gap-8 border-t border-gray-200 pt-2 text-base">
-						<span class="font-semibold text-gray-900"
+					<div class="flex gap-8 border-t border-border pt-2 text-base">
+						<span class="font-semibold text-primary"
 							>{vatReturn.net_vat >= 0 ? 'Vlastní daňová povinnost:' : 'Nadměrný odpočet:'}</span
 						>
-						<span class="font-bold {vatReturn.net_vat >= 0 ? 'text-red-600' : 'text-green-600'}">
+						<span class="font-mono tabular-nums font-semibold {vatReturn.net_vat >= 0 ? 'text-danger' : 'text-success'}">
 							{formatCZK(Math.abs(vatReturn.net_vat))}
 						</span>
 					</div>
 				</div>
-			</div>
+			</Card>
 
 			<!-- Timestamps -->
-			<div class="text-xs text-gray-400">
+			<div class="text-xs text-muted">
 				Vytvořeno: {new Date(vatReturn.created_at).toLocaleDateString('cs-CZ')} | Upraveno: {new Date(
 					vatReturn.updated_at
 				).toLocaleDateString('cs-CZ')}

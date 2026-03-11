@@ -9,9 +9,19 @@ export const statusLabels: Record<string, string> = {
 };
 
 export const statusColors: Record<string, string> = {
-	draft: 'bg-gray-100 text-gray-700',
-	sent: 'bg-blue-100 text-blue-700',
-	paid: 'bg-green-100 text-green-700',
-	overdue: 'bg-red-100 text-red-700',
-	cancelled: 'bg-gray-100 text-gray-500'
+	draft: 'bg-elevated text-secondary',
+	sent: 'bg-info-bg text-info',
+	paid: 'bg-success-bg text-success',
+	overdue: 'bg-danger-bg text-danger',
+	cancelled: 'bg-elevated text-muted'
+};
+
+export type StatusVariant = 'default' | 'info' | 'success' | 'danger' | 'muted';
+
+export const statusVariant: Record<string, StatusVariant> = {
+	draft: 'default',
+	sent: 'info',
+	paid: 'success',
+	overdue: 'danger',
+	cancelled: 'muted'
 };

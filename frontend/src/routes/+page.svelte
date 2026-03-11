@@ -1,45 +1,44 @@
 <script lang="ts">
 	import { formatCZK } from '$lib/utils/money';
+	import Card from '$lib/ui/Card.svelte';
 </script>
 
 <svelte:head>
 	<title>ZFaktury - Dashboard</title>
 </svelte:head>
 
-<div>
-	<h1 class="text-2xl font-bold text-gray-900">ZFaktury</h1>
-	<p class="mt-1 text-sm text-gray-500">Prehled vaseho podnikani</p>
+<div class="mx-auto max-w-6xl">
+	<h1 class="text-xl font-semibold text-primary">ZFaktury</h1>
+	<p class="mt-1 text-sm text-tertiary">Prehled vaseho podnikani</p>
 
 	<!-- Stats cards -->
-	<div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-			<p class="text-sm font-medium text-gray-500">Prijmy tento mesic</p>
-			<p class="mt-2 text-2xl font-bold text-gray-900">{formatCZK(0)}</p>
-		</div>
+	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<Card>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Prijmy tento mesic</p>
+			<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">{formatCZK(0)}</p>
+		</Card>
 
-		<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-			<p class="text-sm font-medium text-gray-500">Naklady tento mesic</p>
-			<p class="mt-2 text-2xl font-bold text-gray-900">{formatCZK(0)}</p>
-		</div>
+		<Card>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Naklady tento mesic</p>
+			<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">{formatCZK(0)}</p>
+		</Card>
 
-		<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-			<p class="text-sm font-medium text-gray-500">Neuhrazene faktury</p>
-			<p class="mt-2 text-2xl font-bold text-orange-600">0</p>
-		</div>
+		<Card>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Neuhrazene faktury</p>
+			<p class="mt-2 text-2xl font-semibold text-warning font-mono tabular-nums">0</p>
+		</Card>
 
-		<div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-			<p class="text-sm font-medium text-gray-500">Faktury po splatnosti</p>
-			<p class="mt-2 text-2xl font-bold text-red-600">0</p>
-		</div>
+		<Card>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Faktury po splatnosti</p>
+			<p class="mt-2 text-2xl font-semibold text-danger font-mono tabular-nums">0</p>
+		</Card>
 	</div>
 
 	<!-- Recent activity placeholder -->
 	<div class="mt-8">
-		<h2 class="text-lg font-semibold text-gray-900">Posledni aktivita</h2>
-		<div
-			class="mt-4 rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-400 shadow-sm"
-		>
+		<h2 class="text-base font-semibold text-primary">Posledni aktivita</h2>
+		<Card class="mt-4 text-center text-sm text-muted">
 			Zatim zadna aktivita. Zacnete vytvorenim prvni faktury.
-		</div>
+		</Card>
 	</div>
 </div>

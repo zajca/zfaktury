@@ -6,6 +6,8 @@
 	import { controlStatementApi, type ControlStatement } from '$lib/api/vat-control';
 	import { viesApi, type VIESSummary } from '$lib/api/vat-vies';
 	import { vatStatusLabels, monthLabels, quarters } from '$lib/utils/vat';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let selectedYear = $state(new Date().getFullYear());
 	let loading = $state(true);
@@ -79,14 +81,14 @@
 
 	function statusBtnClass(status: string | undefined): string {
 		if (!status)
-			return 'border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 hover:bg-gray-50';
+			return 'border border-dashed border-border-strong text-muted hover:border-border-strong hover:text-secondary hover:bg-hover';
 		switch (status) {
 			case 'filed':
-				return 'bg-green-600 text-white hover:bg-green-700';
+				return 'bg-success-bg text-success';
 			case 'ready':
-				return 'bg-blue-600 text-white hover:bg-blue-700';
+				return 'bg-info-bg text-info';
 			default:
-				return 'bg-gray-200 text-gray-800 hover:bg-gray-300';
+				return 'bg-elevated text-secondary hover:bg-hover';
 		}
 	}
 
@@ -152,41 +154,45 @@
 	<title>DPH za rok {selectedYear} - ZFaktury</title>
 </svelte:head>
 
-<div>
-	<h1 class="text-2xl font-bold text-gray-900">DPH za rok {selectedYear}</h1>
+<div class="mx-auto max-w-6xl">
+	<h1 class="text-xl font-semibold text-primary">DPH za rok {selectedYear}</h1>
 
 	<!-- Year selector -->
 	<div class="mt-4 flex items-center gap-3">
-		<button
+		<Button
+			variant="ghost"
+			size="sm"
 			onclick={() => {
 				selectedYear--;
 			}}
-			class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 transition-colors"
+			title="Předchozí rok"
 			aria-label="Předchozí rok"
 		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 			</svg>
-		</button>
-		<span class="min-w-[4rem] text-center text-lg font-semibold text-gray-900">{selectedYear}</span>
-		<button
+		</Button>
+		<span class="min-w-[4rem] text-center text-xl font-semibold text-primary tabular-nums">{selectedYear}</span>
+		<Button
+			variant="ghost"
+			size="sm"
 			onclick={() => {
 				selectedYear++;
 			}}
-			class="rounded-lg border border-gray-300 p-2 text-gray-600 hover:bg-gray-50 transition-colors"
+			title="Následující rok"
 			aria-label="Následující rok"
 		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 			</svg>
-		</button>
+		</Button>
 	</div>
 
 	<!-- Error -->
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
@@ -197,7 +203,7 @@
 		<div class="mt-8 flex items-center justify-center p-12">
 			<div role="status">
 				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 				></div>
 				<span class="sr-only">Načítání...</span>
 			</div>
@@ -206,19 +212,19 @@
 		<!-- Quarter sections -->
 		<div class="mt-6 space-y-6">
 			{#each quarters as q (q.quarter)}
-				<div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-					<div class="border-b border-gray-200 bg-gray-50 px-4 py-3">
-						<h2 class="text-sm font-semibold text-gray-700">{q.label} {selectedYear}</h2>
+				<Card padding={false} class="overflow-hidden">
+					<div class="bg-elevated px-4 py-2.5 text-sm font-medium text-secondary border-b border-border">
+						{q.label} {selectedYear}
 					</div>
-					<div class="divide-y divide-gray-100">
+					<div class="divide-y divide-border-subtle">
 						{#each q.months as month (month)}
-							<div class="flex items-center gap-3 px-4 py-3">
-								<span class="w-24 text-sm font-medium text-gray-900">{monthLabels[month]}</span>
+							<div class="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle">
+								<span class="w-24 text-sm font-medium text-primary">{monthLabels[month]}</span>
 								<div class="flex flex-wrap gap-2">
 									<!-- DPH button -->
 									<button
 										onclick={() => handleReturnClick(month)}
-										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(
+										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors {statusBtnClass(
 											getReturnForMonth(month)?.status
 										)}"
 									>
@@ -244,7 +250,7 @@
 									<!-- KH button -->
 									<button
 										onclick={() => handleControlClick(month)}
-										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(
+										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors {statusBtnClass(
 											getControlForMonth(month)?.status
 										)}"
 									>
@@ -271,7 +277,7 @@
 									{#if isQuarterEnd(month)}
 										<button
 											onclick={() => handleViesClick(quarterForMonth(month))}
-											class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(
+											class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors {statusBtnClass(
 												getViesForQuarter(quarterForMonth(month))?.status
 											)}"
 										>
@@ -299,13 +305,13 @@
 						{/each}
 
 						<!-- Cele ctvrtleti row -->
-						<div class="flex items-center gap-3 bg-gray-50/50 px-4 py-3">
-							<span class="w-24 text-sm font-medium text-gray-500 italic">Celé čtvrtletí</span>
+						<div class="flex items-center gap-3 bg-elevated/50 px-4 py-2.5">
+							<span class="w-24 text-sm font-medium text-tertiary italic">Celé čtvrtletí</span>
 							<div class="flex flex-wrap gap-2">
 								<!-- Quarterly DPH -->
 								<button
 									onclick={() => handleQuarterReturnClick(q.quarter)}
-									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(
+									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors {statusBtnClass(
 										getReturnForQuarter(q.quarter)?.status
 									)}"
 								>
@@ -331,7 +337,7 @@
 								<!-- Quarterly SH -->
 								<button
 									onclick={() => handleViesClick(q.quarter)}
-									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {statusBtnClass(
+									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors {statusBtnClass(
 										getViesForQuarter(q.quarter)?.status
 									)}"
 								>
@@ -356,7 +362,7 @@
 							</div>
 						</div>
 					</div>
-				</div>
+				</Card>
 			{/each}
 		</div>
 	{/if}

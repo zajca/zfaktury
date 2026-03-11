@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { formatDate } from '$lib/utils/date';
+	import Badge from '$lib/ui/Badge.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	interface RecurringInvoiceItem {
 		id: number;
@@ -101,96 +104,84 @@
 	<title>Opakujici se faktury - ZFaktury</title>
 </svelte:head>
 
-<div>
+<div class="mx-auto max-w-6xl">
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Opakujici se faktury</h1>
-			<p class="mt-1 text-sm text-gray-500">Sablony pro automaticke generovani faktur</p>
+			<h1 class="text-xl font-semibold text-primary">Opakujici se faktury</h1>
+			<p class="mt-1 text-sm text-tertiary">Sablony pro automaticke generovani faktur</p>
 		</div>
 		<div class="flex gap-3">
-			<button
-				onclick={processDue}
-				disabled={processing}
-				class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
-			>
+			<Button variant="secondary" onclick={processDue} disabled={processing}>
 				{processing ? 'Zpracovavam...' : 'Zpracovat splatne'}
-			</button>
-			<a
-				href="/recurring/new"
-				class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-			>
+			</Button>
+			<Button variant="primary" href="/recurring/new">
 				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 				</svg>
 				Nova opakujici se faktura
-			</a>
+			</Button>
 		</div>
 	</div>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
 	{/if}
 
-	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
 				<div role="status">
 					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 					></div>
 					<span class="sr-only">Nacitani...</span>
 				</div>
 			</div>
 		{:else if recurringInvoices.length === 0}
-			<div class="p-12 text-center text-gray-400">Zatim zadne opakujici se faktury.</div>
+			<div class="p-12 text-center text-muted">Zatim zadne opakujici se faktury.</div>
 		{:else}
 			<table class="w-full text-left text-sm">
-				<thead class="border-b border-gray-200 bg-gray-50">
+				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-3 font-medium text-gray-600">Nazev</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Zakaznik</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Frekvence</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Dalsi vystaveni</th
-						>
-						<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
-						<th class="px-4 py-3 text-right font-medium text-gray-600">Akce</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Nazev</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Zakaznik</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Frekvence</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Dalsi vystaveni</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Stav</th>
+						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Akce</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-100">
+				<tbody class="divide-y divide-border-subtle">
 					{#each recurringInvoices as ri (ri.id)}
-						<tr class="hover:bg-gray-50 transition-colors">
-							<td class="px-4 py-3">
-								<a href="/recurring/{ri.id}" class="font-medium text-blue-600 hover:text-blue-800">
+						<tr class="hover:bg-hover transition-colors cursor-pointer">
+							<td class="px-4 py-2.5">
+								<a href="/recurring/{ri.id}" class="text-accent-text hover:text-accent font-medium">
 									{ri.name}
 								</a>
 							</td>
-							<td class="px-4 py-3 text-gray-700">
+							<td class="px-4 py-2.5 text-secondary">
 								{ri.customer?.name ?? '-'}
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">
 								{frequencyLabels[ri.frequency] ?? ri.frequency}
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">
 								{formatDate(ri.next_issue_date)}
 							</td>
-							<td class="px-4 py-3">
-								<span
-									class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {ri.is_active
-										? 'bg-green-100 text-green-700'
-										: 'bg-gray-100 text-gray-500'}"
-								>
+							<td class="px-4 py-2.5">
+								<Badge variant={ri.is_active ? 'success' : 'muted'}>
 									{ri.is_active ? 'Aktivni' : 'Neaktivni'}
-								</span>
+								</Badge>
 							</td>
-							<td class="px-4 py-3 text-right">
+							<td class="px-4 py-2.5 text-right">
 								<button
 									onclick={() => deleteRecurring(ri.id)}
-									class="text-sm text-red-600 hover:text-red-800"
+									class="text-sm text-danger hover:text-danger/80"
 								>
 									Smazat
 								</button>
@@ -200,5 +191,5 @@
 				</tbody>
 			</table>
 		{/if}
-	</div>
+	</Card>
 </div>

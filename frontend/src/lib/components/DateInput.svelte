@@ -74,12 +74,12 @@
 			onclick={handleClick}
 			oninput={handleInput}
 			onkeydown={handleKeydown}
-			class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+			class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 		/>
 		<button
 			type="button"
 			onclick={setToday}
-			class="mt-1 shrink-0 rounded-lg border border-gray-300 px-2.5 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+			class="shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium text-secondary hover:bg-hover hover:text-primary transition-colors"
 			title="Nastavit dnešní datum (T)"
 		>
 			Dnes
@@ -91,7 +91,7 @@
 				<button
 					type="button"
 					onclick={() => applyPreset(preset)}
-					class="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+					class="rounded-full border border-border px-2.5 py-0.5 text-xs text-tertiary hover:bg-hover hover:text-secondary transition-colors"
 				>
 					{preset.label}
 				</button>
@@ -99,6 +99,6 @@
 		</div>
 	{/if}
 	{#if formattedDate}
-		<span class="text-xs text-gray-400">{formattedDate}</span>
+		<span class="text-xs text-muted">{formattedDate}</span>
 	{/if}
 </div>

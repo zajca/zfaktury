@@ -6,8 +6,11 @@
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate, toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import { statusLabels, statusColors } from '$lib/utils/invoice';
+	import { statusLabels, statusVariant } from '$lib/utils/invoice';
 	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
+	import Badge from '$lib/ui/Badge.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -179,13 +182,13 @@
 	<title>{invoice ? `Faktura ${invoice.invoice_number}` : 'Faktura'} - ZFaktury</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl">
-	<a href="/invoices" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na faktury</a>
+<div class="mx-auto max-w-5xl">
+	<a href="/invoices" class="text-sm text-secondary hover:text-primary">&larr; Zpět na faktury</a>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
@@ -195,59 +198,41 @@
 		<div class="mt-8 flex items-center justify-center">
 			<div role="status">
 				<div
-					class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+					class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 				></div>
 				<span class="sr-only">Nacitani...</span>
 			</div>
 		</div>
 	{:else if invoice}
 		<!-- Header -->
-		<div class="mt-4 flex items-start justify-between">
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900">Faktura {invoice.invoice_number}</h1>
-				<div class="mt-2 flex items-center gap-3">
-					<span
-						class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[
-							invoice.status
-						] ?? 'bg-gray-100 text-gray-700'}"
-					>
+		<div class="mt-4">
+			<div class="flex items-center justify-between">
+				<h1 class="text-xl font-semibold text-primary">Faktura {invoice.invoice_number}</h1>
+				<div class="flex items-center gap-3">
+					<Badge variant={statusVariant[invoice.status] ?? 'default'}>
 						{statusLabels[invoice.status] ?? invoice.status}
-					</span>
+					</Badge>
 					{#if invoice.customer}
-						<span class="text-sm text-gray-600">{invoice.customer.name}</span>
+						<span class="text-sm text-secondary">{invoice.customer.name}</span>
 					{/if}
 				</div>
 			</div>
-			<div class="flex flex-wrap gap-2">
-				{#if invoice.status === 'draft' && !editing}
-					<button
-						onclick={startEditing}
-						class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-					>
-						Upravit
-					</button>
-					<button
-						onclick={handleSend}
-						class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-					>
-						Odeslat
-					</button>
-				{/if}
-				{#if invoice.status === 'sent' || invoice.status === 'overdue'}
-					<button
-						onclick={handleMarkPaid}
-						class="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
-					>
-						Uhrazená
-					</button>
-				{/if}
-				{#if !editing}
-					<a
-						href={invoicesApi.getPdfUrl(invoiceId)}
-						target="_blank"
-						rel="noopener"
-						class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-					>
+			{#if !editing}
+				<div class="mt-3 flex flex-wrap gap-2">
+					{#if invoice.status === 'draft'}
+						<Button variant="secondary" onclick={startEditing}>
+							Upravit
+						</Button>
+						<Button variant="primary" onclick={handleSend}>
+							Odeslat
+						</Button>
+					{/if}
+					{#if invoice.status === 'sent' || invoice.status === 'overdue'}
+						<Button variant="success" onclick={handleMarkPaid}>
+							Uhrazená
+						</Button>
+					{/if}
+					<Button variant="secondary" href={invoicesApi.getPdfUrl(invoiceId)}>
 						<svg
 							class="h-4 w-4"
 							fill="none"
@@ -262,30 +247,20 @@
 							/>
 						</svg>
 						Stáhnout PDF
-					</a>
-					<a
-						href={invoicesApi.getIsdocUrl(invoiceId)}
-						download
-						class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors inline-flex items-center gap-1"
-					>
+					</Button>
+					<Button variant="secondary" href={invoicesApi.getIsdocUrl(invoiceId)}>
 						Export ISDOC
-					</a>
-					<button
-						onclick={handleDuplicate}
-						class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-					>
+					</Button>
+					<Button variant="secondary" onclick={handleDuplicate}>
 						Duplikovat
-					</button>
+					</Button>
 					{#if invoice.status !== 'paid'}
-						<button
-							onclick={handleDelete}
-							class="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-						>
+						<Button variant="danger" onclick={handleDelete}>
 							Smazat
-						</button>
+						</Button>
 					{/if}
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 
 		{#if editing}
@@ -298,12 +273,12 @@
 				class="mt-6 space-y-6"
 			>
 				<!-- Customer -->
-				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Zákazník</h2>
+				<Card>
+					<h2 class="text-base font-semibold text-primary">Zákazník</h2>
 					<div class="mt-4">
 						<select
 							bind:value={form.customer_id}
-							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 						>
 							<option value={0}>-- Vyberte --</option>
 							{#each contacts as contact (contact.id)}
@@ -313,14 +288,14 @@
 							{/each}
 						</select>
 					</div>
-				</div>
+				</Card>
 
 				<!-- Dates -->
-				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Údaje faktury</h2>
+				<Card>
+					<h2 class="text-base font-semibold text-primary">Údaje faktury</h2>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<label for="edit-issue" class="block text-sm font-medium text-gray-700"
+							<label for="edit-issue" class="block text-sm font-medium text-secondary"
 								>Datum vystavení</label
 							>
 							<DateInput
@@ -331,7 +306,7 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-due" class="block text-sm font-medium text-gray-700"
+							<label for="edit-due" class="block text-sm font-medium text-secondary"
 								>Datum splatnosti</label
 							>
 							<DateInput
@@ -349,31 +324,31 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-delivery" class="block text-sm font-medium text-gray-700">DUZP</label
+							<label for="edit-delivery" class="block text-sm font-medium text-secondary">DUZP</label
 							>
 							<DateInput id="edit-delivery" bind:value={form.delivery_date} />
 						</div>
 					</div>
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="edit-vs" class="block text-sm font-medium text-gray-700"
+							<label for="edit-vs" class="block text-sm font-medium text-secondary"
 								>Variabilní symbol</label
 							>
 							<input
 								id="edit-vs"
 								type="text"
 								bind:value={form.variable_symbol}
-								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							/>
 						</div>
 						<div>
-							<label for="edit-payment" class="block text-sm font-medium text-gray-700"
+							<label for="edit-payment" class="block text-sm font-medium text-secondary"
 								>Způsob platby</label
 							>
 							<select
 								id="edit-payment"
 								bind:value={form.payment_method}
-								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							>
 								<option value="bank_transfer">Bankovní převod</option>
 								<option value="cash">Hotovost</option>
@@ -381,88 +356,80 @@
 							</select>
 						</div>
 					</div>
-				</div>
+				</Card>
 
 				<!-- Items -->
 				<InvoiceItemsEditor bind:items idPrefix="edit-" />
 
 				<!-- Notes -->
-				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
+				<Card>
+					<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 					<div class="mt-4 space-y-4">
 						<div>
-							<label for="edit-notes" class="block text-sm font-medium text-gray-700"
+							<label for="edit-notes" class="block text-sm font-medium text-secondary"
 								>Poznámka na faktuře</label
 							>
 							<textarea
 								id="edit-notes"
 								bind:value={form.notes}
 								rows="2"
-								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							></textarea>
 						</div>
 						<div>
-							<label for="edit-internal" class="block text-sm font-medium text-gray-700"
+							<label for="edit-internal" class="block text-sm font-medium text-secondary"
 								>Interní poznámka</label
 							>
 							<textarea
 								id="edit-internal"
 								bind:value={form.internal_notes}
 								rows="2"
-								class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							></textarea>
 						</div>
 					</div>
-				</div>
+				</Card>
 
 				<!-- Actions -->
 				<div class="flex gap-3">
-					<button
-						type="submit"
-						disabled={saving}
-						class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-					>
+					<Button type="submit" variant="primary" disabled={saving}>
 						{saving ? 'Ukládám...' : 'Uložit změny'}
-					</button>
-					<button
-						type="button"
-						onclick={cancelEditing}
-						class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-					>
+					</Button>
+					<Button variant="secondary" onclick={cancelEditing}>
 						Zrušit
-					</button>
+					</Button>
 				</div>
 			</form>
 		{:else}
 			<!-- View mode -->
 			<div class="mt-6 space-y-6">
 				<!-- Invoice details -->
-				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Údaje faktury</h2>
+				<Card>
+					<h2 class="text-base font-semibold text-primary">Údaje faktury</h2>
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Datum vystavení</dt>
-							<dd class="mt-1 text-sm text-gray-900">{formatDate(invoice.issue_date)}</dd>
+							<dt class="text-sm font-medium text-tertiary">Datum vystavení</dt>
+							<dd class="mt-1 text-sm text-primary">{formatDate(invoice.issue_date)}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Datum splatnosti</dt>
-							<dd class="mt-1 text-sm text-gray-900">{formatDate(invoice.due_date)}</dd>
+							<dt class="text-sm font-medium text-tertiary">Datum splatnosti</dt>
+							<dd class="mt-1 text-sm text-primary">{formatDate(invoice.due_date)}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">DUZP</dt>
-							<dd class="mt-1 text-sm text-gray-900">{formatDate(invoice.delivery_date)}</dd>
+							<dt class="text-sm font-medium text-tertiary">DUZP</dt>
+							<dd class="mt-1 text-sm text-primary">{formatDate(invoice.delivery_date)}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Variabilní symbol</dt>
-							<dd class="mt-1 text-sm text-gray-900">{invoice.variable_symbol || '-'}</dd>
+							<dt class="text-sm font-medium text-tertiary">Variabilní symbol</dt>
+							<dd class="mt-1 text-sm text-primary">{invoice.variable_symbol || '-'}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Konstantní symbol</dt>
-							<dd class="mt-1 text-sm text-gray-900">{invoice.constant_symbol || '-'}</dd>
+							<dt class="text-sm font-medium text-tertiary">Konstantní symbol</dt>
+							<dd class="mt-1 text-sm text-primary">{invoice.constant_symbol || '-'}</dd>
 						</div>
 						<div>
-							<dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
-							<dd class="mt-1 text-sm text-gray-900">
+							<dt class="text-sm font-medium text-tertiary">Způsob platby</dt>
+							<dd class="mt-1 text-sm text-primary">
 								{#if invoice.payment_method === 'bank_transfer'}Bankovní převod
 								{:else if invoice.payment_method === 'cash'}Hotovost
 								{:else if invoice.payment_method === 'card'}Karta
@@ -471,64 +438,64 @@
 							</dd>
 						</div>
 					</dl>
-				</div>
+				</Card>
 
 				<!-- Customer -->
 				{#if invoice.customer}
-					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Zákazník</h2>
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Zákazník</h2>
 						<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
-								<dt class="text-sm font-medium text-gray-500">Název</dt>
-								<dd class="mt-1 text-sm text-gray-900">
+								<dt class="text-sm font-medium text-tertiary">Název</dt>
+								<dd class="mt-1 text-sm text-primary">
 									<a
 										href="/contacts/{invoice.customer.id}"
-										class="text-blue-600 hover:text-blue-800">{invoice.customer.name}</a
+										class="text-accent-text hover:text-accent">{invoice.customer.name}</a
 									>
 								</dd>
 							</div>
 							{#if invoice.customer.ico}
 								<div>
-									<dt class="text-sm font-medium text-gray-500">IČO</dt>
-									<dd class="mt-1 text-sm text-gray-900">{invoice.customer.ico}</dd>
+									<dt class="text-sm font-medium text-tertiary">IČO</dt>
+									<dd class="mt-1 text-sm text-primary">{invoice.customer.ico}</dd>
 								</div>
 							{/if}
 							{#if invoice.customer.dic}
 								<div>
-									<dt class="text-sm font-medium text-gray-500">DIČ</dt>
-									<dd class="mt-1 text-sm text-gray-900">{invoice.customer.dic}</dd>
+									<dt class="text-sm font-medium text-tertiary">DIČ</dt>
+									<dd class="mt-1 text-sm text-primary">{invoice.customer.dic}</dd>
 								</div>
 							{/if}
 						</dl>
-					</div>
+					</Card>
 				{/if}
 
 				<!-- Items -->
-				<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-					<h2 class="text-lg font-semibold text-gray-900">Položky</h2>
+				<Card>
+					<h2 class="text-base font-semibold text-primary">Položky</h2>
 					<div class="mt-4 overflow-x-auto">
 						<table class="w-full text-left text-sm">
-							<thead class="border-b border-gray-200">
+							<thead class="border-b border-border">
 								<tr>
-									<th class="pb-2 font-medium text-gray-600">Popis</th>
-									<th class="pb-2 text-right font-medium text-gray-600">Množství</th>
-									<th class="pb-2 font-medium text-gray-600">Jednotka</th>
-									<th class="pb-2 text-right font-medium text-gray-600">Cena/ks</th>
-									<th class="pb-2 text-right font-medium text-gray-600">DPH %</th>
-									<th class="pb-2 text-right font-medium text-gray-600">DPH</th>
-									<th class="pb-2 text-right font-medium text-gray-600">Celkem</th>
+									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
+									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Množství</th>
+									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted">Jednotka</th>
+									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Cena/ks</th>
+									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH %</th>
+									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH</th>
+									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Celkem</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-100">
+							<tbody class="divide-y divide-border-subtle">
 								{#each invoice.items ?? [] as item (item.id)}
 									<tr>
-										<td class="py-2 text-gray-900">{item.description}</td>
-										<td class="py-2 text-right text-gray-700">{fromHalere(item.quantity)}</td>
-										<td class="py-2 text-gray-700">{item.unit}</td>
-										<td class="py-2 text-right text-gray-700">{formatCZK(item.unit_price)}</td>
-										<td class="py-2 text-right text-gray-700">{item.vat_rate_percent}%</td>
-										<td class="py-2 text-right text-gray-700">{formatCZK(item.vat_amount)}</td>
-										<td class="py-2 text-right font-medium text-gray-900"
+										<td class="py-2.5 text-primary">{item.description}</td>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{fromHalere(item.quantity)}</td>
+										<td class="py-2.5 text-secondary">{item.unit}</td>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{formatCZK(item.unit_price)}</td>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{item.vat_rate_percent}%</td>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{formatCZK(item.vat_amount)}</td>
+										<td class="py-2.5 text-right font-mono tabular-nums font-medium text-primary"
 											>{formatCZK(item.total_amount)}</td
 										>
 									</tr>
@@ -537,63 +504,63 @@
 						</table>
 					</div>
 
-					<div class="mt-4 border-t border-gray-200 pt-4">
+					<div class="mt-4 border-t border-border pt-4">
 						<div class="flex flex-col items-end gap-1 text-sm">
 							<div class="flex gap-8">
-								<span class="text-gray-600">Základ:</span>
-								<span class="font-medium text-gray-900">{formatCZK(invoice.subtotal_amount)}</span>
+								<span class="text-secondary">Základ:</span>
+								<span class="font-medium font-mono tabular-nums text-primary">{formatCZK(invoice.subtotal_amount)}</span>
 							</div>
 							<div class="flex gap-8">
-								<span class="text-gray-600">DPH:</span>
-								<span class="font-medium text-gray-900">{formatCZK(invoice.vat_amount)}</span>
+								<span class="text-secondary">DPH:</span>
+								<span class="font-medium font-mono tabular-nums text-primary">{formatCZK(invoice.vat_amount)}</span>
 							</div>
-							<div class="flex gap-8 border-t border-gray-200 pt-1 text-base">
-								<span class="font-semibold text-gray-900">Celkem:</span>
-								<span class="font-bold text-gray-900">{formatCZK(invoice.total_amount)}</span>
+							<div class="flex gap-8 border-t border-border pt-1 text-base">
+								<span class="font-semibold text-primary">Celkem:</span>
+								<span class="font-bold font-mono tabular-nums text-primary">{formatCZK(invoice.total_amount)}</span>
 							</div>
 							{#if invoice.paid_amount > 0}
-								<div class="flex gap-8 text-green-700">
+								<div class="flex gap-8 text-success">
 									<span>Uhrazeno:</span>
-									<span class="font-medium">{formatCZK(invoice.paid_amount)}</span>
+									<span class="font-medium font-mono tabular-nums">{formatCZK(invoice.paid_amount)}</span>
 								</div>
 							{/if}
 						</div>
 					</div>
-				</div>
+				</Card>
 
 				<!-- Payment info with QR code -->
 				{#if invoice.bank_account || invoice.iban}
-					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Platební údaje</h2>
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Platební údaje</h2>
 						<div class="mt-4 flex flex-col gap-6 sm:flex-row">
 							<dl class="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
 								{#if invoice.bank_account}
 									<div>
-										<dt class="text-sm font-medium text-gray-500">Číslo účtu</dt>
-										<dd class="mt-1 text-sm text-gray-900">
+										<dt class="text-sm font-medium text-tertiary">Číslo účtu</dt>
+										<dd class="mt-1 text-sm text-primary">
 											{invoice.bank_account}{invoice.bank_code ? `/${invoice.bank_code}` : ''}
 										</dd>
 									</div>
 								{/if}
 								{#if invoice.iban}
 									<div>
-										<dt class="text-sm font-medium text-gray-500">IBAN</dt>
-										<dd class="mt-1 text-sm text-gray-900">{invoice.iban}</dd>
+										<dt class="text-sm font-medium text-tertiary">IBAN</dt>
+										<dd class="mt-1 text-sm text-primary">{invoice.iban}</dd>
 									</div>
 								{/if}
 								{#if invoice.variable_symbol}
 									<div>
-										<dt class="text-sm font-medium text-gray-500">Variabilní symbol</dt>
-										<dd class="mt-1 text-sm text-gray-900">{invoice.variable_symbol}</dd>
+										<dt class="text-sm font-medium text-tertiary">Variabilní symbol</dt>
+										<dd class="mt-1 text-sm text-primary">{invoice.variable_symbol}</dd>
 									</div>
 								{/if}
 							</dl>
 							{#if invoice.iban && invoice.status !== 'paid'}
 								<div class="flex flex-col items-center gap-2">
-									<span class="text-sm font-medium text-gray-500">QR platba</span>
+									<span class="text-sm font-medium text-tertiary">QR platba</span>
 									{#if qrError}
 										<div
-											class="flex h-32 w-32 items-center justify-center rounded border border-gray-200 bg-gray-50 text-xs text-gray-400"
+											class="flex h-32 w-32 items-center justify-center rounded border border-border bg-elevated text-xs text-muted"
 										>
 											QR kód není dostupný
 										</div>
@@ -601,7 +568,7 @@
 										<img
 											src={invoicesApi.getQrUrl(invoiceId)}
 											alt="QR kód pro platbu"
-											class="h-32 w-32 rounded border border-gray-200"
+											class="h-32 w-32 rounded border border-border"
 											onerror={() => {
 												qrError = true;
 											}}
@@ -610,32 +577,32 @@
 								</div>
 							{/if}
 						</div>
-					</div>
+					</Card>
 				{/if}
 
 				<!-- Notes -->
 				{#if invoice.notes || invoice.internal_notes}
-					<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 						{#if invoice.notes}
 							<div class="mt-4">
-								<h3 class="text-sm font-medium text-gray-500">Poznámka na faktuře</h3>
-								<p class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{invoice.notes}</p>
+								<h3 class="text-sm font-medium text-tertiary">Poznámka na faktuře</h3>
+								<p class="mt-1 text-sm text-primary whitespace-pre-wrap">{invoice.notes}</p>
 							</div>
 						{/if}
 						{#if invoice.internal_notes}
 							<div class="mt-4">
-								<h3 class="text-sm font-medium text-gray-500">Interní poznámka</h3>
-								<p class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+								<h3 class="text-sm font-medium text-tertiary">Interní poznámka</h3>
+								<p class="mt-1 text-sm text-primary whitespace-pre-wrap">
 									{invoice.internal_notes}
 								</p>
 							</div>
 						{/if}
-					</div>
+					</Card>
 				{/if}
 
 				<!-- Timestamps -->
-				<div class="text-xs text-gray-400">
+				<div class="text-xs text-muted">
 					Vytvořeno: {formatDate(invoice.created_at)} | Upraveno: {formatDate(invoice.updated_at)}
 					{#if invoice.sent_at}
 						| Odesláno: {formatDate(invoice.sent_at)}{/if}

@@ -2,6 +2,10 @@
 	import { invoicesApi, type Invoice } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import { statusLabels, statusVariant } from '$lib/utils/invoice';
+	import Badge from '$lib/ui/Badge.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let invoices = $state<Invoice[]>([]);
 	let total = $state(0);
@@ -13,22 +17,6 @@
 	let error = $state<string | null>(null);
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
-
-	const statusLabels: Record<string, string> = {
-		draft: 'Koncept',
-		sent: 'Odeslaná',
-		paid: 'Uhrazená',
-		overdue: 'Po splatnosti',
-		cancelled: 'Stornovaná'
-	};
-
-	const statusColors: Record<string, string> = {
-		draft: 'bg-gray-100 text-gray-700',
-		sent: 'bg-blue-100 text-blue-700',
-		paid: 'bg-green-100 text-green-700',
-		overdue: 'bg-red-100 text-red-700',
-		cancelled: 'bg-gray-100 text-gray-500'
-	};
 
 	async function loadInvoices() {
 		loading = true;
@@ -81,21 +69,18 @@
 	<title>Faktury - ZFaktury</title>
 </svelte:head>
 
-<div>
+<div class="mx-auto max-w-6xl">
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Faktury</h1>
-			<p class="mt-1 text-sm text-gray-500">Přehled vydaných faktur</p>
+			<h1 class="text-xl font-semibold text-primary">Faktury</h1>
+			<p class="mt-1 text-sm text-tertiary">Přehled vydaných faktur</p>
 		</div>
-		<a
-			href="/invoices/new"
-			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-		>
+		<Button variant="primary" href="/invoices/new">
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
 			Nová faktura
-		</a>
+		</Button>
 	</div>
 
 	<!-- Filters -->
@@ -104,11 +89,11 @@
 			type="text"
 			bind:value={search}
 			placeholder="Hledat podle čísla, zákazníka..."
-			class="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+			class="w-full max-w-md rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 		/>
 		<select
 			bind:value={statusFilter}
-			class="rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+			class="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 		>
 			<option value="">Všechny stavy</option>
 			<option value="draft">Koncept</option>
@@ -123,109 +108,106 @@
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
 	{/if}
 
 	<!-- Table -->
-	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
 				<div role="status">
 					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 					></div>
 					<span class="sr-only">Nacitani...</span>
 				</div>
 			</div>
 		{:else if invoices.length === 0}
-			<div class="p-12 text-center text-gray-400">
+			<div class="p-12 text-center text-muted">
 				{search || statusFilter ? 'Žádné faktury neodpovídají filtru.' : 'Zatím žádné faktury.'}
 			</div>
 		{:else}
 			<table class="w-full text-left text-sm">
-				<thead class="border-b border-gray-200 bg-gray-50">
+				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-3 font-medium text-gray-600">Číslo</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Zákazník</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum vystavení</th
-						>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Splatnost</th>
-						<th class="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Stav</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Číslo</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Zákazník</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Datum vystavení</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Splatnost</th>
+						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Částka</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Stav</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-100">
+				<tbody class="divide-y divide-border-subtle">
 					{#each invoices as invoice (invoice.id)}
-						<tr class="hover:bg-gray-50 transition-colors">
-							<td class="px-4 py-3">
+						<tr class="hover:bg-hover transition-colors cursor-pointer">
+							<td class="px-4 py-2.5">
 								<a
 									href="/invoices/{invoice.id}"
-									class="font-medium text-blue-600 hover:text-blue-800"
+									class="text-accent-text hover:text-accent font-medium"
 								>
 									{invoice.invoice_number}
 								</a>
 							</td>
-							<td class="px-4 py-3 text-gray-700">
+							<td class="px-4 py-2.5 text-secondary">
 								{invoice.customer?.name ?? '-'}
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">
 								{formatDate(invoice.issue_date)}
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">
 								{formatDate(invoice.due_date)}
 							</td>
-							<td class="px-4 py-3 text-right font-medium text-gray-900">
+							<td class="px-4 py-2.5 text-right font-mono tabular-nums font-medium text-primary">
 								{formatCZK(invoice.total_amount)}
 							</td>
-							<td class="px-4 py-3">
-								<span
-									class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {statusColors[
-										invoice.status
-									] ?? 'bg-gray-100 text-gray-700'}"
-								>
+							<td class="px-4 py-2.5">
+								<Badge variant={statusVariant[invoice.status] ?? 'default'}>
 									{statusLabels[invoice.status] ?? invoice.status}
-								</span>
+								</Badge>
 							</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 		{/if}
-	</div>
+	</Card>
 
 	<!-- Pagination -->
 	{#if totalPages > 1}
 		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-500">
+			<p class="text-sm text-tertiary">
 				Celkem {total} faktur
 			</p>
 			<div class="flex gap-2">
-				<button
+				<Button
+					variant="secondary"
+					size="sm"
 					onclick={() => {
 						page = Math.max(1, page - 1);
 						loadInvoices();
 					}}
 					disabled={page <= 1}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Předchozí
-				</button>
-				<span class="flex items-center px-3 text-sm text-gray-600">
+				</Button>
+				<span class="flex items-center px-3 text-sm text-secondary">
 					{page} / {totalPages}
 				</span>
-				<button
+				<Button
+					variant="secondary"
+					size="sm"
 					onclick={() => {
 						page = Math.min(totalPages, page + 1);
 						loadInvoices();
 					}}
 					disabled={page >= totalPages}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Další
-				</button>
+				</Button>
 			</div>
 		</div>
 	{/if}

@@ -373,7 +373,7 @@ describe('Expense Tax Review', () => {
 		await fireEvent.click(markBtn);
 
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-red-700');
+			const errorDiv = document.querySelector('.text-danger');
 			expect(errorDiv).toBeInTheDocument();
 		});
 	});
@@ -410,7 +410,7 @@ describe('Expense Tax Review', () => {
 
 		render(Page);
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-red-700');
+			const errorDiv = document.querySelector('.text-danger');
 			expect(errorDiv).toBeInTheDocument();
 		});
 	});

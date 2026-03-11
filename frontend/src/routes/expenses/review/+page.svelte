@@ -4,6 +4,9 @@
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
+	import Badge from '$lib/ui/Badge.svelte';
 
 	// Extended Expense type with tax_reviewed_at field not yet in shared client.ts
 	interface ExpenseWithReview {
@@ -169,63 +172,57 @@
 	<title>Daňová kontrola nákladů - ZFaktury</title>
 </svelte:head>
 
-<div>
+<div class="mx-auto max-w-6xl">
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Daňová kontrola nákladů</h1>
-			<p class="mt-1 text-sm text-gray-500">Označte výdaje jako daňově zkontrolované</p>
+			<h1 class="text-xl font-semibold text-primary">Daňová kontrola nákladů</h1>
+			<p class="mt-1 text-sm text-tertiary">Označte výdaje jako daňově zkontrolované</p>
 		</div>
-		<a
-			href="/expenses"
-			class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-		>
+		<Button variant="secondary" href="/expenses">
 			Zpět na náklady
-		</a>
+		</Button>
 	</div>
 
 	<!-- Filters -->
-	<div
-		class="mt-6 flex flex-wrap items-end gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-	>
-		<div class="flex flex-col gap-1">
-			<label for="date-from" class="text-xs font-medium text-gray-600">Datum od</label>
-			<DateInput id="date-from" bind:value={dateFrom} />
+	<Card class="mt-6">
+		<div class="flex flex-wrap items-end gap-4">
+			<div class="flex flex-col gap-1">
+				<label for="date-from" class="text-xs font-medium text-muted">Datum od</label>
+				<DateInput id="date-from" bind:value={dateFrom} />
+			</div>
+			<div class="flex flex-col gap-1">
+				<label for="date-to" class="text-xs font-medium text-muted">Datum do</label>
+				<DateInput id="date-to" bind:value={dateTo} />
+			</div>
+			<div class="flex flex-col gap-1">
+				<label for="tax-reviewed" class="text-xs font-medium text-muted">Stav kontroly</label>
+				<select
+					id="tax-reviewed"
+					bind:value={taxReviewedFilter}
+					class="rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+				>
+					<option value="all">Vše</option>
+					<option value="not_reviewed">Nekontrolováno</option>
+					<option value="reviewed">Zkontrolováno</option>
+				</select>
+			</div>
+			<Button variant="primary" onclick={applyFilters}>
+				Filtrovat
+			</Button>
 		</div>
-		<div class="flex flex-col gap-1">
-			<label for="date-to" class="text-xs font-medium text-gray-600">Datum do</label>
-			<DateInput id="date-to" bind:value={dateTo} />
-		</div>
-		<div class="flex flex-col gap-1">
-			<label for="tax-reviewed" class="text-xs font-medium text-gray-600">Stav kontroly</label>
-			<select
-				id="tax-reviewed"
-				bind:value={taxReviewedFilter}
-				class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-			>
-				<option value="all">Vše</option>
-				<option value="not_reviewed">Nekontrolováno</option>
-				<option value="reviewed">Zkontrolováno</option>
-			</select>
-		</div>
-		<button
-			onclick={applyFilters}
-			class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-		>
-			Filtrovat
-		</button>
-	</div>
+	</Card>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
 	{/if}
 
 	{#if successMessage}
-		<div class="mt-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+		<div class="mt-4 rounded-lg border border-success/20 bg-success-bg p-4 text-sm text-success">
 			{successMessage}
 		</div>
 	{/if}
@@ -233,127 +230,116 @@
 	<!-- Bulk actions -->
 	{#if someSelected}
 		<div
-			class="mt-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3"
+			class="mt-4 flex items-center gap-3 rounded-lg border border-accent/20 bg-accent-muted px-4 py-2.5"
 		>
-			<span class="text-sm font-medium text-blue-800">
+			<span class="text-sm text-accent-text">
 				Vybráno: {selectedIds.size} výdajů
 			</span>
-			<button
-				onclick={markReviewed}
-				disabled={bulkLoading}
-				class="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-			>
+			<Button variant="success" size="sm" onclick={markReviewed} disabled={bulkLoading}>
 				{bulkLoading ? 'Ukládám...' : 'Označit jako zkontrolováno'}
-			</button>
-			<button
-				onclick={unmarkReviewed}
-				disabled={bulkLoading}
-				class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-			>
+			</Button>
+			<Button variant="secondary" size="sm" onclick={unmarkReviewed} disabled={bulkLoading}>
 				{bulkLoading ? 'Ukládám...' : 'Odznačit'}
-			</button>
+			</Button>
 		</div>
 	{/if}
 
 	<!-- Table -->
-	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
 				<div role="status">
 					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 					></div>
 					<span class="sr-only">Nacitani...</span>
 				</div>
 			</div>
 		{:else if expenses.length === 0}
-			<div class="p-12 text-center text-gray-400">Žádné výdaje neodpovídají filtrům.</div>
+			<div class="p-12 text-center text-muted">Žádné výdaje neodpovídají filtrům.</div>
 		{:else}
 			<table class="w-full text-left text-sm">
-				<thead class="border-b border-gray-200 bg-gray-50">
+				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-3 w-8">
+						<th class="px-4 py-2.5 w-8">
 							<input
 								type="checkbox"
 								checked={allSelected}
 								onchange={toggleSelectAll}
-								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								class="rounded border-border accent-accent"
 								title="Vybrat vše"
 							/>
 						</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Číslo</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 lg:table-cell">Dodavatel</th>
-						<th class="px-4 py-3 font-medium text-gray-600">Popis</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Kategorie</th>
-						<th class="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
-						<th class="hidden px-4 py-3 text-right font-medium text-gray-600 md:table-cell">DPH</th>
-						<th class="px-4 py-3 text-center font-medium text-gray-600">Kontrola</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Číslo</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Datum</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted lg:table-cell">Dodavatel</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Kategorie</th>
+						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Částka</th>
+						<th class="hidden px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted md:table-cell">DPH</th>
+						<th class="px-4 py-2.5 text-center text-xs font-medium uppercase tracking-wider text-muted">Kontrola</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-100">
+				<tbody class="divide-y divide-border-subtle">
 					{#each expenses as expense (expense.id)}
 						<tr
-							class="hover:bg-gray-50 transition-colors"
-							class:bg-green-50={expense.tax_reviewed_at != null}
+							class="hover:bg-hover transition-colors"
+							class:bg-success-bg={expense.tax_reviewed_at != null}
 						>
-							<td class="px-4 py-3">
+							<td class="px-4 py-2.5">
 								<input
 									type="checkbox"
 									checked={selectedIds.has(expense.id)}
 									onchange={() => toggleSelect(expense.id)}
-									class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									class="rounded border-border accent-accent"
 								/>
 							</td>
-							<td class="px-4 py-3">
+							<td class="px-4 py-2.5">
 								<a
 									href="/expenses/{expense.id}"
-									class="font-medium text-blue-600 hover:text-blue-800"
+									class="font-medium text-accent-text hover:text-accent"
 								>
 									{expense.expense_number || '-'}
 								</a>
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">
 								{formatDate(expense.issue_date)}
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 lg:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary lg:table-cell">
 								{expense.vendor?.name ?? '-'}
 							</td>
-							<td class="px-4 py-3 text-gray-900 max-w-xs truncate">
+							<td class="px-4 py-2.5 text-primary max-w-xs truncate">
 								{expense.description}
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">
 								{expense.category || '-'}
 							</td>
-							<td class="px-4 py-3 text-right font-medium text-gray-900">
+							<td class="px-4 py-2.5 text-right font-medium font-mono tabular-nums text-primary">
 								{formatCZK(expense.amount)}
 							</td>
-							<td class="hidden px-4 py-3 text-right text-gray-600 md:table-cell">
+							<td class="hidden px-4 py-2.5 text-right font-mono tabular-nums text-secondary md:table-cell">
 								{formatCZK(expense.vat_amount)}
 							</td>
-							<td class="px-4 py-3 text-center">
+							<td class="px-4 py-2.5 text-center">
 								{#if expense.tax_reviewed_at}
-									<span
-										class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
-										title={formatDate(expense.tax_reviewed_at)}
-									>
-										<svg
-											class="h-3 w-3"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											stroke-width="3"
-										>
-											<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-										</svg>
-										Zkontrolováno
+									<span title={formatDate(expense.tax_reviewed_at)}>
+										<Badge variant="success" class="gap-1">
+											<svg
+												class="h-3 w-3"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke="currentColor"
+												stroke-width="3"
+											>
+												<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+											</svg>
+											Zkontrolováno
+										</Badge>
 									</span>
 								{:else}
-									<span
-										class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
-									>
+									<Badge variant="muted">
 										Nekontrolováno
-									</span>
+									</Badge>
 								{/if}
 							</td>
 						</tr>
@@ -361,27 +347,27 @@
 				</tbody>
 			</table>
 		{/if}
-	</div>
+	</Card>
 
 	<!-- Summary -->
 	{#if expenses.length > 0}
 		<div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-			<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<p class="text-xs font-medium text-gray-500">Celková částka</p>
-				<p class="mt-1 text-lg font-semibold text-gray-900">{formatCZK(totalAmount)}</p>
-			</div>
-			<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<p class="text-xs font-medium text-gray-500">Celkové DPH</p>
-				<p class="mt-1 text-lg font-semibold text-gray-900">{formatCZK(totalVAT)}</p>
-			</div>
+			<Card>
+				<p class="text-xs font-medium text-muted">Celková částka</p>
+				<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(totalAmount)}</p>
+			</Card>
+			<Card>
+				<p class="text-xs font-medium text-muted">Celkové DPH</p>
+				<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(totalVAT)}</p>
+			</Card>
 			{#if someSelected}
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
-					<p class="text-xs font-medium text-blue-600">Vybráno - částka</p>
-					<p class="mt-1 text-lg font-semibold text-blue-900">{formatCZK(selectedAmount)}</p>
+				<div class="rounded-lg border border-accent/20 bg-accent-muted p-5">
+					<p class="text-xs font-medium text-muted">Vybráno - částka</p>
+					<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(selectedAmount)}</p>
 				</div>
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
-					<p class="text-xs font-medium text-blue-600">Vybráno - DPH</p>
-					<p class="mt-1 text-lg font-semibold text-blue-900">{formatCZK(selectedVAT)}</p>
+				<div class="rounded-lg border border-accent/20 bg-accent-muted p-5">
+					<p class="text-xs font-medium text-muted">Vybráno - DPH</p>
+					<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(selectedVAT)}</p>
 				</div>
 			{/if}
 		</div>
@@ -390,29 +376,31 @@
 	<!-- Pagination -->
 	{#if totalPages > 1}
 		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-500">Celkem {total} výdajů</p>
+			<p class="text-sm text-tertiary">Celkem {total} výdajů</p>
 			<div class="flex gap-2">
-				<button
+				<Button
+					variant="secondary"
+					size="sm"
 					onclick={() => {
 						page = Math.max(1, page - 1);
 						loadExpenses();
 					}}
 					disabled={page <= 1}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Předchozí
-				</button>
-				<span class="flex items-center px-3 text-sm text-gray-600">{page} / {totalPages}</span>
-				<button
+				</Button>
+				<span class="flex items-center px-3 text-sm text-secondary">{page} / {totalPages}</span>
+				<Button
+					variant="secondary"
+					size="sm"
 					onclick={() => {
 						page = Math.min(totalPages, page + 1);
 						loadExpenses();
 					}}
 					disabled={page >= totalPages}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Další
-				</button>
+				</Button>
 			</div>
 		</div>
 	{/if}

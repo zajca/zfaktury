@@ -5,6 +5,8 @@
 	import { toISODate } from '$lib/utils/date';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -83,14 +85,14 @@
 	<title>Nový náklad - ZFaktury</title>
 </svelte:head>
 
-<div class="mx-auto max-w-3xl">
-	<a href="/expenses" class="text-sm text-blue-600 hover:text-blue-800">&larr; Zpět na náklady</a>
-	<h1 class="mt-2 text-2xl font-bold text-gray-900">Nový náklad</h1>
+<div class="mx-auto max-w-5xl">
+	<a href="/expenses" class="text-sm text-secondary hover:text-primary">&larr; Zpět na náklady</a>
+	<h1 class="mt-2 text-xl font-semibold text-primary">Nový náklad</h1>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
@@ -104,22 +106,22 @@
 		class="mt-6 space-y-6"
 	>
 		<!-- Basic info -->
-		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Základní údaje</h2>
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Základní údaje</h2>
 			<div class="mt-4 space-y-4">
 				<div>
-					<label for="description" class="block text-sm font-medium text-gray-700">Popis *</label>
+					<label for="description" class="block text-sm font-medium text-secondary">Popis *</label>
 					<input
 						id="description"
 						type="text"
 						bind:value={form.description}
 						required
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					/>
 				</div>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="category" class="block text-sm font-medium text-gray-700">Kategorie</label>
+						<label for="category" class="block text-sm font-medium text-secondary">Kategorie</label>
 						<CategoryPicker
 							id="category"
 							value={form.category}
@@ -129,28 +131,28 @@
 						/>
 					</div>
 					<div>
-						<label for="expense_number" class="block text-sm font-medium text-gray-700"
+						<label for="expense_number" class="block text-sm font-medium text-secondary"
 							>Číslo dokladu</label
 						>
 						<input
 							id="expense_number"
 							type="text"
 							bind:value={form.expense_number}
-							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 						/>
 					</div>
 				</div>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<div>
-						<label for="issue_date" class="block text-sm font-medium text-gray-700">Datum *</label>
+						<label for="issue_date" class="block text-sm font-medium text-secondary">Datum *</label>
 						<DateInput id="issue_date" bind:value={form.issue_date} required />
 					</div>
 					<div>
-						<label for="vendor" class="block text-sm font-medium text-gray-700">Dodavatel</label>
+						<label for="vendor" class="block text-sm font-medium text-secondary">Dodavatel</label>
 						<select
 							id="vendor"
 							bind:value={form.vendor_id}
-							class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 						>
 							<option value={null}>-- Bez dodavatele --</option>
 							{#each contacts as contact (contact.id)}
@@ -162,14 +164,14 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		</Card>
 
 		<!-- Amount & VAT -->
-		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Částka a DPH</h2>
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Částka a DPH</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="amount" class="block text-sm font-medium text-gray-700"
+					<label for="amount" class="block text-sm font-medium text-secondary"
 						>Částka s DPH (CZK) *</label
 					>
 					<input
@@ -179,15 +181,15 @@
 						min="0"
 						bind:value={form.amount}
 						required
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary font-mono tabular-nums focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					/>
 				</div>
 				<div>
-					<label for="vat_rate" class="block text-sm font-medium text-gray-700">Sazba DPH</label>
+					<label for="vat_rate" class="block text-sm font-medium text-secondary">Sazba DPH</label>
 					<select
 						id="vat_rate"
 						bind:value={form.vat_rate_percent}
-						class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					>
 						<option value={21}>21%</option>
 						<option value={12}>12%</option>
@@ -195,33 +197,33 @@
 					</select>
 				</div>
 				<div>
-					<span class="block text-sm font-medium text-gray-700">DPH</span>
+					<span class="block text-sm font-medium text-secondary">DPH</span>
 					<div
-						class="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+						class="mt-1 bg-elevated border-border text-secondary rounded-lg px-3 py-2 text-sm font-mono tabular-nums"
 					>
 						{formatCZK(toHalere(vatAmount))}
 					</div>
 				</div>
 			</div>
-		</div>
+		</Card>
 
 		<!-- Tax settings -->
-		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Daňové nastavení</h2>
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Daňové nastavení</h2>
 			<div class="mt-4 space-y-4">
 				<div class="flex items-center gap-3">
 					<input
 						id="tax_deductible"
 						type="checkbox"
 						bind:checked={form.is_tax_deductible}
-						class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+						class="h-4 w-4 rounded border-border accent-accent"
 					/>
-					<label for="tax_deductible" class="text-sm font-medium text-gray-700"
+					<label for="tax_deductible" class="text-sm font-medium text-secondary"
 						>Daňově uznatelný náklad</label
 					>
 				</div>
 				<div>
-					<label for="business_percent" class="block text-sm font-medium text-gray-700"
+					<label for="business_percent" class="block text-sm font-medium text-secondary"
 						>Podíl pro podnikání (%)</label
 					>
 					<input
@@ -230,17 +232,17 @@
 						min="0"
 						max="100"
 						bind:value={form.business_percent}
-						class="mt-1 w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class="mt-1 w-32 rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary font-mono tabular-nums focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					/>
 				</div>
 				<div>
-					<label for="payment_method" class="block text-sm font-medium text-gray-700"
+					<label for="payment_method" class="block text-sm font-medium text-secondary"
 						>Způsob platby</label
 					>
 					<select
 						id="payment_method"
 						bind:value={form.payment_method}
-						class="mt-1 w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+						class="mt-1 w-full max-w-xs rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					>
 						<option value="bank_transfer">Bankovní převod</option>
 						<option value="cash">Hotovost</option>
@@ -248,36 +250,29 @@
 					</select>
 				</div>
 			</div>
-		</div>
+		</Card>
 
 		<!-- Notes -->
-		<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-semibold text-gray-900">Poznámky</h2>
+		<Card>
+			<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 			<div class="mt-4">
 				<textarea
 					bind:value={form.notes}
 					rows="3"
 					placeholder="Volitelné poznámky..."
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+					class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 				></textarea>
 			</div>
-		</div>
+		</Card>
 
 		<!-- Actions -->
 		<div class="flex gap-3">
-			<button
-				type="submit"
-				disabled={saving}
-				class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
-			>
+			<Button variant="primary" type="submit" disabled={saving}>
 				{saving ? 'Ukládám...' : 'Uložit náklad'}
-			</button>
-			<a
-				href="/expenses"
-				class="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-			>
+			</Button>
+			<Button variant="secondary" href="/expenses">
 				Zrušit
-			</a>
+			</Button>
 		</div>
 	</form>
 </div>

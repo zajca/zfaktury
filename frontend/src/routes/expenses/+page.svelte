@@ -3,6 +3,8 @@
 	import { expensesApi, type Expense } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
+	import Button from '$lib/ui/Button.svelte';
+	import Card from '$lib/ui/Card.svelte';
 
 	let expenses = $state<Expense[]>([]);
 	let total = $state(0);
@@ -56,21 +58,18 @@
 	<title>Náklady - ZFaktury</title>
 </svelte:head>
 
-<div>
+<div class="mx-auto max-w-6xl">
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Náklady</h1>
-			<p class="mt-1 text-sm text-gray-500">Evidence výdajů a nákladů</p>
+			<h1 class="text-xl font-semibold text-primary">Náklady</h1>
+			<p class="mt-1 text-sm text-tertiary">Evidence výdajů a nákladů</p>
 		</div>
-		<a
-			href="/expenses/new"
-			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
-		>
+		<Button variant="primary" href="/expenses/new">
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
 			Přidat náklad
-		</a>
+		</Button>
 	</div>
 
 	<!-- Search -->
@@ -79,47 +78,47 @@
 			type="text"
 			bind:value={search}
 			placeholder="Hledat podle popisu, dodavatele..."
-			class="w-full max-w-md rounded-lg border border-gray-300 px-4 py-2.5 text-sm shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+			class="w-full max-w-md rounded-lg border border-border bg-elevated px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 		/>
 	</div>
 
 	{#if error}
 		<div
 			role="alert"
-			class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+			class="mt-4 rounded-lg border border-danger/20 bg-danger-bg p-4 text-sm text-danger"
 		>
 			{error}
 		</div>
 	{/if}
 
-	<div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+	<Card padding={false} class="mt-4 overflow-hidden">
 		{#if loading}
 			<div class="flex items-center justify-center p-12">
 				<div role="status">
 					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"
+						class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 					></div>
 					<span class="sr-only">Nacitani...</span>
 				</div>
 			</div>
 		{:else if expenses.length === 0}
-			<div class="p-12 text-center text-gray-400">
+			<div class="p-12 text-center text-muted">
 				{search ? 'Žádné náklady neodpovídají hledání.' : 'Zatím žádné náklady.'}
 			</div>
 		{:else}
 			<table class="w-full text-left text-sm">
-				<thead class="border-b border-gray-200 bg-gray-50">
+				<thead class="border-b border-border bg-elevated">
 					<tr>
-						<th class="px-4 py-3 font-medium text-gray-600">Popis</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Kategorie</th>
-						<th class="hidden px-4 py-3 font-medium text-gray-600 md:table-cell">Datum</th>
-						<th class="px-4 py-3 text-right font-medium text-gray-600">Částka</th>
+						<th class="px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Kategorie</th>
+						<th class="hidden px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:table-cell">Datum</th>
+						<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Částka</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-100">
+				<tbody class="divide-y divide-border-subtle">
 					{#each expenses as expense (expense.id)}
 						<tr
-							class="hover:bg-gray-50 transition-colors cursor-pointer"
+							class="hover:bg-hover transition-colors cursor-pointer"
 							role="link"
 							tabindex="0"
 							onclick={() => {
@@ -129,20 +128,20 @@
 								if (e.key === 'Enter') goto(`/expenses/${expense.id}`);
 							}}
 						>
-							<td class="px-4 py-3">
+							<td class="px-4 py-2.5">
 								<a
 									href="/expenses/{expense.id}"
-									class="font-medium text-blue-600 hover:text-blue-800"
+									class="font-medium text-accent-text hover:text-accent"
 								>
 									{expense.description}
 								</a>
 							</td>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell">{expense.category || '-'}</td
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">{expense.category || '-'}</td
 							>
-							<td class="hidden px-4 py-3 text-gray-600 md:table-cell"
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell"
 								>{formatDate(expense.issue_date)}</td
 							>
-							<td class="px-4 py-3 text-right font-medium text-gray-900"
+							<td class="px-4 py-2.5 text-right font-medium font-mono tabular-nums text-primary"
 								>{formatCZK(expense.amount)}</td
 							>
 						</tr>
@@ -150,33 +149,35 @@
 				</tbody>
 			</table>
 		{/if}
-	</div>
+	</Card>
 
 	{#if totalPages > 1}
 		<div class="mt-4 flex items-center justify-between">
-			<p class="text-sm text-gray-500">Celkem {total} nákladů</p>
+			<p class="text-sm text-tertiary">Celkem {total} nákladů</p>
 			<div class="flex gap-2">
-				<button
+				<Button
+					variant="secondary"
+					size="sm"
 					onclick={() => {
 						page = Math.max(1, page - 1);
 						loadExpenses();
 					}}
 					disabled={page <= 1}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Předchozí
-				</button>
-				<span class="flex items-center px-3 text-sm text-gray-600">{page} / {totalPages}</span>
-				<button
+				</Button>
+				<span class="flex items-center px-3 text-sm text-secondary">{page} / {totalPages}</span>
+				<Button
+					variant="secondary"
+					size="sm"
 					onclick={() => {
 						page = Math.min(totalPages, page + 1);
 						loadExpenses();
 					}}
 					disabled={page >= totalPages}
-					class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Další
-				</button>
+				</Button>
 			</div>
 		</div>
 	{/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { browser } from '$app/environment';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -8,6 +9,28 @@
 	let { children }: Props = $props();
 
 	let sidebarOpen = $state(false);
+	let sidebarCollapsed = $state(
+		browser ? localStorage.getItem('zf-sidebar') === 'true' : false
+	);
+	let sidebarHovered = $state(false);
+	let sidebarExpanded = $derived(!sidebarCollapsed || sidebarHovered);
+
+	function toggleCollapse() {
+		sidebarCollapsed = !sidebarCollapsed;
+		if (browser) {
+			localStorage.setItem('zf-sidebar', String(sidebarCollapsed));
+		}
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+			e.preventDefault();
+			toggleCollapse();
+		}
+		if (e.key === 'Escape' && sidebarOpen) {
+			sidebarOpen = false;
+		}
+	}
 
 	type NavItem = { href: string; label: string; icon: string };
 	type NavGroup = { section: string; items: NavItem[] };
@@ -61,52 +84,136 @@
 	}
 </script>
 
-<div class="flex h-screen bg-gray-50">
+<svelte:window onkeydown={handleKeydown} />
+
+<div class="flex h-screen bg-base">
 	<!-- Mobile sidebar overlay -->
 	{#if sidebarOpen}
 		<div
-			class="fixed inset-0 z-30 bg-black/50 lg:hidden"
+			class="fixed inset-0 z-30 bg-black/60 lg:hidden"
 			role="presentation"
 			onclick={() => (sidebarOpen = false)}
-			onkeydown={(e) => e.key === 'Escape' && (sidebarOpen = false)}
 		></div>
 	{/if}
 
-	<!-- Sidebar -->
+	<!-- Desktop Sidebar -->
 	<aside
-		class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-200 lg:static lg:translate-x-0
-		{sidebarOpen ? 'translate-x-0' : '-translate-x-full'}"
+		class="hidden lg:flex flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out shrink-0
+		{sidebarCollapsed ? (sidebarHovered ? 'absolute inset-y-0 left-0 z-50 w-52 shadow-xl shadow-black/30' : 'w-12') : 'w-52'}"
+		onmouseenter={() => sidebarCollapsed && (sidebarHovered = true)}
+		onmouseleave={() => (sidebarHovered = false)}
 	>
-		<!-- Logo -->
-		<div class="flex h-16 items-center border-b border-gray-200 px-6">
-			<h1 class="text-xl font-bold text-gray-900">ZFaktury</h1>
+		<!-- Logo + Toggle -->
+		<div class="flex h-12 items-center border-b border-border overflow-hidden
+			{sidebarExpanded ? 'px-3 gap-2 justify-between' : 'justify-center'}">
+			{#if sidebarExpanded}
+				<span class="text-sm font-semibold text-primary truncate">ZFaktury</span>
+				<button
+					onclick={toggleCollapse}
+					class="shrink-0 rounded p-1 text-tertiary hover:text-primary transition-colors"
+					title="Toggle sidebar (Ctrl+Shift+L)"
+				>
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						{#if sidebarCollapsed}
+							<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+						{:else}
+							<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+						{/if}
+					</svg>
+				</button>
+			{:else}
+				<button
+					onclick={toggleCollapse}
+					class="rounded p-1 text-tertiary hover:text-primary transition-colors"
+					title="Toggle sidebar (Ctrl+Shift+L)"
+				>
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+					</svg>
+				</button>
+			{/if}
 		</div>
 
 		<!-- Navigation -->
-		<nav class="flex-1 space-y-1 px-3 py-4">
+		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
 			{#each navEntries as entry, i (i)}
 				{#if isGroup(entry)}
-					<div class="mt-4 mb-1">
-						<span class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400"
-							>{entry.section}</span
+					{#if sidebarExpanded}
+						<div class="mt-4 mb-1.5 px-2">
+							<span class="text-[11px] font-medium uppercase tracking-wider text-muted">{entry.section}</span>
+						</div>
+					{:else}
+						<div class="mt-3 mb-1 border-t border-border-subtle mx-1"></div>
+					{/if}
+					{#each entry.items as item (item.href)}
+						<a
+							href={item.href}
+							class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors
+							{isActive(item.href)
+								? 'bg-accent-muted text-accent-text'
+								: 'text-secondary hover:text-primary hover:bg-hover'}"
+							title={sidebarExpanded ? undefined : item.label}
 						>
+							<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+								<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
+							</svg>
+							{#if sidebarExpanded}
+								<span class="truncate">{item.label}</span>
+							{/if}
+						</a>
+					{/each}
+				{:else}
+					<a
+						href={entry.href}
+						class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors
+						{isActive(entry.href)
+							? 'bg-accent-muted text-accent-text'
+							: 'text-secondary hover:text-primary hover:bg-hover'}"
+						title={sidebarExpanded ? undefined : entry.label}
+					>
+						<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+							<path stroke-linecap="round" stroke-linejoin="round" d={entry.icon} />
+						</svg>
+						{#if sidebarExpanded}
+							<span class="truncate">{entry.label}</span>
+						{/if}
+					</a>
+				{/if}
+			{/each}
+		</nav>
+
+		<!-- Footer -->
+		{#if sidebarExpanded}
+			<div class="border-t border-border px-3 py-2.5">
+				<p class="text-[11px] text-muted">ZFaktury v0.1.0</p>
+			</div>
+		{/if}
+	</aside>
+
+	<!-- Mobile Sidebar -->
+	<aside
+		class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-surface transition-transform duration-200 lg:hidden
+		{sidebarOpen ? 'translate-x-0' : '-translate-x-full'}"
+	>
+		<div class="flex h-12 items-center border-b border-border px-4">
+			<h1 class="text-sm font-semibold text-primary">ZFaktury</h1>
+		</div>
+		<nav class="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+			{#each navEntries as entry, i (i)}
+				{#if isGroup(entry)}
+					<div class="mt-4 mb-1.5 px-2">
+						<span class="text-[11px] font-medium uppercase tracking-wider text-muted">{entry.section}</span>
 					</div>
 					{#each entry.items as item (item.href)}
 						<a
 							href={item.href}
 							onclick={() => (sidebarOpen = false)}
-							class="flex items-center gap-3 rounded-lg py-2.5 pl-5 pr-3 text-sm font-medium transition-colors
+							class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors
 							{isActive(item.href)
-								? 'bg-blue-50 text-blue-700'
-								: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}"
+								? 'bg-accent-muted text-accent-text'
+								: 'text-secondary hover:text-primary hover:bg-hover'}"
 						>
-							<svg
-								class="h-5 w-5 shrink-0"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="1.5"
-							>
+							<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 								<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
 							</svg>
 							{item.label}
@@ -116,18 +223,12 @@
 					<a
 						href={entry.href}
 						onclick={() => (sidebarOpen = false)}
-						class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
+						class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors
 						{isActive(entry.href)
-							? 'bg-blue-50 text-blue-700'
-							: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}"
+							? 'bg-accent-muted text-accent-text'
+							: 'text-secondary hover:text-primary hover:bg-hover'}"
 					>
-						<svg
-							class="h-5 w-5 shrink-0"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="1.5"
-						>
+						<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 							<path stroke-linecap="round" stroke-linejoin="round" d={entry.icon} />
 						</svg>
 						{entry.label}
@@ -135,41 +236,29 @@
 				{/if}
 			{/each}
 		</nav>
-
-		<!-- Footer -->
-		<div class="border-t border-gray-200 p-4">
-			<p class="text-xs text-gray-500">ZFaktury v0.1.0</p>
+		<div class="border-t border-border px-3 py-2.5">
+			<p class="text-[11px] text-muted">ZFaktury v0.1.0</p>
 		</div>
 	</aside>
 
 	<!-- Main content area -->
 	<div class="flex flex-1 flex-col overflow-hidden">
 		<!-- Top bar (mobile) -->
-		<header class="flex h-16 items-center border-b border-gray-200 bg-white px-4 lg:hidden">
+		<header class="flex h-12 items-center border-b border-border bg-surface px-4 lg:hidden">
 			<button
 				onclick={() => (sidebarOpen = !sidebarOpen)}
-				class="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+				class="rounded-md p-1.5 text-secondary hover:bg-hover hover:text-primary transition-colors"
 				aria-label="Toggle menu"
 			>
-				<svg
-					class="h-6 w-6"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="1.5"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-					/>
+				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
 				</svg>
 			</button>
-			<h1 class="ml-3 text-lg font-semibold text-gray-900">ZFaktury</h1>
+			<h1 class="ml-3 text-sm font-semibold text-primary">ZFaktury</h1>
 		</header>
 
 		<!-- Page content -->
-		<main class="flex-1 overflow-y-auto p-6">
+		<main class="flex-1 overflow-y-auto p-5">
 			{@render children()}
 		</main>
 	</div>

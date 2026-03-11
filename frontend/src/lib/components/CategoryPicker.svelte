@@ -25,7 +25,6 @@
 			categories = await categoriesApi.list();
 			loaded = true;
 			loadError = null;
-			// If current value doesn't match any category key, show custom input
 			if (value && !categories.some((c) => c.key === value)) {
 				customMode = true;
 				customValue = value;
@@ -65,12 +64,12 @@
 	<select
 		{id}
 		disabled
-		class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm"
+		class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-muted"
 	>
 		<option>Načítám...</option>
 	</select>
 {:else if loadError}
-	<div class="mt-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+	<div class="rounded-lg border border-danger/20 bg-danger-bg px-3 py-2 text-sm text-danger">
 		{loadError}
 	</div>
 {:else if customMode}
@@ -81,12 +80,12 @@
 			value={customValue}
 			oninput={handleCustomInput}
 			placeholder="Vlastní kategorie..."
-			class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+			class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 		/>
 		<button
 			type="button"
 			onclick={exitCustomMode}
-			class="mt-1 shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+			class="shrink-0 rounded-md px-2.5 py-1.5 text-xs text-secondary hover:bg-hover hover:text-primary transition-colors"
 			title="Zpět na výběr"
 		>
 			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -99,7 +98,7 @@
 		{id}
 		{value}
 		onchange={handleSelectChange}
-		class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+		class="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 	>
 		<option value="">-- Vyberte --</option>
 		{#each categories as cat (cat.key)}

@@ -172,7 +172,7 @@ describe('Settings Page', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-red-700');
+			const errorDiv = document.querySelector('.text-danger');
 			expect(errorDiv).toBeInTheDocument();
 		});
 	});

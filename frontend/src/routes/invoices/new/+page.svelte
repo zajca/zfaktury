@@ -6,6 +6,7 @@
 	import DateInput from '$lib/components/DateInput.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	interface FormItem {
 		description: string;
@@ -199,7 +200,7 @@
 				</div>
 				<div>
 					<label for="due_date" class="block text-sm font-medium text-secondary"
-						>Datum splatnosti</label
+						>Datum splatnosti <HelpTip topic="datum-splatnosti" /></label
 					>
 					<DateInput
 						id="due_date"
@@ -216,13 +217,13 @@
 					/>
 				</div>
 				<div>
-					<label for="delivery_date" class="block text-sm font-medium text-secondary">DUZP</label>
+					<label for="delivery_date" class="block text-sm font-medium text-secondary">DUZP <HelpTip topic="duzp" /></label>
 					<DateInput id="delivery_date" bind:value={form.delivery_date} />
 				</div>
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
-					<label for="vs" class="block text-sm font-medium text-secondary">Variabilní symbol</label>
+					<label for="vs" class="block text-sm font-medium text-secondary">Variabilní symbol <HelpTip topic="variabilni-symbol" /></label>
 					<input
 						id="vs"
 						type="text"
@@ -231,7 +232,7 @@
 					/>
 				</div>
 				<div>
-					<label for="payment" class="block text-sm font-medium text-secondary">Způsob platby</label>
+					<label for="payment" class="block text-sm font-medium text-secondary">Způsob platby <HelpTip topic="zpusob-platby" /></label>
 					<select
 						id="payment"
 						bind:value={form.payment_method}
@@ -325,7 +326,7 @@
 									</div>
 									<div>
 										<label for="vat-{index}" class="block text-sm font-medium text-secondary"
-											>DPH %</label
+											>DPH % <HelpTip topic="sazba-dph" /></label
 										>
 										<select
 											id="vat-{index}"

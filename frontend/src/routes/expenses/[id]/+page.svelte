@@ -8,6 +8,7 @@
 	import DateInput from '$lib/components/DateInput.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let expense = $state<Expense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -219,7 +220,7 @@
 							</div>
 							<div>
 								<label for="edit-num" class="block text-sm font-medium text-secondary"
-									>Číslo dokladu</label
+									>Číslo dokladu <HelpTip topic="cislo-dokladu" /></label
 								>
 								<input
 									id="edit-num"
@@ -270,7 +271,7 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-vat" class="block text-sm font-medium text-secondary">Sazba DPH</label
+							<label for="edit-vat" class="block text-sm font-medium text-secondary">Sazba DPH <HelpTip topic="sazba-dph" /></label
 							>
 							<select
 								id="edit-vat"
@@ -304,12 +305,12 @@
 								class="h-4 w-4 rounded border-border accent-accent"
 							/>
 							<label for="edit-deductible" class="text-sm font-medium text-secondary"
-								>Daňově uznatelný náklad</label
+								>Daňově uznatelný náklad <HelpTip topic="danove-uznatelny" /></label
 							>
 						</div>
 						<div>
 							<label for="edit-biz" class="block text-sm font-medium text-secondary"
-								>Podíl pro podnikání (%)</label
+								>Podíl pro podnikání (%) <HelpTip topic="podil-podnikani" /></label
 							>
 							<input
 								id="edit-biz"

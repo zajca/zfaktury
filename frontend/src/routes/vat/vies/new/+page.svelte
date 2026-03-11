@@ -5,6 +5,7 @@
 	import { filingTypeLabels, quarterLabels } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let saving = $state(false);
 	let error = $state<string | null>(null);
@@ -109,7 +110,7 @@
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Typ podání</h2>
 			<div class="mt-4">
-				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ</label>
+				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ <HelpTip topic="typ-podani" /></label>
 				<select
 					id="filing_type"
 					bind:value={form.filing_type}

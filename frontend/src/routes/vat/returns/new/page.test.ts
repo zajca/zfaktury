@@ -66,7 +66,7 @@ describe('New VAT return page', () => {
 		expect(screen.getByText('Měsíční')).toBeInTheDocument();
 		expect(screen.getByText('Čtvrtletní')).toBeInTheDocument();
 		expect(screen.getByLabelText('Měsíc')).toBeInTheDocument();
-		expect(screen.getByLabelText('Typ podání')).toBeInTheDocument();
+		expect(screen.getByRole('combobox', { name: /Typ podání/ })).toBeInTheDocument();
 	});
 
 	it('has back link to VAT dashboard', () => {
@@ -120,7 +120,7 @@ describe('New VAT return page', () => {
 	it('renders filing type options', () => {
 		render(Page);
 
-		const select = screen.getByLabelText('Typ podání') as HTMLSelectElement;
+		const select = screen.getByRole('combobox', { name: /Typ podání/ }) as HTMLSelectElement;
 		const options = Array.from(select.options);
 		const values = options.map((o) => o.value);
 

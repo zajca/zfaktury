@@ -11,6 +11,7 @@
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -307,7 +308,7 @@
 						</div>
 						<div>
 							<label for="edit-due" class="block text-sm font-medium text-secondary"
-								>Datum splatnosti</label
+								>Datum splatnosti <HelpTip topic="datum-splatnosti" /></label
 							>
 							<DateInput
 								id="edit-due"
@@ -324,7 +325,7 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-delivery" class="block text-sm font-medium text-secondary">DUZP</label
+							<label for="edit-delivery" class="block text-sm font-medium text-secondary">DUZP <HelpTip topic="duzp" /></label
 							>
 							<DateInput id="edit-delivery" bind:value={form.delivery_date} />
 						</div>
@@ -332,7 +333,7 @@
 					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
 							<label for="edit-vs" class="block text-sm font-medium text-secondary"
-								>Variabilní symbol</label
+								>Variabilní symbol <HelpTip topic="variabilni-symbol" /></label
 							>
 							<input
 								id="edit-vs"
@@ -343,7 +344,7 @@
 						</div>
 						<div>
 							<label for="edit-payment" class="block text-sm font-medium text-secondary"
-								>Způsob platby</label
+								>Způsob platby <HelpTip topic="zpusob-platby" /></label
 							>
 							<select
 								id="edit-payment"

@@ -2,6 +2,7 @@
 	import { sequencesApi, type InvoiceSequence } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let sequences = $state<InvoiceSequence[]>([]);
 	let loading = $state(true);
@@ -166,7 +167,7 @@
 				>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 						<div>
-							<label for="create-prefix" class="block text-sm font-medium text-secondary">Prefix</label>
+							<label for="create-prefix" class="block text-sm font-medium text-secondary">Prefix <HelpTip topic="prefix-format" /></label>
 							<input
 								id="create-prefix"
 								type="text"
@@ -200,7 +201,7 @@
 							/>
 						</div>
 						<div>
-							<label for="create-format" class="block text-sm font-medium text-secondary">Formát</label>
+							<label for="create-format" class="block text-sm font-medium text-secondary">Formát <HelpTip topic="prefix-format" /></label>
 							<input
 								id="create-format"
 								type="text"

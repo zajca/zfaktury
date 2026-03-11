@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatCZK } from '$lib/utils/money';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 </script>
 
 <svelte:head>
@@ -14,22 +15,22 @@
 	<!-- Stats cards -->
 	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 		<Card>
-			<p class="text-xs font-medium uppercase tracking-wider text-muted">Prijmy tento mesic</p>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Prijmy tento mesic <HelpTip topic="prijmy-naklady" /></p>
 			<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">{formatCZK(0)}</p>
 		</Card>
 
 		<Card>
-			<p class="text-xs font-medium uppercase tracking-wider text-muted">Naklady tento mesic</p>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Naklady tento mesic <HelpTip topic="prijmy-naklady" /></p>
 			<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">{formatCZK(0)}</p>
 		</Card>
 
 		<Card>
-			<p class="text-xs font-medium uppercase tracking-wider text-muted">Neuhrazene faktury</p>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Neuhrazene faktury <HelpTip topic="neuhrazene-faktury" /></p>
 			<p class="mt-2 text-2xl font-semibold text-warning font-mono tabular-nums">0</p>
 		</Card>
 
 		<Card>
-			<p class="text-xs font-medium uppercase tracking-wider text-muted">Faktury po splatnosti</p>
+			<p class="text-xs font-medium uppercase tracking-wider text-muted">Faktury po splatnosti <HelpTip topic="faktury-po-splatnosti" /></p>
 			<p class="mt-2 text-2xl font-semibold text-danger font-mono tabular-nums">0</p>
 		</Card>
 	</div>

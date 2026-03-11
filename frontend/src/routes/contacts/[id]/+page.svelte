@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { contactsApi, type Contact } from '$lib/api/client';
 	import Button from '$lib/ui/Button.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let contact = $state<Contact | null>(null);
 	let loading = $state(true);
@@ -181,7 +182,7 @@
 
 			<!-- ICO + ARES lookup -->
 			<div>
-				<label for="ico" class="block text-sm font-medium text-secondary">ICO</label>
+				<label for="ico" class="block text-sm font-medium text-secondary">ICO <HelpTip topic="ico" /></label>
 				<div class="mt-1 flex gap-2">
 					<input
 						id="ico"
@@ -209,7 +210,7 @@
 
 			<!-- DIC -->
 			<div>
-				<label for="dic" class="block text-sm font-medium text-secondary">DIC</label>
+				<label for="dic" class="block text-sm font-medium text-secondary">DIC <HelpTip topic="dic" /></label>
 				<input
 					id="dic"
 					type="text"

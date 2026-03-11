@@ -5,6 +5,7 @@
 	import { filingTypeLabels, monthLabels, quarterLabels } from '$lib/utils/vat';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	const filingTypes = Object.entries(filingTypeLabels).map(([value, label]) => ({ value, label }));
 
@@ -157,7 +158,7 @@
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Typ přiznání</h2>
 			<div class="mt-4">
-				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ podání</label>
+				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ podání <HelpTip topic="typ-podani" /></label>
 				<select
 					id="filing_type"
 					bind:value={form.filing_type}

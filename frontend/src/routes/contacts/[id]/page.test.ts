@@ -105,7 +105,7 @@ describe('Contact detail page - new mode', () => {
 		const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
 		expect(nameInput.value).toBe('');
 
-		const icoInput = screen.getByLabelText('ICO') as HTMLInputElement;
+		const icoInput = screen.getByRole('textbox', { name: /ICO/ }) as HTMLInputElement;
 		expect(icoInput.value).toBe('');
 	});
 
@@ -165,10 +165,10 @@ describe('Contact detail page - edit mode', () => {
 		const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
 		expect(nameInput.value).toBe('Test Corp');
 
-		const icoInput = screen.getByLabelText('ICO') as HTMLInputElement;
+		const icoInput = screen.getByRole('textbox', { name: /ICO/ }) as HTMLInputElement;
 		expect(icoInput.value).toBe('12345678');
 
-		const dicInput = screen.getByLabelText('DIC') as HTMLInputElement;
+		const dicInput = screen.getByRole('textbox', { name: /DIC/ }) as HTMLInputElement;
 		expect(dicInput.value).toBe('CZ12345678');
 
 		const streetInput = screen.getByLabelText('Ulice') as HTMLInputElement;

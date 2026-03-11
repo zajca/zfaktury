@@ -2,6 +2,7 @@
 	import { settingsApi, type Settings } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let settings = $state<Settings>({});
 	let loading = $state(true);
@@ -153,7 +154,7 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="ico" class="block text-sm font-medium text-secondary">IČO</label>
+							<label for="ico" class="block text-sm font-medium text-secondary">IČO <HelpTip topic="ico" /></label>
 							<input
 								id="ico"
 								type="text"
@@ -163,7 +164,7 @@
 							/>
 						</div>
 						<div>
-							<label for="dic" class="block text-sm font-medium text-secondary">DIČ</label>
+							<label for="dic" class="block text-sm font-medium text-secondary">DIČ <HelpTip topic="dic" /></label>
 							<input
 								id="dic"
 								type="text"
@@ -185,7 +186,7 @@
 								)}
 							class="h-4 w-4 rounded border-border accent-accent"
 						/>
-						<label for="vat_registered" class="text-sm font-medium text-secondary">Plátce DPH</label>
+						<label for="vat_registered" class="text-sm font-medium text-secondary">Plátce DPH <HelpTip topic="platce-dph" /></label>
 					</div>
 				</div>
 			</Card>
@@ -289,7 +290,7 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="iban" class="block text-sm font-medium text-secondary">IBAN</label>
+							<label for="iban" class="block text-sm font-medium text-secondary">IBAN <HelpTip topic="iban" /></label>
 							<input
 								id="iban"
 								type="text"
@@ -299,7 +300,7 @@
 							/>
 						</div>
 						<div>
-							<label for="swift" class="block text-sm font-medium text-secondary">SWIFT/BIC</label>
+							<label for="swift" class="block text-sm font-medium text-secondary">SWIFT/BIC <HelpTip topic="swift-bic" /></label>
 							<input
 								id="swift"
 								type="text"

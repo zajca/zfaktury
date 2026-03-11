@@ -13,6 +13,7 @@
 	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -157,7 +158,7 @@
 			<h2 class="text-base font-semibold text-primary">Opakovani</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="frequency" class="block text-sm font-medium text-secondary">Frekvence</label>
+					<label for="frequency" class="block text-sm font-medium text-secondary">Frekvence <HelpTip topic="frekvence-opakovani" /></label>
 					<select
 						id="frequency"
 						bind:value={form.frequency}

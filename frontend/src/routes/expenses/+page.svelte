@@ -67,6 +67,7 @@
 	<PageHeader title="Náklady" description="Evidence výdajů a nákladů">
 		{#snippet actions()}
 			<div class="flex gap-2">
+				<Button variant="secondary" href="/expenses/import">Import z dokladu</Button>
 				<Button variant="secondary" href="/expenses/recurring">Opakované</Button>
 				<Button variant="secondary" href="/expenses/review">Daňový audit</Button>
 				<Button variant="primary" href="/expenses/new">

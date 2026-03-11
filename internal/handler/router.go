@@ -32,6 +32,7 @@ func NewRouter(
 	recurringInvoiceSvc *service.RecurringInvoiceService,
 	recurringExpenseSvc *service.RecurringExpenseService,
 	ocrSvc *service.OCRService,
+	importSvc *service.ImportService,
 	overdueSvc *service.OverdueService,
 	reminderSvc *service.ReminderService,
 	cnbClient *cnb.Client,
@@ -114,7 +115,27 @@ func NewRouter(
 		// Email defaults (always available for frontend pre-population)
 		api.Get("/email/defaults", NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender).GetDefaults)
 
-		api.Mount("/expenses", expenseHandler.Routes())
+		// Use Route (not Mount) for /expenses so the import sub-route
+		// is not swallowed by Mount's wildcard. Document routes must also
+		// live here since Route captures the entire /expenses/* prefix.
+		api.Route("/expenses", func(exp chi.Router) {
+			exp.Post("/", expenseHandler.Create)
+			exp.Get("/", expenseHandler.List)
+			exp.Post("/review", expenseHandler.MarkTaxReviewed)
+			exp.Post("/unreview", expenseHandler.UnmarkTaxReviewed)
+			exp.Get("/{id}", expenseHandler.GetByID)
+			exp.Put("/{id}", expenseHandler.Update)
+			exp.Delete("/{id}", expenseHandler.Delete)
+
+			// Document routes (moved from documentHandler.Routes())
+			exp.Post("/{id}/documents", documentHandler.Upload)
+			exp.Get("/{id}/documents", documentHandler.ListByExpense)
+
+			if importSvc != nil {
+				importHandler := NewImportHandler(importSvc)
+				exp.Post("/import", importHandler.Import)
+			}
+		})
 		api.Mount("/expense-categories", categoryHandler.Routes())
 		api.Mount("/settings", settingsHandler.Routes())
 		api.Mount("/invoice-sequences", sequenceHandler.Routes())

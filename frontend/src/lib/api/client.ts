@@ -676,6 +676,33 @@ export const recurringExpensesApi = {
 	}
 };
 
+// --- Import API ---
+
+export interface ImportResponse {
+	expense: Expense;
+	document: ExpenseDocument;
+	ocr?: OCRResult;
+}
+
+export const importApi = {
+	async importDocument(file: File): Promise<ImportResponse> {
+		const formData = new FormData();
+		formData.append('file', file);
+		const url = `${API_BASE}/expenses/import`;
+		const response = await fetch(url, { method: 'POST', body: formData });
+		if (!response.ok) {
+			let body: unknown;
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.json();
+	}
+};
+
 // --- OCR API ---
 
 export const ocrApi = {

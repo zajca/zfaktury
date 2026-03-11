@@ -30,7 +30,13 @@ func setupDocumentRouter(t *testing.T) (*chi.Mux, int64) {
 	h := NewDocumentHandler(docSvc)
 
 	r := chi.NewRouter()
-	r.Mount("/api/v1", h.Routes())
+	r.Route("/api/v1", func(api chi.Router) {
+		// Expense-scoped document routes (normally in expenses Route group)
+		api.Post("/expenses/{id}/documents", h.Upload)
+		api.Get("/expenses/{id}/documents", h.ListByExpense)
+		// Standalone document routes
+		api.Mount("/", h.Routes())
+	})
 
 	return r, expense.ID
 }

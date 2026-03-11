@@ -22,13 +22,11 @@ func NewDocumentHandler(svc *service.DocumentService) *DocumentHandler {
 	return &DocumentHandler{svc: svc}
 }
 
-// Routes returns a router for document endpoints.
-// The lead mounts expense sub-routes at /expenses/{id}/documents and
-// standalone routes at /documents/{id}.
+// Routes returns a router for standalone document endpoints.
+// Expense-scoped routes (/expenses/{id}/documents) are registered
+// directly in the expenses Route group in router.go.
 func (h *DocumentHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/expenses/{id}/documents", h.Upload)
-	r.Get("/expenses/{id}/documents", h.ListByExpense)
 	r.Get("/documents/{id}", h.GetByID)
 	r.Get("/documents/{id}/download", h.Download)
 	r.Delete("/documents/{id}", h.Delete)

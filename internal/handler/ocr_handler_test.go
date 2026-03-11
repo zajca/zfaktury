@@ -52,6 +52,10 @@ func setupOCRRouter(t *testing.T, provider ocr.Provider) (*chi.Mux, int64) {
 
 	r := chi.NewRouter()
 	r.Route("/api/v1", func(api chi.Router) {
+		// Expense-scoped document routes (normally in expenses Route group)
+		api.Post("/expenses/{id}/documents", docHandler.Upload)
+		api.Get("/expenses/{id}/documents", docHandler.ListByExpense)
+		// Standalone document routes
 		api.Mount("/", docHandler.Routes())
 		// OCR routes are mounted directly since chi can't mount two handlers on "/".
 		api.Post("/documents/{id}/ocr", ocrHandler.ProcessDocument)

@@ -13,7 +13,6 @@ import (
 type Config struct {
 	DataDir string       `toml:"data_dir"`
 	Server  ServerConfig `toml:"server"`
-	User    UserConfig   `toml:"user"`
 	SMTP    SMTPConfig   `toml:"smtp"`
 	FIO     FIOConfig    `toml:"fio"`
 	OCR     OCRConfig    `toml:"ocr"`
@@ -23,23 +22,6 @@ type Config struct {
 type ServerConfig struct {
 	Port int  `toml:"port"`
 	Dev  bool `toml:"dev"`
-}
-
-// UserConfig holds the sole proprietor's details used on invoices.
-type UserConfig struct {
-	Name          string `toml:"name"`
-	ICO           string `toml:"ico"`
-	DIC           string `toml:"dic"`
-	VATRegistered bool   `toml:"vat_registered"`
-	Street        string `toml:"street"`
-	City          string `toml:"city"`
-	ZIP           string `toml:"zip"`
-	Email         string `toml:"email"`
-	Phone         string `toml:"phone"`
-	BankAccount   string `toml:"bank_account"`
-	BankCode      string `toml:"bank_code"`
-	IBAN          string `toml:"iban"`
-	SWIFT         string `toml:"swift"`
 }
 
 // SMTPConfig holds email sending settings.

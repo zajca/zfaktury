@@ -56,6 +56,18 @@ func (m *mockInvoiceRepo) GetByID(_ context.Context, _ int64) (*domain.Invoice, 
 	return m.invoice, nil
 }
 
+// mockSettingsReader is a test double for reminderSettingsReader.
+type mockSettingsReader struct {
+	settings map[string]string
+}
+
+func (m *mockSettingsReader) Get(_ context.Context, key string) (string, error) {
+	if v, ok := m.settings[key]; ok {
+		return v, nil
+	}
+	return "", nil
+}
+
 // mockEmailSender is a test double for reminderEmailSender.
 type mockEmailSender struct {
 	sentMessages []email.EmailMessage
@@ -94,7 +106,7 @@ func TestReminderService_SendReminder_Success(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{invoice: inv}
 	emailSender := &mockEmailSender{}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Jan Novak")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Jan Novak"}})
 	ctx := context.Background()
 
 	rem, err := svc.SendReminder(ctx, 1)
@@ -131,7 +143,7 @@ func TestReminderService_SendReminder_EscalatesLevel(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{invoice: inv}
 	emailSender := &mockEmailSender{}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Jan Novak")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Jan Novak"}})
 	ctx := context.Background()
 
 	// First reminder: level 1.
@@ -184,7 +196,7 @@ func TestReminderService_SendReminder_NotOverdue(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{invoice: inv}
 	emailSender := &mockEmailSender{}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Test")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Test"}})
 	ctx := context.Background()
 
 	_, err := svc.SendReminder(ctx, 1)
@@ -203,7 +215,7 @@ func TestReminderService_SendReminder_NoEmail(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{invoice: inv}
 	emailSender := &mockEmailSender{}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Test")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Test"}})
 	ctx := context.Background()
 
 	_, err := svc.SendReminder(ctx, 1)
@@ -221,7 +233,7 @@ func TestReminderService_SendReminder_EmailError(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{invoice: inv}
 	emailSender := &mockEmailSender{err: errors.New("SMTP connection refused")}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Test")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Test"}})
 	ctx := context.Background()
 
 	_, err := svc.SendReminder(ctx, 1)
@@ -242,7 +254,7 @@ func TestReminderService_SendReminder_SentAndPastDue(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{invoice: inv}
 	emailSender := &mockEmailSender{}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Test")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Test"}})
 	ctx := context.Background()
 
 	rem, err := svc.SendReminder(ctx, 1)
@@ -264,7 +276,7 @@ func TestReminderService_GetReminders(t *testing.T) {
 	invoiceRepo := &mockInvoiceRepo{}
 	emailSender := &mockEmailSender{}
 
-	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, "Test")
+	svc := NewReminderService(reminderRepo, invoiceRepo, emailSender, &mockSettingsReader{settings: map[string]string{"company_name": "Test"}})
 	ctx := context.Background()
 
 	reminders, err := svc.GetReminders(ctx, 42)

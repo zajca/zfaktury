@@ -58,7 +58,13 @@ func setupReminderRouter(t *testing.T) (*chi.Mux, *domain.Invoice) {
 		t.Fatalf("updating invoice to overdue: %v", err)
 	}
 
-	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, "Jan Novak")
+	settingsRepo := repository.NewSettingsRepository(db)
+	if err := settingsRepo.Set(context.Background(), "company_name", "Jan Novak"); err != nil {
+		t.Fatalf("seeding company_name setting: %v", err)
+	}
+	settingsSvc := service.NewSettingsService(settingsRepo)
+
+	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 	reminderHandler := NewReminderHandler(reminderSvc)
 
 	r := chi.NewRouter()

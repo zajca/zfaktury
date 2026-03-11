@@ -33,12 +33,17 @@ type reminderEmailSender interface {
 	Send(ctx context.Context, msg email.EmailMessage) error
 }
 
+// reminderSettingsReader abstracts settings lookup for testability.
+type reminderSettingsReader interface {
+	Get(ctx context.Context, key string) (string, error)
+}
+
 // ReminderService provides business logic for payment reminders.
 type ReminderService struct {
-	reminderRepo reminderRepository
-	invoiceRepo  reminderInvoiceRepo
-	emailSender  reminderEmailSender
-	userName     string
+	reminderRepo   reminderRepository
+	invoiceRepo    reminderInvoiceRepo
+	emailSender    reminderEmailSender
+	settingsReader reminderSettingsReader
 }
 
 // NewReminderService creates a new ReminderService.
@@ -46,13 +51,13 @@ func NewReminderService(
 	reminderRepo reminderRepository,
 	invoiceRepo reminderInvoiceRepo,
 	emailSender reminderEmailSender,
-	userName string,
+	settingsReader reminderSettingsReader,
 ) *ReminderService {
 	return &ReminderService{
-		reminderRepo: reminderRepo,
-		invoiceRepo:  invoiceRepo,
-		emailSender:  emailSender,
-		userName:     userName,
+		reminderRepo:   reminderRepo,
+		invoiceRepo:    invoiceRepo,
+		emailSender:    emailSender,
+		settingsReader: settingsReader,
 	}
 }
 
@@ -93,6 +98,9 @@ func (s *ReminderService) SendReminder(ctx context.Context, invoiceID int64) (*d
 		daysOverdue = 0
 	}
 
+	// Read company name from settings.
+	userName, _ := s.settingsReader.Get(ctx, "company_name")
+
 	// Build template data.
 	data := email.ReminderData{
 		CustomerName:   inv.Customer.Name,
@@ -102,7 +110,7 @@ func (s *ReminderService) SendReminder(ctx context.Context, invoiceID int64) (*d
 		DaysOverdue:    daysOverdue,
 		BankAccount:    formatBankAccount(inv.BankAccount, inv.BankCode),
 		VariableSymbol: inv.VariableSymbol,
-		UserName:       s.userName,
+		UserName:       userName,
 	}
 
 	subject, bodyHTML, bodyText := email.ReminderTemplate(level, data)

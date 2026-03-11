@@ -130,7 +130,7 @@ var serveCmd = &cobra.Command{
 
 		// Wire reminder service.
 		reminderRepo := repository.NewReminderRepository(db)
-		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, cfg.User.Name)
+		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
 		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, emailSender, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,

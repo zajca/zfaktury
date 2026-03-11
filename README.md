@@ -131,18 +131,6 @@ scripts/              Build and dev helper scripts
 Config file at `~/.zfaktury/config.toml` (created on first run):
 
 ```toml
-[user]
-name = "Jan Novak"
-ico = "12345678"
-dic = "CZ12345678"
-vat_registered = true
-street = "Hlavni 1"
-city = "Praha"
-zip = "11000"
-email = "jan@example.com"
-bank_account = "1234567890"
-bank_code = "0800"
-
 [smtp]
 host = "smtp.example.com"
 port = 587

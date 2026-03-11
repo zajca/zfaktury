@@ -1,6 +1,6 @@
 # RFC-005: VAT Filings Polish
 
-**Status:** Draft
+**Status:** Done
 **Date:** 2026-03-10
 
 ## Summary

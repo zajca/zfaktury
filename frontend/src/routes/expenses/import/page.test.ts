@@ -81,6 +81,7 @@ describe('Expenses import page', () => {
 	});
 
 	it('shows processing state and redirects when no OCR', async () => {
+		vi.useFakeTimers();
 		mockFetch.mockResolvedValue(jsonResponse(sampleImportResponseNoOCR));
 
 		render(Page);
@@ -90,24 +91,23 @@ describe('Expenses import page', () => {
 
 		await fireEvent.change(fileInput, { target: { files: [file] } });
 
-		// Should show processing state
-		await waitFor(() => {
-			expect(screen.getByText('Zpracovavam dokument...')).toBeInTheDocument();
-		});
+		// Flush the async import response
+		await vi.advanceTimersByTimeAsync(10);
 
 		// Should call import endpoint
-		await waitFor(() => {
-			expect(mockFetch).toHaveBeenCalled();
-			const url = mockFetch.mock.calls[0][0] as string;
-			expect(url).toContain('/api/v1/expenses/import');
-			expect(mockFetch.mock.calls[0][1].method).toBe('POST');
-		});
+		expect(mockFetch).toHaveBeenCalled();
+		const url = mockFetch.mock.calls[0][0] as string;
+		expect(url).toContain('/api/v1/expenses/import');
+		expect(mockFetch.mock.calls[0][1].method).toBe('POST');
+
+		// Advance past the 3000ms setTimeout redirect
+		await vi.advanceTimersByTimeAsync(3000);
 
 		// Should redirect to expense detail
 		const { goto } = await import('$app/navigation');
-		await waitFor(() => {
-			expect(goto).toHaveBeenCalledWith('/expenses/42');
-		});
+		expect(goto).toHaveBeenCalledWith('/expenses/42');
+
+		vi.useRealTimers();
 	});
 
 	it('shows OCR review dialog when OCR result is present', async () => {

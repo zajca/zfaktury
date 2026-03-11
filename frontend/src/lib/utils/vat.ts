@@ -4,12 +4,6 @@ export const vatStatusLabels: Record<string, string> = {
 	filed: 'Podáno'
 };
 
-export const vatStatusColors: Record<string, string> = {
-	draft: 'bg-gray-100 text-gray-700',
-	ready: 'bg-blue-100 text-blue-700',
-	filed: 'bg-green-100 text-green-700'
-};
-
 export const filingTypeLabels: Record<string, string> = {
 	regular: 'Řádné',
 	corrective: 'Následné',

@@ -229,9 +229,12 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: XML generation (`internal/vatxml/vies_gen.go`)
 - Done: Frontend pages (`/vat/vies/`)
 
-### RFC-005 VAT Polish
-- RFC: `docs/rfc/005-vat-polish.md` written (draft status)
-- Missing: Implementation (API client consolidation, Czech diacritics, validation hardening)
+### RFC-005 VAT Polish (Done)
+- Done: All 7 items already implemented during RFC-004
+- Done: API clients consolidated in `client.ts`, shared utils in `$lib/utils/vat.ts`
+- Done: Czech diacritics, month/quarter validation, input validation hardening
+- Done: Content-Disposition safety with `mime.FormatMediaType()`
+- Done: Dashboard uses calendar grid with per-year caching
 
 **Dependencies:** Phase 2, Phase 3
 
@@ -337,7 +340,7 @@ Phase 1 (Foundation)
 2. **RFC-002** (Invoicing) — Done (Sub-Phase 2A-2C, email service)
 3. **RFC-003** (Expenses) — Done (categories, documents, OCR, recurring, tax review)
 4. **RFC-004** (VAT Filings) — Done (VAT returns, kontrolni hlaseni, souhrnne hlaseni)
-5. **RFC-005** (VAT Polish) — RFC written, implementation pending
+5. **RFC-005** (VAT Polish) — Done (all items implemented during RFC-004)
 6. **RFC-006** (Banking) — Write after RFC-005
 7. **RFC-007** (Web UI) — Write incrementally as backend phases complete
 8. **RFC-008** (Polish) — Write last

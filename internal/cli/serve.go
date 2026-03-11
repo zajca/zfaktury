@@ -46,7 +46,7 @@ var serveCmd = &cobra.Command{
 	Short: "Start the HTTP server",
 	Long:  "Start the ZFaktury HTTP server serving both the API and the frontend.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.Load()
+		cfg, err := config.Load(configFile)
 		if err != nil {
 			return fmt.Errorf("loading config: %w", err)
 		}

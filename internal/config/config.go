@@ -71,10 +71,10 @@ func defaultDataDir() (string, error) {
 	return filepath.Join(home, ".zfaktury"), nil
 }
 
-// Load reads configuration from DataDir/config.toml.
+// Load reads configuration from the given configPath, or from DataDir/config.toml if empty.
 // If DataDir is not set, it defaults to ~/.zfaktury.
 // The DataDir is created if it does not exist.
-func Load() (*Config, error) {
+func Load(configPath string) (*Config, error) {
 	dataDir, err := defaultDataDir()
 	if err != nil {
 		return nil, err
@@ -97,7 +97,9 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("creating data directory %s: %w", cfg.DataDir, err)
 	}
 
-	configPath := filepath.Join(cfg.DataDir, "config.toml")
+	if configPath == "" {
+		configPath = filepath.Join(cfg.DataDir, "config.toml")
+	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		slog.Warn("config file not found, using defaults", "path", configPath)

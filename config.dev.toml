@@ -1,0 +1,10 @@
+# Development SMTP configuration for Mailpit
+# Copy this file or merge the [smtp] section into ~/.zfaktury/config.toml
+#
+# Install Mailpit: go install github.com/axllent/mailpit@latest
+# Web UI: http://localhost:8025
+
+[smtp]
+host = "localhost"
+port = 1025
+from = "dev@zfaktury.local"

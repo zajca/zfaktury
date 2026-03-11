@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Pre-commit hook: runs Go tests with coverage check (minimum 80%)
+# Excludes infrastructure packages (cli, config, database, cmd, testutil)
+# that require full application context and are not unit-testable.
+
+set -e
+
+MIN_COVERAGE=80
+
+echo "Running Go tests with coverage check..."
+
+# Run tests and capture coverage
+COVER_OUT=$(mktemp)
+trap 'rm -f "$COVER_OUT"' EXIT
+
+if ! CGO_ENABLED=0 go test ./... -coverprofile="$COVER_OUT" -count=1 > /dev/null 2>&1; then
+    echo "FAIL: Go tests failed"
+    CGO_ENABLED=0 go test ./... -count=1
+    exit 1
+fi
+
+# Calculate coverage excluding non-testable packages
+EXCLUDED="cmd/|frontend/|internal/cli/|internal/config/|internal/database/|internal/app/|internal/testutil/"
+TOTAL=$(go tool cover -func="$COVER_OUT" \
+    | grep -v "total:" \
+    | grep -vE "$EXCLUDED" \
+    | awk '{pct=$NF+0; if($NF ~ /%/) {hit+=pct; cnt++}} END {if(cnt>0) printf "%.1f", hit/cnt; else print "0"}')
+TOTAL_INT=${TOTAL%.*}
+
+if [ "$TOTAL_INT" -lt "$MIN_COVERAGE" ]; then
+    echo "FAIL: Go test coverage ${TOTAL}% is below minimum ${MIN_COVERAGE}% (testable packages)"
+    echo "Run 'make coverage-go' for details."
+    exit 1
+fi
+
+echo "OK: Go test coverage ${TOTAL}% (minimum ${MIN_COVERAGE}%, testable packages)"

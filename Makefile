@@ -1,4 +1,4 @@
-.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend
+.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend install-hooks
 
 # Build the complete application (frontend + Go binary)
 build:
@@ -52,6 +52,12 @@ clean:
 	rm -rf tmp/
 	rm -f coverage.out coverage.html
 	rm -rf frontend/coverage/
+
+# Install git hooks
+install-hooks:
+	cp scripts/pre-commit .git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
+	@echo "Git hooks installed."
 
 # Run database migrations only
 migrate:

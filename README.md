@@ -35,6 +35,7 @@ Self-contained invoicing and tax management application for Czech sole proprieto
 # Clone and build
 git clone https://github.com/zajca/zfaktury.git
 cd zfaktury
+make install-hooks  # Set up pre-commit coverage check
 make build
 
 # Run
@@ -63,10 +64,43 @@ go run ./cmd/zfaktury serve --dev
 ## Build
 
 ```bash
-make build    # Frontend + Go binary -> ./zfaktury
-make test     # Run all tests
-make clean    # Remove build artifacts
+make build          # Frontend + Go binary -> ./zfaktury
+make test           # Run all tests (backend + frontend)
+make lint           # Lint all code (Go + frontend)
+make clean          # Remove build artifacts
+make install-hooks  # Install git pre-commit hook
 ```
+
+## Testing
+
+```bash
+# Go tests
+CGO_ENABLED=0 go test ./...
+
+# Go tests with coverage report
+make coverage-go
+
+# Frontend tests
+cd frontend && npm test
+
+# Frontend tests with coverage
+make coverage-frontend
+```
+
+### Coverage
+
+Go backend test coverage is enforced at **80% minimum** via a pre-commit hook. Run `make install-hooks` after cloning to enable it.
+
+Coverage by layer:
+
+| Layer | Coverage |
+|-------|----------|
+| domain | 100% |
+| service | ~82% |
+| repository | ~80% |
+| handler | ~78% |
+
+Infrastructure packages (cli, config, database) are excluded from the coverage target as they require integration testing with the full application.
 
 ## Project Structure
 

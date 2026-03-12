@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invoicesApi, emailApi } from '$lib/api/client';
 	import { onMount } from 'svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	interface Props {
 		invoiceId: number;
@@ -57,6 +58,7 @@
 				attach_pdf: attachPdf,
 				attach_isdoc: attachIsdoc
 			});
+			toastSuccess('Email odeslán');
 			onsuccess();
 		} catch (err: unknown) {
 			if (err instanceof Error) {

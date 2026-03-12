@@ -312,7 +312,7 @@ describe('Expense Tax Review', () => {
 		});
 	});
 
-	it('shows success message after bulk mark reviewed', async () => {
+	it('calls review API after bulk mark reviewed', async () => {
 		render(Page);
 		await waitFor(() => {
 			expect(screen.getByText('Office supplies')).toBeInTheDocument();
@@ -330,11 +330,14 @@ describe('Expense Tax Review', () => {
 		await fireEvent.click(markBtn);
 
 		await waitFor(() => {
-			expect(screen.getByText('1 výdajů označeno jako zkontrolováno')).toBeInTheDocument();
+			const reviewCall = mockFetch.mock.calls.find(
+				(c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/v1/expenses/review')
+			);
+			expect(reviewCall).toBeDefined();
 		});
 	});
 
-	it('shows success message after bulk unmark', async () => {
+	it('calls unreview API after bulk unmark', async () => {
 		render(Page);
 		await waitFor(() => {
 			expect(screen.getByText('Office supplies')).toBeInTheDocument();
@@ -352,7 +355,10 @@ describe('Expense Tax Review', () => {
 		await fireEvent.click(unmarkBtn);
 
 		await waitFor(() => {
-			expect(screen.getByText('2 výdajů odznačeno')).toBeInTheDocument();
+			const unreviewCall = mockFetch.mock.calls.find(
+				(c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/v1/expenses/unreview')
+			);
+			expect(unreviewCall).toBeDefined();
 		});
 	});
 

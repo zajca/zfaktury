@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { importApi, expensesApi, type OCRResult } from '$lib/api/client';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
@@ -106,6 +107,7 @@
 				currency_code: data.currency_code || undefined,
 				issue_date: data.issue_date || undefined,
 			});
+			toastSuccess('Náklad uložen');
 			goto(`/expenses/${expenseId}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Ukládání se nezdařilo';

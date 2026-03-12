@@ -14,12 +14,14 @@
 	import DateInput from '$lib/components/DateInput.svelte';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let item = $state<RecurringExpense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -27,6 +29,7 @@
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let editing = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	let itemId = $derived(Number(page.params.id));
 
@@ -140,6 +143,7 @@
 				end_date: form.end_date || undefined,
 				is_active: form.is_active
 			});
+			toastSuccess('Opakovaný náklad uložen');
 			editing = false;
 			await loadItem();
 		} catch (e) {
@@ -149,11 +153,16 @@
 		}
 	}
 
-	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat tento opakovaný náklad?')) return;
+	function handleDelete() {
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		showDeleteConfirm = false;
 		error = null;
 		try {
 			await recurringExpensesApi.delete(itemId);
+			toastSuccess('Opakovaný náklad smazán');
 			goto('/expenses/recurring');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat opakovaný náklad';
@@ -162,12 +171,14 @@
 
 	async function handleToggleActive() {
 		error = null;
+		const wasActive = item?.is_active;
 		try {
-			if (item?.is_active) {
+			if (wasActive) {
 				await recurringExpensesApi.deactivate(itemId);
 			} else {
 				await recurringExpensesApi.activate(itemId);
 			}
+			toastSuccess(wasActive ? 'Opakovaný náklad deaktivován' : 'Opakovaný náklad aktivován');
 			await loadItem();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se změnit stav';
@@ -503,3 +514,12 @@
 		{/if}
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat opakovaný náklad"
+	message="Opravdu chcete smazat tento opakovaný náklad?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

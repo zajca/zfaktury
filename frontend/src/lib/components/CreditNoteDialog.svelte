@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invoicesApi, type Invoice } from '$lib/api/client';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	interface Props {
 		invoiceId: number;
@@ -28,6 +29,7 @@
 			const invoice = await invoicesApi.createCreditNote(invoiceId, {
 				reason: reason.trim()
 			});
+			toastSuccess('Dobropis vytvořen');
 			onsuccess(invoice);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit dobropis';

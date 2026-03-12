@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { SvelteURLSearchParams, SvelteSet } from 'svelte/reactivity';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
@@ -53,7 +54,6 @@
 	// Selection state
 	let selectedIds: Set<number> = new SvelteSet();
 	let bulkLoading = $state(false);
-	let successMessage = $state<string | null>(null);
 
 	// Derived
 	let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
@@ -120,7 +120,7 @@
 		if (selectedIds.size === 0) return;
 		bulkLoading = true;
 		error = null;
-		successMessage = null;
+		const count = selectedIds.size;
 		try {
 			const res = await fetch('/api/v1/expenses/review', {
 				method: 'POST',
@@ -131,7 +131,7 @@
 				const body = await res.json().catch(() => ({}));
 				throw new Error((body as { error?: string }).error ?? `Chyba ${res.status}`);
 			}
-			successMessage = `${selectedIds.size} výdajů označeno jako zkontrolováno`;
+			toastSuccess(`${count} nákladů označeno`);
 			await loadExpenses();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se označit výdaje';
@@ -144,7 +144,7 @@
 		if (selectedIds.size === 0) return;
 		bulkLoading = true;
 		error = null;
-		successMessage = null;
+		const count = selectedIds.size;
 		try {
 			const res = await fetch('/api/v1/expenses/unreview', {
 				method: 'POST',
@@ -155,7 +155,7 @@
 				const body = await res.json().catch(() => ({}));
 				throw new Error((body as { error?: string }).error ?? `Chyba ${res.status}`);
 			}
-			successMessage = `${selectedIds.size} výdajů odznačeno`;
+			toastSuccess(`${count} nákladů odznačeno`);
 			await loadExpenses();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se odznačit výdaje';
@@ -222,12 +222,6 @@
 	</Card>
 
 	<ErrorAlert {error} class="mt-4" />
-
-	{#if successMessage}
-		<div class="mt-4 rounded-lg border border-success/20 bg-success-bg p-4 text-sm text-success">
-			{successMessage}
-		</div>
-	{/if}
 
 	<!-- Bulk actions -->
 	{#if someSelected}

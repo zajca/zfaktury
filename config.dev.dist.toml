@@ -1,0 +1,14 @@
+# Development configuration for ZFaktury
+# Copy to config.dev.toml and adjust for your local setup.
+
+# [database]
+# path = "/tmp/zfaktury-dev.db"   # Custom DB path (default: ~/.zfaktury/zfaktury.db)
+
+# [log]
+# path = "logs/zfaktury.log"      # Log file path (default: stderr only)
+# level = "debug"                  # debug, info, warn, error (default: info)
+
+[smtp]
+host = "localhost"
+port = 1025
+from = "dev@zfaktury.local"

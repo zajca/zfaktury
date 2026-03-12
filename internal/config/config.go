@@ -11,11 +11,24 @@ import (
 
 // Config holds the application configuration loaded from config.toml.
 type Config struct {
-	DataDir string       `toml:"data_dir"`
-	Server  ServerConfig `toml:"server"`
-	SMTP    SMTPConfig   `toml:"smtp"`
-	FIO     FIOConfig    `toml:"fio"`
-	OCR     OCRConfig    `toml:"ocr"`
+	DataDir  string         `toml:"data_dir"`
+	Database DatabaseConfig `toml:"database"`
+	Log      LogConfig      `toml:"log"`
+	Server   ServerConfig   `toml:"server"`
+	SMTP     SMTPConfig     `toml:"smtp"`
+	FIO      FIOConfig      `toml:"fio"`
+	OCR      OCRConfig      `toml:"ocr"`
+}
+
+// DatabaseConfig holds database settings.
+type DatabaseConfig struct {
+	Path string `toml:"path"`
+}
+
+// LogConfig holds logging settings.
+type LogConfig struct {
+	Path  string `toml:"path"`  // empty = stderr only
+	Level string `toml:"level"` // debug, info, warn, error (default: info)
 }
 
 // ServerConfig holds HTTP server settings.
@@ -99,6 +112,11 @@ func Load(configPath string) (*Config, error) {
 }
 
 // DatabasePath returns the path to the SQLite database file.
+// If Database.Path is set in config, it is used directly.
+// Otherwise defaults to DataDir/zfaktury.db.
 func (c *Config) DatabasePath() string {
+	if c.Database.Path != "" {
+		return c.Database.Path
+	}
 	return filepath.Join(c.DataDir, "zfaktury.db")
 }

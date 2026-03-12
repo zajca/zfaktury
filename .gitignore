@@ -41,6 +41,9 @@ tmp/
 coverage.html
 frontend/coverage/
 
+# Local config
+config.dev.toml
+
 # Claude
 docs/AGENT-REPORTS
 .claude/worktrees/

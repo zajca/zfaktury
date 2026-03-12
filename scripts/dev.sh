@@ -40,6 +40,12 @@ if [ -f "$PROJECT_DIR/frontend/package.json" ]; then
     cd "$PROJECT_DIR"
 fi
 
+# Ensure local config exists
+if [ ! -f "$PROJECT_DIR/config.dev.toml" ]; then
+    cp "$PROJECT_DIR/config.dev.dist.toml" "$PROJECT_DIR/config.dev.toml"
+    echo "==> Created config.dev.toml from config.dev.dist.toml"
+fi
+
 # Start Go server in dev mode
 echo "==> Starting Go server in dev mode..."
 CGO_ENABLED=0 go run ./cmd/zfaktury --config "$PROJECT_DIR/config.dev.toml" serve --dev --port 8080

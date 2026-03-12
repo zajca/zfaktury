@@ -58,6 +58,8 @@ Two processes run in parallel -- Vite HMR for frontend and Go API server:
 make dev
 ```
 
+On first run, `config.dev.toml` is automatically created from `config.dev.dist.toml`. Edit the local copy to customize your dev environment (it is gitignored).
+
 Or manually in two terminals:
 
 ```bash
@@ -131,6 +133,13 @@ scripts/              Build and dev helper scripts
 Config file at `~/.zfaktury/config.toml` (created on first run):
 
 ```toml
+[database]
+# path = "/path/to/custom.db"  # Custom DB path (default: ~/.zfaktury/zfaktury.db)
+
+[log]
+# path = "logs/zfaktury.log"   # Log file path (default: stderr only)
+# level = "info"               # debug, info, warn, error (default: info)
+
 [smtp]
 host = "smtp.example.com"
 port = 587
@@ -147,6 +156,12 @@ api_key = "sk-your-api-key"
 # model = ""                   # optional, each provider has a sensible default
 # base_url = ""                # optional, for custom/self-hosted endpoints
 ```
+
+| Setting | Description |
+|---------|-------------|
+| `database.path` | Custom SQLite database path. Useful for running multiple instances. Defaults to `~/.zfaktury/zfaktury.db`. |
+| `log.path` | Log file path. When set, logs are written to both stderr and the file. |
+| `log.level` | Log verbosity: `debug`, `info` (default), `warn`, `error`. |
 
 Override data directory with `ZFAKTURY_DATA_DIR` environment variable.
 

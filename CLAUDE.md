@@ -94,6 +94,10 @@ These rules are non-negotiable. Every new or modified code MUST follow them.
 - TOML config at `~/.zfaktury/config.toml`
 - `ZFAKTURY_DATA_DIR` env var overrides data directory
 - Config struct in `internal/config/config.go`
+- Dev config: `config.dev.dist.toml` is the template (committed), `config.dev.toml` is local (gitignored). `scripts/dev.sh` auto-copies dist to local on first run.
+- `[database] path` -- custom SQLite path (default: `DataDir/zfaktury.db`). Useful for running multiple instances.
+- `[log] path` -- log file path (default: stderr only). When set, logs go to both stderr and the file.
+- `[log] level` -- `debug`, `info` (default), `warn`, `error`
 
 ## Build & Run
 

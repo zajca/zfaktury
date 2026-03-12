@@ -27,6 +27,25 @@ function makeTaxYearSettings(overrides?: Partial<{ flat_rate_percent: number; pr
 	};
 }
 
+const fakeTaxConstants = {
+	year: 2025, basic_credit: 30840, spouse_credit: 24840, spouse_income_limit: 68000,
+	student_credit: 4020, disability_credit_1: 2520, disability_credit_3: 5040,
+	disability_ztpp: 16140, child_benefit_1: 15204, child_benefit_2: 22320,
+	child_benefit_3_plus: 27840, max_child_bonus: 60300, progressive_threshold: 1935552,
+	flat_rate_caps: {}, deduction_cap_mortgage: 150000, deduction_cap_pension: 24000,
+	deduction_cap_life_insurance: 24000, deduction_cap_union: 3000,
+	time_test_years: 3, security_exemption_limit: 100000
+};
+
+function mockSettingsAndConstants(settings: unknown, status = 200) {
+	mockFetch.mockImplementation((url: string) => {
+		if (typeof url === 'string' && url.includes('/tax-constants/')) {
+			return Promise.resolve(jsonResponse(fakeTaxConstants));
+		}
+		return Promise.resolve(jsonResponse(settings, status));
+	});
+}
+
 beforeEach(() => {
 	mockFetch.mockReset();
 });
@@ -44,7 +63,7 @@ describe('Tax Prepayments Page', () => {
 	});
 
 	it('renders page heading and year selector', async () => {
-		mockFetch.mockResolvedValue(jsonResponse(makeTaxYearSettings()));
+		mockSettingsAndConstants(makeTaxYearSettings());
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
 
@@ -55,7 +74,7 @@ describe('Tax Prepayments Page', () => {
 	});
 
 	it('renders flat rate dropdown with options', async () => {
-		mockFetch.mockResolvedValue(jsonResponse(makeTaxYearSettings({ flat_rate_percent: 60 })));
+		mockSettingsAndConstants(makeTaxYearSettings({ flat_rate_percent: 60 }));
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
 
@@ -66,7 +85,7 @@ describe('Tax Prepayments Page', () => {
 	});
 
 	it('renders 12 month rows in the table', async () => {
-		mockFetch.mockResolvedValue(jsonResponse(makeTaxYearSettings()));
+		mockSettingsAndConstants(makeTaxYearSettings());
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
 
@@ -84,7 +103,7 @@ describe('Tax Prepayments Page', () => {
 			social_amount: 200000,
 			health_amount: 300000
 		}));
-		mockFetch.mockResolvedValue(jsonResponse(makeTaxYearSettings({ prepayments })));
+		mockSettingsAndConstants(makeTaxYearSettings({ prepayments }));
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
 
@@ -94,7 +113,7 @@ describe('Tax Prepayments Page', () => {
 	});
 
 	it('saves settings on button click', async () => {
-		mockFetch.mockResolvedValue(jsonResponse(makeTaxYearSettings()));
+		mockSettingsAndConstants(makeTaxYearSettings());
 
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
@@ -118,7 +137,7 @@ describe('Tax Prepayments Page', () => {
 	});
 
 	it('shows error on API failure', async () => {
-		mockFetch.mockResolvedValue(jsonResponse({ error: 'server error' }, 500));
+		mockSettingsAndConstants({ error: 'server error' }, 500);
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
 
@@ -129,7 +148,7 @@ describe('Tax Prepayments Page', () => {
 	});
 
 	it('renders quick-fill row', async () => {
-		mockFetch.mockResolvedValue(jsonResponse(makeTaxYearSettings()));
+		mockSettingsAndConstants(makeTaxYearSettings());
 		const { default: Page } = await import('./+page.svelte');
 		render(Page);
 

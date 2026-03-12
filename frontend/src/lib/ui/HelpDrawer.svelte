@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { helpTopics } from '$lib/data/help-content';
+	import { getHelpTopics } from '$lib/data/help-content';
 	import { helpDrawer, closeHelp } from '$lib/data/help-state.svelte';
 	import { browser } from '$app/environment';
 
 	let drawerEl: HTMLDivElement | undefined = $state();
 
-	let topic = $derived(helpDrawer.topicId ? helpTopics[helpDrawer.topicId] : null);
+	let topic = $derived(
+		helpDrawer.topicId ? getHelpTopics(helpDrawer.taxConstants)[helpDrawer.topicId] : null
+	);
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (!helpDrawer.open) return;

@@ -26,6 +26,13 @@ type TaxYearConstants struct {
 	FlatRateCaps           map[int]domain.Amount    // percent -> max halere amount
 	TimeTestYears          int                      // years to hold for time test exemption
 	SecurityExemptionLimit domain.Amount             // max exempt amount per year (0 = no limit)
+
+	SpouseIncomeLimit       domain.Amount // max spouse income for credit eligibility
+	DeductionCapMortgage    domain.Amount // max deduction for mortgage interest
+	DeductionCapLifeInsurance domain.Amount // max deduction for life insurance
+	DeductionCapPension     domain.Amount // max deduction for pension savings
+	DeductionCapUnionDues   domain.Amount // max deduction for union dues
+	MaxChildBonus           domain.Amount // max annual child tax bonus
 }
 
 // taxConstantsDB stores year-specific tax constants.
@@ -54,6 +61,13 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		},
 		TimeTestYears:          3,
 		SecurityExemptionLimit: domain.NewAmount(0, 0), // no limit before 2025
+
+		SpouseIncomeLimit:       domain.NewAmount(68_000, 0),
+		DeductionCapMortgage:    domain.NewAmount(150_000, 0),
+		DeductionCapLifeInsurance: domain.NewAmount(24_000, 0),
+		DeductionCapPension:     domain.NewAmount(24_000, 0),
+		DeductionCapUnionDues:   domain.NewAmount(3_000, 0),
+		MaxChildBonus:           domain.NewAmount(60_300, 0),
 	},
 	2025: {
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -79,6 +93,13 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		},
 		TimeTestYears:          3,
 		SecurityExemptionLimit: domain.NewAmount(100_000_000, 0), // 1M CZK
+
+		SpouseIncomeLimit:       domain.NewAmount(68_000, 0),
+		DeductionCapMortgage:    domain.NewAmount(150_000, 0),
+		DeductionCapLifeInsurance: domain.NewAmount(24_000, 0),
+		DeductionCapPension:     domain.NewAmount(24_000, 0),
+		DeductionCapUnionDues:   domain.NewAmount(3_000, 0),
+		MaxChildBonus:           domain.NewAmount(60_300, 0),
 	},
 	2026: {
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -104,6 +125,13 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		},
 		TimeTestYears:          3,
 		SecurityExemptionLimit: domain.NewAmount(100_000_000, 0), // 1M CZK
+
+		SpouseIncomeLimit:       domain.NewAmount(68_000, 0),
+		DeductionCapMortgage:    domain.NewAmount(150_000, 0),
+		DeductionCapLifeInsurance: domain.NewAmount(24_000, 0),
+		DeductionCapPension:     domain.NewAmount(24_000, 0),
+		DeductionCapUnionDues:   domain.NewAmount(3_000, 0),
+		MaxChildBonus:           domain.NewAmount(60_300, 0),
 	},
 }
 

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { helpTopics, type HelpTopicId } from './help-content';
+import { helpTopics, getHelpTopics, type HelpTopicId } from './help-content';
+import type { TaxConstants } from '$lib/api/client';
 
 describe('help-content', () => {
 	const topicIds = Object.keys(helpTopics) as HelpTopicId[];
 
 	it('has all expected topics', () => {
-		expect(topicIds.length).toBe(49);
+		expect(topicIds.length).toBe(69);
 	});
 
 	it.each(topicIds)('topic "%s" has non-empty title', (id) => {
@@ -73,8 +74,82 @@ describe('help-content', () => {
 			'opakovane-faktury',
 			'kategorie-nakladu',
 			'duplikace-faktury',
-			'rocni-dane'
+			'rocni-dane',
+			'pausalni-vydaje',
+			'dan-15-23',
+			'vymerovaci-zaklad',
+			'casovy-test',
+			'sleva-na-poplatnika',
+			'zvyhodneni-na-deti',
+			'mesice-proporcializace',
+			'nezdanitelne-odpocty',
+			'prehled-cssz',
+			'prehled-zp',
+			'kapitalove-prijmy-s8',
+			'obchody-cp-s10',
+			'nutno-priznat-dp',
+			'doplatek-preplatek',
+			'srazena-dan',
+			'kurz-cnb',
+			'nova-zaloha',
+			'ztpp',
+			'fifo-prepocet',
+			'sleva-na-manzela'
 		];
 		expect(topicIds.sort()).toEqual(expectedIds.sort());
+	});
+
+	describe('getHelpTopics with TaxConstants', () => {
+		const mockConstants: TaxConstants = {
+			year: 2024,
+			basic_credit: 30840,
+			spouse_credit: 24840,
+			spouse_income_limit: 68000,
+			student_credit: 4020,
+			disability_credit_1: 2520,
+			disability_credit_3: 5040,
+			disability_ztpp: 16140,
+			child_benefit_1: 15204,
+			child_benefit_2: 22320,
+			child_benefit_3_plus: 27840,
+			max_child_bonus: 60300,
+			progressive_threshold: 1935552,
+			flat_rate_caps: { '80': 1600000, '60': 1200000, '40': 800000, '30': 600000 },
+			deduction_cap_mortgage: 150000,
+			deduction_cap_pension: 24000,
+			deduction_cap_life_insurance: 24000,
+			deduction_cap_union: 3000,
+			time_test_years: 3,
+			security_exemption_limit: 100000
+		};
+
+		it('interpolates year-specific amounts into dynamic topics', () => {
+			const topics = getHelpTopics(mockConstants);
+			expect(topics['sleva-na-poplatnika'].simple).toContain('30');
+			expect(topics['sleva-na-poplatnika'].simple).toContain('2024');
+			expect(topics['zvyhodneni-na-deti'].simple).toContain('15');
+			expect(topics['zvyhodneni-na-deti'].simple).toContain('2024');
+			expect(topics['dan-15-23'].simple).toContain('2024');
+			expect(topics['sleva-na-manzela'].simple).toContain('68');
+			expect(topics['nezdanitelne-odpocty'].simple).toContain('150');
+			expect(topics['ztpp'].simple).toContain('24');
+			expect(topics['pausalni-vydaje'].simple).toContain('2024');
+		});
+
+		it('returns generic text without constants', () => {
+			const topics = getHelpTopics(null);
+			expect(topics['sleva-na-poplatnika'].simple).not.toContain('2024');
+			expect(topics['sleva-na-poplatnika'].simple).toContain('zdanovacim obdobi');
+			expect(topics['zvyhodneni-na-deti'].simple).not.toContain('15 204');
+			expect(topics['dan-15-23'].simple).toContain('48nasobku');
+		});
+
+		it('returns same topics with and without constants', () => {
+			const withConstants = getHelpTopics(mockConstants);
+			const withoutConstants = getHelpTopics(null);
+			const keysA = Object.keys(withConstants).sort();
+			const keysB = Object.keys(withoutConstants).sort();
+			expect(keysA).toEqual(keysB);
+		});
 	});
 });

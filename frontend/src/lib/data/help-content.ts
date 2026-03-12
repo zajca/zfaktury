@@ -47,7 +47,27 @@ export type HelpTopicId =
 	| 'opakovane-faktury'
 	| 'kategorie-nakladu'
 	| 'duplikace-faktury'
-	| 'rocni-dane';
+	| 'rocni-dane'
+	| 'pausalni-vydaje'
+	| 'dan-15-23'
+	| 'vymerovaci-zaklad'
+	| 'casovy-test'
+	| 'sleva-na-poplatnika'
+	| 'zvyhodneni-na-deti'
+	| 'mesice-proporcializace'
+	| 'nezdanitelne-odpocty'
+	| 'prehled-cssz'
+	| 'prehled-zp'
+	| 'kapitalove-prijmy-s8'
+	| 'obchody-cp-s10'
+	| 'nutno-priznat-dp'
+	| 'doplatek-preplatek'
+	| 'srazena-dan'
+	| 'kurz-cnb'
+	| 'nova-zaloha'
+	| 'ztpp'
+	| 'fifo-prepocet'
+	| 'sleva-na-manzela';
 
 export interface HelpTopic {
 	title: string;
@@ -55,7 +75,14 @@ export interface HelpTopic {
 	legal: string;
 }
 
-export const helpTopics: Record<HelpTopicId, HelpTopic> = {
+import type { TaxConstants } from '$lib/api/client';
+
+function fmtCZK(n: number): string {
+	return n.toLocaleString('cs-CZ') + ' Kc';
+}
+
+// Static topics that never change based on year.
+const staticTopics: Record<string, HelpTopic> = {
 	'variabilni-symbol': {
 		title: 'Variabilni symbol',
 		simple:
@@ -397,5 +424,176 @@ export const helpTopics: Record<HelpTopicId, HelpTopic> = {
 			'Rocni danove priznani (DPFO) a prehledy pro socialni (CSSZ) a zdravotni pojistovnu (ZP). Aplikace spocita zaklad dane z faktur a nakladu, aplikuje sazby a slevy, a vygeneruje XML pro elektronicke podani.',
 		legal:
 			'Danove priznani k dani z prijmu fyzickych osob (§ 38g zakona c. 586/1992 Sb.). Prehled o prijmech a vydajich OSVC pro CSSZ (§ 15 zakona c. 589/1992 Sb.) a pro zdravotni pojistovnu (§ 24 zakona c. 592/1992 Sb.).'
-	}
+	},
+	'vymerovaci-zaklad': {
+		title: 'Vymerovaci zaklad pro pojistne',
+		simple:
+			'Vymerovaci zaklad je castka, ze ktere se pocita socialni a zdravotni pojistne. Pro OSVC je to 50 % ze zakladu dane (prijmy minus vydaje).\n\nExistuje minimalni vymerovaci zaklad -- i kdyz mate nizky zisk, zaplatite pojistne alespon z minima. U socialniho pojisteni je minimum dobrovolne (pokud je hlavni cinnost), u zdravotniho je povinne vzdy.',
+		legal:
+			'Vymerovaci zaklad pro socialni pojisteni OSVC: 50 % zakladu dane (§ 5b zakona c. 589/1992 Sb.). Minimalni vymerovaci zaklad: 25 % prumerne mzdy pro hlavni cinnost. Pro zdravotni pojisteni: 50 % zakladu dane (§ 3a zakona c. 592/1992 Sb.), minimalni zaklad je 50 % prumerne mzdy (§ 3a odst. 2).'
+	},
+	'casovy-test': {
+		title: 'Casovy test 3 roky pro cenne papiry',
+		simple:
+			'Pokud vlastnite akcii, ETF nebo jiny cenny papir dele nez 3 roky a pak ho prodate, zisk z prodeje je osvobozeny od dane. Tomu se rika "casovy test".\n\nPriklad: Koupite akcii v lednu 2022 a prodate v unoru 2025 (dele nez 3 roky) -- neplatite zadnou dan ze zisku. Pokud prodate drive, zisk se musi danit v ramci § 10.',
+		legal:
+			'Osvobozeniprijmu z prodeje cennych papiru po casovem testu upravuje § 4 odst. 1 pism. w) zakona c. 586/1992 Sb. Doba drzeni musi prekrocit 3 roky. Od 2025 se casovy test prodluzuje na 3 roky i pro kryptomeny (§ 4 odst. 1 pism. x). Pro fondy kolektivniho investovani plati rovnez 3 roky (§ 4 odst. 1 pism. w).'
+	},
+	'mesice-proporcializace': {
+		title: 'Proporcializace slev podle mesicu',
+		simple:
+			'Nektere slevy a zvyhodneni se pocitaji v pomernej vysi podle poctu mesicu, po ktere podminka platila. Napr. pokud jste se ozenili v cervnu, slevu na manzela/ku uplatnite za 7 mesicu (cerven-prosinec).\n\nStejne to funguje u deti -- pokud se dite narodilo v rijnu, zvyhodneni uplatnite za 3 mesice. Rozhoduje stav na zacatku mesice.',
+		legal:
+			'Proporcializace slev je upravena v § 35ba odst. 3 a § 35c odst. 8 zakona c. 586/1992 Sb. Sleva na manzela/ku a danove zvyhodneni na dite se uplatnuji v pomerne vysi odpovidajici poctu kalendarnich mesicu, na jejichz pocatku byly splneny podminky pro uplatneni.'
+	},
+	'prehled-cssz': {
+		title: 'Prehled OSVC pro CSSZ',
+		simple:
+			'Prehled pro Ceskou spravu socialniho zabezpeceni je rocni formular, ve kterem vykazujete sve prijmy a vydaje z podnikani. CSSZ z nej vypocita vase pojistne a novou vysi mesicnich zaloh.\n\nPrehled se podava do jednoho mesice po lhute pro podani danoveho priznani. Pokud vam vysel doplatek, musite ho zaplatit do 8 dnu od podani prehledu.',
+		legal:
+			'Povinnost podat prehled vyplyva z § 15 zakona c. 589/1992 Sb. o pojistnem na socialni zabezpeceni. Lhuta: do jednoho mesice po lhute pro podani danoveho priznani (§ 15 odst. 1). Doplatek pojistneho je splatny do 8 dnu po podani prehledu (§ 14a odst. 2). Nova vyse zalohy plati od mesice nasledujiciho po mesici podani prehledu.'
+	},
+	'prehled-zp': {
+		title: 'Prehled OSVC pro zdravotni pojistovnu',
+		simple:
+			'Prehled pro zdravotni pojistovnu je rocni formular, ve kterem vykazujete sve prijmy a vydaje. Pojistovna z nej vypocita vase zdravotni pojistne a novou vysi mesicnich zaloh.\n\nPrehled se podava do jednoho mesice po lhute pro podani danoveho priznani. Doplatek se plati do 8 dnu od podani.',
+		legal:
+			'Povinnost podat prehled upravuje § 24 zakona c. 592/1992 Sb. o pojistnem na vseobecne zdravotni pojisteni. Lhuta: do jednoho mesice po lhute pro podani danoveho priznani (§ 24 odst. 2). Doplatek pojistneho je splatny do 8 dnu po podani prehledu (§ 7 odst. 2). OSVC prehled podava te pojistovne, u ktere byla pojistena k 1. lednu prislusneho roku.'
+	},
+	'kapitalove-prijmy-s8': {
+		title: 'Kapitalove prijmy (§8)',
+		simple:
+			'Kapitalove prijmy zahrnuji dividendy, uroky z vkladu, kupony z dluhopisu a vyplaty z fondu. Vetsina techto prijmu je zdanena srazkovou dani (15 %) primo u zdroje -- banka nebo broker dan strhne automaticky.\n\nDo danoveho priznani (§8) uvadite jen prijmy, ktere nebyly zdaneny srazkovou dani, nebo zahranicni dividendy, kde chcete uplatnit zapocet dane.',
+		legal:
+			'Kapitalove prijmy jsou definovany v § 8 zakona c. 586/1992 Sb. Srazkova dan 15 % dle § 36 odst. 2 se uplatni u dividend, uroku a dalsich prijmu z § 8. Zahranicni kapitalove prijmy se uvadeji v priznani a pripadna zahranicni srazkova dan se zapocte dle smlouvy o zamezeni dvojiho zdaneni (§ 38f).'
+	},
+	'obchody-cp-s10': {
+		title: 'Obchody s CP a kryptem (§10)',
+		simple:
+			'Zisky z prodeje cennych papiru (akcii, ETF, dluhopisu) a kryptomen se dani v ramci § 10 jako "ostatni prijmy". Od prijmu z prodeje si odectete nabyvaci cenu (poradi FIFO) a poplatky.\n\nZdanitelny je pouze zisk, a to jen pokud nepreslo 3 roky od nakupu (casovy test). Pokud celkove ostatni prijmy za rok nepresahnou 100 000 Kc, muzou byt take osvobozeny.',
+		legal:
+			'Prijmy z prodeje cennych papiru a kryptomen upravuje § 10 odst. 1 pism. b) zakona c. 586/1992 Sb. Vydajem je nabyvaci cena dle § 10 odst. 4. Oslobozeni po casovem testu 3 roky dle § 4 odst. 1 pism. w). Limit oslobozeni pro ostatni prijmy do 100 000 Kc dle § 10 odst. 3 pism. a). Ztrata z § 10 se nekompenzuje se zisky z § 7.'
+	},
+	'nutno-priznat-dp': {
+		title: 'Kdy priznat kapitalovy prijem v DP',
+		simple:
+			'Kapitalove prijmy je treba priznat v danovem priznani, pokud:\n\n- Zahranicni dividendy nebyly zdaneny ceskou srazkovou dani\n- Chcete zapocist zahranicni dan\n- Prijem presahuje limit pro oslobozeni\n- Zdrojem je P2P platforma ci zahranicni broker bez ceske srazkove dane\n\nPrijmy jiz zdanene ceskou srazkovou dani (napr. CZ dividendy od ceskeho brokera) priznovat nemusite.',
+		legal:
+			'Povinnost priznat kapitalovy prijem vyplyva z § 8 a § 38g zakona c. 586/1992 Sb. Prijmy zdanene srazkovou dani dle § 36 se do zakladu dane nezahrnuji (§ 36 odst. 7), pokud se poplatnik nerozhodne je zahrnout (§ 36 odst. 7 veta druha). Zahranicni prijmy se uvadeji vzdy, zapocet dane dle § 38f a prislusne smlouvy o zamezeni dvojiho zdaneni.'
+	},
+	'doplatek-preplatek': {
+		title: 'Doplatek vs preplatek',
+		simple:
+			'Vysledek danoveho priznani je bud doplatek, nebo preplatek:\n\n- Doplatek: vase dan je vyssi nez zaplacene zalohy -- rozdil musite doplatit\n- Preplatek: zaplatili jste na zalohach vice, nez cinila vase dan -- stat vam rozdil vrati\n\nDoplatek je splatny do lhuty pro podani danoveho priznani. O preplatek musite pozadat (formular "Zadost o vraceni preplatku").',
+		legal:
+			'Splatnost dane z prijmu upravuje § 135 zakona c. 280/2009 Sb. (danovy rad) -- dan je splatna v posledni den lhuty pro podani priznani. Preplatek na dani vraci spravce dane na zaklade zadosti do 30 dnu (§ 155 odst. 3 danoveho radu). Preplatek mensi nez 200 Kc se nevraci (§ 155 odst. 2).'
+	},
+	'srazena-dan': {
+		title: 'Srazena dan z kapitalu',
+		simple:
+			'Srazkova dan je dan, kterou za vas strhne banka nebo broker jeste pred vyplatou. U ceskych dividend a uroku je to 15 %. Vy obdrzite castku jiz po zdaneni.\n\nPrijem zdaneny srazkovou dani nemusite uvadete v danovem priznani -- dan je jiz vyporadana. Vyjimkou jsou zahranicni dividendy, kde muze byt srazkova dan jina a chcete ji zapocist.',
+		legal:
+			'Srazkova dan je upravena v § 36 zakona c. 586/1992 Sb. Sazba 15 % se uplatni u dividend, uroku z vkladu, uroku z dluhopisu a dalsich prijmu z § 8 (§ 36 odst. 2). Platcem srazkove dane je vyplatce prijmu (§ 38d), ktery dan srazit a odvede do konce mesice nasledujiciho po mesici srazeni.'
+	},
+	'kurz-cnb': {
+		title: 'Kurz CNB pro prepocet',
+		simple:
+			'Zahranicni prijmy a vydaje se pro danove ucely prepocitavaji na ceske koruny kurzem CNB. Pouziva se kurz platny v den uskutecneni transakce (den obchodu, den vyplaty dividendy).\n\nAplikace pouziva devizovy kurz CNB. U men, ktere CNB neuvadi primo, se pouzije krizovy kurz pres USD.',
+		legal:
+			'Prepocet ciziho kurzu upravuje § 38 zakona c. 586/1992 Sb. Poplatnik pouzije jednotny kurz stanoveny GFR (rocni prumerny kurz) nebo kurz devizoveho trhu CNB platny v den uskutecneni transakce. Jednotny kurz vydava GFR v pokynu po skonceni roku. Pro ucely § 10 se bezne pouziva denni kurz CNB.'
+	},
+	'nova-zaloha': {
+		title: 'Nova mesicni zaloha',
+		simple:
+			'Po podani prehledu CSSZ a ZP vam pojistovna vypocita novou vysi mesicni zalohy na dalsi obdobi. Vyse zalohy se odviji od vasich prijmu v minulem roce.\n\nPokud jste meli vyssi prijmy, zalohy se zvysi. Pokud nizsi, snizi se (ale ne pod zakonene minimum). Nova zaloha plati od mesice nasledujiciho po podani prehledu.',
+		legal:
+			'Zalohy na socialni pojisteni: § 14a zakona c. 589/1992 Sb. Nova vyse zalohy = 1/12 rocniho pojistneho. Minimalni zaloha se odviji od prumerne mzdy. Plati od mesice nasledujiciho po mesici podani prehledu. Zalohy na zdravotni pojisteni: § 7 zakona c. 592/1992 Sb. Minimalni zaloha je 50 % z minimalniho vymerovaceho zakladu.'
+	},
+	'fifo-prepocet': {
+		title: 'FIFO metoda pro nabyvaci cenu',
+		simple:
+			'FIFO (First In, First Out) je metoda pro urceni nabyvaci ceny pri prodeji cennych papiru. Znamena, ze pri prodeji se jako prvni "spotrebuji" nejstarsi nakupene kusy.\n\nPriklad: Koupili jste 10 ks za 100 Kc a pak 10 ks za 150 Kc. Pokud prodate 10 ks, nabyvaci cena bude 100 Kc (pouziji se prvni nakoupene kusy).\n\nFIFO metoda je pro OSVC jedina povolena metoda.',
+		legal:
+			'FIFO metoda je jedina pripustna metoda ocenovani pro fyzicke osoby pri prodeji cennych papiru dle § 10 odst. 4 zakona c. 586/1992 Sb. a pokynu GFR-D-22. Pri FIFO se priradi vydaj k primo identifikovatelnemu nakupu, nebo se pouzije nejstarsi neprirazeneny nakup. Naklady na poplatky brokera jsou soucasti nabyvaci ceny.'
+	},
 };
+
+// Dynamic topics with year-specific amounts.
+// When TaxConstants are available, amounts are interpolated.
+// Without constants, generic text is shown.
+export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, HelpTopic> {
+	return {
+		...(staticTopics as Record<HelpTopicId, HelpTopic>),
+
+		'pausalni-vydaje': {
+			title: 'Pausalni vydaje',
+			simple: tc
+				? `Pausalni vydaje jsou zjednoduseny zpusob uplatnovani nakladu -- misto evidovani kazdeho vydaje si odectete procento z prijmu. Procenta a maxima pro rok ${tc.year}:\n\n` +
+					Object.entries(tc.flat_rate_caps)
+						.sort(([a], [b]) => Number(b) - Number(a))
+						.map(([pct, cap]) => `- ${pct} %: max ${fmtCZK(cap)}`)
+						.join('\n') +
+					'\n\nPausalni vydaje se hodi, pokud mate nizke skutecne naklady. Pozor: pri pausalnich vydajich nelze uplatnit slevu na manzela/ku ani danove zvyhodneni na deti.'
+				: 'Pausalni vydaje jsou zjednoduseny zpusob uplatnovani nakladu -- misto evidovani kazdeho vydaje si odectete procento z prijmu. Kazde procento ma rocni strop, ktery se muze lisit podle roku.\n\nPausalni vydaje se hodi, pokud mate nizke skutecne naklady. Pozor: pri pausalnich vydajich nelze uplatnit slevu na manzela/ku ani danove zvyhodneni na deti.',
+			legal:
+				'Pausalni vydaje (vydaje procentem z prijmu) upravuje § 7 odst. 7 zakona c. 586/1992 Sb. Sazby: 80 % (zemedelstvi, remesla), 60 % (zivnost volna), 40 % (svobodna povolani), 30 % (najem). Stropy se meni podle roku. Pri pausalnich vydajich nelze uplatnit slevu na manzela (§ 35ca) ani danove zvyhodneni na deti (§ 35c odst. 9).'
+		},
+
+		'dan-15-23': {
+			title: 'Sazba dane 15 % a 23 %',
+			simple: tc
+				? `Dan z prijmu fyzickych osob ma dve sazby:\n\n- 15 % ze zakladu dane do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z casti zakladu dane nad ${fmtCZK(tc.progressive_threshold)}\n\nPrah ${fmtCZK(tc.progressive_threshold)} odpovida 48nasobku prumerne mzdy pro rok ${tc.year}. Vetsina OSVC se vejde do 15% pasma.`
+				: 'Dan z prijmu fyzickych osob ma dve sazby:\n\n- 15 % ze zakladu dane do zakonem stanovenoho prahu\n- 23 % z casti zakladu dane nad tento prah\n\nPrah odpovida 48nasobku prumerne mzdy a meni se kazdy rok. Vetsina OSVC se vejde do 15% pasma.',
+			legal:
+				'Sazby dane z prijmu fyzickych osob upravuje § 16 zakona c. 586/1992 Sb. Zakladni sazba 15 % a solidarni sazba 23 % z casti zakladu dane presahujici 48nasobek prumerne mzdy (§ 16 odst. 2). Prumerna mzda se stanovi dle § 21g.'
+		},
+
+		'sleva-na-poplatnika': {
+			title: 'Zakladni sleva na dani',
+			simple: tc
+				? `Zakladni sleva na poplatnika je castka, kterou si kazdy automaticky odecte od vypoctene dane. Pro rok ${tc.year} cini ${fmtCZK(tc.basic_credit)} rocne (${fmtCZK(Math.round(tc.basic_credit / 12))} mesicne).\n\nDiky teto sleve neplatite dan z prvnich cca ${fmtCZK(Math.round(tc.basic_credit / 0.15))} zisku. Sleva se uplatni vzdy v plne vysi -- neproporcializuje se podle mesicu.`
+				: 'Zakladni sleva na poplatnika je castka, kterou si kazdy automaticky odecte od vypoctene dane. Konkretni vyse zavisi na zdanovacim obdobi.\n\nDiky teto sleve neplatite dan z urcite casti zisku. Sleva se uplatni vzdy v plne vysi -- neproporcializuje se podle mesicu.',
+			legal:
+				'Zakladni sleva na poplatnika je upravena v § 35ba odst. 1 pism. a) zakona c. 586/1992 Sb. Tuto slevu uplatnuje kazdy poplatnik bez ohledu na vysi prijmu. Na rozdil od ostatnich slev se neproporcializuje a uplatnuje se vzdy v plne rocni vysi.'
+		},
+
+		'zvyhodneni-na-deti': {
+			title: 'Danove zvyhodneni na deti',
+			simple: tc
+				? `Danove zvyhodneni na deti je castka, kterou si odectete od dane za kazde vyzivovane dite. Rocni castky (${tc.year}):\n\n- 1. dite: ${fmtCZK(tc.child_benefit_1)}\n- 2. dite: ${fmtCZK(tc.child_benefit_2)}\n- 3. a dalsi: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dite drzitelem ZTP/P, castka se zdvojnasobuje. Zvyhodneni muze vytvorit "danovy bonus" -- pokud je vyssi nez vase dan, stat vam rozdil vrati (max ${fmtCZK(tc.max_child_bonus)}/rok).`
+				: 'Danove zvyhodneni na deti je castka, kterou si odectete od dane za kazde vyzivovane dite. Konkretni vyse se lisi podle poradi ditete a zdanovaciho obdobi.\n\nPokud je dite drzitelem ZTP/P, castka se zdvojnasobuje. Zvyhodneni muze vytvorit "danovy bonus" -- pokud je vyssi nez vase dan, stat vam rozdil vrati.',
+			legal:
+				'Danove zvyhodneni na vyzivovane dite upravuje § 35c zakona c. 586/1992 Sb. Castky se meni podle roku. U ditete s ZTP/P se castky zdvojnasobuji (§ 35c odst. 1). Maximalni rocni danovy bonus je stanoven v § 35c odst. 3. Zvyhodneni nelze uplatnit pri pausalnich vydajich (§ 35c odst. 9).'
+		},
+
+		'nezdanitelne-odpocty': {
+			title: 'Odpocty ze zakladu dane',
+			simple: tc
+				? `Nezdanitelne casti zakladu dane jsou castky, ktere si odectete od zakladu dane PRED vypoctem dane (na rozdil od slev, ktere se odecitaji od dane samotne). Patri sem:\n\n- Uroky z hypoteky (max ${fmtCZK(tc.deduction_cap_mortgage)}/rok)\n- Penzijni sporeni (max ${fmtCZK(tc.deduction_cap_pension)}/rok)\n- Zivotni pojisteni (max ${fmtCZK(tc.deduction_cap_life_insurance)}/rok)\n- Dary (max 15 % zakladu dane)\n- Odborove prispevky (max ${fmtCZK(tc.deduction_cap_union)}/rok)`
+				: 'Nezdanitelne casti zakladu dane jsou castky, ktere si odectete od zakladu dane PRED vypoctem dane (na rozdil od slev, ktere se odecitaji od dane samotne). Patri sem uroky z hypoteky, penzijni sporeni, zivotni pojisteni, dary a odborove prispevky. Konkretni stropy zavisi na zdanovacim obdobi.',
+			legal:
+				'Nezdanitelne casti zakladu dane upravuje § 15 zakona c. 586/1992 Sb. Uroky z uveru na bydleni (§ 15 odst. 3). Penzijni pripojisteni/sporeni (§ 15 odst. 5): castka nad 12 000 Kc. Soukrome zivotni pojisteni (§ 15 odst. 6). Dary na verejne prospesne ucely (§ 15 odst. 1): min 2 % zakladu dane nebo 1 000 Kc, max 15 %. Stropy se meni podle roku.'
+		},
+
+		ztpp: {
+			title: 'ZTP/P -- zvlaste tezke postizeni s pruvodcem',
+			simple: tc
+				? `ZTP/P je prukaz pro osoby se zvlaste tezkym zdravotnim postizenim. V kontextu dani ma ZTP/P vliv na:\n\n- Sleva na manzela/ku se zdvojnasobuje (z ${fmtCZK(tc.spouse_credit)} na ${fmtCZK(tc.spouse_credit * 2)})\n- Danove zvyhodneni na dite se zdvojnasobuje\n\nZTP/P status se prokazuje prukazem vydanym Uradem prace CR.`
+				: 'ZTP/P je prukaz pro osoby se zvlaste tezkym zdravotnim postizenim. V kontextu dani ma ZTP/P vliv na:\n\n- Sleva na manzela/ku se zdvojnasobuje\n- Danove zvyhodneni na dite se zdvojnasobuje\n\nZTP/P status se prokazuje prukazem vydanym Uradem prace CR.',
+			legal:
+				'Drzitel prukazu ZTP/P je definovan v § 34 zakona c. 329/2011 Sb. o poskytovani davek osobam se zdravotnim postizenim. Zdvojnasobeni slevy na manzela/ku: § 35ba odst. 1 pism. b) zakona c. 586/1992 Sb. Zdvojnasobeni zvyhodneni na dite: § 35c odst. 1 tehoz zakona.'
+		},
+
+		'sleva-na-manzela': {
+			title: 'Sleva na manzela/ku',
+			simple: tc
+				? `Slevu na manzela/ku si muzete uplatnit, pokud vas manzel/ka mel/a za zdanovaci obdobi vlastni rocni prijmy nepresahujici ${fmtCZK(tc.spouse_income_limit)}. Do techto prijmu se nezapocitavaji napr. rodikovsky prispevek, porodne, davky statnich socialniho podpory ci stipendia.\n\nSleva cini ${fmtCZK(tc.spouse_credit)} rocne. Pokud je manzel/ka drzitelem ZTP/P, sleva se zdvojnasobuje na ${fmtCZK(tc.spouse_credit * 2)}. Sleva se proporcializuje podle mesicu -- pocita se od mesice, na jehoz pocatku byly podminky splneny.\n\nDulezite: slevu na manzela/ku NELZE uplatnit, pokud pouzivate pausalni vydaje.`
+				: 'Slevu na manzela/ku si muzete uplatnit, pokud vas manzel/ka mel/a za zdanovaci obdobi nizke vlastni rocni prijmy. Do techto prijmu se nezapocitavaji napr. rodikovsky prispevek, porodne ci stipendia.\n\nKonkretni vyse slevy a limit prijmu zavisi na zdanovacim obdobi. Pokud je manzel/ka drzitelem ZTP/P, sleva se zdvojnasobuje. Sleva se proporcializuje podle mesicu.\n\nDulezite: slevu na manzela/ku NELZE uplatnit, pokud pouzivate pausalni vydaje.',
+			legal:
+				'Sleva na manzela/ku je upravena v § 35ba odst. 1 pism. b) zakona c. 586/1992 Sb. Podminka: manzel/ka zijici ve spolecne domacnosti s vlastnim rocnim prijmem nepresahujicim zakonem stanoveny limit. Do vlastniho prijmu se nezapocitavaji davky dle § 35ba odst. 1 pism. b).\n\nU drzitele ZTP/P se sleva zdvojnasobuje. Proporcializace dle § 35ba odst. 3 -- 1/12 za kazdy mesic, na jehoz pocatku byly podminky splneny. Pri pausalnich vydajich (§ 7 odst. 7) nelze slevu uplatnit (§ 35ca).'
+		}
+	};
+}
+
+// Backward-compatible export for non-tax pages (no year context).
+export const helpTopics: Record<HelpTopicId, HelpTopic> = getHelpTopics();

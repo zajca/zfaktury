@@ -3,12 +3,15 @@
 	import {
 		taxYearSettingsApi,
 		type TaxYearSettings,
-		type TaxPrepaymentMonth
+		type TaxPrepaymentMonth,
+		type TaxConstants
 	} from '$lib/api/client';
+	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	const MONTH_NAMES = [
@@ -39,6 +42,7 @@
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	let success = $state(false);
+	let taxConstants = $state<TaxConstants | null>(null);
 
 	let flatRatePercent = $state(0);
 	let prepayments = $state<TaxPrepaymentMonth[]>(emptyPrepayments());
@@ -76,6 +80,8 @@
 	async function loadData() {
 		loading = true;
 		error = null;
+		// Load tax constants independently (never fails)
+		loadTaxConstants(selectedYear).then((tc) => { taxConstants = tc; });
 		try {
 			const data: TaxYearSettings = await taxYearSettingsApi.getByYear(selectedYear);
 			flatRatePercent = data.flat_rate_percent;
@@ -199,7 +205,7 @@
 		<div class="mt-6 space-y-6">
 			<!-- Pausalni vydaje -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Paušální výdaje</h2>
+				<h2 class="text-base font-semibold text-primary">Paušální výdaje <HelpTip topic="pausalni-vydaje" {taxConstants} /></h2>
 				<p class="mt-1 text-sm text-tertiary">
 					Procento paušálních výdajů pro výpočet daňového základu.
 				</p>
@@ -224,7 +230,7 @@
 
 			<!-- Mesicni zalohy -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Měsíční zálohy</h2>
+				<h2 class="text-base font-semibold text-primary">Měsíční zálohy <HelpTip topic="nova-zaloha" {taxConstants} /></h2>
 				<p class="mt-1 text-sm text-tertiary">
 					Zadejte měsíční zálohy na daň z příjmu, sociální a zdravotní pojištění v Kč.
 				</p>

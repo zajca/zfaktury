@@ -2,18 +2,21 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { socialInsuranceApi, type SocialInsuranceOverview } from '$lib/api/client';
+	import { socialInsuranceApi, type SocialInsuranceOverview, type TaxConstants } from '$lib/api/client';
+	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let data = $state<SocialInsuranceOverview | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let actionLoading = $state<string | null>(null);
+	let taxConstants = $state<TaxConstants | null>(null);
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -38,6 +41,9 @@
 		error = null;
 		try {
 			data = await socialInsuranceApi.getById(returnId);
+			if (data) {
+				loadTaxConstants(data.year).then((tc) => { taxConstants = tc; });
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst přehled';
 		} finally {
@@ -211,7 +217,7 @@
 
 			<!-- Assessment Base -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Vyměřovací základ</h2>
+				<h2 class="text-base font-semibold text-primary">Vyměřovací základ <HelpTip topic="vymerovaci-zaklad" {taxConstants} /></h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Základ daně</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_base)}</dd>
@@ -229,7 +235,7 @@
 
 			<!-- Insurance -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Pojistné</h2>
+				<h2 class="text-base font-semibold text-primary">Pojistné <HelpTip topic="prehled-cssz" {taxConstants} /></h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Sazba pojistného</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">{(data.insurance_rate / 10).toFixed(1)}%</dd>
@@ -252,7 +258,7 @@
 
 			<!-- New Prepayment -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Nová záloha</h2>
+				<h2 class="text-base font-semibold text-primary">Nová záloha <HelpTip topic="nova-zaloha" {taxConstants} /></h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Nová měsíční záloha</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.new_monthly_prepay)}</dd>

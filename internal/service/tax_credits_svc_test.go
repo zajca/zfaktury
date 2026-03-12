@@ -864,8 +864,8 @@ func TestTaxCreditsService_ComputeDeductions_BelowCap(t *testing.T) {
 	if len(deductions) != 1 {
 		t.Fatalf("expected 1 deduction, got %d", len(deductions))
 	}
-	if deductions[0].MaxAmount != deductionCapMortgage {
-		t.Errorf("MaxAmount = %d, want %d", deductions[0].MaxAmount, deductionCapMortgage)
+	if deductions[0].MaxAmount != domain.NewAmount(150_000, 0) {
+		t.Errorf("MaxAmount = %d, want %d", deductions[0].MaxAmount, domain.NewAmount(150_000, 0))
 	}
 	if deductions[0].AllowedAmount != domain.NewAmount(100000, 0) {
 		t.Errorf("AllowedAmount = %d, want %d", deductions[0].AllowedAmount, domain.NewAmount(100000, 0))
@@ -893,8 +893,8 @@ func TestTaxCreditsService_ComputeDeductions_AboveCap(t *testing.T) {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
 
-	if total != deductionCapLifeInsurance {
-		t.Errorf("total = %d, want %d (capped)", total, deductionCapLifeInsurance)
+	if total != domain.NewAmount(24_000, 0) {
+		t.Errorf("total = %d, want %d (capped)", total, domain.NewAmount(24_000, 0))
 	}
 }
 
@@ -929,8 +929,8 @@ func TestTaxCreditsService_ComputeDeductions_MultipleSameCategory(t *testing.T) 
 	}
 
 	// First gets 15000, second gets remaining 9000 (24000-15000).
-	if total != deductionCapPension {
-		t.Errorf("total = %d, want %d (capped across two entries)", total, deductionCapPension)
+	if total != domain.NewAmount(24_000, 0) {
+		t.Errorf("total = %d, want %d (capped across two entries)", total, domain.NewAmount(24_000, 0))
 	}
 }
 
@@ -982,8 +982,8 @@ func TestTaxCreditsService_ComputeDeductions_UnionDuesCap(t *testing.T) {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
 
-	if total != deductionCapUnionDues {
-		t.Errorf("total = %d, want %d (union dues cap)", total, deductionCapUnionDues)
+	if total != domain.NewAmount(3_000, 0) {
+		t.Errorf("total = %d, want %d (union dues cap)", total, domain.NewAmount(3_000, 0))
 	}
 }
 

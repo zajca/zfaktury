@@ -33,7 +33,7 @@
 	}
 
 	type NavAction = { href: string; label: string };
-	type NavItem = { href: string; label: string; icon: string; actions?: NavAction[] };
+	type NavItem = { href: string; label: string; icon: string; actions?: NavAction[]; children?: NavItem[] };
 	type NavGroup = { section: string; items: NavItem[] };
 	type NavEntry = NavItem | NavGroup;
 
@@ -66,6 +66,12 @@
 			]
 		},
 		{
+			href: '/contacts',
+			label: 'Kontakty',
+			icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+			actions: [{ href: '/contacts/new', label: 'Novy kontakt' }]
+		},
+		{
 			section: 'Ucetnictvi',
 			items: [
 				{
@@ -76,30 +82,26 @@
 				{
 					href: '/tax',
 					label: 'Dan z prijmu',
-					icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z'
-				},
-				{
-					href: '/tax/credits',
-					label: 'Slevy a odpocty',
-					icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
-				},
-				{
-					href: '/tax/prepayments',
-					label: 'Zalohy',
-					icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-				},
-				{
-					href: '/tax/investments',
-					label: 'Investice',
-					icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+					icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
+					children: [
+						{
+							href: '/tax/credits',
+							label: 'Slevy a odpocty',
+							icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
+						},
+						{
+							href: '/tax/prepayments',
+							label: 'Zalohy',
+							icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+						},
+						{
+							href: '/tax/investments',
+							label: 'Investice',
+							icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
+						}
+					]
 				}
 			]
-		},
-		{
-			href: '/contacts',
-			label: 'Kontakty',
-			icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-			actions: [{ href: '/contacts/new', label: 'Novy kontakt' }]
 		},
 		{
 			section: 'Nastaveni',
@@ -132,8 +134,12 @@
 		return 'section' in entry;
 	}
 
+	function itemHrefs(item: NavItem): string[] {
+		return [item.href, ...(item.children?.flatMap(itemHrefs) ?? [])];
+	}
+
 	const allNavHrefs: string[] = navEntries.flatMap((entry) =>
-		isGroup(entry) ? entry.items.map((item) => item.href) : [entry.href]
+		isGroup(entry) ? entry.items.flatMap(itemHrefs) : itemHrefs(entry)
 	);
 
 	function isActive(href: string): boolean {
@@ -235,6 +241,23 @@
 								</a>
 							{/each}
 						{/if}
+					{#if sidebarExpanded && item.children}
+						{#each item.children as child (child.href)}
+							<a
+								href={child.href}
+								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+								{isActive(child.href)
+									? 'bg-accent-muted text-accent-text'
+									: 'text-secondary hover:text-primary hover:bg-hover'}"
+								title={child.label}
+							>
+								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+									<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+								</svg>
+								<span class="truncate">{child.label}</span>
+							</a>
+						{/each}
+					{/if}
 					{/each}
 				{:else}
 					<a
@@ -266,6 +289,23 @@
 							</a>
 						{/each}
 					{/if}
+				{#if sidebarExpanded && entry.children}
+					{#each entry.children as child (child.href)}
+						<a
+							href={child.href}
+							class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+							{isActive(child.href)
+								? 'bg-accent-muted text-accent-text'
+								: 'text-secondary hover:text-primary hover:bg-hover'}"
+							title={child.label}
+						>
+							<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+								<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+							</svg>
+							<span class="truncate">{child.label}</span>
+						</a>
+					{/each}
+				{/if}
 				{/if}
 			{/each}
 		</nav>
@@ -320,6 +360,23 @@
 								</a>
 							{/each}
 						{/if}
+					{#if item.children}
+						{#each item.children as child (child.href)}
+							<a
+								href={child.href}
+								onclick={() => (sidebarOpen = false)}
+								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+								{isActive(child.href)
+									? 'bg-accent-muted text-accent-text'
+									: 'text-secondary hover:text-primary hover:bg-hover'}"
+							>
+								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+									<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+								</svg>
+								<span class="truncate">{child.label}</span>
+							</a>
+						{/each}
+					{/if}
 					{/each}
 				{:else}
 					<a
@@ -349,6 +406,23 @@
 							</a>
 						{/each}
 					{/if}
+				{#if entry.children}
+					{#each entry.children as child (child.href)}
+						<a
+							href={child.href}
+							onclick={() => (sidebarOpen = false)}
+							class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+							{isActive(child.href)
+								? 'bg-accent-muted text-accent-text'
+								: 'text-secondary hover:text-primary hover:bg-hover'}"
+						>
+							<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+								<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+							</svg>
+							<span class="truncate">{child.label}</span>
+						</a>
+					{/each}
+				{/if}
 				{/if}
 			{/each}
 		</nav>

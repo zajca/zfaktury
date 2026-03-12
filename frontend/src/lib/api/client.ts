@@ -1216,6 +1216,37 @@ export const healthInsuranceApi = {
 	}
 };
 
+// --- Tax Constants Types ---
+
+export interface TaxConstants {
+	year: number;
+	basic_credit: number;
+	spouse_credit: number;
+	spouse_income_limit: number;
+	student_credit: number;
+	disability_credit_1: number;
+	disability_credit_3: number;
+	disability_ztpp: number;
+	child_benefit_1: number;
+	child_benefit_2: number;
+	child_benefit_3_plus: number;
+	max_child_bonus: number;
+	progressive_threshold: number;
+	flat_rate_caps: Record<string, number>;
+	deduction_cap_mortgage: number;
+	deduction_cap_pension: number;
+	deduction_cap_life_insurance: number;
+	deduction_cap_union: number;
+	time_test_years: number;
+	security_exemption_limit: number;
+}
+
+export const taxConstantsApi = {
+	getByYear(year: number) {
+		return get<TaxConstants>(`/tax-constants/${year}`);
+	}
+};
+
 // --- Tax Year Settings Types ---
 
 export interface TaxYearSettings {

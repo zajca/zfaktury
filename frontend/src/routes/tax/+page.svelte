@@ -7,8 +7,10 @@
 		healthInsuranceApi,
 		type IncomeTaxReturn,
 		type SocialInsuranceOverview,
-		type HealthInsuranceOverview
+		type HealthInsuranceOverview,
+		type TaxConstants
 	} from '$lib/api/client';
+	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -19,6 +21,7 @@
 	let selectedYear = $state(new Date().getFullYear() - 1);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let taxConstants = $state<TaxConstants | null>(null);
 
 	let incomeTaxReturns = $state<IncomeTaxReturn[]>([]);
 	let socialOverviews = $state<SocialInsuranceOverview[]>([]);
@@ -28,14 +31,16 @@
 		loading = true;
 		error = null;
 		try {
-			const [itr, sio, hio] = await Promise.all([
+			const [itr, sio, hio, tc] = await Promise.all([
 				incomeTaxApi.list(selectedYear),
 				socialInsuranceApi.list(selectedYear),
-				healthInsuranceApi.list(selectedYear)
+				healthInsuranceApi.list(selectedYear),
+				loadTaxConstants(selectedYear)
 			]);
 			incomeTaxReturns = itr ?? [];
 			socialOverviews = sio ?? [];
 			healthOverviews = hio ?? [];
+			taxConstants = tc;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
 		} finally {
@@ -83,7 +88,7 @@
 
 <div class="mx-auto max-w-6xl">
 	<h1 class="text-xl font-semibold text-primary">
-		Daně za rok {selectedYear} <HelpTip topic="rocni-dane" />
+		Daně za rok {selectedYear} <HelpTip topic="rocni-dane" {taxConstants} />
 	</h1>
 
 	<!-- Year selector -->
@@ -133,7 +138,7 @@
 		<div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
 			<!-- DPFO card -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Daňové přiznání (DPFO)</h2>
+				<h2 class="text-base font-semibold text-primary">Daňové přiznání (DPFO) <HelpTip topic="dan-15-23" {taxConstants} /></h2>
 				{#if incomeTaxReturns.length === 0}
 					<p class="mt-4 text-sm text-tertiary">Zatím nevytvořeno</p>
 					<div class="mt-4">
@@ -180,7 +185,7 @@
 
 			<!-- CSSZ card -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Přehled OSVČ pro ČSSZ</h2>
+				<h2 class="text-base font-semibold text-primary">Přehled OSVČ pro ČSSZ <HelpTip topic="prehled-cssz" {taxConstants} /></h2>
 				{#if socialOverviews.length === 0}
 					<p class="mt-4 text-sm text-tertiary">Zatím nevytvořeno</p>
 					<div class="mt-4">
@@ -231,7 +236,7 @@
 
 			<!-- ZP card -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Přehled OSVČ pro ZP</h2>
+				<h2 class="text-base font-semibold text-primary">Přehled OSVČ pro ZP <HelpTip topic="prehled-zp" {taxConstants} /></h2>
 				{#if healthOverviews.length === 0}
 					<p class="mt-4 text-sm text-tertiary">Zatím nevytvořeno</p>
 					<div class="mt-4">

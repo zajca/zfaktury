@@ -184,6 +184,8 @@ func NewRouter(
 		taxYearSettingsHandler := NewTaxYearSettingsHandler(taxYearSettingsSvc)
 		api.Mount("/tax-year-settings", taxYearSettingsHandler.Routes())
 
+		api.Get("/tax-constants/{year}", handleGetTaxConstants)
+
 		taxCreditsHandler := NewTaxCreditsHandler(taxCreditsSvc)
 		api.Mount("/tax-credits", taxCreditsHandler.Routes())
 

@@ -9,13 +9,6 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
-// Statutory deduction caps in halere.
-const (
-	deductionCapMortgage      domain.Amount = 15_000_000 // 150 000 CZK
-	deductionCapLifeInsurance domain.Amount = 2_400_000  // 24 000 CZK
-	deductionCapPension       domain.Amount = 2_400_000  // 24 000 CZK
-	deductionCapUnionDues     domain.Amount = 300_000    // 3 000 CZK
-)
 
 // TaxCreditsService provides business logic for tax credits and deductions.
 type TaxCreditsService struct {
@@ -246,7 +239,7 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return 0, 0, 0, fmt.Errorf("fetching spouse credit for compute: %w", err)
 	}
-	if spouse != nil && spouse.SpouseIncome < 6_800_000 {
+	if spouse != nil && spouse.SpouseIncome < constants.SpouseIncomeLimit {
 		spouseCredit = constants.SpouseCredit.Multiply(float64(spouse.MonthsClaimed) / 12.0)
 		if spouse.SpouseZTP {
 			spouseCredit *= 2
@@ -316,6 +309,11 @@ func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, year int) (
 // applying statutory caps per category. Updates each deduction's MaxAmount and
 // AllowedAmount via the repository.
 func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, taxBase domain.Amount) (domain.Amount, error) {
+	constants, err := GetTaxConstants(year)
+	if err != nil {
+		return 0, fmt.Errorf("getting tax constants for deductions: %w", err)
+	}
+
 	deductions, err := s.deductionRepo.ListByYear(ctx, year)
 	if err != nil {
 		return 0, fmt.Errorf("listing deductions for compute: %w", err)
@@ -323,10 +321,10 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 
 	// Calculate category caps.
 	categoryCaps := map[string]domain.Amount{
-		domain.DeductionMortgage:      deductionCapMortgage,
-		domain.DeductionLifeInsurance: deductionCapLifeInsurance,
-		domain.DeductionPension:       deductionCapPension,
-		domain.DeductionUnionDues:     deductionCapUnionDues,
+		domain.DeductionMortgage:      constants.DeductionCapMortgage,
+		domain.DeductionLifeInsurance: constants.DeductionCapLifeInsurance,
+		domain.DeductionPension:       constants.DeductionCapPension,
+		domain.DeductionUnionDues:     constants.DeductionCapUnionDues,
 		domain.DeductionDonation:      taxBase.Multiply(0.15),
 	}
 

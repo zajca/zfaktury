@@ -2,18 +2,21 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { incomeTaxApi, type IncomeTaxReturn } from '$lib/api/client';
+	import { incomeTaxApi, type IncomeTaxReturn, type TaxConstants } from '$lib/api/client';
+	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let data = $state<IncomeTaxReturn | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let actionLoading = $state<string | null>(null);
+	let taxConstants = $state<TaxConstants | null>(null);
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -38,6 +41,9 @@
 		error = null;
 		try {
 			data = await incomeTaxApi.getById(returnId);
+			if (data) {
+				loadTaxConstants(data.year).then((tc) => { taxConstants = tc; });
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst přiznání';
 		} finally {
@@ -207,7 +213,7 @@
 					<dt class="text-secondary">Skutečné výdaje</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.actual_expenses)}</dd>
 
-					<dt class="text-secondary">Paušální výdaje</dt>
+					<dt class="text-secondary">Paušální výdaje <HelpTip topic="pausalni-vydaje" {taxConstants} /></dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{data.flat_rate_percent}%
 						{#if data.flat_rate_amount > 0}
@@ -234,7 +240,7 @@
 
 			<!-- Tax Calculation -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Výpočet daně</h2>
+				<h2 class="text-base font-semibold text-primary">Výpočet daně <HelpTip topic="dan-15-23" {taxConstants} /></h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Daň 15%</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_at_15)}</dd>
@@ -249,7 +255,7 @@
 
 			<!-- Tax Credits -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Slevy na dani</h2>
+				<h2 class="text-base font-semibold text-primary">Slevy na dani <HelpTip topic="sleva-na-poplatnika" {taxConstants} /></h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Sleva na poplatníka</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.credit_basic)}</dd>
@@ -270,7 +276,7 @@
 			<!-- Child Benefit -->
 			{#if data.child_benefit > 0}
 				<Card>
-					<h2 class="text-base font-semibold text-primary">Daňové zvýhodnění</h2>
+					<h2 class="text-base font-semibold text-primary">Daňové zvýhodnění <HelpTip topic="zvyhodneni-na-deti" {taxConstants} /></h2>
 					<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 						<dt class="text-secondary">Zvýhodnění na děti</dt>
 						<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.child_benefit)}</dd>
@@ -290,7 +296,7 @@
 				</div>
 				<div class="mt-4 flex items-center justify-between border-t border-border pt-4">
 					<span class="font-semibold text-primary">
-						{data.tax_due >= 0 ? 'Doplatek:' : 'Přeplatek:'}
+						{data.tax_due >= 0 ? 'Doplatek:' : 'Přeplatek:'} <HelpTip topic="doplatek-preplatek" {taxConstants} />
 					</span>
 					<span class="text-lg font-semibold tabular-nums {data.tax_due >= 0 ? 'text-danger' : 'text-success'}">
 						{formatCZK(Math.abs(data.tax_due))}

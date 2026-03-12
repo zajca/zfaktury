@@ -13,6 +13,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let selectedYear = $state(new Date().getFullYear() - 1);
@@ -471,7 +472,7 @@
 			{:else if activeTab === 'capital'}
 				<Card>
 					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">Kapitalove prijmy (§8)</h2>
+						<h2 class="text-base font-semibold text-primary">Kapitalove prijmy (§8) <HelpTip topic="kapitalove-prijmy-s8" /></h2>
 						<Button variant="primary" size="sm" onclick={() => { resetCapitalForm(); showCapitalForm = true; }}>Pridat rucne</Button>
 					</div>
 
@@ -484,7 +485,7 @@
 										<th class="pb-2 pr-4">Kategorie</th>
 										<th class="pb-2 pr-4">Popis</th>
 										<th class="pb-2 pr-4 text-right">Hruba castka</th>
-										<th class="pb-2 pr-4 text-right">Srazena dan</th>
+										<th class="pb-2 pr-4 text-right">Srazena dan <HelpTip topic="srazena-dan" /></th>
 										<th class="pb-2 pr-4">K priznani</th>
 										<th class="pb-2 text-right">Akce</th>
 									</tr>
@@ -573,7 +574,7 @@
 								</div>
 								<label class="flex items-center gap-2 text-sm text-primary">
 									<input type="checkbox" bind:checked={capitalNeedsDeclaring} class="rounded border-border" />
-									Nutno priznat v DP
+									Nutno priznat v DP <HelpTip topic="nutno-priznat-dp" />
 								</label>
 							</div>
 							<div class="mt-3 flex gap-2">
@@ -588,9 +589,9 @@
 			{:else if activeTab === 'securities'}
 				<Card>
 					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">Obchody s CP a kryptem (§10)</h2>
+						<h2 class="text-base font-semibold text-primary">Obchody s CP a kryptem (§10) <HelpTip topic="obchody-cp-s10" /></h2>
 						<div class="flex gap-2">
-							<Button variant="secondary" size="sm" onclick={recalculateFifo} disabled={saving}>Prepocitat FIFO</Button>
+							<Button variant="secondary" size="sm" onclick={recalculateFifo} disabled={saving}>Prepocitat FIFO</Button> <HelpTip topic="fifo-prepocet" />
 							<Button variant="primary" size="sm" onclick={() => { resetTransactionForm(); showTransactionForm = true; }}>Pridat rucne</Button>
 						</div>
 					</div>
@@ -609,7 +610,7 @@
 										<th class="pb-2 pr-3 text-right">Poplatky</th>
 										<th class="pb-2 pr-3 text-right">Nabyvaci cena</th>
 										<th class="pb-2 pr-3 text-right">Zisk/ztrata</th>
-										<th class="pb-2 pr-3">Casovy test</th>
+										<th class="pb-2 pr-3">Casovy test <HelpTip topic="casovy-test" /></th>
 										<th class="pb-2 text-right">Akce</th>
 									</tr>
 								</thead>
@@ -714,7 +715,7 @@
 									<Input value={txCurrency} oninput={(e: Event) => { txCurrency = (e.currentTarget as HTMLInputElement).value; }} placeholder="CZK" maxlength={3} />
 								</div>
 								<div>
-									<span class="text-xs text-tertiary">Kurz CNB</span>
+									<span class="text-xs text-tertiary">Kurz CNB <HelpTip topic="kurz-cnb" /></span>
 									<Input type="number" value={txExchangeRate} oninput={(e: Event) => { txExchangeRate = Number((e.currentTarget as HTMLInputElement).value); }} step="0.001" />
 								</div>
 							</div>

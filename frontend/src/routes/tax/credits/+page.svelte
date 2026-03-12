@@ -6,20 +6,24 @@
 		type TaxCreditsSummary,
 		type TaxDeduction,
 		type TaxDeductionDocument,
-		type TaxExtractionResult
+		type TaxExtractionResult,
+		type TaxConstants
 	} from '$lib/api/client';
+	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { formatCZK, fromHalere, toHalere } from '$lib/utils/money';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';
+	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let selectedYear = $state(new Date().getFullYear() - 1);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let saving = $state(false);
+	let taxConstants = $state<TaxConstants | null>(null);
 
 	let summary = $state<TaxCreditsSummary | null>(null);
 	let deductions = $state<TaxDeduction[]>([]);
@@ -65,12 +69,14 @@
 		loading = true;
 		error = null;
 		try {
-			const [s, d] = await Promise.all([
+			const [s, d, tc] = await Promise.all([
 				taxCreditsApi.getSummary(selectedYear),
-				taxDeductionsApi.list(selectedYear)
+				taxDeductionsApi.list(selectedYear),
+				loadTaxConstants(selectedYear)
 			]);
 			summary = s;
 			deductions = d ?? [];
+			taxConstants = tc;
 
 			// Populate forms from loaded data
 			if (summary?.spouse) {
@@ -382,7 +388,7 @@
 			<!-- 1. Personal credits -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Osobni slevy</h2>
+					<h2 class="text-base font-semibold text-primary">Osobni slevy <HelpTip topic="sleva-na-poplatnika" {taxConstants} /></h2>
 					<Button variant="primary" size="sm" onclick={savePersonal} disabled={saving}>Ulozit</Button>
 				</div>
 				<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -425,7 +431,7 @@
 			<!-- 2. Spouse -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Manzel/ka</h2>
+					<h2 class="text-base font-semibold text-primary">Manzel/ka <HelpTip topic="sleva-na-manzela" {taxConstants} /></h2>
 					{#if !showSpouseForm}
 						<Button variant="primary" size="sm" onclick={() => (showSpouseForm = true)}>Pridat</Button>
 					{/if}
@@ -445,7 +451,7 @@
 							<Input type="number" value={spouseIncome} oninput={(e: Event) => { spouseIncome = Number((e.currentTarget as HTMLInputElement).value); }} step="1" />
 						</div>
 						<div>
-							<span class="text-xs text-tertiary">Mesicu</span>
+							<span class="text-xs text-tertiary">Mesicu <HelpTip topic="mesice-proporcializace" {taxConstants} /></span>
 							<Select value={spouseMonths} onchange={(e: Event) => { spouseMonths = Number((e.currentTarget as HTMLSelectElement).value); }}>
 								{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
 									<option value={m}>{m}</option>
@@ -454,7 +460,7 @@
 						</div>
 						<label class="flex items-center gap-2 text-sm text-primary">
 							<input type="checkbox" bind:checked={spouseZtp} class="rounded border-border" />
-							ZTP/P
+							ZTP/P <HelpTip topic="ztpp" {taxConstants} />
 						</label>
 					</div>
 					{#if summary?.spouse}
@@ -477,7 +483,7 @@
 			<!-- 3. Children -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Deti</h2>
+					<h2 class="text-base font-semibold text-primary">Deti <HelpTip topic="zvyhodneni-na-deti" {taxConstants} /></h2>
 					<Button variant="primary" size="sm" onclick={() => { resetChildForm(); showChildForm = true; }}>Pridat dite</Button>
 				</div>
 				{#if summary?.children && summary.children.length > 0}
@@ -526,7 +532,7 @@
 								</Select>
 							</div>
 							<div>
-								<span class="text-xs text-tertiary">Mesicu</span>
+								<span class="text-xs text-tertiary">Mesicu <HelpTip topic="mesice-proporcializace" {taxConstants} /></span>
 								<Select value={childMonths} onchange={(e: Event) => { childMonths = Number((e.currentTarget as HTMLSelectElement).value); }}>
 									{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
 										<option value={m}>{m}</option>
@@ -535,7 +541,7 @@
 							</div>
 							<label class="flex items-center gap-2 text-sm text-primary">
 								<input type="checkbox" bind:checked={childZtp} class="rounded border-border" />
-								ZTP/P
+								ZTP/P <HelpTip topic="ztpp" {taxConstants} />
 							</label>
 						</div>
 						<div class="mt-3 flex gap-2">
@@ -549,7 +555,7 @@
 			<!-- 4. Deductions -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Nezdanitelne casti (odpocty)</h2>
+					<h2 class="text-base font-semibold text-primary">Nezdanitelne casti (odpocty) <HelpTip topic="nezdanitelne-odpocty" {taxConstants} /></h2>
 					<Button variant="primary" size="sm" onclick={() => { resetDeductionForm(); showDeductionForm = true; }}>Pridat odpocet</Button>
 				</div>
 				{#if deductions.length > 0}

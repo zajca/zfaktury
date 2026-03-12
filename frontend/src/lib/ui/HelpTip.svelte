@@ -1,21 +1,23 @@
 <script lang="ts">
+	import type { TaxConstants } from '$lib/api/client';
 	import type { HelpTopicId } from '$lib/data/help-content';
-	import { helpTopics } from '$lib/data/help-content';
+	import { getHelpTopics } from '$lib/data/help-content';
 	import { openHelp } from '$lib/data/help-state.svelte';
 
 	interface Props {
 		topic: HelpTopicId;
+		taxConstants?: TaxConstants | null;
 		class?: string;
 	}
 
-	let { topic, class: className = '' }: Props = $props();
+	let { topic, taxConstants = null, class: className = '' }: Props = $props();
 
-	let title = $derived(helpTopics[topic].title);
+	let title = $derived(getHelpTopics(taxConstants)[topic].title);
 
 	function handleClick(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
-		openHelp(topic);
+		openHelp(topic, taxConstants);
 	}
 </script>
 

@@ -626,7 +626,7 @@ func TestVIESHandler_Recalculate_SuccessWithLines(t *testing.T) {
 		t.Errorf("ID = %d, want %d", resp.ID, created.ID)
 	}
 	// Lines should be an empty slice (no invoices for this period).
-	if resp.Lines != nil && len(resp.Lines) != 0 {
+	if len(resp.Lines) != 0 {
 		t.Errorf("expected 0 lines, got %d", len(resp.Lines))
 	}
 }

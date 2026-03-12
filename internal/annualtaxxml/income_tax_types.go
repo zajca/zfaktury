@@ -40,16 +40,16 @@ type DPFOVetaD struct {
 	KcZakldan23 int64 `xml:"kc_zakldan23,attr"` // consolidated tax base
 	KcZakldan   int64 `xml:"kc_zakldan,attr"`   // tax base after loss deduction
 	KcZdzaokr   int64 `xml:"kc_zdzaokr,attr"`   // tax base rounded down to 100 CZK
-	DaSlezap    int64 `xml:"da_slezap,attr"`     // total tax
+	DaSlezap    int64 `xml:"da_slezap,attr"`    // total tax
 
 	// Tax credits (slevy §35ba)
-	SlevaRp       int64 `xml:"sleva_rp,attr"`        // basic taxpayer credit
-	UhrnSlevy35ba int64 `xml:"uhrn_slevy35ba,attr"`  // total credits
-	DaSlevy35ba   int64 `xml:"da_slevy35ba,attr"`     // tax after credits
+	SlevaRp       int64 `xml:"sleva_rp,attr"`       // basic taxpayer credit
+	UhrnSlevy35ba int64 `xml:"uhrn_slevy35ba,attr"` // total credits
+	DaSlevy35ba   int64 `xml:"da_slevy35ba,attr"`   // tax after credits
 
 	// Child benefit (§35c)
-	KcDazvyhod  int64 `xml:"kc_dazvyhod,attr"`  // child benefit
-	DaSlevy35c  int64 `xml:"da_slevy35c,attr"`  // tax after benefit
+	KcDazvyhod int64 `xml:"kc_dazvyhod,attr"` // child benefit
+	DaSlevy35c int64 `xml:"da_slevy35c,attr"` // tax after benefit
 
 	// Prepayments and result
 	KcZalpred  int64 `xml:"kc_zalpred,attr"`  // prepayments

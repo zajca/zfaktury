@@ -52,7 +52,7 @@ func (r *AuditLogRepository) ListByEntity(ctx context.Context, entityType string
 	if err != nil {
 		return nil, fmt.Errorf("listing audit log entries: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var entries []domain.AuditLogEntry
 	for rows.Next() {

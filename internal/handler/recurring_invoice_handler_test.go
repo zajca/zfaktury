@@ -447,8 +447,8 @@ func TestRecurringInvoiceHandler_Update_FullSuccess(t *testing.T) {
 	if resp.CurrencyCode != "EUR" {
 		t.Errorf("CurrencyCode = %q, want %q", resp.CurrencyCode, "EUR")
 	}
-	if !resp.IsActive {
-		// We set is_active to false but the service might keep it -- check if it returned false.
+	if resp.IsActive {
+		t.Error("IsActive = true, want false")
 	}
 	if len(resp.Items) != 2 {
 		t.Errorf("len(Items) = %d, want 2", len(resp.Items))

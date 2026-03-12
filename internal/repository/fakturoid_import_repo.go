@@ -80,7 +80,7 @@ func (r *FakturoidImportLogRepository) ListByEntityType(ctx context.Context, ent
 	if err != nil {
 		return nil, fmt.Errorf("listing import logs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var entries []domain.FakturoidImportLog
 	for rows.Next() {

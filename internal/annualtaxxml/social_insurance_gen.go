@@ -74,7 +74,7 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 				Hlavc: Hlavc{
 					MonthFlags: MonthFlags{M1: "A"},
 				},
-				Vedc: Vedc{},
+				Vedc:  Vedc{},
 				Sleva: MonthFlags{M1: "n"},
 			},
 

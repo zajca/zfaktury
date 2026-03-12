@@ -258,7 +258,7 @@ func (h *InvestmentIncomeHandler) UploadDocument(w http.ResponseWriter, r *http.
 		respondError(w, http.StatusBadRequest, "file is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	yearStr := r.FormValue("year")
 	if yearStr == "" {

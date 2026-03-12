@@ -77,13 +77,13 @@ func (c *Client) listPaginated(ctx context.Context, path string) ([]json.RawMess
 		}
 
 		body, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			return nil, fmt.Errorf("reading response: %w", err)
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("Fakturoid API error: HTTP %d for %s", resp.StatusCode, path)
+			return nil, fmt.Errorf("fakturoid API error: HTTP %d for %s", resp.StatusCode, path)
 		}
 
 		var items []json.RawMessage

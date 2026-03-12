@@ -27,6 +27,9 @@ func NewTestDB(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("opening test database: %v", err)
 	}
+	// With :memory: SQLite, each connection gets its own database.
+	// Limit to 1 connection so migrations and queries share the same DB.
+	db.SetMaxOpenConns(1)
 
 	// Disable FK checks during migrations (table recreation may temporarily break references).
 	if _, err := db.Exec("PRAGMA foreign_keys = OFF"); err != nil {

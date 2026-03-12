@@ -119,7 +119,10 @@ describe('Layout', () => {
 		const contactsLink = screen.getAllByText('Kontakty')[0].closest('a');
 		expect(contactsLink?.getAttribute('href')).toBe('/contacts');
 
-		const settingsLink = screen.getAllByText('Nastaveni')[0].closest('a');
-		expect(settingsLink?.getAttribute('href')).toBe('/settings');
+		const firmaLink = screen.getAllByText('Firma')[0].closest('a');
+		expect(firmaLink?.getAttribute('href')).toBe('/settings/firma');
+
+		const emailLink = screen.getAllByText('Email')[0].closest('a');
+		expect(emailLink?.getAttribute('href')).toBe('/settings/email');
 	});
 });

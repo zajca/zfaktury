@@ -16,20 +16,26 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-var invoiceCounter atomic.Int64
+var (
+	invoiceCounter atomic.Int64
+	dbCounter      atomic.Int64
+)
 
 // NewTestDB creates an in-memory SQLite database with all migrations applied.
 // The database is automatically closed when the test completes.
 func NewTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
-	db, err := sql.Open("sqlite", ":memory:?_time_format=sqlite")
+	// Use a unique named in-memory database with shared cache so all connections
+	// from the pool see the same data. This avoids issues where goose migrations
+	// run on one connection but queries use another (each getting a separate :memory: DB).
+	dbName := fmt.Sprintf("testdb_%d_%d", time.Now().UnixNano(), dbCounter.Add(1))
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared&_time_format=sqlite", dbName)
+
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("opening test database: %v", err)
 	}
-	// With :memory: SQLite, each connection gets its own database.
-	// Limit to 1 connection so migrations and queries share the same DB.
-	db.SetMaxOpenConns(1)
 
 	// Disable FK checks during migrations (table recreation may temporarily break references).
 	if _, err := db.Exec("PRAGMA foreign_keys = OFF"); err != nil {

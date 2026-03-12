@@ -144,6 +144,53 @@ type VATControlStatementRepo interface {
 	GetLines(ctx context.Context, controlStatementID int64) ([]domain.VATControlStatementLine, error)
 }
 
+// IncomeTaxReturnRepo defines the persistence interface for income tax returns.
+type IncomeTaxReturnRepo interface {
+	Create(ctx context.Context, itr *domain.IncomeTaxReturn) error
+	Update(ctx context.Context, itr *domain.IncomeTaxReturn) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error)
+	List(ctx context.Context, year int) ([]domain.IncomeTaxReturn, error)
+	GetByYear(ctx context.Context, year int, filingType string) (*domain.IncomeTaxReturn, error)
+	LinkInvoices(ctx context.Context, id int64, invoiceIDs []int64) error
+	LinkExpenses(ctx context.Context, id int64, expenseIDs []int64) error
+	GetLinkedInvoiceIDs(ctx context.Context, id int64) ([]int64, error)
+	GetLinkedExpenseIDs(ctx context.Context, id int64) ([]int64, error)
+}
+
+// SocialInsuranceOverviewRepo defines the persistence interface for social insurance overviews.
+type SocialInsuranceOverviewRepo interface {
+	Create(ctx context.Context, sio *domain.SocialInsuranceOverview) error
+	Update(ctx context.Context, sio *domain.SocialInsuranceOverview) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error)
+	List(ctx context.Context, year int) ([]domain.SocialInsuranceOverview, error)
+	GetByYear(ctx context.Context, year int, filingType string) (*domain.SocialInsuranceOverview, error)
+}
+
+// TaxYearSettingsRepo defines the persistence interface for per-year tax settings.
+type TaxYearSettingsRepo interface {
+	GetByYear(ctx context.Context, year int) (*domain.TaxYearSettings, error)
+	Upsert(ctx context.Context, tys *domain.TaxYearSettings) error
+}
+
+// TaxPrepaymentRepo defines the persistence interface for monthly tax prepayments.
+type TaxPrepaymentRepo interface {
+	ListByYear(ctx context.Context, year int) ([]domain.TaxPrepayment, error)
+	UpsertAll(ctx context.Context, year int, prepayments []domain.TaxPrepayment) error
+	SumByYear(ctx context.Context, year int) (taxTotal, socialTotal, healthTotal domain.Amount, err error)
+}
+
+// HealthInsuranceOverviewRepo defines the persistence interface for health insurance overviews.
+type HealthInsuranceOverviewRepo interface {
+	Create(ctx context.Context, hio *domain.HealthInsuranceOverview) error
+	Update(ctx context.Context, hio *domain.HealthInsuranceOverview) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.HealthInsuranceOverview, error)
+	List(ctx context.Context, year int) ([]domain.HealthInsuranceOverview, error)
+	GetByYear(ctx context.Context, year int, filingType string) (*domain.HealthInsuranceOverview, error)
+}
+
 // VIESSummaryRepo defines the persistence interface for VIES summaries.
 type VIESSummaryRepo interface {
 	Create(ctx context.Context, vs *domain.VIESSummary) error

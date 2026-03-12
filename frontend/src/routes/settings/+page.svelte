@@ -13,7 +13,9 @@
 	let error = $state<string | null>(null);
 	let success = $state(false);
 
-	$effect(() => {
+	import { onMount } from 'svelte';
+
+	onMount(() => {
 		loadSettings();
 	});
 
@@ -65,7 +67,7 @@
 	<ErrorAlert {error} class="mt-4" />
 
 	{#if success}
-		<div class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success">
+		<div role="alert" class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success">
 			Nastavení bylo uloženo.
 		</div>
 	{/if}
@@ -361,6 +363,54 @@
 							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none resize-y"
 						></textarea>
 						<p class="mt-1 text-xs text-muted">Použijte <code class="text-accent">{'{invoice_number}'}</code> pro číslo faktury.</p>
+					</div>
+				</div>
+			</Card>
+
+			<!-- Kody uradu -->
+			<Card>
+				<h2 class="text-base font-semibold text-primary">Kódy úřadů</h2>
+				<p class="mt-1 text-sm text-tertiary">Kódy pro daňové přiznání a přehledy OSVČ.</p>
+				<div class="mt-4 space-y-4">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+						<div>
+							<label for="financni_urad_code" class="block text-sm font-medium text-secondary">Kód finančního úřadu</label>
+							<input
+								id="financni_urad_code"
+								type="text"
+								value={field('financni_urad_code')}
+								oninput={(e) => setField('financni_urad_code', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+								placeholder="např. 0451"
+							/>
+						</div>
+						<div>
+							<label for="cssz_code" class="block text-sm font-medium text-secondary">Kód OSSZ</label>
+							<input
+								id="cssz_code"
+								type="text"
+								value={field('cssz_code')}
+								oninput={(e) => setField('cssz_code', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+								placeholder="např. prehledosvc"
+							/>
+						</div>
+						<div>
+							<label for="health_insurance_code" class="block text-sm font-medium text-secondary">Kód zdravotní pojišťovny</label>
+							<input
+								id="health_insurance_code"
+								type="text"
+								value={field('health_insurance_code')}
+								oninput={(e) => setField('health_insurance_code', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+								placeholder="např. 111 (VZP)"
+							/>
+						</div>
+					</div>
+					<div class="mt-2">
+						<a href="/tax/prepayments" class="text-sm text-accent hover:underline">
+							Daňové zálohy a paušální výdaje →
+						</a>
 					</div>
 				</div>
 			</Card>

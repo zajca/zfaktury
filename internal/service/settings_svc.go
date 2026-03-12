@@ -29,6 +29,11 @@ const (
 	SettingEmailAttachISDOC    = "email_attach_isdoc"
 	SettingEmailSubjectTpl     = "email_subject_template"
 	SettingEmailBodyTpl        = "email_body_template"
+
+	// Office codes (global, rarely change).
+	SettingHealthInsCode      = "health_insurance_code"
+	SettingFinancniUradCode   = "financni_urad_code"
+	SettingCSSZCode           = "cssz_code"
 )
 
 // SettingsService provides business logic for application settings.
@@ -105,6 +110,9 @@ var knownKeys = map[string]bool{
 	SettingEmailAttachISDOC:  true,
 	SettingEmailSubjectTpl:   true,
 	SettingEmailBodyTpl:      true,
+	SettingHealthInsCode:     true,
+	SettingFinancniUradCode:  true,
+	SettingCSSZCode:          true,
 }
 
 // validateKey checks that a setting key is valid and known.

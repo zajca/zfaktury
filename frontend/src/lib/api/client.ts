@@ -1010,3 +1010,226 @@ export const viesApi = {
 		return post<VIESSummary>(`/vies-summaries/${id}/mark-filed`);
 	}
 };
+
+// --- Income Tax Return Types ---
+
+export interface IncomeTaxReturn {
+	id: number;
+	year: number;
+	filing_type: string;
+	total_revenue: number;
+	actual_expenses: number;
+	flat_rate_percent: number;
+	flat_rate_amount: number;
+	used_expenses: number;
+	tax_base: number;
+	tax_base_rounded: number;
+	tax_at_15: number;
+	tax_at_23: number;
+	total_tax: number;
+	credit_basic: number;
+	credit_spouse: number;
+	credit_disability: number;
+	credit_student: number;
+	total_credits: number;
+	tax_after_credits: number;
+	child_benefit: number;
+	tax_after_benefit: number;
+	prepayments: number;
+	tax_due: number;
+	has_xml: boolean;
+	status: string;
+	filed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface SocialInsuranceOverview {
+	id: number;
+	year: number;
+	filing_type: string;
+	total_revenue: number;
+	total_expenses: number;
+	tax_base: number;
+	assessment_base: number;
+	min_assessment_base: number;
+	final_assessment_base: number;
+	insurance_rate: number;
+	total_insurance: number;
+	prepayments: number;
+	difference: number;
+	new_monthly_prepay: number;
+	has_xml: boolean;
+	status: string;
+	filed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface HealthInsuranceOverview {
+	id: number;
+	year: number;
+	filing_type: string;
+	total_revenue: number;
+	total_expenses: number;
+	tax_base: number;
+	assessment_base: number;
+	min_assessment_base: number;
+	final_assessment_base: number;
+	insurance_rate: number;
+	total_insurance: number;
+	prepayments: number;
+	difference: number;
+	new_monthly_prepay: number;
+	has_xml: boolean;
+	status: string;
+	filed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+// --- Income Tax Returns API ---
+
+export const incomeTaxApi = {
+	list(year?: number) {
+		const query = year ? `?year=${year}` : '';
+		return get<IncomeTaxReturn[]>(`/income-tax-returns${query}`);
+	},
+	getById(id: number) {
+		return get<IncomeTaxReturn>(`/income-tax-returns/${id}`);
+	},
+	create(data: { year: number; filing_type?: string }) {
+		return post<IncomeTaxReturn>('/income-tax-returns', data);
+	},
+	delete(id: number) {
+		return del<void>(`/income-tax-returns/${id}`);
+	},
+	recalculate(id: number) {
+		return post<IncomeTaxReturn>(`/income-tax-returns/${id}/recalculate`, {});
+	},
+	generateXml(id: number) {
+		return post<IncomeTaxReturn>(`/income-tax-returns/${id}/generate-xml`, {});
+	},
+	async downloadXml(id: number): Promise<Blob> {
+		const res = await fetch(`${API_BASE}/income-tax-returns/${id}/xml`);
+		if (!res.ok) {
+			let body: unknown;
+			try {
+				body = await res.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(res.status, res.statusText, body);
+		}
+		return res.blob();
+	},
+	markFiled(id: number) {
+		return post<IncomeTaxReturn>(`/income-tax-returns/${id}/mark-filed`, {});
+	}
+};
+
+// --- Social Insurance API ---
+
+export const socialInsuranceApi = {
+	list(year?: number) {
+		const query = year ? `?year=${year}` : '';
+		return get<SocialInsuranceOverview[]>(`/social-insurance${query}`);
+	},
+	getById(id: number) {
+		return get<SocialInsuranceOverview>(`/social-insurance/${id}`);
+	},
+	create(data: { year: number; filing_type?: string }) {
+		return post<SocialInsuranceOverview>('/social-insurance', data);
+	},
+	delete(id: number) {
+		return del<void>(`/social-insurance/${id}`);
+	},
+	recalculate(id: number) {
+		return post<SocialInsuranceOverview>(`/social-insurance/${id}/recalculate`, {});
+	},
+	generateXml(id: number) {
+		return post<SocialInsuranceOverview>(`/social-insurance/${id}/generate-xml`, {});
+	},
+	async downloadXml(id: number): Promise<Blob> {
+		const res = await fetch(`${API_BASE}/social-insurance/${id}/xml`);
+		if (!res.ok) {
+			let body: unknown;
+			try {
+				body = await res.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(res.status, res.statusText, body);
+		}
+		return res.blob();
+	},
+	markFiled(id: number) {
+		return post<SocialInsuranceOverview>(`/social-insurance/${id}/mark-filed`, {});
+	}
+};
+
+// --- Health Insurance API ---
+
+export const healthInsuranceApi = {
+	list(year?: number) {
+		const query = year ? `?year=${year}` : '';
+		return get<HealthInsuranceOverview[]>(`/health-insurance${query}`);
+	},
+	getById(id: number) {
+		return get<HealthInsuranceOverview>(`/health-insurance/${id}`);
+	},
+	create(data: { year: number; filing_type?: string }) {
+		return post<HealthInsuranceOverview>('/health-insurance', data);
+	},
+	delete(id: number) {
+		return del<void>(`/health-insurance/${id}`);
+	},
+	recalculate(id: number) {
+		return post<HealthInsuranceOverview>(`/health-insurance/${id}/recalculate`, {});
+	},
+	generateXml(id: number) {
+		return post<HealthInsuranceOverview>(`/health-insurance/${id}/generate-xml`, {});
+	},
+	async downloadXml(id: number): Promise<Blob> {
+		const res = await fetch(`${API_BASE}/health-insurance/${id}/xml`);
+		if (!res.ok) {
+			let body: unknown;
+			try {
+				body = await res.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(res.status, res.statusText, body);
+		}
+		return res.blob();
+	},
+	markFiled(id: number) {
+		return post<HealthInsuranceOverview>(`/health-insurance/${id}/mark-filed`, {});
+	}
+};
+
+// --- Tax Year Settings Types ---
+
+export interface TaxYearSettings {
+	year: number;
+	flat_rate_percent: number;
+	prepayments: TaxPrepaymentMonth[];
+}
+
+export interface TaxPrepaymentMonth {
+	month: number;
+	tax_amount: number;
+	social_amount: number;
+	health_amount: number;
+}
+
+// --- Tax Year Settings API ---
+
+export const taxYearSettingsApi = {
+	getByYear(year: number) {
+		return get<TaxYearSettings>(`/tax-year-settings/${year}`);
+	},
+	save(year: number, data: { flat_rate_percent: number; prepayments: TaxPrepaymentMonth[] }) {
+		return put<void>(`/tax-year-settings/${year}`, data);
+	}
+};

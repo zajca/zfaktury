@@ -79,6 +79,13 @@ var serveCmd = &cobra.Command{
 		vatControlRepo := repository.NewVATControlStatementRepository(db)
 		viesRepo := repository.NewVIESSummaryRepository(db)
 
+		incomeTaxReturnRepo := repository.NewIncomeTaxReturnRepository(db)
+		socialInsuranceRepo := repository.NewSocialInsuranceOverviewRepository(db)
+		healthInsuranceRepo := repository.NewHealthInsuranceOverviewRepository(db)
+
+		taxYearSettingsRepo := repository.NewTaxYearSettingsRepository(db)
+		taxPrepaymentRepo := repository.NewTaxPrepaymentRepository(db)
+
 		// Wire ARES client.
 		aresClient := ares.NewClient()
 
@@ -106,6 +113,12 @@ var serveCmd = &cobra.Command{
 		vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo)
 		viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo)
 
+		incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
+		socialInsuranceSvc := service.NewSocialInsuranceService(socialInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
+		healthInsuranceSvc := service.NewHealthInsuranceService(healthInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
+
+		taxYearSettingsSvc := service.NewTaxYearSettingsService(taxYearSettingsRepo, taxPrepaymentRepo)
+
 		// Wire OCR service (conditional on API key).
 		var ocrSvc *service.OCRService
 		if cfg.OCR.APIKey != "" {
@@ -132,7 +145,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, emailSender, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, emailSender, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

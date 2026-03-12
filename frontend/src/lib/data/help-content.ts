@@ -46,7 +46,8 @@ export type HelpTopicId =
 	| 'email-sablony'
 	| 'opakovane-faktury'
 	| 'kategorie-nakladu'
-	| 'duplikace-faktury';
+	| 'duplikace-faktury'
+	| 'rocni-dane';
 
 export interface HelpTopic {
 	title: string;
@@ -389,5 +390,12 @@ export const helpTopics: Record<HelpTopicId, HelpTopic> = {
 			'Duplikace vytvori novou fakturu jako kopii stavajici. Zkopiruje se zakaznik, polozky, zpusob platby a dalsi nastaveni. Nova faktura dostane nove cislo a aktualni datumy.\n\nHodi se, kdyz vystavujete podobnou fakturu jako minule -- nemusite vse vyplnovat znovu.',
 		legal:
 			'Duplikovana faktura je novy, samostatny danovy doklad s vlastnim poradovym cislem dle § 29 zakona c. 235/2004 Sb. Jedna se o zcela nezavisly doklad, nikoliv o kopii puvodniho.\n\nPoradove cislo musi byt unikatni v ramci ciselne rady (§ 29 odst. 1 pism. b).'
+	},
+	'rocni-dane': {
+		title: 'Rocni dane a prehledy OSVC',
+		simple:
+			'Rocni danove priznani (DPFO) a prehledy pro socialni (CSSZ) a zdravotni pojistovnu (ZP). Aplikace spocita zaklad dane z faktur a nakladu, aplikuje sazby a slevy, a vygeneruje XML pro elektronicke podani.',
+		legal:
+			'Danove priznani k dani z prijmu fyzickych osob (§ 38g zakona c. 586/1992 Sb.). Prehled o prijmech a vydajich OSVC pro CSSZ (§ 15 zakona c. 589/1992 Sb.) a pro zdravotni pojistovnu (§ 24 zakona c. 592/1992 Sb.).'
 	}
 };

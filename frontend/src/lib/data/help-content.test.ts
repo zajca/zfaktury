@@ -5,7 +5,7 @@ describe('help-content', () => {
 	const topicIds = Object.keys(helpTopics) as HelpTopicId[];
 
 	it('has all expected topics', () => {
-		expect(topicIds.length).toBe(48);
+		expect(topicIds.length).toBe(49);
 	});
 
 	it.each(topicIds)('topic "%s" has non-empty title', (id) => {
@@ -72,7 +72,8 @@ describe('help-content', () => {
 			'email-sablony',
 			'opakovane-faktury',
 			'kategorie-nakladu',
-			'duplikace-faktury'
+			'duplikace-faktury',
+			'rocni-dane'
 		];
 		expect(topicIds.sort()).toEqual(expectedIds.sort());
 	});

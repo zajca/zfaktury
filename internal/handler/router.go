@@ -41,6 +41,10 @@ func NewRouter(
 	vatReturnSvc *service.VATReturnService,
 	vatControlSvc *service.VATControlStatementService,
 	viesSvc *service.VIESSummaryService,
+	incomeTaxSvc *service.IncomeTaxReturnService,
+	socialInsuranceSvc *service.SocialInsuranceService,
+	healthInsuranceSvc *service.HealthInsuranceService,
+	taxYearSettingsSvc *service.TaxYearSettingsService,
 	emailSender *email.EmailSender,
 	cfg RouterConfig,
 ) *chi.Mux {
@@ -161,6 +165,18 @@ func NewRouter(
 
 		viesHandler := NewVIESHandler(viesSvc, settingsSvc)
 		api.Mount("/vies-summaries", viesHandler.Routes())
+
+		incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc)
+		api.Mount("/income-tax-returns", incomeTaxHandler.Routes())
+
+		socialInsuranceHandler := NewSocialInsuranceHandler(socialInsuranceSvc)
+		api.Mount("/social-insurance", socialInsuranceHandler.Routes())
+
+		healthInsuranceHandler := NewHealthInsuranceHandler(healthInsuranceSvc)
+		api.Mount("/health-insurance", healthInsuranceHandler.Routes())
+
+		taxYearSettingsHandler := NewTaxYearSettingsHandler(taxYearSettingsSvc)
+		api.Mount("/tax-year-settings", taxYearSettingsHandler.Routes())
 	})
 
 	// Health check endpoint.

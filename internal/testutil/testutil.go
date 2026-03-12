@@ -27,9 +27,10 @@ func NewTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("opening test database: %v", err)
 	}
 
-	if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+	// Disable FK checks during migrations (table recreation may temporarily break references).
+	if _, err := db.Exec("PRAGMA foreign_keys = OFF"); err != nil {
 		_ = db.Close()
-		t.Fatalf("setting foreign_keys pragma: %v", err)
+		t.Fatalf("disabling foreign_keys pragma: %v", err)
 	}
 
 	goose.SetLogger(goose.NopLogger())
@@ -43,6 +44,12 @@ func NewTestDB(t *testing.T) *sql.DB {
 	if err := goose.Up(db, "migrations"); err != nil {
 		_ = db.Close()
 		t.Fatalf("running migrations: %v", err)
+	}
+
+	// Re-enable FK checks after migrations.
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		_ = db.Close()
+		t.Fatalf("enabling foreign_keys pragma: %v", err)
 	}
 
 	t.Cleanup(func() { _ = db.Close() })

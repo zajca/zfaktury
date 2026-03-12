@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -33,15 +34,21 @@ func NewTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("disabling foreign_keys pragma: %v", err)
 	}
 
-	goose.SetLogger(goose.NopLogger())
-	goose.SetBaseFS(database.MigrationsFS())
-
-	if err := goose.SetDialect("sqlite3"); err != nil {
+	// Use per-instance goose provider to avoid global state race conditions
+	// when multiple test packages run concurrently.
+	migrationsFS, err := fs.Sub(database.MigrationsFS(), "migrations")
+	if err != nil {
 		_ = db.Close()
-		t.Fatalf("setting goose dialect: %v", err)
+		t.Fatalf("getting migrations sub-fs: %v", err)
 	}
 
-	if err := goose.Up(db, "migrations"); err != nil {
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrationsFS)
+	if err != nil {
+		_ = db.Close()
+		t.Fatalf("creating goose provider: %v", err)
+	}
+
+	if _, err := provider.Up(context.Background()); err != nil {
 		_ = db.Close()
 		t.Fatalf("running migrations: %v", err)
 	}

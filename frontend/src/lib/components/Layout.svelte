@@ -69,6 +69,11 @@
 					href: '/tax',
 					label: 'Dan z prijmu',
 					icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z'
+				},
+				{
+					href: '/tax/prepayments',
+					label: 'Zalohy',
+					icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
 				}
 			]
 		},
@@ -108,9 +113,15 @@
 		return 'section' in entry;
 	}
 
+	const allNavHrefs: string[] = navEntries.flatMap((entry) =>
+		isGroup(entry) ? entry.items.map((item) => item.href) : [entry.href]
+	);
+
 	function isActive(href: string): boolean {
 		if (href === '/') return page.url.pathname === '/';
-		return page.url.pathname.startsWith(href);
+		const path = page.url.pathname;
+		if (!path.startsWith(href)) return false;
+		return !allNavHrefs.some((h) => h !== href && h.startsWith(href) && path.startsWith(h));
 	}
 </script>
 

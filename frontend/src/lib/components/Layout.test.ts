@@ -23,6 +23,7 @@ describe('Layout', () => {
 		expect(screen.getAllByText('Kontakty').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('Naklady').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('DPH').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Zalohy').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('Nastaveni').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1);
 	});
@@ -115,6 +116,9 @@ describe('Layout', () => {
 
 		const vatLink = screen.getAllByText('DPH')[0].closest('a');
 		expect(vatLink?.getAttribute('href')).toBe('/vat');
+
+		const prepaymentsLink = screen.getAllByText('Zalohy')[0].closest('a');
+		expect(prepaymentsLink?.getAttribute('href')).toBe('/tax/prepayments');
 
 		const contactsLink = screen.getAllByText('Kontakty')[0].closest('a');
 		expect(contactsLink?.getAttribute('href')).toBe('/contacts');

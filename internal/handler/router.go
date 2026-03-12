@@ -45,6 +45,9 @@ func NewRouter(
 	socialInsuranceSvc *service.SocialInsuranceService,
 	healthInsuranceSvc *service.HealthInsuranceService,
 	taxYearSettingsSvc *service.TaxYearSettingsService,
+	taxCreditsSvc *service.TaxCreditsService,
+	taxDeductionDocSvc *service.TaxDeductionDocumentService,
+	taxExtractionSvc *service.TaxDocumentExtractionService,
 	emailSender *email.EmailSender,
 	cfg RouterConfig,
 ) *chi.Mux {
@@ -177,6 +180,13 @@ func NewRouter(
 
 		taxYearSettingsHandler := NewTaxYearSettingsHandler(taxYearSettingsSvc)
 		api.Mount("/tax-year-settings", taxYearSettingsHandler.Routes())
+
+		taxCreditsHandler := NewTaxCreditsHandler(taxCreditsSvc)
+		api.Mount("/tax-credits", taxCreditsHandler.Routes())
+
+		taxDeductionsHandler := NewTaxDeductionsHandler(taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc)
+		api.Mount("/tax-deductions", taxDeductionsHandler.Routes())
+		api.Mount("/tax-deduction-documents", taxDeductionsHandler.DocumentRoutes())
 	})
 
 	// Health check endpoint.

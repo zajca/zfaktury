@@ -16,8 +16,9 @@ type IncomeTaxReturn struct {
 	UsedExpenses    Amount // expenses actually used (actual or flat-rate)
 
 	// Tax base
-	TaxBase        Amount // prijmy - vydaje
-	TaxBaseRounded Amount // rounded down to 100 CZK
+	TaxBase         Amount // prijmy - vydaje
+	TotalDeductions Amount // nezdanitelne casti zakladu dane
+	TaxBaseRounded  Amount // rounded down to 100 CZK
 
 	// Tax calculation (15% / 23% progressive)
 	TaxAt15  Amount

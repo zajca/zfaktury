@@ -57,8 +57,9 @@ type incomeTaxResponse struct {
 	FlatRateAmount  int64 `json:"flat_rate_amount"`
 	UsedExpenses    int64 `json:"used_expenses"`
 
-	TaxBase        int64 `json:"tax_base"`
-	TaxBaseRounded int64 `json:"tax_base_rounded"`
+	TaxBase         int64 `json:"tax_base"`
+	TotalDeductions int64 `json:"total_deductions"`
+	TaxBaseRounded  int64 `json:"tax_base_rounded"`
 	TaxAt15        int64 `json:"tax_at_15"`
 	TaxAt23        int64 `json:"tax_at_23"`
 	TotalTax       int64 `json:"total_tax"`
@@ -96,8 +97,9 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 		FlatRateAmount:  int64(itr.FlatRateAmount),
 		UsedExpenses:    int64(itr.UsedExpenses),
 
-		TaxBase:        int64(itr.TaxBase),
-		TaxBaseRounded: int64(itr.TaxBaseRounded),
+		TaxBase:         int64(itr.TaxBase),
+		TotalDeductions: int64(itr.TotalDeductions),
+		TaxBaseRounded:  int64(itr.TaxBaseRounded),
 		TaxAt15:        int64(itr.TaxAt15),
 		TaxAt23:        int64(itr.TaxAt23),
 		TotalTax:       int64(itr.TotalTax),

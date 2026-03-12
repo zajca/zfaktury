@@ -14,6 +14,7 @@ type TaxYearConstants struct {
 	StudentCredit        domain.Amount            // student
 	DisabilityCredit1    domain.Amount            // invalidita 1. a 2. stupen
 	DisabilityCredit3    domain.Amount            // invalidita 3. stupen
+	DisabilityZTPP       domain.Amount            // drzitel prukazu ZTP/P
 	ChildBenefit1        domain.Amount            // 1. dite
 	ChildBenefit2        domain.Amount            // 2. dite
 	ChildBenefit3Plus    domain.Amount            // 3+ dite
@@ -34,6 +35,7 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		StudentCredit:        domain.NewAmount(4_020, 0),
 		DisabilityCredit1:    domain.NewAmount(2_520, 0),
 		DisabilityCredit3:    domain.NewAmount(5_040, 0),
+		DisabilityZTPP:       domain.NewAmount(16_140, 0),
 		ChildBenefit1:        domain.NewAmount(15_204, 0),
 		ChildBenefit2:        domain.NewAmount(22_320, 0),
 		ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
@@ -56,6 +58,7 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		StudentCredit:        domain.NewAmount(4_020, 0),
 		DisabilityCredit1:    domain.NewAmount(2_520, 0),
 		DisabilityCredit3:    domain.NewAmount(5_040, 0),
+		DisabilityZTPP:       domain.NewAmount(16_140, 0),
 		ChildBenefit1:        domain.NewAmount(15_204, 0),
 		ChildBenefit2:        domain.NewAmount(22_320, 0),
 		ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
@@ -78,6 +81,7 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		StudentCredit:        domain.NewAmount(4_020, 0),
 		DisabilityCredit1:    domain.NewAmount(2_520, 0),
 		DisabilityCredit3:    domain.NewAmount(5_040, 0),
+		DisabilityZTPP:       domain.NewAmount(16_140, 0),
 		ChildBenefit1:        domain.NewAmount(15_204, 0),
 		ChildBenefit2:        domain.NewAmount(22_320, 0),
 		ChildBenefit3Plus:    domain.NewAmount(27_840, 0),

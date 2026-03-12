@@ -1023,6 +1023,7 @@ export interface IncomeTaxReturn {
 	flat_rate_amount: number;
 	used_expenses: number;
 	tax_base: number;
+	total_deductions: number;
 	tax_base_rounded: number;
 	tax_at_15: number;
 	tax_at_23: number;
@@ -1231,5 +1232,162 @@ export const taxYearSettingsApi = {
 	},
 	save(year: number, data: { flat_rate_percent: number; prepayments: TaxPrepaymentMonth[] }) {
 		return put<void>(`/tax-year-settings/${year}`, data);
+	}
+};
+
+// --- Tax Credits & Deductions Types ---
+
+export interface TaxSpouseCredit {
+	id: number;
+	year: number;
+	spouse_name: string;
+	spouse_birth_number: string;
+	spouse_income: number;
+	spouse_ztp: boolean;
+	months_claimed: number;
+	credit_amount: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface TaxChildCredit {
+	id: number;
+	year: number;
+	child_name: string;
+	birth_number: string;
+	child_order: number;
+	months_claimed: number;
+	ztp: boolean;
+	credit_amount: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface TaxPersonalCredits {
+	year: number;
+	is_student: boolean;
+	student_months: number;
+	disability_level: number;
+	credit_student: number;
+	credit_disability: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface TaxCreditsSummary {
+	year: number;
+	spouse: TaxSpouseCredit | null;
+	children: TaxChildCredit[];
+	personal: TaxPersonalCredits | null;
+	total_credits: number;
+	total_child_benefit: number;
+}
+
+export interface TaxDeduction {
+	id: number;
+	year: number;
+	category: string;
+	description: string;
+	claimed_amount: number;
+	max_amount: number;
+	allowed_amount: number;
+	documents?: TaxDeductionDocument[];
+	created_at: string;
+	updated_at: string;
+}
+
+export interface TaxDeductionDocument {
+	id: number;
+	tax_deduction_id: number;
+	filename: string;
+	content_type: string;
+	size: number;
+	extracted_amount: number;
+	confidence: number;
+	created_at: string;
+}
+
+export interface TaxExtractionResult {
+	amount_czk: number;
+	year: number;
+	confidence: number;
+}
+
+// --- Tax Credits API ---
+
+export const taxCreditsApi = {
+	getSummary(year: number) {
+		return get<TaxCreditsSummary>(`/tax-credits/${year}`);
+	},
+	upsertSpouse(year: number, data: { spouse_name: string; spouse_birth_number: string; spouse_income: number; spouse_ztp: boolean; months_claimed: number }) {
+		return put<TaxSpouseCredit>(`/tax-credits/${year}/spouse`, data);
+	},
+	deleteSpouse(year: number) {
+		return del<void>(`/tax-credits/${year}/spouse`);
+	},
+	listChildren(year: number) {
+		return get<TaxChildCredit[]>(`/tax-credits/${year}/children`);
+	},
+	createChild(year: number, data: { child_name: string; birth_number: string; child_order: number; months_claimed: number; ztp: boolean }) {
+		return post<TaxChildCredit>(`/tax-credits/${year}/children`, data);
+	},
+	updateChild(year: number, id: number, data: { child_name: string; birth_number: string; child_order: number; months_claimed: number; ztp: boolean }) {
+		return put<TaxChildCredit>(`/tax-credits/${year}/children/${id}`, data);
+	},
+	deleteChild(year: number, id: number) {
+		return del<void>(`/tax-credits/${year}/children/${id}`);
+	},
+	upsertPersonal(year: number, data: { is_student: boolean; student_months: number; disability_level: number }) {
+		return put<TaxPersonalCredits>(`/tax-credits/${year}/personal`, data);
+	},
+	copyFromYear(year: number, sourceYear: number) {
+		return post<void>(`/tax-credits/${year}/copy-from/${sourceYear}`, {});
+	}
+};
+
+// --- Tax Deductions API ---
+
+export const taxDeductionsApi = {
+	list(year: number) {
+		return get<TaxDeduction[]>(`/tax-deductions/${year}`);
+	},
+	create(year: number, data: { category: string; description: string; claimed_amount: number }) {
+		return post<TaxDeduction>(`/tax-deductions/${year}`, data);
+	},
+	update(year: number, id: number, data: { category: string; description: string; claimed_amount: number }) {
+		return put<TaxDeduction>(`/tax-deductions/${year}/${id}`, data);
+	},
+	delete(year: number, id: number) {
+		return del<void>(`/tax-deductions/${year}/${id}`);
+	},
+	listDocuments(year: number, deductionId: number) {
+		return get<TaxDeductionDocument[]>(`/tax-deductions/${year}/${deductionId}/documents`);
+	},
+	async uploadDocument(year: number, deductionId: number, file: File): Promise<TaxDeductionDocument> {
+		const formData = new FormData();
+		formData.append('file', file);
+		const response = await fetch(`${API_BASE}/tax-deductions/${year}/${deductionId}/documents`, {
+			method: 'POST',
+			body: formData
+		});
+		if (!response.ok) {
+			let body: unknown;
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.json();
+	},
+	deleteDocument(id: number) {
+		return del<void>(`/tax-deduction-documents/${id}`);
+	},
+	downloadDocument(id: number): string {
+		return `${API_BASE}/tax-deduction-documents/${id}/file`;
+	},
+	extractDocument(id: number) {
+		return post<TaxExtractionResult>(`/tax-deduction-documents/${id}/extract`, {});
 	}
 };

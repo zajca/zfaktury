@@ -13,12 +13,13 @@ import (
 
 // IncomeTaxReturnService provides business logic for income tax return management.
 type IncomeTaxReturnService struct {
-	repo               repository.IncomeTaxReturnRepo
-	invoiceRepo        repository.InvoiceRepo
-	expenseRepo        repository.ExpenseRepo
-	settingsRepo       repository.SettingsRepo
+	repo                repository.IncomeTaxReturnRepo
+	invoiceRepo         repository.InvoiceRepo
+	expenseRepo         repository.ExpenseRepo
+	settingsRepo        repository.SettingsRepo
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
-	taxPrepaymentRepo  repository.TaxPrepaymentRepo
+	taxPrepaymentRepo   repository.TaxPrepaymentRepo
+	taxCreditsSvc       *TaxCreditsService
 }
 
 // NewIncomeTaxReturnService creates a new IncomeTaxReturnService.
@@ -29,14 +30,16 @@ func NewIncomeTaxReturnService(
 	settingsRepo repository.SettingsRepo,
 	taxYearSettingsRepo repository.TaxYearSettingsRepo,
 	taxPrepaymentRepo repository.TaxPrepaymentRepo,
+	taxCreditsSvc *TaxCreditsService,
 ) *IncomeTaxReturnService {
 	return &IncomeTaxReturnService{
-		repo:               repo,
-		invoiceRepo:        invoiceRepo,
-		expenseRepo:        expenseRepo,
-		settingsRepo:       settingsRepo,
+		repo:                repo,
+		invoiceRepo:         invoiceRepo,
+		expenseRepo:         expenseRepo,
+		settingsRepo:        settingsRepo,
 		taxYearSettingsRepo: taxYearSettingsRepo,
-		taxPrepaymentRepo:  taxPrepaymentRepo,
+		taxPrepaymentRepo:   taxPrepaymentRepo,
+		taxCreditsSvc:       taxCreditsSvc,
 	}
 }
 
@@ -178,6 +181,21 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	}
 	itr.TaxBase = taxBase
 
+	// Step 5b: Apply deductions (nezdanitelne casti) - reduce tax base before rounding.
+	var totalDeductions domain.Amount
+	if s.taxCreditsSvc != nil {
+		deductions, deductErr := s.taxCreditsSvc.ComputeDeductions(ctx, itr.Year, taxBase)
+		if deductErr != nil {
+			return nil, fmt.Errorf("computing deductions for income_tax_return: %w", deductErr)
+		}
+		totalDeductions = deductions
+	}
+	itr.TotalDeductions = totalDeductions
+	taxBase -= totalDeductions
+	if taxBase < 0 {
+		taxBase = 0
+	}
+
 	// Step 6: Round down to 100 CZK (10000 halere).
 	itr.TaxBaseRounded = (taxBase / 10000) * 10000
 
@@ -197,9 +215,17 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	itr.TaxAt23 = tax23
 	itr.TotalTax = tax15 + tax23
 
-	// Step 8: Tax credits.
+	// Step 8: Tax credits - load from tax_credits tables.
 	itr.CreditBasic = constants.BasicCredit
-	// CreditSpouse, CreditDisability, CreditStudent are user-set, keep existing values.
+	if s.taxCreditsSvc != nil {
+		spouseCredit, disabilityCredit, studentCredit, credErr := s.taxCreditsSvc.ComputeCredits(ctx, itr.Year)
+		if credErr != nil {
+			return nil, fmt.Errorf("computing credits for income_tax_return: %w", credErr)
+		}
+		itr.CreditSpouse = spouseCredit
+		itr.CreditDisability = disabilityCredit
+		itr.CreditStudent = studentCredit
+	}
 	itr.TotalCredits = itr.CreditBasic + itr.CreditSpouse + itr.CreditDisability + itr.CreditStudent
 
 	taxAfterCredits := itr.TotalTax - itr.TotalCredits
@@ -208,7 +234,14 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	}
 	itr.TaxAfterCredits = taxAfterCredits
 
-	// Step 9: Child benefit (user-set, can make result negative = bonus).
+	// Step 9: Child benefit - load from tax_child_credits table.
+	if s.taxCreditsSvc != nil {
+		childBenefit, cbErr := s.taxCreditsSvc.ComputeChildBenefit(ctx, itr.Year)
+		if cbErr != nil {
+			return nil, fmt.Errorf("computing child benefit for income_tax_return: %w", cbErr)
+		}
+		itr.ChildBenefit = childBenefit
+	}
 	itr.TaxAfterBenefit = itr.TaxAfterCredits - itr.ChildBenefit
 
 	// Step 10: Prepayments from tax prepayments table.

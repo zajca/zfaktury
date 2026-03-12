@@ -21,7 +21,7 @@ func setupIncomeTaxSvc(t *testing.T) (*IncomeTaxReturnService, *sql.DB) {
 	setRepo := repository.NewSettingsRepository(db)
 	tysRepo := repository.NewTaxYearSettingsRepository(db)
 	tpRepo := repository.NewTaxPrepaymentRepository(db)
-	svc := NewIncomeTaxReturnService(itrRepo, invRepo, expRepo, setRepo, tysRepo, tpRepo)
+	svc := NewIncomeTaxReturnService(itrRepo, invRepo, expRepo, setRepo, tysRepo, tpRepo, nil)
 	return svc, db
 }
 

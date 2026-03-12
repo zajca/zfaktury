@@ -203,3 +203,42 @@ type VIESSummaryRepo interface {
 	DeleteLines(ctx context.Context, viesSummaryID int64) error
 	GetLines(ctx context.Context, viesSummaryID int64) ([]domain.VIESSummaryLine, error)
 }
+
+// TaxSpouseCreditRepo defines the persistence interface for spouse tax credits.
+type TaxSpouseCreditRepo interface {
+	Upsert(ctx context.Context, credit *domain.TaxSpouseCredit) error
+	GetByYear(ctx context.Context, year int) (*domain.TaxSpouseCredit, error)
+	DeleteByYear(ctx context.Context, year int) error
+}
+
+// TaxChildCreditRepo defines the persistence interface for child tax credits.
+type TaxChildCreditRepo interface {
+	Create(ctx context.Context, credit *domain.TaxChildCredit) error
+	Update(ctx context.Context, credit *domain.TaxChildCredit) error
+	Delete(ctx context.Context, id int64) error
+	ListByYear(ctx context.Context, year int) ([]domain.TaxChildCredit, error)
+}
+
+// TaxPersonalCreditsRepo defines the persistence interface for personal tax credits.
+type TaxPersonalCreditsRepo interface {
+	Upsert(ctx context.Context, credits *domain.TaxPersonalCredits) error
+	GetByYear(ctx context.Context, year int) (*domain.TaxPersonalCredits, error)
+}
+
+// TaxDeductionRepo defines the persistence interface for tax deductions.
+type TaxDeductionRepo interface {
+	Create(ctx context.Context, ded *domain.TaxDeduction) error
+	Update(ctx context.Context, ded *domain.TaxDeduction) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.TaxDeduction, error)
+	ListByYear(ctx context.Context, year int) ([]domain.TaxDeduction, error)
+}
+
+// TaxDeductionDocumentRepo defines the persistence interface for tax deduction documents.
+type TaxDeductionDocumentRepo interface {
+	Create(ctx context.Context, doc *domain.TaxDeductionDocument) error
+	GetByID(ctx context.Context, id int64) (*domain.TaxDeductionDocument, error)
+	ListByDeductionID(ctx context.Context, deductionID int64) ([]domain.TaxDeductionDocument, error)
+	Delete(ctx context.Context, id int64) error
+	UpdateExtraction(ctx context.Context, id int64, amount domain.Amount, confidence float64) error
+}

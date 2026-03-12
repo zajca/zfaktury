@@ -86,6 +86,12 @@ var serveCmd = &cobra.Command{
 		taxYearSettingsRepo := repository.NewTaxYearSettingsRepository(db)
 		taxPrepaymentRepo := repository.NewTaxPrepaymentRepository(db)
 
+		taxSpouseCreditRepo := repository.NewTaxSpouseCreditRepository(db)
+		taxChildCreditRepo := repository.NewTaxChildCreditRepository(db)
+		taxPersonalCreditsRepo := repository.NewTaxPersonalCreditsRepository(db)
+		taxDeductionRepo := repository.NewTaxDeductionRepository(db)
+		taxDeductionDocRepo := repository.NewTaxDeductionDocumentRepository(db)
+
 		// Wire ARES client.
 		aresClient := ares.NewClient()
 
@@ -113,20 +119,25 @@ var serveCmd = &cobra.Command{
 		vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo)
 		viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo)
 
-		incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
+		taxYearSettingsSvc := service.NewTaxYearSettingsService(taxYearSettingsRepo, taxPrepaymentRepo)
+
+		taxCreditsSvc := service.NewTaxCreditsService(taxSpouseCreditRepo, taxChildCreditRepo, taxPersonalCreditsRepo, taxDeductionRepo)
+		taxDeductionDocSvc := service.NewTaxDeductionDocumentService(taxDeductionDocRepo, taxDeductionRepo, cfg.DataDir)
+
+		incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, taxCreditsSvc)
 		socialInsuranceSvc := service.NewSocialInsuranceService(socialInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
 		healthInsuranceSvc := service.NewHealthInsuranceService(healthInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
 
-		taxYearSettingsSvc := service.NewTaxYearSettingsService(taxYearSettingsRepo, taxPrepaymentRepo)
-
 		// Wire OCR service (conditional on API key).
 		var ocrSvc *service.OCRService
+		var taxExtractionSvc *service.TaxDocumentExtractionService
 		if cfg.OCR.APIKey != "" {
 			provider, err := ocr.NewProvider(cfg.OCR.Provider, cfg.OCR.APIKey, cfg.OCR.Model, cfg.OCR.BaseURL)
 			if err != nil {
 				slog.Warn("OCR disabled", "error", err)
 			} else {
 				ocrSvc = service.NewOCRService(provider, documentSvc)
+				taxExtractionSvc = service.NewTaxDocumentExtractionService(provider, taxDeductionDocSvc, taxDeductionRepo, taxDeductionDocRepo)
 				slog.Info("OCR service configured", "provider", provider.Name())
 			}
 		}
@@ -145,7 +156,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, emailSender, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, emailSender, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

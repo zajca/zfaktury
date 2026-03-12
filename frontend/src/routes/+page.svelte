@@ -81,30 +81,30 @@
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Prijmy tento mesic <HelpTip topic="prijmy-naklady" />
 				</p>
-				<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">{formatCZK(data.revenue_current_month)}</p>
+				<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums sm:text-xl" title={formatCZK(data.revenue_current_month)}>{formatCZK(data.revenue_current_month)}</p>
 			</Card>
 
 			<Card>
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Naklady tento mesic <HelpTip topic="prijmy-naklady" />
 				</p>
-				<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">{formatCZK(data.expenses_current_month)}</p>
+				<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums sm:text-xl" title={formatCZK(data.expenses_current_month)}>{formatCZK(data.expenses_current_month)}</p>
 			</Card>
 
 			<Card>
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Neuhrazene faktury <HelpTip topic="neuhrazene-faktury" />
 				</p>
-				<p class="mt-2 text-2xl font-semibold text-warning font-mono tabular-nums">{data.unpaid_count}</p>
-				<p class="mt-1 text-xs text-muted font-mono tabular-nums">{formatCZK(data.unpaid_total)}</p>
+				<p class="mt-2 text-lg font-semibold text-warning font-mono tabular-nums sm:text-xl">{data.unpaid_count}</p>
+				<p class="mt-1 text-xs text-muted font-mono tabular-nums" title={formatCZK(data.unpaid_total)}>{formatCZK(data.unpaid_total)}</p>
 			</Card>
 
 			<Card>
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Faktury po splatnosti <HelpTip topic="faktury-po-splatnosti" />
 				</p>
-				<p class="mt-2 text-2xl font-semibold text-danger font-mono tabular-nums">{data.overdue_count}</p>
-				<p class="mt-1 text-xs text-muted font-mono tabular-nums">{formatCZK(data.overdue_total)}</p>
+				<p class="mt-2 text-lg font-semibold text-danger font-mono tabular-nums sm:text-xl">{data.overdue_count}</p>
+				<p class="mt-1 text-xs text-muted font-mono tabular-nums" title={formatCZK(data.overdue_total)}>{formatCZK(data.overdue_total)}</p>
 			</Card>
 		</div>
 

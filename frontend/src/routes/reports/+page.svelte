@@ -235,14 +235,14 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 					<Card class="lg:col-span-1">
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Celkové příjmy</p>
-						<p class="mt-2 text-2xl font-semibold text-primary font-mono tabular-nums">
+						<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums" title={formatCZK(revenueData.total)}>
 							{formatCZK(revenueData.total)}
 						</p>
 					</Card>
 					{#each revenueData.quarterly as q}
 						<Card>
 							<p class="text-xs font-medium uppercase tracking-wider text-muted">Q{q.quarter}</p>
-							<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums">
+							<p class="mt-2 text-base font-semibold text-primary font-mono tabular-nums sm:text-lg" title={formatCZK(q.amount)}>
 								{formatCZK(q.amount)}
 							</p>
 						</Card>
@@ -271,7 +271,7 @@
 					{#each expenseData.quarterly as q}
 						<Card>
 							<p class="text-xs font-medium uppercase tracking-wider text-muted">Q{q.quarter}</p>
-							<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums">
+							<p class="mt-2 text-base font-semibold text-primary font-mono tabular-nums sm:text-lg" title={formatCZK(q.amount)}>
 								{formatCZK(q.amount)}
 							</p>
 						</Card>
@@ -315,22 +315,23 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 					<Card>
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Celkové příjmy</p>
-						<p class="mt-2 text-xl font-semibold text-success font-mono tabular-nums">
+						<p class="mt-2 text-lg font-semibold text-success font-mono tabular-nums" title={formatCZK(plRevenueTotal)}>
 							{formatCZK(plRevenueTotal)}
 						</p>
 					</Card>
 					<Card>
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Celkové náklady</p>
-						<p class="mt-2 text-xl font-semibold text-danger font-mono tabular-nums">
+						<p class="mt-2 text-lg font-semibold text-danger font-mono tabular-nums" title={formatCZK(plExpenseTotal)}>
 							{formatCZK(plExpenseTotal)}
 						</p>
 					</Card>
 					<Card>
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Zisk / Ztráta</p>
 						<p
-							class="mt-2 text-xl font-semibold font-mono tabular-nums {plProfitTotal >= 0
+							class="mt-2 text-lg font-semibold font-mono tabular-nums {plProfitTotal >= 0
 								? 'text-success'
 								: 'text-danger'}"
+							title={formatCZK(plProfitTotal)}
 						>
 							{formatCZK(plProfitTotal)}
 						</p>

@@ -1,0 +1,76 @@
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/zajca/zfaktury/internal/fakturoid"
+	"github.com/zajca/zfaktury/internal/service"
+)
+
+// FakturoidHandler handles Fakturoid import HTTP requests.
+type FakturoidHandler struct {
+	svc *service.FakturoidImportService
+}
+
+// NewFakturoidHandler creates a new FakturoidHandler.
+func NewFakturoidHandler(svc *service.FakturoidImportService) *FakturoidHandler {
+	return &FakturoidHandler{svc: svc}
+}
+
+// Routes returns the chi router for Fakturoid import endpoints.
+func (h *FakturoidHandler) Routes() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/import", h.Import)
+	return r
+}
+
+// --- DTOs ---
+
+type fakturoidImportRequest struct {
+	Slug     string `json:"slug"`
+	Email    string `json:"email"`
+	APIToken string `json:"api_token"`
+}
+
+type fakturoidImportResponse struct {
+	ContactsCreated int      `json:"contacts_created"`
+	ContactsSkipped int      `json:"contacts_skipped"`
+	InvoicesCreated int      `json:"invoices_created"`
+	InvoicesSkipped int      `json:"invoices_skipped"`
+	ExpensesCreated int      `json:"expenses_created"`
+	ExpensesSkipped int      `json:"expenses_skipped"`
+	Errors          []string `json:"errors"`
+}
+
+// Import performs a full import from Fakturoid using credentials from the request body.
+func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
+	var req fakturoidImportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Slug == "" || req.Email == "" || req.APIToken == "" {
+		respondError(w, http.StatusBadRequest, "slug, email, and api_token are required")
+		return
+	}
+
+	client := fakturoid.NewClient(req.Slug, req.Email, req.APIToken)
+	result, err := h.svc.ImportAll(r.Context(), client)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, fakturoidImportResponse{
+		ContactsCreated: result.ContactsCreated,
+		ContactsSkipped: result.ContactsSkipped,
+		InvoicesCreated: result.InvoicesCreated,
+		InvoicesSkipped: result.InvoicesSkipped,
+		ExpensesCreated: result.ExpensesCreated,
+		ExpensesSkipped: result.ExpensesSkipped,
+		Errors:          result.Errors,
+	})
+}

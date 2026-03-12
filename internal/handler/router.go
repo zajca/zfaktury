@@ -51,6 +51,7 @@ func NewRouter(
 	investmentIncomeSvc *service.InvestmentIncomeService,
 	investmentDocSvc *service.InvestmentDocumentService,
 	investmentExtractionSvc *service.InvestmentExtractionService,
+	fakturoidImportSvc *service.FakturoidImportService,
 	emailSender *email.EmailSender,
 	cfg RouterConfig,
 ) *chi.Mux {
@@ -197,6 +198,9 @@ func NewRouter(
 			investmentHandler := NewInvestmentIncomeHandler(investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc)
 			api.Mount("/investments", investmentHandler.Routes())
 		}
+
+		fakturoidHandler := NewFakturoidHandler(fakturoidImportSvc)
+		api.Mount("/import/fakturoid", fakturoidHandler.Routes())
 	})
 
 	// Health check endpoint.

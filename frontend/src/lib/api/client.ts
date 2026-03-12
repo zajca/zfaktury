@@ -1590,3 +1590,23 @@ export const investmentsApi = {
 		return post<void>(`/investments/recalculate-fifo/${year}`, {});
 	}
 };
+
+// --- Fakturoid Import Types ---
+
+export interface FakturoidImportResult {
+	contacts_created: number;
+	contacts_skipped: number;
+	invoices_created: number;
+	invoices_skipped: number;
+	expenses_created: number;
+	expenses_skipped: number;
+	errors: string[];
+}
+
+// --- Fakturoid Import API ---
+
+export const fakturoidApi = {
+	import(data: { slug: string; email: string; api_token: string }) {
+		return post<FakturoidImportResult>('/import/fakturoid/import', data);
+	}
+};

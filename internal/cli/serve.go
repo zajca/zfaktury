@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -92,6 +93,9 @@ var serveCmd = &cobra.Command{
 		taxDeductionRepo := repository.NewTaxDeductionRepository(db)
 		taxDeductionDocRepo := repository.NewTaxDeductionDocumentRepository(db)
 
+		auditLogRepo := repository.NewAuditLogRepository(db)
+		auditSvc := service.NewAuditService(auditLogRepo)
+
 		// Wire ARES client.
 		aresClient := ares.NewClient()
 
@@ -105,10 +109,10 @@ var serveCmd = &cobra.Command{
 		isdocGen := isdoc.NewISDOCGenerator()
 
 		// Wire services.
-		contactSvc := service.NewContactService(contactRepo, aresClient)
+		contactSvc := service.NewContactService(contactRepo, aresClient, auditSvc)
 		sequenceSvc := service.NewSequenceService(sequenceRepo)
-		invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc)
-		expenseSvc := service.NewExpenseService(expenseRepo)
+		invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, auditSvc)
+		expenseSvc := service.NewExpenseService(expenseRepo, auditSvc)
 		settingsSvc := service.NewSettingsService(settingsRepo)
 		categorySvc := service.NewCategoryService(categoryRepo)
 		documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir)
@@ -157,6 +161,13 @@ var serveCmd = &cobra.Command{
 		// Wire import service (for upload-first expense creation).
 		importSvc := service.NewImportService(expenseSvc, documentSvc, ocrSvc)
 
+		// Wire Fakturoid import (credentials provided per-request via UI).
+		fakturoidImportRepo := repository.NewFakturoidImportLogRepository(db)
+		fakturoidImportSvc := service.NewFakturoidImportService(
+			fakturoidImportRepo, contactRepo, invoiceRepo, expenseRepo,
+			contactSvc, invoiceSvc, expenseSvc,
+		)
+
 		// Wire CNB client.
 		cnbClient := cnb.NewClient()
 
@@ -168,7 +179,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, emailSender, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, fakturoidImportSvc, emailSender, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 
@@ -195,7 +206,7 @@ var serveCmd = &cobra.Command{
 
 		go func() {
 			slog.Info("starting server", "addr", addr, "dev", cfg.Server.Dev)
-			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				slog.Error("server error", "error", err)
 				os.Exit(1)
 			}

@@ -179,6 +179,13 @@ var serveCmd = &cobra.Command{
 			contactSvc, invoiceSvc, expenseSvc,
 		)
 
+		// Wire dashboard and report repos/services.
+		dashboardRepo := repository.NewDashboardRepository(db)
+		dashboardSvc := service.NewDashboardService(dashboardRepo)
+		reportRepo := repository.NewReportRepository(db)
+		reportSvc := service.NewReportService(reportRepo)
+		taxCalendarSvc := service.NewTaxCalendarService()
+
 		// Wire CNB client.
 		cnbClient := cnb.NewClient()
 
@@ -190,7 +197,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, fakturoidImportSvc, emailSender, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

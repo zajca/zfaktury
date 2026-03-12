@@ -282,6 +282,30 @@ type FakturoidImportLogRepo interface {
 	ListByEntityType(ctx context.Context, entityType string) ([]domain.FakturoidImportLog, error)
 }
 
+// DashboardRepo defines the persistence interface for dashboard aggregations.
+type DashboardRepo interface {
+	RevenueCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error)
+	ExpensesCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error)
+	UnpaidInvoices(ctx context.Context) (count int, total domain.Amount, err error)
+	OverdueInvoices(ctx context.Context) (count int, total domain.Amount, err error)
+	MonthlyRevenue(ctx context.Context, year int) ([]MonthlyAmount, error)
+	MonthlyExpenses(ctx context.Context, year int) ([]MonthlyAmount, error)
+	RecentInvoices(ctx context.Context, limit int) ([]RecentInvoice, error)
+	RecentExpenses(ctx context.Context, limit int) ([]RecentExpense, error)
+}
+
+// ReportRepo defines the persistence interface for report aggregations.
+type ReportRepo interface {
+	MonthlyRevenue(ctx context.Context, year int) ([]MonthlyAmount, error)
+	QuarterlyRevenue(ctx context.Context, year int) ([]QuarterlyAmount, error)
+	YearlyRevenue(ctx context.Context, year int) (domain.Amount, error)
+	MonthlyExpenses(ctx context.Context, year int) ([]MonthlyAmount, error)
+	QuarterlyExpenses(ctx context.Context, year int) ([]QuarterlyAmount, error)
+	CategoryExpenses(ctx context.Context, year int) ([]CategoryAmount, error)
+	TopCustomers(ctx context.Context, year int, limit int) ([]CustomerRevenue, error)
+	ProfitLossMonthly(ctx context.Context, year int) (revenue []MonthlyAmount, expenses []MonthlyAmount, err error)
+}
+
 // TaxDeductionDocumentRepo defines the persistence interface for tax deduction documents.
 type TaxDeductionDocumentRepo interface {
 	Create(ctx context.Context, doc *domain.TaxDeductionDocument) error

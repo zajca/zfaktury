@@ -1696,3 +1696,135 @@ export const fakturoidApi = {
 		return post<FakturoidImportResult>('/import/fakturoid/import', data);
 	}
 };
+
+// --- Dashboard Types ---
+
+export interface MonthAmount {
+	month: number;
+	amount: number;
+}
+
+export interface RecentInvoice {
+	id: number;
+	invoice_number: string;
+	customer_id: number;
+	total_amount: number;
+	status: string;
+	issue_date: string;
+}
+
+export interface RecentExpense {
+	id: number;
+	description: string;
+	category: string;
+	amount: number;
+	issue_date: string;
+}
+
+export interface DashboardData {
+	revenue_current_month: number;
+	expenses_current_month: number;
+	unpaid_count: number;
+	unpaid_total: number;
+	overdue_count: number;
+	overdue_total: number;
+	monthly_revenue: MonthAmount[];
+	monthly_expenses: MonthAmount[];
+	recent_invoices: RecentInvoice[];
+	recent_expenses: RecentExpense[];
+}
+
+// --- Dashboard API ---
+
+export const dashboardApi = {
+	get() {
+		return get<DashboardData>('/dashboard');
+	}
+};
+
+// --- Report Types ---
+
+export interface MonthlyAmount {
+	month: number;
+	amount: number;
+}
+
+export interface QuarterlyAmount {
+	quarter: number;
+	amount: number;
+}
+
+export interface CategoryAmount {
+	category: string;
+	amount: number;
+}
+
+export interface RevenueReport {
+	year: number;
+	monthly: MonthlyAmount[];
+	quarterly: QuarterlyAmount[];
+	total: number;
+}
+
+export interface ExpenseReport {
+	year: number;
+	monthly: MonthlyAmount[];
+	quarterly: QuarterlyAmount[];
+	categories: CategoryAmount[];
+}
+
+export interface TopCustomer {
+	customer_id: number;
+	customer_name: string;
+	total: number;
+	invoice_count: number;
+}
+
+export interface ProfitLossReport {
+	year: number;
+	monthly_revenue: MonthlyAmount[];
+	monthly_expenses: MonthlyAmount[];
+}
+
+export interface TaxDeadlineItem {
+	name: string;
+	date: string;
+	type: string;
+	description: string;
+}
+
+export interface TaxCalendar {
+	year: number;
+	deadlines: TaxDeadlineItem[];
+}
+
+// --- Reports API ---
+
+export const reportsApi = {
+	revenue(year: number) {
+		return get<RevenueReport>(`/reports/revenue?year=${year}`);
+	},
+	expenses(year: number) {
+		return get<ExpenseReport>(`/reports/expenses?year=${year}`);
+	},
+	topCustomers(year: number) {
+		return get<TopCustomer[]>(`/reports/top-customers?year=${year}`);
+	},
+	profitLoss(year: number) {
+		return get<ProfitLossReport>(`/reports/profit-loss?year=${year}`);
+	},
+	taxCalendar(year: number) {
+		return get<TaxCalendar>(`/reports/tax-calendar?year=${year}`);
+	}
+};
+
+// --- Export API ---
+
+export const exportApi = {
+	invoicesUrl(year: number): string {
+		return `${API_BASE}/export/invoices?year=${year}`;
+	},
+	expensesUrl(year: number): string {
+		return `${API_BASE}/export/expenses?year=${year}`;
+	}
+};

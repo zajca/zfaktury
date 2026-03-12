@@ -52,6 +52,9 @@ func NewRouter(
 	investmentDocSvc *service.InvestmentDocumentService,
 	investmentExtractionSvc *service.InvestmentExtractionService,
 	fakturoidImportSvc *service.FakturoidImportService,
+	dashboardSvc *service.DashboardService,
+	reportSvc *service.ReportService,
+	taxCalendarSvc *service.TaxCalendarService,
 	emailSender *email.EmailSender,
 	cfg RouterConfig,
 ) *chi.Mux {
@@ -201,6 +204,26 @@ func NewRouter(
 
 		fakturoidHandler := NewFakturoidHandler(fakturoidImportSvc)
 		api.Mount("/import/fakturoid", fakturoidHandler.Routes())
+
+		// Dashboard
+		dashboardHandler := NewDashboardHandler(dashboardSvc)
+		api.Get("/dashboard", dashboardHandler.GetDashboard)
+
+		// Reports
+		reportHandler := NewReportHandler(reportSvc)
+		api.Get("/reports/revenue", reportHandler.Revenue)
+		api.Get("/reports/expenses", reportHandler.Expenses)
+		api.Get("/reports/top-customers", reportHandler.TopCustomers)
+		api.Get("/reports/profit-loss", reportHandler.ProfitLoss)
+
+		// Tax calendar
+		taxCalendarHandler := NewTaxCalendarHandler(taxCalendarSvc)
+		api.Get("/reports/tax-calendar", taxCalendarHandler.GetCalendar)
+
+		// CSV export
+		exportHandler := NewExportHandler(invoiceSvc, expenseSvc)
+		api.Get("/export/invoices", exportHandler.ExportInvoices)
+		api.Get("/export/expenses", exportHandler.ExportExpenses)
 	})
 
 	// Health check endpoint.

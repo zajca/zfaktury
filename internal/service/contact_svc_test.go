@@ -24,7 +24,7 @@ func newContactService(t *testing.T, ares ARESClient) (*ContactService, *reposit
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	repo := repository.NewContactRepository(db)
-	svc := NewContactService(repo, ares)
+	svc := NewContactService(repo, ares, nil)
 	return svc, repo
 }
 

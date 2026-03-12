@@ -14,7 +14,7 @@ func newRecurringExpenseTestStack(t *testing.T) (*RecurringExpenseService, *Expe
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	expRepo := repository.NewExpenseRepository(db)
-	expSvc := NewExpenseService(expRepo)
+	expSvc := NewExpenseService(expRepo, nil)
 	recRepo := repository.NewRecurringExpenseRepository(db)
 	recSvc := NewRecurringExpenseService(recRepo, expSvc)
 	return recSvc, expSvc

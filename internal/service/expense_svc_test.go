@@ -14,7 +14,7 @@ func newExpenseTestStack(t *testing.T) *ExpenseService {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	repo := repository.NewExpenseRepository(db)
-	return NewExpenseService(repo)
+	return NewExpenseService(repo, nil)
 }
 
 func makeExpense() *domain.Expense {

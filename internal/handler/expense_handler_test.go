@@ -19,7 +19,7 @@ func setupExpenseRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	expenseRepo := repository.NewExpenseRepository(db)
-	expenseSvc := service.NewExpenseService(expenseRepo)
+	expenseSvc := service.NewExpenseService(expenseRepo, nil)
 	h := NewExpenseHandler(expenseSvc)
 
 	r := chi.NewRouter()

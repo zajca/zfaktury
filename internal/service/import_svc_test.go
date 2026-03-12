@@ -100,7 +100,7 @@ func newImportTestService(t *testing.T, ocrProvider ocr.Provider) (*ImportServic
 	t.Helper()
 
 	expenseRepo := newMockExpenseRepo()
-	expenseSvc := NewExpenseService(expenseRepo)
+	expenseSvc := NewExpenseService(expenseRepo, nil)
 
 	docRepo := newMockDocumentRepo()
 	dataDir := t.TempDir()
@@ -213,7 +213,7 @@ func TestImportService_ImportFromDocument_SuccessWithoutOCR(t *testing.T) {
 func TestImportService_ImportFromDocument_UploadFailureRollsBackExpense(t *testing.T) {
 	// Use a DocumentService with a repo that will fail on Create (after file write).
 	expenseRepo := newMockExpenseRepo()
-	expenseSvc := NewExpenseService(expenseRepo)
+	expenseSvc := NewExpenseService(expenseRepo, nil)
 
 	failDocRepo := &failingDocumentRepo{
 		mockDocumentRepo: *newMockDocumentRepo(),
@@ -241,7 +241,7 @@ func TestImportService_ImportFromDocument_UploadFailureRollbackDeleteFails(t *te
 	// Even if the rollback delete fails, the original upload error should be returned.
 	expenseRepo := newMockExpenseRepo()
 	expenseRepo.deleteErr = errors.New("delete also failed")
-	expenseSvc := NewExpenseService(expenseRepo)
+	expenseSvc := NewExpenseService(expenseRepo, nil)
 
 	failDocRepo := &failingDocumentRepo{
 		mockDocumentRepo: *newMockDocumentRepo(),

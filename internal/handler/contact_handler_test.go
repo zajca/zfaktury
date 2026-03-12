@@ -18,7 +18,7 @@ func setupContactRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	contactRepo := repository.NewContactRepository(db)
-	contactSvc := service.NewContactService(contactRepo, nil)
+	contactSvc := service.NewContactService(contactRepo, nil, nil)
 	h := NewContactHandler(contactSvc)
 
 	r := chi.NewRouter()

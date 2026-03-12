@@ -11,12 +11,13 @@ import (
 
 // ExpenseService provides business logic for expense management.
 type ExpenseService struct {
-	repo repository.ExpenseRepo
+	repo  repository.ExpenseRepo
+	audit *AuditService
 }
 
 // NewExpenseService creates a new ExpenseService.
-func NewExpenseService(repo repository.ExpenseRepo) *ExpenseService {
-	return &ExpenseService{repo: repo}
+func NewExpenseService(repo repository.ExpenseRepo, audit *AuditService) *ExpenseService {
+	return &ExpenseService{repo: repo, audit: audit}
 }
 
 // Create validates and persists a new expense.
@@ -48,6 +49,9 @@ func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) er
 	if err := s.repo.Create(ctx, expense); err != nil {
 		return fmt.Errorf("creating expense: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "expense", expense.ID, "create", nil, expense)
+	}
 	return nil
 }
 
@@ -71,8 +75,15 @@ func (s *ExpenseService) Update(ctx context.Context, expense *domain.Expense) er
 		expense.VATAmount = expense.Amount.Multiply(float64(expense.VATRatePercent) / (100.0 + float64(expense.VATRatePercent)))
 	}
 
+	existing, err := s.repo.GetByID(ctx, expense.ID)
+	if err != nil {
+		return fmt.Errorf("fetching expense for audit: %w", err)
+	}
 	if err := s.repo.Update(ctx, expense); err != nil {
 		return fmt.Errorf("updating expense: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "expense", expense.ID, "update", existing, expense)
 	}
 	return nil
 }
@@ -84,6 +95,9 @@ func (s *ExpenseService) Delete(ctx context.Context, id int64) error {
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting expense: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "expense", id, "delete", nil, nil)
 	}
 	return nil
 }

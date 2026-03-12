@@ -15,14 +15,16 @@ type InvoiceService struct {
 	repo      repository.InvoiceRepo
 	contacts  *ContactService
 	sequences *SequenceService
+	audit     *AuditService
 }
 
 // NewInvoiceService creates a new InvoiceService.
-func NewInvoiceService(repo repository.InvoiceRepo, contacts *ContactService, sequences *SequenceService) *InvoiceService {
+func NewInvoiceService(repo repository.InvoiceRepo, contacts *ContactService, sequences *SequenceService, audit *AuditService) *InvoiceService {
 	return &InvoiceService{
 		repo:      repo,
 		contacts:  contacts,
 		sequences: sequences,
+		audit:     audit,
 	}
 }
 
@@ -98,6 +100,9 @@ func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) er
 	if err := s.repo.Create(ctx, invoice); err != nil {
 		return fmt.Errorf("creating invoice: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "invoice", invoice.ID, "create", nil, invoice)
+	}
 	return nil
 }
 
@@ -150,6 +155,9 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 	if err := s.repo.Update(ctx, invoice); err != nil {
 		return fmt.Errorf("updating invoice: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "invoice", invoice.ID, "update", existing, invoice)
+	}
 	return nil
 }
 
@@ -169,6 +177,9 @@ func (s *InvoiceService) Delete(ctx context.Context, id int64) error {
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting invoice: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "invoice", id, "delete", nil, nil)
 	}
 	return nil
 }

@@ -269,6 +269,19 @@ type SecurityTransactionRepo interface {
 	DeleteByDocumentID(ctx context.Context, documentID int64) error
 }
 
+// AuditLogRepo defines the persistence interface for audit log entries.
+type AuditLogRepo interface {
+	Create(ctx context.Context, entry *domain.AuditLogEntry) error
+	ListByEntity(ctx context.Context, entityType string, entityID int64) ([]domain.AuditLogEntry, error)
+}
+
+// FakturoidImportLogRepo defines the persistence interface for Fakturoid import logs.
+type FakturoidImportLogRepo interface {
+	Create(ctx context.Context, entry *domain.FakturoidImportLog) error
+	FindByFakturoidID(ctx context.Context, entityType string, fakturoidID int64) (*domain.FakturoidImportLog, error)
+	ListByEntityType(ctx context.Context, entityType string) ([]domain.FakturoidImportLog, error)
+}
+
 // TaxDeductionDocumentRepo defines the persistence interface for tax deduction documents.
 type TaxDeductionDocumentRepo interface {
 	Create(ctx context.Context, doc *domain.TaxDeductionDocument) error

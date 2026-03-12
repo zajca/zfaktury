@@ -16,15 +16,17 @@ type ARESClient interface {
 
 // ContactService provides business logic for contact management.
 type ContactService struct {
-	repo repository.ContactRepo
-	ares ARESClient
+	repo  repository.ContactRepo
+	ares  ARESClient
+	audit *AuditService
 }
 
 // NewContactService creates a new ContactService.
-func NewContactService(repo repository.ContactRepo, ares ARESClient) *ContactService {
+func NewContactService(repo repository.ContactRepo, ares ARESClient, audit *AuditService) *ContactService {
 	return &ContactService{
-		repo: repo,
-		ares: ares,
+		repo:  repo,
+		ares:  ares,
+		audit: audit,
 	}
 }
 
@@ -42,6 +44,9 @@ func (s *ContactService) Create(ctx context.Context, contact *domain.Contact) er
 	if err := s.repo.Create(ctx, contact); err != nil {
 		return fmt.Errorf("creating contact: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "contact", contact.ID, "create", nil, contact)
+	}
 	return nil
 }
 
@@ -56,8 +61,15 @@ func (s *ContactService) Update(ctx context.Context, contact *domain.Contact) er
 	if contact.Type != domain.ContactTypeCompany && contact.Type != domain.ContactTypeIndividual {
 		return errors.New("contact type must be 'company' or 'individual'")
 	}
+	existing, err := s.repo.GetByID(ctx, contact.ID)
+	if err != nil {
+		return fmt.Errorf("fetching contact for audit: %w", err)
+	}
 	if err := s.repo.Update(ctx, contact); err != nil {
 		return fmt.Errorf("updating contact: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "contact", contact.ID, "update", existing, contact)
 	}
 	return nil
 }
@@ -69,6 +81,9 @@ func (s *ContactService) Delete(ctx context.Context, id int64) error {
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting contact: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "contact", id, "delete", nil, nil)
 	}
 	return nil
 }

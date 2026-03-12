@@ -87,7 +87,7 @@
 				<!-- Vendor ICO -->
 				<div>
 					<label for="ocr-vendor-ico" class="block text-sm font-medium text-secondary mb-1">
-						ICO dodavatele
+						IČO dodavatele
 					</label>
 					<input
 						id="ocr-vendor-ico"
@@ -100,7 +100,7 @@
 				<!-- Invoice number -->
 				<div>
 					<label for="ocr-invoice-number" class="block text-sm font-medium text-secondary mb-1">
-						Cislo faktury
+						Číslo faktury
 					</label>
 					<input
 						id="ocr-invoice-number"
@@ -113,7 +113,7 @@
 				<!-- Issue date -->
 				<div>
 					<label for="ocr-issue-date" class="block text-sm font-medium text-secondary mb-1">
-						Datum vystaveni
+						Datum vystavení
 					</label>
 					<input
 						id="ocr-issue-date"
@@ -139,7 +139,7 @@
 				<!-- Total amount -->
 				<div>
 					<label for="ocr-total-amount" class="block text-sm font-medium text-secondary mb-1">
-						Celkova castka
+						Celková částka
 					</label>
 					<input
 						id="ocr-total-amount"
@@ -167,7 +167,7 @@
 				<!-- Currency -->
 				<div>
 					<label for="ocr-currency" class="block text-sm font-medium text-secondary mb-1">
-						Mena
+						Měna
 					</label>
 					<input
 						id="ocr-currency"
@@ -184,7 +184,7 @@
 					variant="secondary"
 					onclick={onclose}
 				>
-					Zrusit
+					Zrušit
 				</Button>
 				<Button
 					variant="primary"

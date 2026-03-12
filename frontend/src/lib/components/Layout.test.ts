@@ -21,10 +21,10 @@ describe('Layout', () => {
 		// Desktop + mobile sidebars both have nav links, so use getAllByText
 		expect(screen.getAllByText('Faktury').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('Kontakty').length).toBeGreaterThanOrEqual(1);
-		expect(screen.getAllByText('Naklady').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Náklady').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('DPH').length).toBeGreaterThanOrEqual(1);
-		expect(screen.getAllByText('Zalohy').length).toBeGreaterThanOrEqual(1);
-		expect(screen.getAllByText('Nastaveni').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Zálohy').length).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByText('Nastavení').length).toBeGreaterThanOrEqual(1);
 		expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1);
 	});
 
@@ -98,7 +98,7 @@ describe('Layout', () => {
 
 	it('renders section header for grouped navigation', () => {
 		render(LayoutTestWrapper);
-		const sections = screen.getAllByText('Ucetnictvi');
+		const sections = screen.getAllByText('Účetnictví');
 		expect(sections.length).toBeGreaterThanOrEqual(1);
 	});
 
@@ -111,13 +111,13 @@ describe('Layout', () => {
 		const invoicesLink = screen.getAllByText('Faktury')[0].closest('a');
 		expect(invoicesLink?.getAttribute('href')).toBe('/invoices');
 
-		const expensesLink = screen.getAllByText('Naklady')[0].closest('a');
+		const expensesLink = screen.getAllByText('Náklady')[0].closest('a');
 		expect(expensesLink?.getAttribute('href')).toBe('/expenses');
 
 		const vatLink = screen.getAllByText('DPH')[0].closest('a');
 		expect(vatLink?.getAttribute('href')).toBe('/vat');
 
-		const prepaymentsLink = screen.getAllByText('Zalohy')[0].closest('a');
+		const prepaymentsLink = screen.getAllByText('Zálohy')[0].closest('a');
 		expect(prepaymentsLink?.getAttribute('href')).toBe('/tax/prepayments');
 
 		const contactsLink = screen.getAllByText('Kontakty')[0].closest('a');

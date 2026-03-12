@@ -37,25 +37,25 @@ describe('OCRReviewDialog', () => {
 		const vendorInput = screen.getByLabelText('Dodavatel') as HTMLInputElement;
 		expect(vendorInput.value).toBe('Test Vendor s.r.o.');
 
-		const icoInput = screen.getByLabelText('ICO dodavatele') as HTMLInputElement;
+		const icoInput = screen.getByLabelText('IČO dodavatele') as HTMLInputElement;
 		expect(icoInput.value).toBe('12345678');
 
-		const invoiceNumberInput = screen.getByLabelText('Cislo faktury') as HTMLInputElement;
+		const invoiceNumberInput = screen.getByLabelText('Číslo faktury') as HTMLInputElement;
 		expect(invoiceNumberInput.value).toBe('FV-2024-001');
 
-		const issueDateInput = screen.getByLabelText('Datum vystaveni') as HTMLInputElement;
+		const issueDateInput = screen.getByLabelText('Datum vystavení') as HTMLInputElement;
 		expect(issueDateInput.value).toBe('2024-01-15');
 
 		const dueDateInput = screen.getByLabelText('Datum splatnosti') as HTMLInputElement;
 		expect(dueDateInput.value).toBe('2024-02-15');
 
-		const totalInput = screen.getByLabelText('Celkova castka') as HTMLInputElement;
+		const totalInput = screen.getByLabelText('Celková částka') as HTMLInputElement;
 		expect(totalInput.value).toBe('12100');
 
 		const vatInput = screen.getByLabelText('DPH') as HTMLInputElement;
 		expect(vatInput.value).toBe('2100');
 
-		const currencyInput = screen.getByLabelText('Mena') as HTMLInputElement;
+		const currencyInput = screen.getByLabelText('Měna') as HTMLInputElement;
 		expect(currencyInput.value).toBe('CZK');
 	});
 
@@ -101,7 +101,7 @@ describe('OCRReviewDialog', () => {
 		await fireEvent.input(vendorInput, { target: { value: 'Updated Vendor' } });
 
 		// Edit currency
-		const currencyInput = screen.getByLabelText('Mena') as HTMLInputElement;
+		const currencyInput = screen.getByLabelText('Měna') as HTMLInputElement;
 		await fireEvent.input(currencyInput, { target: { value: 'EUR' } });
 
 		// Click confirm
@@ -122,7 +122,7 @@ describe('OCRReviewDialog', () => {
 			props: { ocrResult: makeOCRResult(), onclose, onconfirm: vi.fn() },
 		});
 
-		const cancelBtn = screen.getByText('Zrusit');
+		const cancelBtn = screen.getByText('Zrušit');
 		await fireEvent.click(cancelBtn);
 
 		expect(onclose).toHaveBeenCalledOnce();

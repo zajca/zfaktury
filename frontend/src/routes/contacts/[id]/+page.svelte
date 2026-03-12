@@ -128,11 +128,11 @@
 </script>
 
 <svelte:head>
-	<title>{isNew ? 'Novy kontakt' : 'Upravit kontakt'} - ZFaktury</title>
+	<title>{isNew ? 'Nový kontakt' : 'Upravit kontakt'} - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title={isNew ? 'Novy kontakt' : 'Upravit kontakt'} backHref="/contacts" backLabel="Zpet na kontakty">
+	<PageHeader title={isNew ? 'Nový kontakt' : 'Upravit kontakt'} backHref="/contacts" backLabel="Zpět na kontakty">
 		{#snippet actions()}
 			{#if !isNew}
 				<Button variant="danger" onclick={handleDelete}>Smazat</Button>
@@ -161,13 +161,13 @@
 					class={inputClass}
 				>
 					<option value="company">Firma</option>
-					<option value="individual">Fyzicka osoba</option>
+					<option value="individual">Fyzická osoba</option>
 				</select>
 			</div>
 
 			<!-- ICO + ARES lookup -->
 			<div>
-				<label for="ico" class="block text-sm font-medium text-secondary">ICO <HelpTip topic="ico" /></label>
+				<label for="ico" class="block text-sm font-medium text-secondary">IČO <HelpTip topic="ico" /></label>
 				<div class="mt-1 flex gap-2">
 					<input
 						id="ico"
@@ -183,7 +183,7 @@
 
 			<!-- Name -->
 			<div>
-				<label for="name" class="block text-sm font-medium text-secondary">Nazev</label>
+				<label for="name" class="block text-sm font-medium text-secondary">Název</label>
 				<input
 					id="name"
 					type="text"
@@ -195,7 +195,7 @@
 
 			<!-- DIC -->
 			<div>
-				<label for="dic" class="block text-sm font-medium text-secondary">DIC <HelpTip topic="dic" /></label>
+				<label for="dic" class="block text-sm font-medium text-secondary">DIČ <HelpTip topic="dic" /></label>
 				<input
 					id="dic"
 					type="text"
@@ -218,7 +218,7 @@
 				</div>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="city" class="block text-sm font-medium text-secondary">Mesto</label>
+						<label for="city" class="block text-sm font-medium text-secondary">Město</label>
 						<input
 							id="city"
 							type="text"
@@ -227,7 +227,7 @@
 						/>
 					</div>
 					<div>
-						<label for="zip" class="block text-sm font-medium text-secondary">PSC</label>
+						<label for="zip" class="block text-sm font-medium text-secondary">PSČ</label>
 						<input
 							id="zip"
 							type="text"
@@ -240,7 +240,7 @@
 
 			<!-- Contact info -->
 			<fieldset class="space-y-4">
-				<legend class="text-sm font-semibold text-primary">Kontaktni udaje</legend>
+				<legend class="text-sm font-semibold text-primary">Kontaktní údaje</legend>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="email" class="block text-sm font-medium text-secondary">Email</label>
@@ -265,11 +265,11 @@
 
 			<!-- Bank details -->
 			<fieldset class="space-y-4">
-				<legend class="text-sm font-semibold text-primary">Bankovni udaje</legend>
+				<legend class="text-sm font-semibold text-primary">Bankovní údaje</legend>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="bank_account" class="block text-sm font-medium text-secondary"
-							>Cislo uctu</label
+							>Číslo účtu</label
 						>
 						<input
 							id="bank_account"
@@ -279,7 +279,7 @@
 						/>
 					</div>
 					<div>
-						<label for="bank_code" class="block text-sm font-medium text-secondary">Kod banky</label>
+						<label for="bank_code" class="block text-sm font-medium text-secondary">Kód banky</label>
 						<input
 							id="bank_code"
 							type="text"
@@ -306,12 +306,12 @@
 
 			<!-- Notes -->
 			<div>
-				<label for="notes" class="block text-sm font-medium text-secondary">Poznamky</label>
+				<label for="notes" class="block text-sm font-medium text-secondary">Poznámky</label>
 				<Textarea id="notes" bind:value={form.notes} rows={3} class="mt-1" />
 			</div>
 
 			<!-- Submit -->
-			<FormActions {saving} saveLabel="Ulozit" savingLabel="Ukladam..." cancelHref="/contacts" class="pt-4" />
+			<FormActions {saving} saveLabel="Uložit" savingLabel="Ukládám..." cancelHref="/contacts" class="pt-4" />
 		</form>
 	{/if}
 </div>

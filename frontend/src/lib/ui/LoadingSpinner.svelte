@@ -11,6 +11,6 @@
 		<div
 			class="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-accent"
 		></div>
-		<span class="sr-only">Nacitani...</span>
+		<span class="sr-only">Načítání...</span>
 	</div>
 </div>

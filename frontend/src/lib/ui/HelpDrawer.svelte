@@ -74,7 +74,7 @@
 				type="button"
 				class="rounded-md p-1.5 text-secondary hover:bg-hover hover:text-primary transition-colors"
 				onclick={closeHelp}
-				aria-label="Zavrit napovedu"
+				aria-label="Zavřít nápovědu"
 			>
 				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -86,7 +86,7 @@
 		<div class="flex-1 overflow-y-auto px-5 py-5 space-y-6">
 			<!-- Simple explanation -->
 			<section>
-				<h3 class="text-xs font-medium uppercase tracking-wider text-muted mb-3">Jednoduse</h3>
+				<h3 class="text-xs font-medium uppercase tracking-wider text-muted mb-3">Jednoduše</h3>
 				<div class="bg-elevated rounded-lg p-4 space-y-2">
 					{#each topic.simple.split('\n\n') as paragraph}
 						<p class="text-sm text-primary leading-relaxed">{paragraph}</p>
@@ -98,7 +98,7 @@
 
 			<!-- Legal framework -->
 			<section>
-				<h3 class="text-xs font-medium uppercase tracking-wider text-muted mb-3">Pravni ramec</h3>
+				<h3 class="text-xs font-medium uppercase tracking-wider text-muted mb-3">Právní rámec</h3>
 				<div class="space-y-2">
 					{#each topic.legal.split('\n\n') as paragraph}
 						<p class="text-sm text-secondary leading-relaxed">{paragraph}</p>

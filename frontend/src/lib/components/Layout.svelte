@@ -47,32 +47,32 @@
 			href: '/invoices',
 			label: 'Faktury',
 			icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-			actions: [{ href: '/invoices/new', label: 'Nova faktura' }]
+			actions: [{ href: '/invoices/new', label: 'Nová faktura' }]
 		},
 		{
 			href: '/recurring',
-			label: 'Sablony faktur',
+			label: 'Šablony faktur',
 			icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
-			actions: [{ href: '/recurring/new', label: 'Nova sablona' }]
+			actions: [{ href: '/recurring/new', label: 'Nová šablona' }]
 		},
 		{
 			href: '/expenses',
-			label: 'Naklady',
+			label: 'Náklady',
 			icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
 			actions: [
-				{ href: '/expenses/new', label: 'Pridat naklad' },
-				{ href: '/expenses/import', label: 'Import dokladu' },
-				{ href: '/expenses/recurring/new', label: 'Opakovany naklad' }
+				{ href: '/expenses/new', label: 'Přidat náklad' },
+				{ href: '/expenses/import', label: 'Import dokladů' },
+				{ href: '/expenses/recurring/new', label: 'Opakovaný náklad' }
 			]
 		},
 		{
 			href: '/contacts',
 			label: 'Kontakty',
 			icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-			actions: [{ href: '/contacts/new', label: 'Novy kontakt' }]
+			actions: [{ href: '/contacts/new', label: 'Nový kontakt' }]
 		},
 		{
-			section: 'Ucetnictvi',
+			section: 'Účetnictví',
 			items: [
 				{
 					href: '/vat',
@@ -81,17 +81,17 @@
 				},
 				{
 					href: '/tax',
-					label: 'Dan z prijmu',
+					label: 'Daň z příjmů',
 					icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
 					children: [
 						{
 							href: '/tax/credits',
-							label: 'Slevy a odpocty',
+							label: 'Slevy a odpočty',
 							icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
 						},
 						{
 							href: '/tax/prepayments',
-							label: 'Zalohy',
+							label: 'Zálohy',
 							icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
 						},
 						{
@@ -104,7 +104,7 @@
 			]
 		},
 		{
-			section: 'Nastaveni',
+			section: 'Nastavení',
 			items: [
 				{
 					href: '/settings/firma',
@@ -118,7 +118,7 @@
 				},
 				{
 					href: '/settings/sequences',
-					label: 'Ciselne rady',
+					label: 'Číselné řady',
 					icon: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14'
 				},
 				{

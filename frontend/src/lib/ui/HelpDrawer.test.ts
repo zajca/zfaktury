@@ -29,25 +29,25 @@ describe('HelpDrawer', () => {
 	it('displays topic title in header', () => {
 		openHelp('variabilni-symbol');
 		render(HelpDrawer);
-		expect(screen.getByText('Variabilni symbol')).toBeInTheDocument();
+		expect(screen.getByText('Variabilní symbol')).toBeInTheDocument();
 	});
 
 	it('displays simple explanation section header', () => {
 		openHelp('ico');
 		render(HelpDrawer);
-		expect(screen.getByText('Jednoduse')).toBeInTheDocument();
+		expect(screen.getByText('Jednoduše')).toBeInTheDocument();
 	});
 
 	it('displays legal section header', () => {
 		openHelp('ico');
 		render(HelpDrawer);
-		expect(screen.getByText('Pravni ramec')).toBeInTheDocument();
+		expect(screen.getByText('Právní rámec')).toBeInTheDocument();
 	});
 
 	it('has close button with aria-label', () => {
 		openHelp('duzp');
 		render(HelpDrawer);
-		expect(screen.getByLabelText('Zavrit napovedu')).toBeInTheDocument();
+		expect(screen.getByLabelText('Zavřít nápovědu')).toBeInTheDocument();
 	});
 
 	it('has aria-modal="true"', () => {

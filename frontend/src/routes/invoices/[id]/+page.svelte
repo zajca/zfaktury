@@ -259,7 +259,7 @@
 					{:else if invoice.relation_type === 'settlement'}
 						Zálohová faktura:
 					{:else}
-						Souvisejíci faktura:
+						Související faktura:
 					{/if}
 					<a href="/invoices/{invoice.related_invoice_id}" class="text-accent-text hover:text-accent font-medium">
 						#{invoice.related_invoice_id}
@@ -274,7 +274,7 @@
 						{:else if rel.relation_type === 'settlement'}
 							Vyrovnávací faktura:
 						{:else}
-							Souvisejíci faktura:
+							Související faktura:
 						{/if}
 						<a href="/invoices/{rel.id}" class="text-accent-text hover:text-accent font-medium">
 							{rel.invoice_number}
@@ -394,10 +394,10 @@
 								required
 								onchange={handleDueDateChange}
 								presets={[
-									{ label: '+7 dni', days: 7 },
-									{ label: '+14 dni', days: 14 },
-									{ label: '+30 dni', days: 30 },
-									{ label: '+60 dni', days: 60 }
+									{ label: '+7 dní', days: 7 },
+									{ label: '+14 dní', days: 14 },
+									{ label: '+30 dní', days: 30 },
+									{ label: '+60 dní', days: 60 }
 								]}
 								relativeToValue={form.issue_date}
 							/>

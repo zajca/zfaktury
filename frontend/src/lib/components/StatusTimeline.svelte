@@ -36,7 +36,7 @@
 </script>
 
 {#if sorted.length === 0}
-	<p class="text-muted text-sm" data-testid="empty-state">Zatim zadne zmeny stavu.</p>
+	<p class="text-muted text-sm" data-testid="empty-state">Zatím žádné změny stavu.</p>
 {:else}
 	<div class="relative" data-testid="status-timeline">
 		{#each sorted as entry, i (entry.id)}

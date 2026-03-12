@@ -134,7 +134,7 @@
 					/>
 				</svg>
 				<p class="text-sm text-muted">Nahrávám...</p>
-				<span class="sr-only">Nacitani...</span>
+				<span class="sr-only">Načítání...</span>
 			</div>
 		{:else}
 			<svg

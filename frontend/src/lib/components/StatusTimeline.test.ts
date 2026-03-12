@@ -91,7 +91,7 @@ describe('StatusTimeline', () => {
 
 		const emptyState = screen.getByTestId('empty-state');
 		expect(emptyState).toBeInTheDocument();
-		expect(emptyState.textContent).toContain('Zatim zadne zmeny stavu');
+		expect(emptyState.textContent).toContain('Zatím žádné změny stavu');
 		expect(screen.queryByTestId('status-timeline')).not.toBeInTheDocument();
 	});
 

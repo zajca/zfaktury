@@ -24,7 +24,7 @@ function jsonResponse(data: unknown, status = 200) {
 
 const sampleRecurringInvoice = {
 	id: 1,
-	name: 'Mesicni hosting',
+	name: 'Měsíční hosting',
 	customer_id: 1,
 	customer: { id: 1, name: 'Test Corp', ico: '12345678' },
 	frequency: 'monthly',
@@ -102,7 +102,7 @@ describe('Recurring invoice detail page', () => {
 			expect(screen.getByText('Test Corp')).toBeInTheDocument();
 		});
 
-		expect(screen.getByText('Mesicni hosting')).toBeInTheDocument();
+		expect(screen.getByText('Měsíční hosting')).toBeInTheDocument();
 		expect(screen.getByText('Měsíčně')).toBeInTheDocument();
 		expect(screen.getByText('Aktivní')).toBeInTheDocument();
 	});
@@ -149,7 +149,7 @@ describe('Recurring invoice detail page', () => {
 		await fireEvent.click(screen.getByText('Upravit'));
 
 		await waitFor(() => {
-			expect(screen.getByText(/Upravit: Mesicni hosting/)).toBeInTheDocument();
+			expect(screen.getByText(/Upravit: Měsíční hosting/)).toBeInTheDocument();
 		});
 
 		expect(screen.getByText('Uložit změny')).toBeInTheDocument();

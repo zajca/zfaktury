@@ -14,7 +14,7 @@ describe('LoadingSpinner', () => {
 
 	it('has sr-only loading text', () => {
 		render(LoadingSpinner);
-		expect(screen.getByText('Nacitani...')).toBeInTheDocument();
+		expect(screen.getByText('Načítání...')).toBeInTheDocument();
 	});
 
 	it('renders spinning animation element', () => {

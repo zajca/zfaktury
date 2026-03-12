@@ -139,9 +139,9 @@ describe('help-content', () => {
 		it('returns generic text without constants', () => {
 			const topics = getHelpTopics(null);
 			expect(topics['sleva-na-poplatnika'].simple).not.toContain('2024');
-			expect(topics['sleva-na-poplatnika'].simple).toContain('zdanovacim obdobi');
+			expect(topics['sleva-na-poplatnika'].simple).toContain('zdaňovacím období');
 			expect(topics['zvyhodneni-na-deti'].simple).not.toContain('15 204');
-			expect(topics['dan-15-23'].simple).toContain('48nasobku');
+			expect(topics['dan-15-23'].simple).toContain('48násobku');
 		});
 
 		it('returns same topics with and without constants', () => {

@@ -48,8 +48,8 @@ const sampleExpense = {
 };
 
 const sampleCategories = [
-	{ key: 'office', label_cs: 'Kancelar' },
-	{ key: 'travel', label_cs: 'Cestovne' }
+	{ key: 'office', label_cs: 'Kancelář' },
+	{ key: 'travel', label_cs: 'Cestovné' }
 ];
 
 beforeEach(async () => {

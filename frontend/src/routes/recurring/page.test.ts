@@ -22,7 +22,7 @@ function jsonResponse(data: unknown, status = 200) {
 const sampleRecurring = [
 	{
 		id: 1,
-		name: 'Mesicni hosting',
+		name: 'Měsíční hosting',
 		customer_id: 1,
 		customer: { id: 1, name: 'Test Corp' },
 		frequency: 'monthly',
@@ -43,7 +43,7 @@ const sampleRecurring = [
 	},
 	{
 		id: 2,
-		name: 'Rocni licence',
+		name: 'Roční licence',
 		customer_id: 2,
 		customer: { id: 2, name: 'Acme' },
 		frequency: 'yearly',
@@ -93,14 +93,14 @@ describe('Recurring invoices list page', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Mesicni hosting')).toBeInTheDocument();
+			expect(screen.getByText('Měsíční hosting')).toBeInTheDocument();
 		});
 
 		expect(screen.getByText('Test Corp')).toBeInTheDocument();
 		expect(screen.getByText('Měsíčně')).toBeInTheDocument();
 		expect(screen.getByText('Aktivní')).toBeInTheDocument();
 
-		expect(screen.getByText('Rocni licence')).toBeInTheDocument();
+		expect(screen.getByText('Roční licence')).toBeInTheDocument();
 		expect(screen.getByText('Acme')).toBeInTheDocument();
 		expect(screen.getByText('Ročně')).toBeInTheDocument();
 		expect(screen.getByText('Neaktivní')).toBeInTheDocument();

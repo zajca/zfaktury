@@ -58,11 +58,11 @@
 	let deductionAmount = $state(0);
 
 	const categoryLabels: Record<string, string> = {
-		mortgage: 'Uroky z hypoteky',
-		life_insurance: 'Zivotni pojisteni',
-		pension: 'Penzijni sporeni',
+		mortgage: 'Úroky z hypotéky',
+		life_insurance: 'Životní pojištění',
+		pension: 'Penzijní spoření',
 		donation: 'Dary',
-		union_dues: 'Odborove prispevky'
+		union_dues: 'Odborové příspěvky'
 	};
 
 	async function loadData() {
@@ -99,7 +99,7 @@
 				disabilityLevel = 0;
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodarilo se nacist data';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
 		} finally {
 			loading = false;
 		}
@@ -147,7 +147,7 @@
 			});
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri ukladani';
+			error = e instanceof Error ? e.message : 'Chyba při ukládání';
 		} finally {
 			saving = false;
 		}
@@ -161,7 +161,7 @@
 			resetSpouseForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri mazani';
+			error = e instanceof Error ? e.message : 'Chyba při mazání';
 		} finally {
 			saving = false;
 		}
@@ -178,7 +178,7 @@
 			});
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri ukladani';
+			error = e instanceof Error ? e.message : 'Chyba při ukládání';
 		} finally {
 			saving = false;
 		}
@@ -203,7 +203,7 @@
 			resetChildForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri ukladani';
+			error = e instanceof Error ? e.message : 'Chyba při ukládání';
 		} finally {
 			saving = false;
 		}
@@ -216,7 +216,7 @@
 			await taxCreditsApi.deleteChild(selectedYear, id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri mazani';
+			error = e instanceof Error ? e.message : 'Chyba při mazání';
 		} finally {
 			saving = false;
 		}
@@ -249,7 +249,7 @@
 			resetDeductionForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri ukladani';
+			error = e instanceof Error ? e.message : 'Chyba při ukládání';
 		} finally {
 			saving = false;
 		}
@@ -262,7 +262,7 @@
 			await taxDeductionsApi.delete(selectedYear, id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri mazani';
+			error = e instanceof Error ? e.message : 'Chyba při mazání';
 		} finally {
 			saving = false;
 		}
@@ -289,7 +289,7 @@
 				await taxDeductionsApi.uploadDocument(selectedYear, deductionId, file);
 				await loadData();
 			} catch (e) {
-				error = e instanceof Error ? e.message : 'Chyba pri nahravani';
+				error = e instanceof Error ? e.message : 'Chyba při nahrávání';
 			} finally {
 				saving = false;
 			}
@@ -307,7 +307,7 @@
 				await loadData();
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri extrakci';
+			error = e instanceof Error ? e.message : 'Chyba při extrakci';
 		} finally {
 			saving = false;
 		}
@@ -320,7 +320,7 @@
 			await taxDeductionsApi.deleteDocument(docId);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri mazani';
+			error = e instanceof Error ? e.message : 'Chyba při mazání';
 		} finally {
 			saving = false;
 		}
@@ -333,7 +333,7 @@
 			await taxCreditsApi.copyFromYear(selectedYear, selectedYear - 1);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba pri kopirovani';
+			error = e instanceof Error ? e.message : 'Chyba při kopírování';
 		} finally {
 			saving = false;
 		}
@@ -353,28 +353,28 @@
 </script>
 
 <svelte:head>
-	<title>Slevy a odpocty {selectedYear} - ZFaktury</title>
+	<title>Slevy a odpočty {selectedYear} - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl">
-	<h1 class="text-xl font-semibold text-primary">Slevy a odpocty za rok {selectedYear}</h1>
+	<h1 class="text-xl font-semibold text-primary">Slevy a odpočty za rok {selectedYear}</h1>
 
 	<!-- Year selector + copy -->
 	<div class="mt-4 flex items-center gap-3">
-		<Button variant="ghost" size="sm" onclick={() => { selectedYear--; }} title="Predchozi rok" aria-label="Predchozi rok">
+		<Button variant="ghost" size="sm" onclick={() => { selectedYear--; }} title="Předchozí rok" aria-label="Předchozí rok">
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 			</svg>
 		</Button>
 		<span class="min-w-[4rem] text-center text-xl font-semibold text-primary tabular-nums">{selectedYear}</span>
-		<Button variant="ghost" size="sm" onclick={() => { selectedYear++; }} title="Nasledujici rok" aria-label="Nasledujici rok">
+		<Button variant="ghost" size="sm" onclick={() => { selectedYear++; }} title="Následující rok" aria-label="Následující rok">
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 			</svg>
 		</Button>
 		<div class="ml-auto">
 			<Button variant="secondary" size="sm" onclick={copyFromPreviousYear} disabled={saving}>
-				Kopirovat z {selectedYear - 1}
+				Kopírovat z {selectedYear - 1}
 			</Button>
 		</div>
 	</div>
@@ -388,8 +388,8 @@
 			<!-- 1. Personal credits -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Osobni slevy <HelpTip topic="sleva-na-poplatnika" {taxConstants} /></h2>
-					<Button variant="primary" size="sm" onclick={savePersonal} disabled={saving}>Ulozit</Button>
+					<h2 class="text-base font-semibold text-primary">Osobní slevy <HelpTip topic="sleva-na-poplatnika" {taxConstants} /></h2>
+					<Button variant="primary" size="sm" onclick={savePersonal} disabled={saving}>Uložit</Button>
 				</div>
 				<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<label class="flex items-center gap-2 text-sm text-primary">
@@ -398,7 +398,7 @@
 					</label>
 					{#if isStudent}
 						<div>
-							<span class="text-xs text-tertiary">Pocet mesicu</span>
+							<span class="text-xs text-tertiary">Počet měsíců</span>
 							<Select value={studentMonths} onchange={(e: Event) => { studentMonths = Number((e.currentTarget as HTMLSelectElement).value); }}>
 								{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
 									<option value={m}>{m}</option>
@@ -409,10 +409,10 @@
 					<div>
 						<span class="text-xs text-tertiary">Invalidita</span>
 						<Select value={disabilityLevel} onchange={(e: Event) => { disabilityLevel = Number((e.currentTarget as HTMLSelectElement).value); }}>
-							<option value={0}>Zadna</option>
-							<option value={1}>1. a 2. stupen</option>
-							<option value={2}>3. stupen</option>
-							<option value={3}>Drzitel ZTP/P</option>
+							<option value={0}>Žádná</option>
+							<option value={1}>1. a 2. stupeň</option>
+							<option value={2}>3. stupeň</option>
+							<option value={3}>Držitel ZTP/P</option>
 						</Select>
 					</div>
 				</div>
@@ -431,27 +431,27 @@
 			<!-- 2. Spouse -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Manzel/ka <HelpTip topic="sleva-na-manzela" {taxConstants} /></h2>
+					<h2 class="text-base font-semibold text-primary">Manžel/ka <HelpTip topic="sleva-na-manzela" {taxConstants} /></h2>
 					{#if !showSpouseForm}
-						<Button variant="primary" size="sm" onclick={() => (showSpouseForm = true)}>Pridat</Button>
+						<Button variant="primary" size="sm" onclick={() => (showSpouseForm = true)}>Přidat</Button>
 					{/if}
 				</div>
 				{#if showSpouseForm}
 					<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 						<div>
-							<span class="text-xs text-tertiary">Jmeno</span>
-							<Input value={spouseName} oninput={(e: Event) => { spouseName = (e.currentTarget as HTMLInputElement).value; }} placeholder="Jmeno a prijmeni" />
+							<span class="text-xs text-tertiary">Jméno</span>
+							<Input value={spouseName} oninput={(e: Event) => { spouseName = (e.currentTarget as HTMLInputElement).value; }} placeholder="Jméno a příjmení" />
 						</div>
 						<div>
-							<span class="text-xs text-tertiary">Rodne cislo</span>
+							<span class="text-xs text-tertiary">Rodné číslo</span>
 							<Input value={spouseBirthNumber} oninput={(e: Event) => { spouseBirthNumber = (e.currentTarget as HTMLInputElement).value; }} placeholder="000000/0000" />
 						</div>
 						<div>
-							<span class="text-xs text-tertiary">Rocni prijem (CZK)</span>
+							<span class="text-xs text-tertiary">Roční příjem (CZK)</span>
 							<Input type="number" value={spouseIncome} oninput={(e: Event) => { spouseIncome = Number((e.currentTarget as HTMLInputElement).value); }} step="1" />
 						</div>
 						<div>
-							<span class="text-xs text-tertiary">Mesicu <HelpTip topic="mesice-proporcializace" {taxConstants} /></span>
+							<span class="text-xs text-tertiary">Měsíců <HelpTip topic="mesice-proporcializace" {taxConstants} /></span>
 							<Select value={spouseMonths} onchange={(e: Event) => { spouseMonths = Number((e.currentTarget as HTMLSelectElement).value); }}>
 								{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
 									<option value={m}>{m}</option>
@@ -467,33 +467,33 @@
 						<div class="mt-3 text-sm text-tertiary">
 							Sleva: <strong class="text-primary">{formatCZK(summary.spouse.credit_amount)}</strong>
 							{#if spouseIncome >= 68000}
-								<span class="ml-2 text-warning">(prijem >= 68 000 CZK, sleva se neuplatni)</span>
+								<span class="ml-2 text-warning">(příjem >= 68 000 CZK, sleva se neuplatní)</span>
 							{/if}
 						</div>
 					{/if}
 					<div class="mt-4 flex gap-2">
-						<Button variant="primary" size="sm" onclick={saveSpouse} disabled={saving}>Ulozit</Button>
+						<Button variant="primary" size="sm" onclick={saveSpouse} disabled={saving}>Uložit</Button>
 						<Button variant="danger" size="sm" onclick={deleteSpouse} disabled={saving}>Odebrat</Button>
 					</div>
 				{:else}
-					<p class="mt-2 text-sm text-tertiary">Neuplatnovano</p>
+					<p class="mt-2 text-sm text-tertiary">Neuplatňováno</p>
 				{/if}
 			</Card>
 
 			<!-- 3. Children -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Deti <HelpTip topic="zvyhodneni-na-deti" {taxConstants} /></h2>
-					<Button variant="primary" size="sm" onclick={() => { resetChildForm(); showChildForm = true; }}>Pridat dite</Button>
+					<h2 class="text-base font-semibold text-primary">Děti <HelpTip topic="zvyhodneni-na-deti" {taxConstants} /></h2>
+					<Button variant="primary" size="sm" onclick={() => { resetChildForm(); showChildForm = true; }}>Přidat dítě</Button>
 				</div>
 				{#if summary?.children && summary.children.length > 0}
 					<div class="mt-4 space-y-2">
 						{#each summary.children as child (child.id)}
 							<div class="flex items-center justify-between rounded-lg border border-border p-3">
 								<div>
-									<span class="text-sm font-medium text-primary">{child.child_name || `Dite ${child.child_order}`}</span>
+									<span class="text-sm font-medium text-primary">{child.child_name || `Dítě ${child.child_order}`}</span>
 									<span class="ml-2 text-xs text-tertiary">
-										{child.child_order}. dite, {child.months_claimed} mes.
+										{child.child_order}. dítě, {child.months_claimed} mes.
 										{#if child.ztp}<span class="text-accent">ZTP</span>{/if}
 									</span>
 									<span class="ml-2 text-sm font-medium text-primary">{formatCZK(child.credit_amount)}</span>
@@ -506,33 +506,33 @@
 						{/each}
 					</div>
 					<div class="mt-2 text-sm text-tertiary">
-						Celkem zvyhodneni: <strong class="text-primary">{formatCZK(summary.total_child_benefit)}</strong>
+						Celkem zvýhodnění: <strong class="text-primary">{formatCZK(summary.total_child_benefit)}</strong>
 					</div>
 				{:else}
-					<p class="mt-2 text-sm text-tertiary">Zadne deti</p>
+					<p class="mt-2 text-sm text-tertiary">Žádné děti</p>
 				{/if}
 				{#if showChildForm}
 					<div class="mt-4 rounded-lg border border-border-subtle bg-elevated p-4">
-						<h3 class="text-sm font-medium text-primary">{editingChildId ? 'Upravit dite' : 'Pridat dite'}</h3>
+						<h3 class="text-sm font-medium text-primary">{editingChildId ? 'Upravit dítě' : 'Přidat dítě'}</h3>
 						<div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
 							<div>
-								<span class="text-xs text-tertiary">Jmeno</span>
-								<Input value={childName} oninput={(e: Event) => { childName = (e.currentTarget as HTMLInputElement).value; }} placeholder="Jmeno ditete" />
+								<span class="text-xs text-tertiary">Jméno</span>
+								<Input value={childName} oninput={(e: Event) => { childName = (e.currentTarget as HTMLInputElement).value; }} placeholder="Jméno dítěte" />
 							</div>
 							<div>
-								<span class="text-xs text-tertiary">Rodne cislo</span>
+								<span class="text-xs text-tertiary">Rodné číslo</span>
 								<Input value={childBirthNumber} oninput={(e: Event) => { childBirthNumber = (e.currentTarget as HTMLInputElement).value; }} placeholder="000000/0000" />
 							</div>
 							<div>
-								<span class="text-xs text-tertiary">Poradi</span>
+								<span class="text-xs text-tertiary">Pořadí</span>
 								<Select value={childOrder} onchange={(e: Event) => { childOrder = Number((e.currentTarget as HTMLSelectElement).value); }}>
-									<option value={1}>1. dite</option>
-									<option value={2}>2. dite</option>
-									<option value={3}>3. a dalsi</option>
+									<option value={1}>1. dítě</option>
+									<option value={2}>2. dítě</option>
+									<option value={3}>3. a další</option>
 								</Select>
 							</div>
 							<div>
-								<span class="text-xs text-tertiary">Mesicu <HelpTip topic="mesice-proporcializace" {taxConstants} /></span>
+								<span class="text-xs text-tertiary">Měsíců <HelpTip topic="mesice-proporcializace" {taxConstants} /></span>
 								<Select value={childMonths} onchange={(e: Event) => { childMonths = Number((e.currentTarget as HTMLSelectElement).value); }}>
 									{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
 										<option value={m}>{m}</option>
@@ -545,8 +545,8 @@
 							</label>
 						</div>
 						<div class="mt-3 flex gap-2">
-							<Button variant="primary" size="sm" onclick={saveChild} disabled={saving}>Ulozit</Button>
-							<Button variant="ghost" size="sm" onclick={resetChildForm}>Zrusit</Button>
+							<Button variant="primary" size="sm" onclick={saveChild} disabled={saving}>Uložit</Button>
+							<Button variant="ghost" size="sm" onclick={resetChildForm}>Zrušit</Button>
 						</div>
 					</div>
 				{/if}
@@ -555,8 +555,8 @@
 			<!-- 4. Deductions -->
 			<Card>
 				<div class="flex items-center justify-between">
-					<h2 class="text-base font-semibold text-primary">Nezdanitelne casti (odpocty) <HelpTip topic="nezdanitelne-odpocty" {taxConstants} /></h2>
-					<Button variant="primary" size="sm" onclick={() => { resetDeductionForm(); showDeductionForm = true; }}>Pridat odpocet</Button>
+					<h2 class="text-base font-semibold text-primary">Nezdanitelné části (odpočty) <HelpTip topic="nezdanitelne-odpocty" {taxConstants} /></h2>
+					<Button variant="primary" size="sm" onclick={() => { resetDeductionForm(); showDeductionForm = true; }}>Přidat odpočet</Button>
 				</div>
 				{#if deductions.length > 0}
 					<div class="mt-4 space-y-3">
@@ -575,11 +575,11 @@
 									</div>
 								</div>
 								<div class="mt-2 flex gap-6 text-sm">
-									<span class="text-tertiary">Uplatnovano: <strong class="text-primary">{formatCZK(ded.claimed_amount)}</strong></span>
+									<span class="text-tertiary">Uplatňováno: <strong class="text-primary">{formatCZK(ded.claimed_amount)}</strong></span>
 									{#if ded.max_amount > 0}
 										<span class="text-tertiary">Max: {formatCZK(ded.max_amount)}</span>
 									{/if}
-									<span class="text-tertiary">Uznano: <strong class="text-primary">{formatCZK(ded.allowed_amount)}</strong></span>
+									<span class="text-tertiary">Uznáno: <strong class="text-primary">{formatCZK(ded.allowed_amount)}</strong></span>
 								</div>
 								<!-- Documents -->
 								{#if ded.documents && ded.documents.length > 0}
@@ -589,7 +589,7 @@
 												<a href={taxDeductionsApi.downloadDocument(doc.id)} class="text-accent hover:underline" target="_blank">{doc.filename}</a>
 												{#if doc.extracted_amount > 0}
 													<span class="rounded bg-success-bg px-1.5 py-0.5 text-success">
-														Extrahovano: {formatCZK(doc.extracted_amount)} ({Math.round(doc.confidence * 100)}%)
+														Extrahováno: {formatCZK(doc.extracted_amount)} ({Math.round(doc.confidence * 100)}%)
 													</span>
 												{/if}
 												<Button variant="ghost" size="sm" onclick={() => extractAmount(doc.id)} disabled={saving}>Extrahovat</Button>
@@ -599,17 +599,17 @@
 									</div>
 								{/if}
 								<div class="mt-2">
-									<Button variant="secondary" size="sm" onclick={() => uploadDocument(ded.id)} disabled={saving}>Nahrat doklad</Button>
+									<Button variant="secondary" size="sm" onclick={() => uploadDocument(ded.id)} disabled={saving}>Nahrát doklad</Button>
 								</div>
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<p class="mt-2 text-sm text-tertiary">Zadne odpocty</p>
+					<p class="mt-2 text-sm text-tertiary">Žádné odpočty</p>
 				{/if}
 				{#if showDeductionForm}
 					<div class="mt-4 rounded-lg border border-border-subtle bg-elevated p-4">
-						<h3 class="text-sm font-medium text-primary">{editingDeductionId ? 'Upravit odpocet' : 'Pridat odpocet'}</h3>
+						<h3 class="text-sm font-medium text-primary">{editingDeductionId ? 'Upravit odpočet' : 'Přidat odpočet'}</h3>
 						<div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
 							<div>
 								<span class="text-xs text-tertiary">Kategorie</span>
@@ -621,16 +621,16 @@
 							</div>
 							<div>
 								<span class="text-xs text-tertiary">Popis</span>
-								<Input value={deductionDescription} oninput={(e: Event) => { deductionDescription = (e.currentTarget as HTMLInputElement).value; }} placeholder="Nazev/cislo smlouvy" />
+								<Input value={deductionDescription} oninput={(e: Event) => { deductionDescription = (e.currentTarget as HTMLInputElement).value; }} placeholder="Název/číslo smlouvy" />
 							</div>
 							<div>
-								<span class="text-xs text-tertiary">Castka (CZK)</span>
+								<span class="text-xs text-tertiary">Částka (CZK)</span>
 								<Input type="number" value={deductionAmount} oninput={(e: Event) => { deductionAmount = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
 							</div>
 						</div>
 						<div class="mt-3 flex gap-2">
-							<Button variant="primary" size="sm" onclick={saveDeduction} disabled={saving}>Ulozit</Button>
-							<Button variant="ghost" size="sm" onclick={resetDeductionForm}>Zrusit</Button>
+							<Button variant="primary" size="sm" onclick={saveDeduction} disabled={saving}>Uložit</Button>
+							<Button variant="ghost" size="sm" onclick={resetDeductionForm}>Zrušit</Button>
 						</div>
 					</div>
 				{/if}
@@ -642,17 +642,17 @@
 					<h2 class="text-base font-semibold text-primary">Souhrn</h2>
 					<div class="mt-3 space-y-1 text-sm">
 						<div class="flex justify-between">
-							<span class="text-tertiary">Celkove slevy (bez zakladni)</span>
+							<span class="text-tertiary">Celkové slevy (bez základní)</span>
 							<strong class="text-primary">{formatCZK(summary.total_credits)}</strong>
 						</div>
 						<div class="flex justify-between">
-							<span class="text-tertiary">Danove zvyhodneni na deti</span>
+							<span class="text-tertiary">Daňové zvýhodnění na děti</span>
 							<strong class="text-primary">{formatCZK(summary.total_child_benefit)}</strong>
 						</div>
 						{#if deductions.length > 0}
 							{@const totalDeductions = deductions.reduce((sum, d) => sum + d.allowed_amount, 0)}
 							<div class="flex justify-between">
-								<span class="text-tertiary">Nezdanitelne odpocty</span>
+								<span class="text-tertiary">Nezdanitelné odpočty</span>
 								<strong class="text-primary">{formatCZK(totalDeductions)}</strong>
 							</div>
 						{/if}

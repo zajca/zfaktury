@@ -57,8 +57,8 @@ describe('Expenses import page', () => {
 	it('renders drop zone in idle state', () => {
 		render(Page);
 
-		expect(screen.getByText('Pretahni soubor sem')).toBeInTheDocument();
-		expect(screen.getByText('nebo klikni pro vyber')).toBeInTheDocument();
+		expect(screen.getByText('Přetáhni soubor sem')).toBeInTheDocument();
+		expect(screen.getByText('nebo klikni pro výběr')).toBeInTheDocument();
 		expect(screen.getByText('PDF, JPG, PNG, WebP (max 20 MB)')).toBeInTheDocument();
 		expect(screen.getByText('Import z dokladu')).toBeInTheDocument();
 	});
@@ -66,7 +66,7 @@ describe('Expenses import page', () => {
 	it('renders back link to expenses', () => {
 		render(Page);
 
-		const backLink = screen.getByText('Zpet na naklady');
+		const backLink = screen.getByText('Zpět na náklady');
 		expect(backLink).toBeInTheDocument();
 		expect(backLink.closest('a')?.getAttribute('href')).toBe('/expenses');
 	});
@@ -142,7 +142,7 @@ describe('Expenses import page', () => {
 
 		// Should show error and return to idle state (drop zone visible again)
 		await waitFor(() => {
-			expect(screen.getByText('Pretahni soubor sem')).toBeInTheDocument();
+			expect(screen.getByText('Přetáhni soubor sem')).toBeInTheDocument();
 		});
 	});
 
@@ -156,7 +156,7 @@ describe('Expenses import page', () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText('Nepodporovany format souboru. Povolene: PDF, JPG, PNG, WebP.')
+				screen.getByText('Nepodporovaný formát souboru. Povolené: PDF, JPG, PNG, WebP.')
 			).toBeInTheDocument();
 		});
 
@@ -174,7 +174,7 @@ describe('Expenses import page', () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText('Soubor je prilis velky. Maximum je 20 MB.')
+				screen.getByText('Soubor je příliš velký. Maximum je 20 MB.')
 			).toBeInTheDocument();
 		});
 
@@ -235,7 +235,7 @@ describe('Expenses import page', () => {
 		});
 
 		// Click cancel button
-		const cancelBtn = screen.getByText('Zrusit');
+		const cancelBtn = screen.getByText('Zrušit');
 		await fireEvent.click(cancelBtn);
 
 		// Should redirect to expense detail (manual editing)

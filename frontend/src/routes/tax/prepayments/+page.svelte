@@ -228,7 +228,7 @@
 				</div>
 			</Card>
 
-			<!-- Mesicni zalohy -->
+			<!-- Měsíční zálohy -->
 			<Card>
 				<h2 class="text-base font-semibold text-primary">Měsíční zálohy <HelpTip topic="nova-zaloha" {taxConstants} /></h2>
 				<p class="mt-1 text-sm text-tertiary">

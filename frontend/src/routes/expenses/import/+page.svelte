@@ -20,10 +20,10 @@
 
 	function validateFile(file: File): string | null {
 		if (!acceptedTypes.includes(file.type)) {
-			return 'Nepodporovany format souboru. Povolene: PDF, JPG, PNG, WebP.';
+			return 'Nepodporovaný formát souboru. Povolené: PDF, JPG, PNG, WebP.';
 		}
 		if (file.size > 20 * 1024 * 1024) {
-			return 'Soubor je prilis velky. Maximum je 20 MB.';
+			return 'Soubor je příliš velký. Maximum je 20 MB.';
 		}
 		return null;
 	}
@@ -108,20 +108,20 @@
 			});
 			goto(`/expenses/${expenseId}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Ukladani se nezdarilo';
+			error = e instanceof Error ? e.message : 'Ukládání se nezdařilo';
 			pageState = 'review';
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Import nakladu - ZFaktury</title>
+	<title>Import nákladů - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<PageHeader title="Import z dokladu" description="Nahrajte doklad a data se automaticky rozpoznaji pomoci OCR">
+	<PageHeader title="Import z dokladu" description="Nahrajte doklad a data se automaticky rozpoznají pomocí OCR">
 		{#snippet actions()}
-			<Button variant="secondary" href="/expenses">Zpet na naklady</Button>
+			<Button variant="secondary" href="/expenses">Zpět na náklady</Button>
 		{/snippet}
 	</PageHeader>
 
@@ -147,8 +147,8 @@
 				<svg class="h-12 w-12 text-muted mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
 				</svg>
-				<p class="text-primary font-medium mb-1">Pretahni soubor sem</p>
-				<p class="text-sm text-muted mb-4">nebo klikni pro vyber</p>
+				<p class="text-primary font-medium mb-1">Přetáhni soubor sem</p>
+				<p class="text-sm text-muted mb-4">nebo klikni pro výběr</p>
 				<p class="text-xs text-muted">PDF, JPG, PNG, WebP (max 20 MB)</p>
 				<input
 					id="file-input"
@@ -164,14 +164,14 @@
 	{#if pageState === 'processing'}
 		<Card class="mt-6">
 			<LoadingSpinner class="p-12" />
-			<p class="text-center text-secondary pb-6">Zpracovavam dokument...</p>
+			<p class="text-center text-secondary pb-6">Zpracovávám dokument...</p>
 		</Card>
 	{/if}
 
 	{#if pageState === 'saving'}
 		<Card class="mt-6">
 			<LoadingSpinner class="p-12" />
-			<p class="text-center text-secondary pb-6">Ukladam data...</p>
+			<p class="text-center text-secondary pb-6">Ukládám data...</p>
 		</Card>
 	{/if}
 
@@ -181,14 +181,14 @@
 				<svg class="h-10 w-10 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
 				</svg>
-				<p class="text-primary font-medium">Dokument nahran, ale OCR neni nastaveno</p>
+				<p class="text-primary font-medium">Dokument nahrán, ale OCR není nastaveno</p>
 				<p class="text-sm text-secondary text-center">
-					Automaticke rozpoznavani dat neni k dispozici. Nastavte OCR API klic v konfiguraci.
-					<br />Presmerovavam na naklad pro manualni vyplneni...
+					Automatické rozpoznávání dat není k dispozici. Nastavte OCR API klíč v konfiguraci.
+					<br />Přesměrovávám na náklad pro manuální vyplnění...
 				</p>
 				{#if expenseId}
 					<Button variant="primary" href="/expenses/{expenseId}" class="mt-2">
-						Prejit na naklad
+						Přejít na náklad
 					</Button>
 				{/if}
 			</div>

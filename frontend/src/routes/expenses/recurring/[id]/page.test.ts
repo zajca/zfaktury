@@ -57,7 +57,7 @@ const sampleContacts = {
 	offset: 0
 };
 
-const sampleCategories = [{ key: 'services', label_cs: 'Sluzby' }];
+const sampleCategories = [{ key: 'services', label_cs: 'Služby' }];
 
 beforeEach(async () => {
 	mockFetch.mockReset();

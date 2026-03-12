@@ -23,8 +23,8 @@ describe('HelpTip', () => {
 	it('has correct aria-label with topic title', () => {
 		render(HelpTip, { props: { topic: 'variabilni-symbol' } });
 		const button = screen.getByRole('button');
-		expect(button.getAttribute('aria-label')).toContain('Napoveda:');
-		expect(button.getAttribute('aria-label')).toContain('Variabilni symbol');
+		expect(button.getAttribute('aria-label')).toContain('Nápověda:');
+		expect(button.getAttribute('aria-label')).toContain('Variabilní symbol');
 	});
 
 	it('has aria-haspopup="dialog"', () => {

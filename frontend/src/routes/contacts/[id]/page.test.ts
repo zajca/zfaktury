@@ -77,11 +77,11 @@ describe('Contact detail page - new mode', () => {
 		(page as any).url = { pathname: '/contacts/new', searchParams: new URLSearchParams() };
 	});
 
-	it('renders heading "Novy kontakt"', async () => {
+	it('renders heading "Nový kontakt"', async () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Novy kontakt')).toBeInTheDocument();
+			expect(screen.getByText('Nový kontakt')).toBeInTheDocument();
 		});
 	});
 
@@ -89,7 +89,7 @@ describe('Contact detail page - new mode', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Novy kontakt')).toBeInTheDocument();
+			expect(screen.getByText('Nový kontakt')).toBeInTheDocument();
 		});
 
 		expect(screen.queryByText('Smazat')).not.toBeInTheDocument();
@@ -99,13 +99,13 @@ describe('Contact detail page - new mode', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Novy kontakt')).toBeInTheDocument();
+			expect(screen.getByText('Nový kontakt')).toBeInTheDocument();
 		});
 
-		const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
+		const nameInput = screen.getByLabelText('Název') as HTMLInputElement;
 		expect(nameInput.value).toBe('');
 
-		const icoInput = screen.getByRole('textbox', { name: /ICO/ }) as HTMLInputElement;
+		const icoInput = screen.getByRole('textbox', { name: /IČO/ }) as HTMLInputElement;
 		expect(icoInput.value).toBe('');
 	});
 
@@ -113,15 +113,15 @@ describe('Contact detail page - new mode', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByText('Novy kontakt')).toBeInTheDocument();
+			expect(screen.getByText('Nový kontakt')).toBeInTheDocument();
 		});
 
-		const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
+		const nameInput = screen.getByLabelText('Název') as HTMLInputElement;
 		await fireEvent.input(nameInput, { target: { value: 'New Company' } });
 
 		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleContact, id: 2, name: 'New Company' }));
 
-		const submitBtn = screen.getByText('Ulozit');
+		const submitBtn = screen.getByText('Uložit');
 		await fireEvent.click(submitBtn);
 
 		await waitFor(() => {
@@ -159,16 +159,16 @@ describe('Contact detail page - edit mode', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByLabelText('Nazev')).toBeInTheDocument();
+			expect(screen.getByLabelText('Název')).toBeInTheDocument();
 		});
 
-		const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
+		const nameInput = screen.getByLabelText('Název') as HTMLInputElement;
 		expect(nameInput.value).toBe('Test Corp');
 
-		const icoInput = screen.getByRole('textbox', { name: /ICO/ }) as HTMLInputElement;
+		const icoInput = screen.getByRole('textbox', { name: /IČO/ }) as HTMLInputElement;
 		expect(icoInput.value).toBe('12345678');
 
-		const dicInput = screen.getByRole('textbox', { name: /DIC/ }) as HTMLInputElement;
+		const dicInput = screen.getByRole('textbox', { name: /DIČ/ }) as HTMLInputElement;
 		expect(dicInput.value).toBe('CZ12345678');
 
 		const streetInput = screen.getByLabelText('Ulice') as HTMLInputElement;
@@ -194,7 +194,7 @@ describe('Contact detail page - edit mode', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByLabelText('Nazev')).toBeInTheDocument();
+			expect(screen.getByLabelText('Název')).toBeInTheDocument();
 		});
 
 		// Mock the ARES lookup fetch
@@ -204,17 +204,17 @@ describe('Contact detail page - edit mode', () => {
 		await fireEvent.click(aresBtn);
 
 		await waitFor(() => {
-			const nameInput = screen.getByLabelText('Nazev') as HTMLInputElement;
+			const nameInput = screen.getByLabelText('Název') as HTMLInputElement;
 			expect(nameInput.value).toBe('ARES Corp s.r.o.');
 		});
 
 		const streetInput = screen.getByLabelText('Ulice') as HTMLInputElement;
 		expect(streetInput.value).toBe('Dlouha 10');
 
-		const cityInput = screen.getByLabelText('Mesto') as HTMLInputElement;
+		const cityInput = screen.getByLabelText('Město') as HTMLInputElement;
 		expect(cityInput.value).toBe('Brno');
 
-		const zipInput = screen.getByLabelText('PSC') as HTMLInputElement;
+		const zipInput = screen.getByLabelText('PSČ') as HTMLInputElement;
 		expect(zipInput.value).toBe('60200');
 	});
 
@@ -224,12 +224,12 @@ describe('Contact detail page - edit mode', () => {
 		render(Page);
 
 		await waitFor(() => {
-			expect(screen.getByLabelText('Nazev')).toBeInTheDocument();
+			expect(screen.getByLabelText('Název')).toBeInTheDocument();
 		});
 
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleContact));
 
-		const submitBtn = screen.getByText('Ulozit');
+		const submitBtn = screen.getByText('Uložit');
 		await fireEvent.click(submitBtn);
 
 		await waitFor(() => {

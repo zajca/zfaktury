@@ -78,443 +78,443 @@ export interface HelpTopic {
 import type { TaxConstants } from '$lib/api/client';
 
 function fmtCZK(n: number): string {
-	return n.toLocaleString('cs-CZ') + ' Kc';
+	return n.toLocaleString('cs-CZ') + ' Kč';
 }
 
 // Static topics that never change based on year.
 const staticTopics: Record<string, HelpTopic> = {
 	'variabilni-symbol': {
-		title: 'Variabilni symbol',
+		title: 'Variabilní symbol',
 		simple:
-			'Variabilni symbol je cislo, ktere identifikuje platbu. Kdyz vam nekdo posle penize na ucet, banka podle variabilniho symbolu pozna, ke ktere fakture platba patri.\n\nVetsinou se pouziva cislo faktury nebo jeho cast. Dulezite je, aby kazda faktura mela unikatni variabilni symbol -- jinak nepoznate, kdo za co platil.',
+			'Variabilní symbol je číslo, které identifikuje platbu. Když vám někdo pošle peníze na účet, banka podle variabilního symbolu pozná, ke které faktuře platba patří.\n\nVětšinou se používá číslo faktury nebo jeho část. Důležité je, aby každá faktura měla unikátní variabilní symbol -- jinak nepoznáte, kdo za co platil.',
 		legal:
-			'Variabilni symbol je numericke pole o maximalni delce 10 cislic. Je definovan vyhlaskou CNB c. 169/2011 Sb. jako identifikator transakce v tuzemskem platebnim styku.\n\nPodle zakona c. 284/2009 Sb. o platebnim styku je variabilni symbol soucast platebniho prikazu a slouzi k identifikaci platby mezi platcem a prijemcem. Neni povinny ze zakona, ale je standardni soucasti fakturacni praxe v CR.'
+			'Variabilní symbol je numerické pole o maximální délce 10 číslic. Je definován vyhláškou ČNB č. 169/2011 Sb. jako identifikátor transakce v tuzemském platebním styku.\n\nPodle zákona č. 284/2009 Sb. o platebním styku je variabilní symbol součást platebního příkazu a slouží k identifikaci platby mezi plátcem a příjemcem. Není povinný ze zákona, ale je standardní součástí fakturační praxe v ČR.'
 	},
 	'konstantni-symbol': {
-		title: 'Konstantni symbol',
+		title: 'Konstantní symbol',
 		simple:
-			'Konstantni symbol je cislo, ktere rika, o jaky typ platby se jedna (napr. platba za zbozi, sluzby, najem). V praxi se dnes pouziva minimalne -- vetsina bank ho nevyzaduje a pro OSVC neni potrebny.\n\nPokud si nejste jisti, muzete pole nechat prazdne.',
+			'Konstantní symbol je číslo, které říká, o jaký typ platby se jedná (např. platba za zboží, služby, nájem). V praxi se dnes používá minimálně -- většina bank ho nevyžaduje a pro OSVČ není potřebný.\n\nPokud si nejste jisti, můžete pole nechat prázdné.',
 		legal:
-			'Konstantni symbol je definovan vyhlaskou CNB c. 169/2011 Sb. Jedna se o ctyrciselny kod charakterizujici platbu z hlediska jejiho ucelu. Od roku 2004 neni jeho uvadeni povinne pro bezne platby.\n\nNejcastejsi hodnoty: 0008 (platba za zbozi), 0308 (platba za sluzby), 0558 (ostatni bezhotovostni platby).'
+			'Konstantní symbol je definován vyhláškou ČNB č. 169/2011 Sb. Jedná se o čtyřčíselný kód charakterizující platbu z hlediska jejího účelu. Od roku 2004 není jeho uvádění povinné pro běžné platby.\n\nNejčastější hodnoty: 0008 (platba za zboží), 0308 (platba za služby), 0558 (ostatní bezhotovostní platby).'
 	},
 	duzp: {
-		title: 'Datum uskutecneni zdanitelneho plneni (DUZP)',
+		title: 'Datum uskutečnění zdanitelného plnění (DUZP)',
 		simple:
-			'DUZP je datum, kdy skutecne doslo k dodani zbozi nebo poskyteni sluzby. Ne kdy jste vystavili fakturu, ne kdy vam prisly penize -- ale kdy jste realne odvedli praci nebo dodali produkt.\n\nNapr. pokud jste programovali web cely leden a fakturujete az 5. unora, DUZP bude posledni den, kdy jste praci predali (treba 31. ledna).\n\nPro platce DPH je DUZP klicove, protoze urcuje, do ktereho zdanovaciho obdobi faktura patri.',
+			'DUZP je datum, kdy skutečně došlo k dodání zboží nebo poskytnutí služby. Ne kdy jste vystavili fakturu, ne kdy vám přišly peníze -- ale kdy jste reálně odvedli práci nebo dodali produkt.\n\nNapř. pokud jste programovali web celý leden a fakturujete až 5. února, DUZP bude poslední den, kdy jste práci předali (třeba 31. ledna).\n\nPro plátce DPH je DUZP klíčové, protože určuje, do kterého zdaňovacího období faktura patří.',
 		legal:
-			'DUZP je definovano v zakone c. 235/2004 Sb. o DPH, § 21. U dodani zbozi je to den dodani (§ 21 odst. 1). U poskytovani sluzeb den poskytnuti nebo den vystaveni danoveho dokladu, pokud nastal drive (§ 21 odst. 3).\n\nPlatce DPH je povinen priznat dan na vystupu ke dni uskutecneni zdanitelneho plneni (§ 20a). DUZP urcuje zdanovaci obdobi, ve kterem musi byt dan odvedena.'
+			'DUZP je definováno v zákoně č. 235/2004 Sb. o DPH, § 21. U dodání zboží je to den dodání (§ 21 odst. 1). U poskytování služeb den poskytnutí nebo den vystavení daňového dokladu, pokud nastal dříve (§ 21 odst. 3).\n\nPlátce DPH je povinen přiznat daň na výstupu ke dni uskutečnění zdanitelného plnění (§ 20a). DUZP určuje zdaňovací období, ve kterém musí být daň odvedena.'
 	},
 	'datum-splatnosti': {
 		title: 'Datum splatnosti',
 		simple:
-			'Datum splatnosti je den, do ktereho ma odberatel zaplatit fakturu. Pokud zakaznik nezaplati do tohoto data, faktura je "po splatnosti" a muzete uplatnovat uroky z prodleni.\n\nBezna splatnost je 14 nebo 30 dni od data vystaveni. Muze byt i delsi -- zalezi na dohode s odberatelem.',
+			'Datum splatnosti je den, do kterého má odběratel zaplatit fakturu. Pokud zákazník nezaplatí do tohoto data, faktura je "po splatnosti" a můžete uplatňovat úroky z prodlení.\n\nBěžná splatnost je 14 nebo 30 dní od data vystavení. Může být i delší -- záleží na dohodě s odběratelem.',
 		legal:
-			'Splatnost je smluvni ujednani dle zakona c. 89/2012 Sb. (obcansky zakonik), § 1958-1964. Pokud neni dohodnuta, je splatnost bez zbytecneho odkladu po doruceni faktury.\n\nPodle zakona c. 340/2015 Sb. o registru smluv a § 1963 obcanskeho zakoniku plati pro vztahy s verejnym sektorem maximalni splatnost 30 dni. Pro obchodni vztahy mezi podnikateli je smluvni splatnost maximalne 60 dni (§ 1963a OZ), pokud to neni vuci veriteli hrube nespravedlive.'
+			'Splatnost je smluvní ujednání dle zákona č. 89/2012 Sb. (občanský zákoník), § 1958-1964. Pokud není dohodnuta, je splatnost bez zbytečného odkladu po doručení faktury.\n\nPodle zákona č. 340/2015 Sb. o registru smluv a § 1963 občanského zákoníku platí pro vztahy s veřejným sektorem maximální splatnost 30 dní. Pro obchodní vztahy mezi podnikateli je smluvní splatnost maximálně 60 dní (§ 1963a OZ), pokud to není vůči věřiteli hrubě nespravedlivé.'
 	},
 	'zpusob-platby': {
-		title: 'Zpusob platby',
+		title: 'Způsob platby',
 		simple:
-			'Zpusob platby urcuje, jak odberatel zaplati fakturu. Nejcasteji bankovnim prevodem -- v tom pripade faktura obsahuje cislo uctu a variabilni symbol.\n\nDalsi moznosti jsou hotovost, platba kartou nebo dobirka. Pro ucetni a danove ucely je dulezite, aby zpusob platby odpovidal realite.',
+			'Způsob platby určuje, jak odběratel zaplatí fakturu. Nejčastěji bankovním převodem -- v tom případě faktura obsahuje číslo účtu a variabilní symbol.\n\nDalší možnosti jsou hotovost, platba kartou nebo dobírka. Pro účetní a daňové účely je důležité, aby způsob platby odpovídal realitě.',
 		legal:
-			'Zpusob platby na fakture neni povinnou nalezitosti danoveho dokladu dle § 29 zakona c. 235/2004 Sb. o DPH. Jedna se vsak o beznou obchodni nalezitost.\n\nPro hotovostni platby plati limit 270 000 Kc dle zakona c. 254/2004 Sb. o omezeni plateb v hotovosti (§ 4). Poruseni je spravni delikt s pokutou do 500 000 Kc pro fyzicke osoby.'
+			'Způsob platby na faktuře není povinnou náležitostí daňového dokladu dle § 29 zákona č. 235/2004 Sb. o DPH. Jedná se však o běžnou obchodní náležitost.\n\nPro hotovostní platby platí limit 270 000 Kč dle zákona č. 254/2004 Sb. o omezení plateb v hotovosti (§ 4). Porušení je správní delikt s pokutou do 500 000 Kč pro fyzické osoby.'
 	},
 	'poznamka-faktura': {
-		title: 'Poznamka na fakture',
+		title: 'Poznámka na faktuře',
 		simple:
-			'Text, ktery se zobrazi primo na fakture, kterou poslete zakaznikovi. Muzete sem napsat napr. podekovan za spolupraci, informaci o probihajici akci nebo upozorneni na zmenu bankovniho uctu.\n\nTato poznamka je viditelna pro odberatele.',
+			'Text, který se zobrazí přímo na faktuře, kterou pošlete zákazníkovi. Můžete sem napsat např. poděkování za spolupráci, informaci o probíhající akci nebo upozornění na změnu bankovního účtu.\n\nTato poznámka je viditelná pro odběratele.',
 		legal:
-			'Poznamka na fakture neni povinnou nalezitosti danoveho dokladu dle § 29 zakona c. 235/2004 Sb. Pokud vsak slouzi jako informace o osvobozenem plneni, musi obsahovat odkaz na prislusne ustanoveni zakona (§ 29 odst. 2 pism. c).\n\nNapr. u osvobozenych plneni: "Oslobozeno od DPH dle § 51 zakona c. 235/2004 Sb."'
+			'Poznámka na faktuře není povinnou náležitostí daňového dokladu dle § 29 zákona č. 235/2004 Sb. Pokud však slouží jako informace o osvobozeném plnění, musí obsahovat odkaz na příslušné ustanovení zákona (§ 29 odst. 2 písm. c).\n\nNapř. u osvobozených plnění: "Osvobozeno od DPH dle § 51 zákona č. 235/2004 Sb."'
 	},
 	'poznamka-interni': {
-		title: 'Interni poznamka',
+		title: 'Interní poznámka',
 		simple:
-			'Soukroma poznamka, kterou vidite jen vy. Na fakture se nezobrazuje. Muzete sem napsat cokoli pro vlastni evidenci -- napr. "dohodnuto s Petrem 15.3.", "sleva za doporuceni" apod.',
-		legal: 'Interni poznamka nema pravni relevanci a neobjevuje se na zadnem dokladu. Slouzi pouze pro interni evidenci podnikatele.'
+			'Soukromá poznámka, kterou vidíte jen vy. Na faktuře se nezobrazuje. Můžete sem napsat cokoliv pro vlastní evidenci -- např. "dohodnuto s Petrem 15.3.", "sleva za doporučení" apod.',
+		legal: 'Interní poznámka nemá právní relevanci a neobjevuje se na žádném dokladu. Slouží pouze pro interní evidenci podnikatele.'
 	},
 	'qr-platba': {
 		title: 'QR platba',
 		simple:
-			'QR kod na fakture umozni odberateli naskenovat platbu mobilem. Po naskenovani se v bankovni aplikaci automaticky predvyplni cislo uctu, castka, variabilni symbol a dalsi udaje.\n\nOdberatel tak nemusi nic opisovat a platba probehne bez chyb. QR platba je standard Ceske bankovni asociace.',
+			'QR kód na faktuře umožní odběrateli naskenovat platbu mobilem. Po naskenování se v bankovní aplikaci automaticky předvyplní číslo účtu, částka, variabilní symbol a další údaje.\n\nOdběratel tak nemusí nic opisovat a platba proběhne bez chyb. QR platba je standard České bankovní asociace.',
 		legal:
-			'QR platba (SPD -- Short Payment Descriptor) je standard Ceske bankovni asociace pro mobilni platby. Format je definovan specifikaci CBA a je podporovan vsemi hlavnimi bankami v CR.\n\nFormat QR kodu: SPD*1.0*ACC:{IBAN}*AM:{castka}*CC:CZK*X-VS:{variabilni symbol}*...'
+			'QR platba (SPD -- Short Payment Descriptor) je standard České bankovní asociace pro mobilní platby. Formát je definován specifikací CBA a je podporován všemi hlavními bankami v ČR.\n\nFormát QR kódu: SPD*1.0*ACC:{IBAN}*AM:{částka}*CC:CZK*X-VS:{variabilní symbol}*...'
 	},
 	'danove-uznatelny': {
-		title: 'Danove uznatelny naklad',
+		title: 'Daňově uznatelný náklad',
 		simple:
-			'Danove uznatelny naklad je vydaj, ktery si muzete odecist od prijmu a tim snizit dan z prijmu. Musi splnovat podminku: byl vynalozen na dosazeni, zajisteni a udrzeni vasich prijmu.\n\nPriklad: Notebook pro praci = danove uznatelny. Dovolena = neni danove uznatelna.\n\nPokud pouzivate skutecne vydaje (ne pausalni), je dulezite spravne oznacit, ktere naklady jsou danove uznatelne.',
+			'Daňově uznatelný náklad je výdaj, který si můžete odečíst od příjmů a tím snížit daň z příjmů. Musí splňovat podmínku: byl vynaložen na dosažení, zajištění a udržení vašich příjmů.\n\nPříklad: Notebook pro práci = daňově uznatelný. Dovolená = není daňově uznatelná.\n\nPokud používáte skutečné výdaje (ne paušální), je důležité správně označit, které náklady jsou daňově uznatelné.',
 		legal:
-			'Danove uznatelne naklady jsou definovany v § 24 zakona c. 586/1992 Sb. o danich z prijmu. Jsou to vydaje vynalozene na dosazeni, zajisteni a udrzeni zdanitelnych prijmu.\n\nDanove neuznatelne naklady vycte § 25 tehoz zakona (napr. repre, pokuty, penale). Preukazuji se daovymi doklady -- podnikatel musi byt schopen prokazat ucetni doklad, ucel vydaje a souvislost s podnikatelskou cinnosti.'
+			'Daňově uznatelné náklady jsou definovány v § 24 zákona č. 586/1992 Sb. o daních z příjmů. Jsou to výdaje vynaložené na dosažení, zajištění a udržení zdanitelných příjmů.\n\nDaňově neuznatelné náklady vyčte § 25 téhož zákona (např. repre, pokuty, penále). Prokazují se daňovými doklady -- podnikatel musí být schopen prokázat účetní doklad, účel výdaje a souvislost s podnikatelskou činností.'
 	},
 	'podil-podnikani': {
-		title: 'Podil pro podnikani',
+		title: 'Podíl pro podnikání',
 		simple:
-			'Nektery naklady pouzivate jak pro podnikani, tak pro osobni ucely. Napr. auto, telefon nebo internet. Podil pro podnikani urcuje, kolik procent nakladu uplatnite jako danovy vydaj.\n\nPriklad: Telefon pouzivate z 60 % pro praci a z 40 % soukrome. Podil pro podnikani je 60 % a jako danovy naklad si uplatnite 60 % z ceny.\n\nPomerne je treba rozdelit i DPH na vstupu, pokud jste platce DPH.',
+			'Některé náklady používáte jak pro podnikání, tak pro osobní účely. Např. auto, telefon nebo internet. Podíl pro podnikání určuje, kolik procent nákladů uplatníte jako daňový výdaj.\n\nPříklad: Telefon používáte z 60 % pro práci a z 40 % soukromě. Podíl pro podnikání je 60 % a jako daňový náklad si uplatníte 60 % z ceny.\n\nPoměrně je třeba rozdělit i DPH na vstupu, pokud jste plátce DPH.',
 		legal:
-			'Kraceni nakladu u majetku pouzivaneho i pro soukrome ucely upravuje § 24 odst. 2 pism. h) zakona c. 586/1992 Sb. Naklady se uplatnuji v pomerne vysi odpovidajici rozsahu pouziti pro podnikatelskou cinnost.\n\nPro DPH plati narok na odpocet v pomerne vysi dle § 75 zakona c. 235/2004 Sb. Podnikatel je povinen vest evidenci pouziti majetku pro podnikatelske a soukrome ucely.'
+			'Krácení nákladů u majetku používaného i pro soukromé účely upravuje § 24 odst. 2 písm. h) zákona č. 586/1992 Sb. Náklady se uplatňují v poměrné výši odpovídající rozsahu použití pro podnikatelskou činnost.\n\nPro DPH platí nárok na odpočet v poměrné výši dle § 75 zákona č. 235/2004 Sb. Podnikatel je povinen vést evidenci použití majetku pro podnikatelské a soukromé účely.'
 	},
 	'sazba-dph': {
 		title: 'Sazba DPH',
 		simple:
-			'Sazba DPH (dan z pridane hodnoty) urcuje, kolik procent dane se prida k cene zbozi ci sluzby. V Cesku jsou aktualne dve sazby:\n\n- 21 % -- zakladni sazba (vetsina zbozi a sluzeb)\n- 12 % -- snizena sazba (potraviny, leky, knihy, ubytovani, stavebni prace)\n\nPokud nejste platce DPH, DPH neuctujete a na fakture uvedete 0 %.',
+			'Sazba DPH (daň z přidané hodnoty) určuje, kolik procent daně se přidá k ceně zboží či služby. V Česku jsou aktuálně dvě sazby:\n\n- 21 % -- základní sazba (většina zboží a služeb)\n- 12 % -- snížená sazba (potraviny, léky, knihy, ubytování, stavební práce)\n\nPokud nejste plátce DPH, DPH neúčtujete a na faktuře uvedete 0 %.',
 		legal:
-			'Sazby DPH stanovuje § 47 zakona c. 235/2004 Sb. o DPH. Od 1. 1. 2024 plati dve sazby: zakladni 21 % a snizena 12 % (slouceni puvodnich dvou snizenych sazeb 15 % a 10 %).\n\nZarazeni zbozi a sluzeb do snizene sazby je v priloze c. 2, 3 a 3a tehoz zakona. Neplatce DPH neni opravnen vyuctovat dan a nesmi ji uvest na dokladu (§ 26 odst. 3).'
+			'Sazby DPH stanovuje § 47 zákona č. 235/2004 Sb. o DPH. Od 1. 1. 2024 platí dvě sazby: základní 21 % a snížená 12 % (sloučení původních dvou snížených sazeb 15 % a 10 %).\n\nZařazení zboží a služeb do snížené sazby je v příloze č. 2, 3 a 3a téhož zákona. Neplátce DPH není oprávněn vyúčtovat daň a nesmí ji uvést na dokladu (§ 26 odst. 3).'
 	},
 	'cislo-dokladu': {
-		title: 'Cislo dokladu',
+		title: 'Číslo dokladu',
 		simple:
-			'Cislo dokladu jednoznacne identifikuje ucetni doklad (fakturu, uctenku, pokladni doklad). Slouzi pro evidenci -- abyste kazdy naklad snadno dohledali.\n\nMuze to byt cislo z prijate faktury od dodavatele, nebo vase vlastni cislo, pokud doklad nemitate (napr. pokladni blok oznacite "P-001").',
+			'Číslo dokladu jednoznačně identifikuje účetní doklad (fakturu, účtenku, pokladní doklad). Slouží pro evidenci -- abyste každý náklad snadno dohledali.\n\nMůže to být číslo z přijaté faktury od dodavatele, nebo vaše vlastní číslo, pokud doklad nemáte (např. pokladní blok označíte "P-001").',
 		legal:
-			'Poradove cislo dokladu je povinnou nalezitosti danoveho dokladu dle § 29 odst. 1 pism. b) zakona c. 235/2004 Sb. Musi byt prirazeno v ramci jedne ci vice ciselnych rad, ktere zarucuji jeho jednoznacnost.\n\nI pro neplatce DPH je jednoznacna identifikace dokladu povinnosti dle § 11 zakona c. 563/1991 Sb. o ucetnictvi.'
+			'Pořadové číslo dokladu je povinnou náležitostí daňového dokladu dle § 29 odst. 1 písm. b) zákona č. 235/2004 Sb. Musí být přiřazeno v rámci jedné či více číselných řad, které zaručují jeho jednoznačnost.\n\nI pro neplátce DPH je jednoznačná identifikace dokladu povinností dle § 11 zákona č. 563/1991 Sb. o účetnictví.'
 	},
 	ico: {
-		title: 'Identifikacni cislo osoby (ICO)',
+		title: 'Identifikační číslo osoby (IČO)',
 		simple:
-			'ICO je osmimistne cislo, ktere dostane kazdy podnikatel nebo firma pri registraci. Slouzi k jednoznacne identifikaci -- jako "rodne cislo" pro podnikani.\n\nICO se uvadi na vsech fakturach a obchodnich dokumentech. Podle ICO si muzete overit odberatele v obchodnim rejstriku nebo registru ARES.',
+			'IČO je osmimístné číslo, které dostane každý podnikatel nebo firma při registraci. Slouží k jednoznačné identifikaci -- jako "rodné číslo" pro podnikání.\n\nIČO se uvádí na všech fakturách a obchodních dokumentech. Podle IČO si můžete ověřit odběratele v obchodním rejstříku nebo registru ARES.',
 		legal:
-			'ICO je definovano zakonem c. 111/2009 Sb. o zakladnich registrech, § 24-26. Prideluje ho registracni organ (zivnostensky urad, rejstrikovy soud).\n\nPodle § 29 odst. 1 pism. a) zakona c. 235/2004 Sb. je ICO povinnou nalezitosti danoveho dokladu. Povinnost uvadet ICO na obchodnich listinach plyne take z § 435 zakona c. 89/2012 Sb. (obcansky zakonik).'
+			'IČO je definováno zákonem č. 111/2009 Sb. o základních registrech, § 24-26. Přiděluje ho registrační orgán (živnostenský úřad, rejstříkový soud).\n\nPodle § 29 odst. 1 písm. a) zákona č. 235/2004 Sb. je IČO povinnou náležitostí daňového dokladu. Povinnost uvádět IČO na obchodních listinách plyne také z § 435 zákona č. 89/2012 Sb. (občanský zákoník).'
 	},
 	dic: {
-		title: 'Danove identifikacni cislo (DIC)',
+		title: 'Daňové identifikační číslo (DIČ)',
 		simple:
-			'DIC je cislo, ktere identifikuje platce dane. V Cesku ma format "CZ" + ICO (napr. CZ12345678). DIC dostanete po registraci k DPH u financniho uradu.\n\nPokud nejste platce DPH, DIC nemusite uvadet. Pokud jste platce, je DIC povinne na kazde fakture.',
+			'DIČ je číslo, které identifikuje plátce daně. V Česku má formát "CZ" + IČO (např. CZ12345678). DIČ dostanete po registraci k DPH u finančního úřadu.\n\nPokud nejste plátce DPH, DIČ nemusíte uvádět. Pokud jste plátce, je DIČ povinné na každé faktuře.',
 		legal:
-			'DIC je definovano v § 130 zakona c. 280/2009 Sb. (danovy rad). Pro ucely DPH je upraveno v § 4a zakona c. 235/2004 Sb. -- u fyzickych osob ma format "CZ" + rodne cislo, u pravnickych osob "CZ" + ICO.\n\nDIC je povinnou nalezitosti danoveho dokladu dle § 29 odst. 1 pism. a) zakona c. 235/2004 Sb. pro platce DPH.'
+			'DIČ je definováno v § 130 zákona č. 280/2009 Sb. (daňový řád). Pro účely DPH je upraveno v § 4a zákona č. 235/2004 Sb. -- u fyzických osob má formát "CZ" + rodné číslo, u právnických osob "CZ" + IČO.\n\nDIČ je povinnou náležitostí daňového dokladu dle § 29 odst. 1 písm. a) zákona č. 235/2004 Sb. pro plátce DPH.'
 	},
 	ares: {
-		title: 'ARES -- Administrativni registr ekonomickych subjektu',
+		title: 'ARES -- Administrativní registr ekonomických subjektů',
 		simple:
-			'ARES je verejny registr, kde si muzete overit udaje o jakemkoli podnikateli nebo firme v Cesku. Staci zadat ICO a zjistite nazev, sidlo, pravni formu a dalsi informace.\n\nV ZFaktury se ARES pouziva pro automaticke doplneni udaju o odberateli -- zadejte ICO a system stahne jmeno a adresu automaticky.',
+			'ARES je veřejný registr, kde si můžete ověřit údaje o jakémkoli podnikateli nebo firmě v Česku. Stačí zadat IČO a zjistíte název, sídlo, právní formu a další informace.\n\nV ZFaktury se ARES používá pro automatické doplnění údajů o odběrateli -- zadejte IČO a systém stáhne jméno a adresu automaticky.',
 		legal:
-			'ARES je informacni system verejne spravy provozovany Ministerstvem financi CR. Agreguje data z vice registru: obchodniho rejstriku, zivnostenskeho rejstriku, registru DPH a dalsich.\n\nPristup k datum je bezuplatny a verejny dle zakona c. 106/1999 Sb. o svobodnem pristupu k informacim. API ARES je dostupne na ares.gov.cz.'
+			'ARES je informační systém veřejné správy provozovaný Ministerstvem financí ČR. Agreguje data z více registrů: obchodního rejstříku, živnostenského rejstříku, registru DPH a dalších.\n\nPřístup k datům je bezúplatný a veřejný dle zákona č. 106/1999 Sb. o svobodném přístupu k informacím. API ARES je dostupné na ares.gov.cz.'
 	},
 	iban: {
-		title: 'IBAN -- Mezinarodni cislo bankovniho uctu',
+		title: 'IBAN -- Mezinárodní číslo bankovního účtu',
 		simple:
-			'IBAN je mezinarodni format cisla bankovniho uctu. V Cesku zacina "CZ" a ma celkem 24 znaku (napr. CZ65 0800 0000 1920 0014 5399).\n\nIBAN se pouziva pro zahranicni platby, ale stale casteji i pro tuzemske. Na fakture ho uvadejte, pokud mate zahranicni odberatele nebo pokud chcete uzivateli usnadnit platbu QR kodem.',
+			'IBAN je mezinárodní formát čísla bankovního účtu. V Česku začíná "CZ" a má celkem 24 znaků (např. CZ65 0800 0000 1920 0014 5399).\n\nIBAN se používá pro zahraniční platby, ale stále častěji i pro tuzemské. Na faktuře ho uvádějte, pokud máte zahraniční odběratele nebo pokud chcete uživateli usnadnit platbu QR kódem.',
 		legal:
-			'IBAN je standardizovan normou ISO 13616. V CR je povinny pro prehranicni platby v ramci EU/EHP dle narizeni EP a Rady (EU) c. 260/2012 (SEPA narizeni).\n\nPro tuzemske platby IBAN povinny neni, ale banky ho podporuji a je soucasti QR platebniho formatu CBA. Cesky IBAN ma format: CZ + 2 kontrolni cislice + 4 cislice kod banky + 16 cislic cislo uctu.'
+			'IBAN je standardizován normou ISO 13616. V ČR je povinný pro přeshraniční platby v rámci EU/EHP dle nařízení EP a Rady (EU) č. 260/2012 (SEPA nařízení).\n\nPro tuzemské platby IBAN povinný není, ale banky ho podporují a je součástí QR platebního formátu CBA. Český IBAN má formát: CZ + 2 kontrolní číslice + 4 číslice kód banky + 16 číslic číslo účtu.'
 	},
 	'swift-bic': {
-		title: 'SWIFT/BIC kod',
+		title: 'SWIFT/BIC kód',
 		simple:
-			'SWIFT kod (take BIC) identifikuje banku pri mezinarodnich platbach. Je to 8 nebo 11 znaku dlouhy kod (napr. KOMBCZPP pro Komercni banku).\n\nUvadejte ho na fakturach pro zahranicni odberatele -- bez SWIFT kodu nemuze platba ze zahranici dojit na spravnou banku.',
+			'SWIFT kód (také BIC) identifikuje banku při mezinárodních platbách. Je to 8 nebo 11 znaků dlouhý kód (např. KOMBCZPP pro Komerční banku).\n\nUvádějte ho na fakturách pro zahraniční odběratele -- bez SWIFT kódu nemůže platba ze zahraničí dojít na správnou banku.',
 		legal:
-			'SWIFT (Society for Worldwide Interbank Financial Telecommunication) kod, formalne BIC (Bank Identifier Code), je standardizovan normou ISO 9362.\n\nPro platby v ramci SEPA (Single Euro Payments Area) neni BIC povinny od 1. 2. 2016 dle narizeni (EU) c. 260/2012. Pro platby mimo SEPA je BIC stale nutny pro spravne smerovani platby.'
+			'SWIFT (Society for Worldwide Interbank Financial Telecommunication) kód, formálně BIC (Bank Identifier Code), je standardizován normou ISO 9362.\n\nPro platby v rámci SEPA (Single Euro Payments Area) není BIC povinný od 1. 2. 2016 dle nařízení (EU) č. 260/2012. Pro platby mimo SEPA je BIC stále nutný pro správné směrování platby.'
 	},
 	'platce-dph': {
-		title: 'Platce DPH',
+		title: 'Plátce DPH',
 		simple:
-			'Platce DPH je podnikatel registrovany k dani z pridane hodnoty. Musi k cenam svych sluzeb a zbozi pricitovat DPH a odvadet ho statu. Na druhou stranu si muze odpocist DPH z nakupu souvisejicich s podnikanim.\n\nPovinne se platcem DPH stavate, kdyz vas obrat za 12 po sobe jdoucich mesicu prekroci 2 miliony Kc. Muze se stat i dobrovolne.',
+			'Plátce DPH je podnikatel registrovaný k dani z přidané hodnoty. Musí k cenám svých služeb a zboží přičítovat DPH a odvádět ho státu. Na druhou stranu si může odpočíst DPH z nákupů souvisejících s podnikáním.\n\nPovinně se plátcem DPH stáváte, když váš obrat za 12 po sobě jdoucích měsíců překročí 2 miliony Kč. Může se stát i dobrovolně.',
 		legal:
-			'Registrace platce DPH je upravena v § 6-6f zakona c. 235/2004 Sb. Povinnou registraci vyvola prekroceni obratu 2 000 000 Kc za 12 po sobe jdoucich kalendarnich mesicu (§ 6 odst. 1) -- platnost od 1. 1. 2025.\n\nPlatce je povinen podavat danove priznani (§ 101), kontrolni hlaseni (§ 101c) a v nekterych pripadech souhrnne hlaseni (§ 102). Dan se odvadi mesicne nebo ctvrtletne dle § 99-99a.'
+			'Registrace plátce DPH je upravena v § 6-6f zákona č. 235/2004 Sb. Povinnou registraci vyvolá překročení obratu 2 000 000 Kč za 12 po sobě jdoucích kalendářních měsíců (§ 6 odst. 1) -- platnost od 1. 1. 2025.\n\nPlátce je povinen podávat daňové přiznání (§ 101), kontrolní hlášení (§ 101c) a v některých případech souhrnné hlášení (§ 102). Daň se odvádí měsíčně nebo čtvrtletně dle § 99-99a.'
 	},
 	'priznani-dph': {
-		title: 'Priznani k DPH',
+		title: 'Přiznání k DPH',
 		simple:
-			'Priznani k DPH je formular, ktery platce DPH odevzdava financnimu uradu. Obsahuje prehled vasi dane na vystupu (DPH z vasich faktur) a dane na vstupu (DPH z vasich nakupu). Rozdil bud zaplatite statu, nebo vam stat vrati.\n\nPodava se mesicne nebo ctvrtletne, vzdy do 25. dne nasledujiciho mesice.',
+			'Přiznání k DPH je formulář, který plátce DPH odevzdává finančnímu úřadu. Obsahuje přehled vaší daně na výstupu (DPH z vašich faktur) a daně na vstupu (DPH z vašich nákupů). Rozdíl buď zaplatíte státu, nebo vám stát vrátí.\n\nPodává se měsíčně nebo čtvrtletně, vždy do 25. dne následujícího měsíce.',
 		legal:
-			'Danove priznani k DPH upravuje § 101 zakona c. 235/2004 Sb. Platce je povinen podat priznani do 25 dni po skonceni zdanovaciho obdobi (§ 101 odst. 1).\n\nZdanovaci obdobi je kalendarni mesic nebo ctvrtleti (§ 99-99a). Priznani se podava elektronicky ve formatu XML na portal financni spravy (EPO). Vzor formulare stanovi Ministerstvo financi vyhlaskou.'
+			'Daňové přiznání k DPH upravuje § 101 zákona č. 235/2004 Sb. Plátce je povinen podat přiznání do 25 dnů po skončení zdaňovacího období (§ 101 odst. 1).\n\nZdaňovací období je kalendářní měsíc nebo čtvrtletí (§ 99-99a). Přiznání se podává elektronicky ve formátu XML na portál finanční správy (EPO). Vzor formuláře stanoví Ministerstvo financí vyhláškou.'
 	},
 	'kontrolni-hlaseni': {
-		title: 'Kontrolni hlaseni',
+		title: 'Kontrolní hlášení',
 		simple:
-			'Kontrolni hlaseni je mesicni report pro financni urad, ktery obsahuje rozpis vsech vasich faktur (vydanych i prijatych) s DPH. Slouzi statu ke krizove kontrole -- oveuje, ze DPH, ktere vy uctujete na vystupu, si vas odberatel uplatnil na vstupu, a naopak.\n\nPodava se vzdy do 25. dne nasledujiciho mesice. Fyzicke osoby mohou podavat ctvrtletne.',
+			'Kontrolní hlášení je měsíční report pro finanční úřad, který obsahuje rozpis všech vašich faktur (vydaných i přijatých) s DPH. Slouží státu ke křížové kontrole -- ověřuje, že DPH, které vy účtujete na výstupu, si váš odběratel uplatnil na vstupu, a naopak.\n\nPodává se vždy do 25. dne následujícího měsíce. Fyzické osoby mohou podávat čtvrtletně.',
 		legal:
-			'Kontrolni hlaseni je upraveno v § 101c-101i zakona c. 235/2004 Sb. Podava se elektronicky ve formatu XML.\n\nLhuty: pravnicke osoby mesicne, fyzicke osoby ve lhute pro podani danoveho priznani (§ 101e). Za nepodani hrozi pokuta 10 000-50 000 Kc (§ 101h). Za nepodani na vyzvu az 500 000 Kc.\n\nObsahuje udaje o prijatych a uskutecnenych plnenich nad 10 000 Kc vcetne DPH s identifikaci obchodniho partnera (DIC).'
+			'Kontrolní hlášení je upraveno v § 101c-101i zákona č. 235/2004 Sb. Podává se elektronicky ve formátu XML.\n\nLhůty: právnické osoby měsíčně, fyzické osoby ve lhůtě pro podání daňového přiznání (§ 101e). Za nepodání hrozí pokuta 10 000-50 000 Kč (§ 101h). Za nepodání na výzvu až 500 000 Kč.\n\nObsahuje údaje o přijatých a uskutečněných plněních nad 10 000 Kč včetně DPH s identifikací obchodního partnera (DIČ).'
 	},
 	'souhrnne-hlaseni': {
-		title: 'Souhrnne hlaseni',
+		title: 'Souhrnné hlášení',
 		simple:
-			'Souhrnne hlaseni podavate, pokud dodavate zbozi nebo sluzby do jinych zemi EU platcum DPH. Hlaseni informuje financni urad o techto dodavkach.\n\nPokud obchodujete pouze v Cesku, souhrnne hlaseni vas nezajima.',
+			'Souhrnné hlášení podáváte, pokud dodáváte zboží nebo služby do jiných zemí EU plátcům DPH. Hlášení informuje finanční úřad o těchto dodávkách.\n\nPokud obchodujete pouze v Česku, souhrnné hlášení vás nezajímá.',
 		legal:
-			'Souhrnne hlaseni upravuje § 102 zakona c. 235/2004 Sb. Podava se za kazdy kalendarni mesic (pri dodani zbozi) nebo ctvrtleti (pri poskytovani sluzeb) do 25 dni po skonceni obdobi.\n\nTyka se dodani zbozi do jineho clenskeho statu osobe registrovane k DPH (§ 102 odst. 1 pism. a), poskytovani sluzeb s mistem plneni v jinem clenskem state (§ 102 odst. 1 pism. d) a premisteni obchodniho majetku (§ 102 odst. 1 pism. b).'
+			'Souhrnné hlášení upravuje § 102 zákona č. 235/2004 Sb. Podává se za každý kalendářní měsíc (při dodání zboží) nebo čtvrtletí (při poskytování služeb) do 25 dnů po skončení období.\n\nTýká se dodání zboží do jiného členského státu osobě registrované k DPH (§ 102 odst. 1 písm. a), poskytování služeb s místem plnění v jiném členském státě (§ 102 odst. 1 písm. d) a přemístění obchodního majetku (§ 102 odst. 1 písm. b).'
 	},
 	'typ-podani': {
-		title: 'Typ podani',
+		title: 'Typ podání',
 		simple:
-			'Typ podani urcuje, zda se jedna o radne, opravne nebo dodatecne podani:\n\n- Radne -- prvni podani za dane obdobi\n- Opravne -- oprava podani pred uplynutim lhuty (nahradi puvodni)\n- Dodatecne -- oprava po uplynnuti lhuty (podava se navic k radnemu)',
+			'Typ podání určuje, zda se jedná o řádné, opravné nebo dodatečné podání:\n\n- Řádné -- první podání za dané období\n- Opravné -- oprava podání před uplynutím lhůty (nahradí původní)\n- Dodatečné -- oprava po uplynutí lhůty (podává se navíc k řádnému)',
 		legal:
-			'Typy podani definuje zakon c. 280/2009 Sb. (danovy rad):\n\n- Radne podani (§ 135) -- standardni podani v zakonnem terminu\n- Opravne podani (§ 138) -- nahrazuje puvodni podani pred uplynutim lhuty, posledni podane plati\n- Dodatecne podani (§ 141) -- podava se po uplynnuti lhuty pro radne podani, pokud podnikatel zjisti chybu. Lhuta pro podani: do konce mesice nasledujiciho po zjisteni chyby'
+			'Typy podání definuje zákon č. 280/2009 Sb. (daňový řád):\n\n- Řádné podání (§ 135) -- standardní podání v zákonném termínu\n- Opravné podání (§ 138) -- nahrazuje původní podání před uplynutím lhůty, poslední podané platí\n- Dodatečné podání (§ 141) -- podává se po uplynutí lhůty pro řádné podání, pokud podnikatel zjistí chybu. Lhůta pro podání: do konce měsíce následujícího po zjištění chyby'
 	},
 	'ciselne-rady': {
-		title: 'Ciselne rady',
+		title: 'Číselné řady',
 		simple:
-			'Ciselne rady zajistuji automaticke cislovani vasich faktur. Misto rucniho zadavani cisel system sam priradi dalsi cislo v poradi.\n\nMuzete mit vice ciselnych rad -- napr. jednu pro tuzemske faktury (FV-2024-001) a jinou pro zahranicni (ZF-2024-001).',
+			'Číselné řady zajišťují automatické číslování vašich faktur. Místo ručního zadávání čísel systém sám přiřadí další číslo v pořadí.\n\nMůžete mít více číselných řad -- např. jednu pro tuzemské faktury (FV-2024-001) a jinou pro zahraniční (ZF-2024-001).',
 		legal:
-			'Povinnost ciselnych rad vyplyva z § 29 odst. 1 pism. b) zakona c. 235/2004 Sb. -- danovy doklad musi obsahovat poradove cislo prirazene v ramci jedne ci vice ciselnych rad.\n\nCiselna rada musi zarucovat jednoznacnost dokladu. Podnikatel je povinen vest evidenci vydanych dokladu a jejich ciselnych rad pro ucely pripadne kontroly financnim uradem.'
+			'Povinnost číselných řad vyplývá z § 29 odst. 1 písm. b) zákona č. 235/2004 Sb. -- daňový doklad musí obsahovat pořadové číslo přiřazené v rámci jedné či více číselných řad.\n\nČíselná řada musí zaručovat jednoznačnost dokladu. Podnikatel je povinen vést evidenci vydaných dokladů a jejich číselných řad pro účely případné kontroly finančním úřadem.'
 	},
 	'prefix-format': {
-		title: 'Prefix a format ciselne rady',
+		title: 'Prefix a formát číselné řady',
 		simple:
-			'Prefix je text pred cislem faktury (napr. "FV" pro fakturu vydanou). Format urcuje, jak bude cislo vypadat -- napr. "{prefix}{year}-{number:4}" vytvori cisla jako FV2024-0001, FV2024-0002 atd.\n\nCislovani se resetuje na zacatku kazdeho roku, takze prvni faktura noveho roku bude vzdy 0001.',
+			'Prefix je text před číslem faktury (např. "FV" pro fakturu vydanou). Formát určuje, jak bude číslo vypadat -- např. "{prefix}{year}-{number:4}" vytvoří čísla jako FV2024-0001, FV2024-0002 atd.\n\nČíslování se resetuje na začátku každého roku, takže první faktura nového roku bude vždy 0001.',
 		legal:
-			'Format ciselne rady neni zakonem predepsan. Zakon c. 235/2004 Sb. v § 29 vyzaduje pouze to, aby poradove cislo bylo jednoznacne v ramci ciselne rady.\n\nDoporucuje se vcetne roku (napr. 2024-001) pro snazsi orientaci a prukaznost pri danove kontrole. Prefix pomaha rozlisit typ dokladu (faktury vydane, prijate, dob ropisy atd.).'
+			'Formát číselné řady není zákonem předepsán. Zákon č. 235/2004 Sb. v § 29 vyžaduje pouze to, aby pořadové číslo bylo jednoznačné v rámci číselné řady.\n\nDoporučuje se včetně roku (např. 2024-001) pro snazší orientaci a průkaznost při daňové kontrole. Prefix pomáhá rozlišit typ dokladu (faktury vydané, přijaté, dobropisy atd.).'
 	},
 	'prijmy-naklady': {
-		title: 'Prijmy a naklady',
+		title: 'Příjmy a náklady',
 		simple:
-			'Prijmy jsou penize, ktere vam zakaznici zaplatili za vase sluzby nebo zbozi. Naklady jsou penize, ktere jste utratili v souvislosti s podnikanim.\n\nRozdil mezi prijmy a naklady je zakladem dane -- cim vice nakladu (danove uznatelnych) mate, tim mene dane zaplatite.',
+			'Příjmy jsou peníze, které vám zákazníci zaplatili za vaše služby nebo zboží. Náklady jsou peníze, které jste utratili v souvislosti s podnikáním.\n\nRozdíl mezi příjmy a náklady je základem daně -- čím více nákladů (daňově uznatelných) máte, tím méně daně zaplatíte.',
 		legal:
-			'Prijmy z podnikani OSVC jsou upraveny v § 7 zakona c. 586/1992 Sb. o danich z prijmu. Zaklad dane se stanovi jako rozdil mezi prijmy a vydaji (§ 23).\n\nAlternativne muze OSVC uplatnit pausalni vydaje (§ 7 odst. 7): 80 % u remeslnych zivnosti, 60 % u ostatnich zivnosti, 40 % u prijmu z jineho podnikani. Pausalni vydaje jsou omezeny castkou 1 600 000 / 1 200 000 / 800 000 Kc.'
+			'Příjmy z podnikání OSVČ jsou upraveny v § 7 zákona č. 586/1992 Sb. o daních z příjmů. Základ daně se stanoví jako rozdíl mezi příjmy a výdaji (§ 23).\n\nAlternativně může OSVČ uplatnit paušální výdaje (§ 7 odst. 7): 80 % u řemeslných živností, 60 % u ostatních živností, 40 % u příjmů z jiného podnikání. Paušální výdaje jsou omezeny částkou 1 600 000 / 1 200 000 / 800 000 Kč.'
 	},
 	'neuhrazene-faktury': {
-		title: 'Neuhrazene faktury',
+		title: 'Neuhrazené faktury',
 		simple:
-			'Neuhrazene faktury jsou faktury, ktere jste vystavili, ale zakaznik je jeste nezaplatil. Mohou byt pred splatnosti (zakaznik ma jeste cas) nebo po splatnosti (zakaznik je v prodleni).\n\nJe dulezite sledovat neuhrazene faktury a vcas upominat dluzniky. Po splatnosti maji uroky z prodleni.',
+			'Neuhrazené faktury jsou faktury, které jste vystavili, ale zákazník je ještě nezaplatil. Mohou být před splatností (zákazník má ještě čas) nebo po splatnosti (zákazník je v prodlení).\n\nJe důležité sledovat neuhrazené faktury a včas upomínat dlužníky. Po splatnosti mají úroky z prodlení.',
 		legal:
-			'Neuhrazene pohledavky po splatnosti lze danove odepisat dle § 24 odst. 2 pism. y) zakona c. 586/1992 Sb. u pohledavek za dluznikem v insolvencnim rizeni.\n\nOpravne polozky k pohledavkam upravuje zakon c. 593/1992 Sb. o rezervach: po 18 mesicich po splatnosti az 50 %, po 30 mesicich az 100 % (§ 8a). Uroky z prodleni se ridi § 1970 obcanskeho zakoniku -- repo sazba CNB + 8 p.b.'
+			'Neuhrazené pohledávky po splatnosti lze daňově odepsat dle § 24 odst. 2 písm. y) zákona č. 586/1992 Sb. u pohledávek za dlužníkem v insolvenčním řízení.\n\nOpravné položky k pohledávkám upravuje zákon č. 593/1992 Sb. o rezervách: po 18 měsících po splatnosti až 50 %, po 30 měsících až 100 % (§ 8a). Úroky z prodlení se řídí § 1970 občanského zákoníku -- repo sazba ČNB + 8 p.b.'
 	},
 	'faktury-po-splatnosti': {
 		title: 'Faktury po splatnosti',
 		simple:
-			'Faktura je po splatnosti, kdyz zakaznik nezaplatil do data splatnosti. Od tohoto okamziku je v prodleni a vy muvete uplatnit uroky z prodleni.\n\nDoporuceny postup: po 7 dnech prvni upominka, po 14 dnech druha upominka, po 30 dnech predsoudni upominka s vyhruzkou pravnimi kroky.',
+			'Faktura je po splatnosti, když zákazník nezaplatil do data splatnosti. Od tohoto okamžiku je v prodlení a vy můžete uplatnit úroky z prodlení.\n\nDoporučený postup: po 7 dnech první upomínka, po 14 dnech druhá upomínka, po 30 dnech předsoudní upomínka s výhružkou právními kroky.',
 		legal:
-			'Prodleni dluznika upravuje § 1968-1975 zakona c. 89/2012 Sb. (obcansky zakonik). Dluznik, ktery svuj dluh radne a vcas neplni, je v prodleni (§ 1968).\n\nVeritel ma pravo na uroky z prodleni (§ 1970) ve vysi repo sazby CNB + 8 procentnich bodu. U obchodnich vztahu ma veritel take pravo na minimalni pausal 1 200 Kc za naklady spojene s uplatnenim pohledavky (narizeni vlady c. 351/2013 Sb.).'
+			'Prodlení dlužníka upravuje § 1968-1975 zákona č. 89/2012 Sb. (občanský zákoník). Dlužník, který svůj dluh řádně a včas neplní, je v prodlení (§ 1968).\n\nVěřitel má právo na úroky z prodlení (§ 1970) ve výši repo sazby ČNB + 8 procentních bodů. U obchodních vztahů má věřitel také právo na minimální paušál 1 200 Kč za náklady spojené s uplatněním pohledávky (nařízení vlády č. 351/2013 Sb.).'
 	},
 	'frekvence-opakovani': {
-		title: 'Frekvence opakovani',
+		title: 'Frekvence opakování',
 		simple:
-			'Frekvence urcuje, jak casto se opakujici faktura automaticky vytvori. Napr. mesicni frekvence znamena, ze se faktura vytvori jednou mesicne.\n\nBezne frekvence: mesicni (napr. pausalni sluzby, najem), ctvrtletni (napr. pravidelne konzultace), rocni (napr. licence, predplatne).',
+			'Frekvence určuje, jak často se opakující faktura automaticky vytvoří. Např. měsíční frekvence znamená, že se faktura vytvoří jednou měsíčně.\n\nBěžné frekvence: měsíční (např. paušální služby, nájem), čtvrtletní (např. pravidelné konzultace), roční (např. licence, předplatné).',
 		legal:
-			'Opakujici se plneni (trvalane plneni) je upraveno v § 21 odst. 8 zakona c. 235/2004 Sb. U opakovaneho plneni se DUZP stanovi nejpozdeji poslednim dnem zdanovaciho obdobi.\n\nSmlouvy na opakovane plneni (napr. najem, servisni smlouvy) se ridi ustanovenimi o zavazkovem pravu v obcanskem zakoniku (§ 1724 a nasl. zakona c. 89/2012 Sb.).'
+			'Opakující se plnění (trvalé plnění) je upraveno v § 21 odst. 8 zákona č. 235/2004 Sb. U opakovaného plnění se DUZP stanoví nejpozději posledním dnem zdaňovacího období.\n\nSmlouvy na opakované plnění (např. nájem, servisní smlouvy) se řídí ustanoveními o závazkovém právu v občanském zákoníku (§ 1724 a násl. zákona č. 89/2012 Sb.).'
 	},
 	'vystupni-dph': {
-		title: 'Vystupni DPH',
+		title: 'Výstupní DPH',
 		simple:
-			'Vystupni DPH je dan, kterou uctujete svym zakaznikum na fakturach. Kdyz vystavite fakturu s DPH, tuto dan musíte odvest statu.\n\nNapr. fakturujete sluzbu za 10 000 Kc + 21 % DPH = 12 100 Kc. Tech 2 100 Kc je vystupni DPH, ktere odvedete financnimu uradu.',
+			'Výstupní DPH je daň, kterou účtujete svým zákazníkům na fakturách. Když vystavíte fakturu s DPH, tuto daň musíte odvést státu.\n\nNapř. fakturujete službu za 10 000 Kč + 21 % DPH = 12 100 Kč. Těch 2 100 Kč je výstupní DPH, které odvedete finančnímu úřadu.',
 		legal:
-			'Vystupni DPH (dan na vystupu) je definovano v § 4 odst. 1 pism. c) zakona c. 235/2004 Sb. o DPH. Platce je povinen priznat dan na vystupu ke dni uskutecneni zdanitelneho plneni (§ 20a) nebo ke dni prijeti uhrady, pokud nastala drive (§ 21).\n\nDan na vystupu se uvadi v daovem priznani v radcich 1-13 formulare.'
+			'Výstupní DPH (daň na výstupu) je definováno v § 4 odst. 1 písm. c) zákona č. 235/2004 Sb. o DPH. Plátce je povinen přiznat daň na výstupu ke dni uskutečnění zdanitelného plnění (§ 20a) nebo ke dni přijetí úhrady, pokud nastala dříve (§ 21).\n\nDaň na výstupu se uvádí v daňovém přiznání v řádcích 1-13 formuláře.'
 	},
 	'vstupni-dph': {
-		title: 'Vstupni DPH',
+		title: 'Vstupní DPH',
 		simple:
-			'Vstupni DPH je dan, kterou jste zaplatili pri svych nakupech. Tuto dan si muzete odecist od vystupniho DPH -- tim snizite castku, kterou odvedete statu.\n\nNapr. koupite notebook za 24 200 Kc (20 000 + 4 200 DPH). Tech 4 200 Kc je vstupni DPH, ktere si odectete.',
+			'Vstupní DPH je daň, kterou jste zaplatili při svých nákupech. Tuto daň si můžete odečíst od výstupního DPH -- tím snížíte částku, kterou odvedete státu.\n\nNapř. koupíte notebook za 24 200 Kč (20 000 + 4 200 DPH). Těch 4 200 Kč je vstupní DPH, které si odečtete.',
 		legal:
-			'Narok na odpocet dane na vstupu upravuji § 72-73 zakona c. 235/2004 Sb. Platce ma narok na odpocet dane u prijatych zdanitelnych plneni, ktera pouzije pro uskutecneni sve ekonomicke cinnosti (§ 72 odst. 1).\n\nPodminkou odpoctu je drzeni danoveho dokladu (§ 73 odst. 1). Narok na odpocet lze uplatnit nejdrive za zdanovaci obdobi, ve kterem jsou splneny podminky (§ 73 odst. 3).'
+			'Nárok na odpočet daně na vstupu upravují § 72-73 zákona č. 235/2004 Sb. Plátce má nárok na odpočet daně u přijatých zdanitelných plnění, která použije pro uskutečnění své ekonomické činnosti (§ 72 odst. 1).\n\nPodmínkou odpočtu je držení daňového dokladu (§ 73 odst. 1). Nárok na odpočet lze uplatnit nejdříve za zdaňovací období, ve kterém jsou splněny podmínky (§ 73 odst. 3).'
 	},
 	'preneseni-danove-povinnosti': {
-		title: 'Preneseni danove povinnosti',
+		title: 'Přenesení daňové povinnosti',
 		simple:
-			'Preneseni danove povinnosti (reverse charge) znamena, ze DPH neplati dodavatel, ale odberatel. Dodavatel vystavi fakturu bez DPH a odberatel si DPH sam vypocita a prizna.\n\nPouziva se napr. u stavebnich praci, dodani srot a odpadu, nebo u obchodu mezi firmami v ramci EU.',
+			'Přenesení daňové povinnosti (reverse charge) znamená, že DPH neplatí dodavatel, ale odběratel. Dodavatel vystaví fakturu bez DPH a odběratel si DPH sám vypočítá a přizná.\n\nPoužívá se např. u stavebních prací, dodání šrotu a odpadu, nebo u obchodů mezi firmami v rámci EU.',
 		legal:
-			'Preneseni danove povinnosti (rezim reverse charge) upravuje § 92a zakona c. 235/2004 Sb. U tuzemskych plneni se tyka zbozi a sluzeb uvedenych v priloze c. 6 zakona (stavebni prace, srot, odpady aj.).\n\nPri preneseni danove povinnosti je odberatel povinen dan priznat a ma narok na odpocet (§ 92a odst. 1). Dodavatel uvede plneni v radku 25 danoveho priznani.'
+			'Přenesení daňové povinnosti (režim reverse charge) upravuje § 92a zákona č. 235/2004 Sb. U tuzemských plnění se týká zboží a služeb uvedených v příloze č. 6 zákona (stavební práce, šrot, odpady aj.).\n\nPři přenesení daňové povinnosti je odběratel povinen daň přiznat a má nárok na odpočet (§ 92a odst. 1). Dodavatel uvede plnění v řádku 25 daňového přiznání.'
 	},
 	'nadmerny-odpocet': {
-		title: 'Nadmerny odpocet / Danova povinnost',
+		title: 'Nadměrný odpočet / Daňová povinnost',
 		simple:
-			'Vysledek DPH priznani je bud danova povinnost, nebo nadmerny odpocet:\n\n- Danova povinnost: vystupni DPH > vstupni DPH -- rozdil zaplatite statu\n- Nadmerny odpocet: vstupni DPH > vystupni DPH -- stat vam vrati rozdil\n\nNadmerny odpocet vznika napr. pri velkych investicich (nakup stroje, rekonstrukce).',
+			'Výsledek DPH přiznání je buď daňová povinnost, nebo nadměrný odpočet:\n\n- Daňová povinnost: výstupní DPH > vstupní DPH -- rozdíl zaplatíte státu\n- Nadměrný odpočet: vstupní DPH > výstupní DPH -- stát vám vrátí rozdíl\n\nNadměrný odpočet vzniká např. při velkých investicích (nákup stroje, rekonstrukce).',
 		legal:
-			'Nadmerny odpocet je definovan v § 4 odst. 1 pism. d) zakona c. 235/2004 Sb. Vznikne-li nadmerny odpocet, vrati ho spravce dane platci do 30 dni od vymereni (§ 105 odst. 1).\n\nSpravce dane muze pred vracenim zahajit postup k odstraneni pochybnosti (§ 89 danoveho radu), cimz se lhuta prodlouzi. Nadmerny odpocet se prednostne pouzije na uhradu pripadnych danových nedoplatku (§ 105 odst. 2).'
+			'Nadměrný odpočet je definován v § 4 odst. 1 písm. d) zákona č. 235/2004 Sb. Vznikne-li nadměrný odpočet, vrátí ho správce daně plátci do 30 dnů od vyměření (§ 105 odst. 1).\n\nSprávce daně může před vrácením zahájit postup k odstranění pochybností (§ 89 daňového řádu), čímž se lhůta prodlouží. Nadměrný odpočet se přednostně použije na úhradu případných daňových nedoplatků (§ 105 odst. 2).'
 	},
 	'zaklad-dane': {
-		title: 'Zaklad dane',
+		title: 'Základ daně',
 		simple:
-			'Zaklad dane je castka bez DPH, ze ktere se DPH vypocita. Napr. pokud je cena sluzby 12 100 Kc vcetne 21 % DPH, zaklad dane je 10 000 Kc a DPH 2 100 Kc.\n\nV DPH priznani se zaklad dane uvadi ve sloupcich vedle vypoctene dane.',
+			'Základ daně je částka bez DPH, ze které se DPH vypočítá. Např. pokud je cena služby 12 100 Kč včetně 21 % DPH, základ daně je 10 000 Kč a DPH 2 100 Kč.\n\nV DPH přiznání se základ daně uvádí ve sloupcích vedle vypočtené daně.',
 		legal:
-			'Zaklad dane je definovan v § 36 zakona c. 235/2004 Sb. Zakladem dane je vse, co jako uhradu obdrzel nebo ma obdrzet platce za uskutecnene zdanitelne plneni od osoby, pro kterou plneni uskutecnil, nebo od treti osoby (§ 36 odst. 1).\n\nZaklad dane zahrnuje i vedlejsi vydaje (baleni, preprava, pojisteni) dle § 36 odst. 3.'
+			'Základ daně je definován v § 36 zákona č. 235/2004 Sb. Základem daně je vše, co jako úhradu obdržel nebo má obdržet plátce za uskutečněné zdanitelné plnění od osoby, pro kterou plnění uskutečnil, nebo od třetí osoby (§ 36 odst. 1).\n\nZáklad daně zahrnuje i vedlejší výdaje (balení, přeprava, pojištění) dle § 36 odst. 3.'
 	},
 	'sekce-kontrolni-hlaseni': {
-		title: 'Sekce kontrolniho hlaseni (A4/A5/B2/B3)',
+		title: 'Sekce kontrolního hlášení (A4/A5/B2/B3)',
 		simple:
-			'Kontrolni hlaseni se deli na sekce podle smeru a velikosti plneni:\n\n- A4: Vydane faktury nad 10 000 Kc vcetne DPH (s detailem o odberateli)\n- A5: Vydane faktury do 10 000 Kc (souhrnne, bez detailu)\n- B2: Prijate faktury nad 10 000 Kc vcetne DPH (s detailem o dodavateli)\n- B3: Prijate faktury do 10 000 Kc (souhrnne, bez detailu)\n\nU A4 a B2 se uvadi DIC partnera, cislo dokladu a dalsi udaje.',
+			'Kontrolní hlášení se dělí na sekce podle směru a velikosti plnění:\n\n- A4: Vydané faktury nad 10 000 Kč včetně DPH (s detailem o odběrateli)\n- A5: Vydané faktury do 10 000 Kč (souhrnně, bez detailu)\n- B2: Přijaté faktury nad 10 000 Kč včetně DPH (s detailem o dodavateli)\n- B3: Přijaté faktury do 10 000 Kč (souhrnně, bez detailu)\n\nU A4 a B2 se uvádí DIČ partnera, číslo dokladu a další údaje.',
 		legal:
-			'Cleneni kontrolniho hlaseni stanovuje § 101c-101d zakona c. 235/2004 Sb. a pokyn GFR-D-57.\n\nOddil A obsahuje udaje o uskutecnenych plnenich (vystupy): A4 = plneni nad 10 000 Kc s identifikaci odberatele, A5 = ostatni plneni. Oddil B obsahuje udaje o prijatych plnenich (vstupy): B2 = plneni nad 10 000 Kc s identifikaci dodavatele, B3 = ostatni plneni.\n\nRozhodujici castka 10 000 Kc je vcetne DPH.'
+			'Členění kontrolního hlášení stanovuje § 101c-101d zákona č. 235/2004 Sb. a pokyn GFŘ-D-57.\n\nOddíl A obsahuje údaje o uskutečněných plněních (výstupy): A4 = plnění nad 10 000 Kč s identifikací odběratele, A5 = ostatní plnění. Oddíl B obsahuje údaje o přijatých plněních (vstupy): B2 = plnění nad 10 000 Kč s identifikací dodavatele, B3 = ostatní plnění.\n\nRozhodující částka 10 000 Kč je včetně DPH.'
 	},
 	dppd: {
-		title: 'Datum poskytnuti danoveho plneni (DPPD)',
+		title: 'Datum poskytnutí daňového plnění (DPPD)',
 		simple:
-			'DPPD je datum, ktere se uvadi v kontrolnim hlaseni. Odpovida datu uskutecneni plneni (DUZP) z faktury.\n\nPozor: DPPD neni datum vystaveni faktury ani datum splatnosti -- je to den, kdy skutecne doslo k dodani zbozi nebo poskyteni sluzby.',
+			'DPPD je datum, které se uvádí v kontrolním hlášení. Odpovídá datu uskutečnění plnění (DUZP) z faktury.\n\nPozor: DPPD není datum vystavení faktury ani datum splatnosti -- je to den, kdy skutečně došlo k dodání zboží nebo poskytnutí služby.',
 		legal:
-			'DPPD (datum poskytnuti/prijeti plneni) se uvadi v kontrolnim hlaseni dle § 101c zakona c. 235/2004 Sb. Odpovida datu uskutecneni zdanitelneho plneni (DUZP) dle § 21 tehoz zakona.\n\nV oddilech A4 a B2 kontrolniho hlaseni se DPPD uvadi u kazdeho radku. V oddilech A5 a B3 se neuvadi (plneni jsou agregovana).'
+			'DPPD (datum poskytnutí/přijetí plnění) se uvádí v kontrolním hlášení dle § 101c zákona č. 235/2004 Sb. Odpovídá datu uskutečnění zdanitelného plnění (DUZP) dle § 21 téhož zákona.\n\nV oddílech A4 a B2 kontrolního hlášení se DPPD uvádí u každého řádku. V oddílech A5 a B3 se neuvádí (plnění jsou agregována).'
 	},
 	'kod-plneni': {
-		title: 'Kod plneni',
+		title: 'Kód plnění',
 		simple:
-			'Kod plneni v souhrnnem hlaseni urcuje typ obchodu s partnerem v EU:\n\n- 0: Dodani zbozi do jine clenske zeme\n- 1: Poskytnuti sluzby podle § 9 odst. 1 (misto plneni u prijemce)\n- 2: Obchod v ramci triangulace (treti strana)\n- 3: Poskytnuti sluzby podle § 54 (financni a pojistovaci sluzby)',
+			'Kód plnění v souhrnném hlášení určuje typ obchodu s partnerem v EU:\n\n- 0: Dodání zboží do jiné členské země\n- 1: Poskytnutí služby podle § 9 odst. 1 (místo plnění u příjemce)\n- 2: Obchod v rámci triangulace (třetí strana)\n- 3: Poskytnutí služby podle § 54 (finanční a pojišťovací služby)',
 		legal:
-			'Kody plneni jsou definovany v § 102 zakona c. 235/2004 Sb. a v pokynu GFR k vyplnovani souhrnneho hlaseni.\n\nKod 0: dodani zbozi osobe registrovane k DPH v jinem clenskem state (§ 102 odst. 1 pism. a). Kod 1: poskytnuti sluzby s mistem plneni dle § 9 odst. 1 (§ 102 odst. 1 pism. d). Kod 2: dodani zbozi v ramci zjednoduseneho postupu pri tristrannnem obchodu (§ 102 odst. 1 pism. c). Kod 3: poskytnuti sluzby dle § 54.'
+			'Kódy plnění jsou definovány v § 102 zákona č. 235/2004 Sb. a v pokynu GFŘ k vyplňování souhrnného hlášení.\n\nKód 0: dodání zboží osobě registrované k DPH v jiném členském státě (§ 102 odst. 1 písm. a). Kód 1: poskytnutí služby s místem plnění dle § 9 odst. 1 (§ 102 odst. 1 písm. d). Kód 2: dodání zboží v rámci zjednodušeného postupu při třístranném obchodu (§ 102 odst. 1 písm. c). Kód 3: poskytnutí služby dle § 54.'
 	},
 	'zdanovaci-obdobi': {
-		title: 'Zdanovaci obdobi',
+		title: 'Zdaňovací období',
 		simple:
-			'Zdanovaci obdobi je casovy usek, za ktery podavate DPH priznani a odvadite dan. Muze byt:\n\n- Mesicni: priznani podavate kazdy mesic (povinne pri obratu nad 10 mil. Kc)\n- Ctvrtletni: priznani podavate za kazde ctvrtleti (pro mensi platce DPH)\n\nPriznani se vzdy podava do 25. dne po skonceni obdobi.',
+			'Zdaňovací období je časový úsek, za který podáváte DPH přiznání a odvádíte daň. Může být:\n\n- Měsíční: přiznání podáváte každý měsíc (povinně při obratu nad 10 mil. Kč)\n- Čtvrtletní: přiznání podáváte za každé čtvrtletí (pro menší plátce DPH)\n\nPřiznání se vždy podává do 25. dne po skončení období.',
 		legal:
-			'Zdanovaci obdobi upravuji § 99-99a zakona c. 235/2004 Sb. Zakladnim zdanovacim obdobim je kalendarni mesic (§ 99). Platce muze zvolit ctvrtletni obdobi, pokud jeho obrat za predchazejici kalendarni rok nepresahl 10 000 000 Kc a neni nespolehlyvym platcem (§ 99a).\n\nZmena zdanovaciho obdobi se oznamuje spravci dane do konce ledna prislusneho roku (§ 99a odst. 2).'
+			'Zdaňovací období upravují § 99-99a zákona č. 235/2004 Sb. Základním zdaňovacím obdobím je kalendářní měsíc (§ 99). Plátce může zvolit čtvrtletní období, pokud jeho obrat za předcházející kalendářní rok nepřesáhl 10 000 000 Kč a není nespolehlivým plátcem (§ 99a).\n\nZměna zdaňovacího období se oznamuje správci daně do konce ledna příslušného roku (§ 99a odst. 2).'
 	},
 	'typ-faktury': {
 		title: 'Typ dokladu',
 		simple:
-			'Faktura je danovy doklad, ktery vystavujete za dodane zbozi nebo sluzby. Zalohova faktura (proforma) je vyzva k platbe -- neni danovym dokladem a neslouzi k uplatneni DPH.\n\nPokud jste platce DPH, po uhrade zalohove faktury musite vystavit radnou fakturu (vyrovnani zalohy).',
+			'Faktura je daňový doklad, který vystavujete za dodané zboží nebo služby. Zálohová faktura (proforma) je výzva k platbě -- není daňovým dokladem a neslouží k uplatnění DPH.\n\nPokud jste plátce DPH, po úhradě zálohové faktury musíte vystavit řádnou fakturu (vyrovnání zálohy).',
 		legal:
-			'Danovy doklad je definovan v § 26 zakona c. 235/2004 Sb. o DPH. Zalohova faktura neni danovym dokladem ve smyslu tohoto zakona -- jedna se o obchodni dokument vyzyvajici k platbe.\n\nPovinne nalezitosti danoveho dokladu upravuje § 29 tehoz zakona. Po prijeti uhrady zalohove faktury vznika povinnost vystavit radny danovy doklad dle § 28 odst. 2.'
+			'Daňový doklad je definován v § 26 zákona č. 235/2004 Sb. o DPH. Zálohová faktura není daňovým dokladem ve smyslu tohoto zákona -- jedná se o obchodní dokument vyzývající k platbě.\n\nPovinné náležitosti daňového dokladu upravuje § 29 téhož zákona. Po přijetí úhrady zálohové faktury vzniká povinnost vystavit řádný daňový doklad dle § 28 odst. 2.'
 	},
 	'dobropis': {
-		title: 'Dobropis (opravny danovy doklad)',
+		title: 'Dobropis (opravný daňový doklad)',
 		simple:
-			'Dobropis je opravny doklad, ktery vystavujete, kdyz potrebujete snizit castku na jiz vydane fakture. Typicke duvody: sleva, reklamace, chybne uctovana castka nebo vraceni zbozi.\n\nDobropis odkazuje na puvodni fakturu a obsahuje zapornou castku. Po jeho vystaveni se snizi vase danove zavazky.',
+			'Dobropis je opravný doklad, který vystavujete, když potřebujete snížit částku na již vydané faktuře. Typické důvody: sleva, reklamace, chybně účtovaná částka nebo vrácení zboží.\n\nDobropis odkazuje na původní fakturu a obsahuje zápornou částku. Po jeho vystavení se sníží vaše daňové závazky.',
 		legal:
-			'Opravny danovy doklad upravuje § 42 zakona c. 235/2004 Sb. o DPH. Platce je povinen vystavit opravny danovy doklad do 15 dni ode dne zjisteni skutecnosti rozhodnych pro provedeni opravy (§ 42 odst. 2).\n\nOpravny doklad musi obsahovat duvod opravy, rozdil mezi puvodni a novou castkou a odkaz na puvodni danovy doklad (§ 45 odst. 1).'
+			'Opravný daňový doklad upravuje § 42 zákona č. 235/2004 Sb. o DPH. Plátce je povinen vystavit opravný daňový doklad do 15 dnů ode dne zjištění skutečností rozhodných pro provedení opravy (§ 42 odst. 2).\n\nOpravný doklad musí obsahovat důvod opravy, rozdíl mezi původní a novou částkou a odkaz na původní daňový doklad (§ 45 odst. 1).'
 	},
 	'vyrovnani-zalohy': {
-		title: 'Vyrovnani zalohy',
+		title: 'Vyrovnání zálohy',
 		simple:
-			'Po zaplaceni zalohove faktury (proformy) je treba vystavit radnou fakturu. Tato faktura obsahuje celkovou castku za dodane zbozi ci sluzby, od ktere se odecte jiz uhrazena zaloha.\n\nVysledkem je doplatek, ktery zakaznik jeste uhradi, nebo nulova castka, pokud zaloha pokryla vse.',
+			'Po zaplacení zálohové faktury (proformy) je třeba vystavit řádnou fakturu. Tato faktura obsahuje celkovou částku za dodané zboží či služby, od které se odečte již uhrazená záloha.\n\nVýsledkem je doplatek, který zákazník ještě uhradí, nebo nulová částka, pokud záloha pokryla vše.',
 		legal:
-			'Povinnost vystavit danovy doklad po prijeti uhrady vyplyva z § 21 odst. 1 zakona c. 235/2004 Sb. o DPH. Dnem prijeti uhrady vznika povinnost priznat dan na vystupu.\n\nPri vyrovnani se na radne fakture uvede celkova castka plneni a odecte se drive uhrazena zaloha. Zaklad dane a DPH se vypoctou z celkove castky plneni.'
+			'Povinnost vystavit daňový doklad po přijetí úhrady vyplývá z § 21 odst. 1 zákona č. 235/2004 Sb. o DPH. Dnem přijetí úhrady vzniká povinnost přiznat daň na výstupu.\n\nPři vyrovnání se na řádné faktuře uvede celková částka plnění a odečte se dříve uhrazená záloha. Základ daně a DPH se vypočtou z celkové částky plnění.'
 	},
 	'isdoc-export': {
 		title: 'Export ISDOC',
 		simple:
-			'ISDOC je cesky standard pro elektronickou fakturaci. Soubor ve formatu ISDOC (.isdoc) obsahuje vsechna data faktury ve strojove citelne podobe.\n\nKdyz poslete fakturu ve formatu ISDOC, odberateluv ucetni system ji muze automaticky nacist bez rucniho prepisovani.',
+			'ISDOC je český standard pro elektronickou fakturaci. Soubor ve formátu ISDOC (.isdoc) obsahuje všechna data faktury ve strojově čitelné podobě.\n\nKdyž pošlete fakturu ve formátu ISDOC, odběratelův účetní systém ji může automaticky načíst bez ručního přepisování.',
 		legal:
-			'ISDOC (Information System Document) je cesky narodni standard elektronicke fakturace definovany ICT Unii. Format je zalozeny na UN/CEFACT a je kompatibilni s evropskou normou EN 16931.\n\nPouzivani elektronickych faktur upravuje § 26 odst. 3 a § 34 zakona c. 235/2004 Sb. Elektronicka faktura musi byt opatrena zarucenymi prostredky pro overeni puvodu a neporusenosti obsahu.'
+			'ISDOC (Information System Document) je český národní standard elektronické fakturace definovaný ICT Unií. Formát je založený na UN/CEFACT a je kompatibilní s evropskou normou EN 16931.\n\nPoužívání elektronických faktur upravuje § 26 odst. 3 a § 34 zákona č. 235/2004 Sb. Elektronická faktura musí být opatřena zaručenými prostředky pro ověření původu a neporušenosti obsahu.'
 	},
 	'danova-kontrola': {
-		title: 'Danova kontrola nakladu',
+		title: 'Daňová kontrola nákladů',
 		simple:
-			'Danova kontrola nakladu je proces, kdy systematicky projdete sve vydaje a overite, ze kazdy naklad je spravne dolozen, spravne zarazen a danove uznatelny.\n\nOznacenim nakladu jako "zkontrolovany" si udrzujete prehled o tom, ktere vydaje jste jiz overili a ktere jeste cekaji na kontrolu.',
+			'Daňová kontrola nákladů je proces, kdy systematicky projdete své výdaje a ověříte, že každý náklad je správně doložen, správně zařazen a daňově uznatelný.\n\nOznačením nákladu jako "zkontrolovaný" si udržujete přehled o tom, které výdaje jste již ověřili a které ještě čekají na kontrolu.',
 		legal:
-			'Danove uznatelne naklady jsou definovany v § 24-25 zakona c. 586/1992 Sb. o danich z prijmu. Podnikatel je povinen prokazat, ze vydaj byl vynalozen na dosazeni, zajisteni a udrzeni zdanitelnych prijmu.\n\nSpravce dane muze v ramci danove kontroly (§ 85 zakona c. 280/2009 Sb.) pozadovat prokazani opravnenosti vsech uplatnenych nakladu. Pravidelna kontrola minimalizuje riziko doplaceni dane.'
+			'Daňově uznatelné náklady jsou definovány v § 24-25 zákona č. 586/1992 Sb. o daních z příjmů. Podnikatel je povinen prokázat, že výdaj byl vynaložen na dosažení, zajištění a udržení zdanitelných příjmů.\n\nSprávce daně může v rámci daňové kontroly (§ 85 zákona č. 280/2009 Sb.) požadovat prokázání oprávněnosti všech uplatněných nákladů. Pravidelná kontrola minimalizuje riziko doplacení daně.'
 	},
 	'ocr-import': {
 		title: 'Import z dokladu (OCR)',
 		simple:
-			'OCR (opticke rozpoznavani znaku) automaticky precte text z nahrane faktury nebo uctenky. Staci nahrat soubor (PDF, JPG, PNG nebo WebP) a system se pokusi rozpoznat dodavatele, castku, datum a dalsi udaje.\n\nRozpoznana data muzete pred ulozenim zkontrolovat a upravit.',
+			'OCR (optické rozpoznávání znaků) automaticky přečte text z nahrané faktury nebo účtenky. Stačí nahrát soubor (PDF, JPG, PNG nebo WebP) a systém se pokusí rozpoznat dodavatele, částku, datum a další údaje.\n\nRozpoznaná data můžete před uložením zkontrolovat a upravit.',
 		legal:
-			'Archivace danovych dokladu v elektronicke podobe je upravena v § 35a zakona c. 235/2004 Sb. a § 31-32 zakona c. 563/1991 Sb. o ucetnictvi. Elektronicka kopie musi zachovat vernost a citelnost puvodniho dokladu.\n\nPovinnost uchovat danove doklady je 10 let od konce zdanovaciho obdobi (§ 35 zakona c. 235/2004 Sb.).'
+			'Archivace daňových dokladů v elektronické podobě je upravena v § 35a zákona č. 235/2004 Sb. a § 31-32 zákona č. 563/1991 Sb. o účetnictví. Elektronická kopie musí zachovat věrnost a čitelnost původního dokladu.\n\nPovinnost uchovat daňové doklady je 10 let od konce zdaňovacího období (§ 35 zákona č. 235/2004 Sb.).'
 	},
 	'platebni-podminky': {
-		title: 'Platebni podminky',
+		title: 'Platební podmínky',
 		simple:
-			'Splatnost ve dnech urcuje, kolik dni od vystaveni faktury ma zakaznik na zaplaceni. Tato hodnota se automaticky nastavi na novych fakturach pro tohoto zakaznika.\n\nBezna splatnost je 14 nebo 30 dni. Pro stale zakazniky muzete nastavit individualni splatnost.',
+			'Splatnost ve dnech určuje, kolik dní od vystavení faktury má zákazník na zaplacení. Tato hodnota se automaticky nastaví na nových fakturách pro tohoto zákazníka.\n\nBěžná splatnost je 14 nebo 30 dní. Pro stálé zákazníky můžete nastavit individuální splatnost.',
 		legal:
-			'Splatnost je smluvni ujednani dle § 1958-1964 zakona c. 89/2012 Sb. (obcansky zakonik). Pro obchodni vztahy mezi podnikateli je maximalni smluvni splatnost 60 dni dle § 1963a OZ.\n\nPro vztahy s verejnym sektorem plati maximalni splatnost 30 dni (§ 1963 OZ). Delsi splatnost je mozna jen pokud to neni vuci veriteli hrube nespravedlive.'
+			'Splatnost je smluvní ujednání dle § 1958-1964 zákona č. 89/2012 Sb. (občanský zákoník). Pro obchodní vztahy mezi podnikateli je maximální smluvní splatnost 60 dní dle § 1963a OZ.\n\nPro vztahy s veřejným sektorem platí maximální splatnost 30 dní (§ 1963 OZ). Delší splatnost je možná jen pokud to není vůči věřiteli hrubě nespravedlivé.'
 	},
 	'email-sablony': {
-		title: 'Sablony emailu',
+		title: 'Šablony emailů',
 		simple:
-			'Sablona emailu urcuje predmet a text zpravy, ktera se odesle zakaznikovi spolu s fakturou. Pouzijte {invoice_number} a system automaticky vlozi cislo faktury.\n\nSablonu nastavite jednou a pak se pouzije pro vsechny odeslane faktury. Pred odeslanim muzete text jeste upravit.',
+			'Šablona emailu určuje předmět a text zprávy, která se odešle zákazníkovi spolu s fakturou. Použijte {invoice_number} a systém automaticky vloží číslo faktury.\n\nŠablonu nastavíte jednou a pak se použije pro všechny odeslané faktury. Před odesláním můžete text ještě upravit.',
 		legal:
-			'Odeslani faktury emailem je beznou obchodni praxi. Elektronicke doruceni danoveho dokladu je upraveno v § 34 zakona c. 235/2004 Sb. -- odberatel musi s elektronickym dorucenim souhlasit.\n\nElektronicka faktura musi splnovat podminky pro overeni puvodu a neporusenosti obsahu (§ 34 odst. 1).'
+			'Odeslání faktury emailem je běžnou obchodní praxí. Elektronické doručení daňového dokladu je upraveno v § 34 zákona č. 235/2004 Sb. -- odběratel musí s elektronickým doručením souhlasit.\n\nElektronická faktura musí splňovat podmínky pro ověření původu a neporušenosti obsahu (§ 34 odst. 1).'
 	},
 	'opakovane-faktury': {
-		title: 'Opakovane faktury',
+		title: 'Opakované faktury',
 		simple:
-			'Opakovane faktury jsou sablony, ze kterych se automaticky generuji nove faktury v pravidelnych intervalech (mesicne, ctvrtletne, rocne).\n\nHodi se pro pausalni sluzby, najem, predplatne nebo jakoukoli pravidelnou fakturaci. Sablona obsahuje zakaznika, polozky a frekvenci -- system pak sam vytvori fakturu kdyz prisel cas.',
+			'Opakované faktury jsou šablony, ze kterých se automaticky generují nové faktury v pravidelných intervalech (měsíčně, čtvrtletně, ročně).\n\nHodí se pro paušální služby, nájem, předplatné nebo jakoukoli pravidelnou fakturaci. Šablona obsahuje zákazníka, položky a frekvenci -- systém pak sám vytvoří fakturu když přišel čas.',
 		legal:
-			'Opakovane plneni je upraveno v § 21 odst. 8 zakona c. 235/2004 Sb. o DPH. U opakujiciho se plneni se DUZP stanovi nejpozdeji poslednim dnem zdanovaciho obdobi.\n\nSmlouvy na opakovane plneni (najem, servisni smlouvy) se ridi ustanovenimi o zavazkovem pravu v obcanskem zakoniku (§ 1724 a nasl. zakona c. 89/2012 Sb.).'
+			'Opakované plnění je upraveno v § 21 odst. 8 zákona č. 235/2004 Sb. o DPH. U opakujícího se plnění se DUZP stanoví nejpozději posledním dnem zdaňovacího období.\n\nSmlouvy na opakované plnění (nájem, servisní smlouvy) se řídí ustanoveními o závazkovém právu v občanském zákoníku (§ 1724 a násl. zákona č. 89/2012 Sb.).'
 	},
 	'kategorie-nakladu': {
-		title: 'Kategorie nakladu',
+		title: 'Kategorie nákladů',
 		simple:
-			'Kategorie pomahaji tridit naklady podle typu (kancelar, cestovne, sluzby, material apod.). Dobre roztridene naklady usnadnuji prehled o vydajich, pripravu danoveho priznani a komunikaci s ucetnim.\n\nMuzete pouzit vychozi kategorie nebo si vytvorit vlastni.',
+			'Kategorie pomáhají třídit náklady podle typu (kancelář, cestovné, služby, materiál apod.). Dobře roztříděné náklady usnadňují přehled o výdajích, přípravu daňového přiznání a komunikaci s účetním.\n\nMůžete použít výchozí kategorie nebo si vytvořit vlastní.',
 		legal:
-			'Trideni nakladu podle kategorii neni zakonem predepsano, ale vyplyva z povinnosti vest ucetnictvi prehledne a prukaze (§ 8 zakona c. 563/1991 Sb.).\n\nPro ucely danoveho priznani je vhodne clenit naklady dle § 24 zakona c. 586/1992 Sb. (danove uznatelne) a § 25 (neuznatelne), prip. dle povahy vydaje pro spravne vyplneni priloh priznani.'
+			'Třídění nákladů podle kategorií není zákonem předepsáno, ale vyplývá z povinnosti vést účetnictví přehledně a průkazně (§ 8 zákona č. 563/1991 Sb.).\n\nPro účely daňového přiznání je vhodné členit náklady dle § 24 zákona č. 586/1992 Sb. (daňově uznatelné) a § 25 (neuznatelné), příp. dle povahy výdaje pro správné vyplnění příloh přiznání.'
 	},
 	'duplikace-faktury': {
 		title: 'Duplikace faktury',
 		simple:
-			'Duplikace vytvori novou fakturu jako kopii stavajici. Zkopiruje se zakaznik, polozky, zpusob platby a dalsi nastaveni. Nova faktura dostane nove cislo a aktualni datumy.\n\nHodi se, kdyz vystavujete podobnou fakturu jako minule -- nemusite vse vyplnovat znovu.',
+			'Duplikace vytvoří novou fakturu jako kopii stávající. Zkopíruje se zákazník, položky, způsob platby a další nastavení. Nová faktura dostane nové číslo a aktuální datumy.\n\nHodí se, když vystavujete podobnou fakturu jako minule -- nemusíte vše vyplňovat znovu.',
 		legal:
-			'Duplikovana faktura je novy, samostatny danovy doklad s vlastnim poradovym cislem dle § 29 zakona c. 235/2004 Sb. Jedna se o zcela nezavisly doklad, nikoliv o kopii puvodniho.\n\nPoradove cislo musi byt unikatni v ramci ciselne rady (§ 29 odst. 1 pism. b).'
+			'Duplikovaná faktura je nový, samostatný daňový doklad s vlastním pořadovým číslem dle § 29 zákona č. 235/2004 Sb. Jedná se o zcela nezávislý doklad, nikoliv o kopii původního.\n\nPořadové číslo musí být unikátní v rámci číselné řady (§ 29 odst. 1 písm. b).'
 	},
 	'rocni-dane': {
-		title: 'Rocni dane a prehledy OSVC',
+		title: 'Roční daně a přehledy OSVČ',
 		simple:
-			'Rocni danove priznani (DPFO) a prehledy pro socialni (CSSZ) a zdravotni pojistovnu (ZP). Aplikace spocita zaklad dane z faktur a nakladu, aplikuje sazby a slevy, a vygeneruje XML pro elektronicke podani.',
+			'Roční daňové přiznání (DPFO) a přehledy pro sociální (ČSSZ) a zdravotní pojišťovnu (ZP). Aplikace spočítá základ daně z faktur a nákladů, aplikuje sazby a slevy, a vygeneruje XML pro elektronické podání.',
 		legal:
-			'Danove priznani k dani z prijmu fyzickych osob (§ 38g zakona c. 586/1992 Sb.). Prehled o prijmech a vydajich OSVC pro CSSZ (§ 15 zakona c. 589/1992 Sb.) a pro zdravotni pojistovnu (§ 24 zakona c. 592/1992 Sb.).'
+			'Daňové přiznání k dani z příjmů fyzických osob (§ 38g zákona č. 586/1992 Sb.). Přehled o příjmech a výdajích OSVČ pro ČSSZ (§ 15 zákona č. 589/1992 Sb.) a pro zdravotní pojišťovnu (§ 24 zákona č. 592/1992 Sb.).'
 	},
 	'vymerovaci-zaklad': {
-		title: 'Vymerovaci zaklad pro pojistne',
+		title: 'Vyměřovací základ pro pojistné',
 		simple:
-			'Vymerovaci zaklad je castka, ze ktere se pocita socialni a zdravotni pojistne. Pro OSVC je to 50 % ze zakladu dane (prijmy minus vydaje).\n\nExistuje minimalni vymerovaci zaklad -- i kdyz mate nizky zisk, zaplatite pojistne alespon z minima. U socialniho pojisteni je minimum dobrovolne (pokud je hlavni cinnost), u zdravotniho je povinne vzdy.',
+			'Vyměřovací základ je částka, ze které se počítá sociální a zdravotní pojistné. Pro OSVČ je to 50 % ze základu daně (příjmy minus výdaje).\n\nExistuje minimální vyměřovací základ -- i když máte nízký zisk, zaplatíte pojistné alespoň z minima. U sociálního pojištění je minimum dobrovolné (pokud je hlavní činnost), u zdravotního je povinné vždy.',
 		legal:
-			'Vymerovaci zaklad pro socialni pojisteni OSVC: 50 % zakladu dane (§ 5b zakona c. 589/1992 Sb.). Minimalni vymerovaci zaklad: 25 % prumerne mzdy pro hlavni cinnost. Pro zdravotni pojisteni: 50 % zakladu dane (§ 3a zakona c. 592/1992 Sb.), minimalni zaklad je 50 % prumerne mzdy (§ 3a odst. 2).'
+			'Vyměřovací základ pro sociální pojištění OSVČ: 50 % základu daně (§ 5b zákona č. 589/1992 Sb.). Minimální vyměřovací základ: 25 % průměrné mzdy pro hlavní činnost. Pro zdravotní pojištění: 50 % základu daně (§ 3a zákona č. 592/1992 Sb.), minimální základ je 50 % průměrné mzdy (§ 3a odst. 2).'
 	},
 	'casovy-test': {
-		title: 'Casovy test 3 roky pro cenne papiry',
+		title: 'Časový test 3 roky pro cenné papíry',
 		simple:
-			'Pokud vlastnite akcii, ETF nebo jiny cenny papir dele nez 3 roky a pak ho prodate, zisk z prodeje je osvobozeny od dane. Tomu se rika "casovy test".\n\nPriklad: Koupite akcii v lednu 2022 a prodate v unoru 2025 (dele nez 3 roky) -- neplatite zadnou dan ze zisku. Pokud prodate drive, zisk se musi danit v ramci § 10.',
+			'Pokud vlastníte akcii, ETF nebo jiný cenný papír déle než 3 roky a pak ho prodáte, zisk z prodeje je osvobozený od daně. Tomu se říká "časový test".\n\nPříklad: Koupíte akcii v lednu 2022 a prodáte v únoru 2025 (déle než 3 roky) -- neplatíte žádnou daň ze zisku. Pokud prodáte dříve, zisk se musí danit v rámci § 10.',
 		legal:
-			'Osvobozeniprijmu z prodeje cennych papiru po casovem testu upravuje § 4 odst. 1 pism. w) zakona c. 586/1992 Sb. Doba drzeni musi prekrocit 3 roky. Od 2025 se casovy test prodluzuje na 3 roky i pro kryptomeny (§ 4 odst. 1 pism. x). Pro fondy kolektivniho investovani plati rovnez 3 roky (§ 4 odst. 1 pism. w).'
+			'Osvobození příjmů z prodeje cenných papírů po časovém testu upravuje § 4 odst. 1 písm. w) zákona č. 586/1992 Sb. Doba držení musí překročit 3 roky. Od 2025 se časový test prodlužuje na 3 roky i pro kryptoměny (§ 4 odst. 1 písm. x). Pro fondy kolektivního investování platí rovněž 3 roky (§ 4 odst. 1 písm. w).'
 	},
 	'mesice-proporcializace': {
-		title: 'Proporcializace slev podle mesicu',
+		title: 'Proporcionalizace slev podle měsíců',
 		simple:
-			'Nektere slevy a zvyhodneni se pocitaji v pomernej vysi podle poctu mesicu, po ktere podminka platila. Napr. pokud jste se ozenili v cervnu, slevu na manzela/ku uplatnite za 7 mesicu (cerven-prosinec).\n\nStejne to funguje u deti -- pokud se dite narodilo v rijnu, zvyhodneni uplatnite za 3 mesice. Rozhoduje stav na zacatku mesice.',
+			'Některé slevy a zvýhodnění se počítají v poměrné výši podle počtu měsíců, po které podmínka platila. Např. pokud jste se oženili v červnu, slevu na manžela/ku uplatníte za 7 měsíců (červen-prosinec).\n\nStejně to funguje u dětí -- pokud se dítě narodilo v říjnu, zvýhodnění uplatníte za 3 měsíce. Rozhoduje stav na začátku měsíce.',
 		legal:
-			'Proporcializace slev je upravena v § 35ba odst. 3 a § 35c odst. 8 zakona c. 586/1992 Sb. Sleva na manzela/ku a danove zvyhodneni na dite se uplatnuji v pomerne vysi odpovidajici poctu kalendarnich mesicu, na jejichz pocatku byly splneny podminky pro uplatneni.'
+			'Proporcionalizace slev je upravena v § 35ba odst. 3 a § 35c odst. 8 zákona č. 586/1992 Sb. Sleva na manžela/ku a daňové zvýhodnění na dítě se uplatňují v poměrné výši odpovídající počtu kalendářních měsíců, na jejichž počátku byly splněny podmínky pro uplatnění.'
 	},
 	'prehled-cssz': {
-		title: 'Prehled OSVC pro CSSZ',
+		title: 'Přehled OSVČ pro ČSSZ',
 		simple:
-			'Prehled pro Ceskou spravu socialniho zabezpeceni je rocni formular, ve kterem vykazujete sve prijmy a vydaje z podnikani. CSSZ z nej vypocita vase pojistne a novou vysi mesicnich zaloh.\n\nPrehled se podava do jednoho mesice po lhute pro podani danoveho priznani. Pokud vam vysel doplatek, musite ho zaplatit do 8 dnu od podani prehledu.',
+			'Přehled pro Českou správu sociálního zabezpečení je roční formulář, ve kterém vykazujete své příjmy a výdaje z podnikání. ČSSZ z něj vypočítá vaše pojistné a novou výši měsíčních záloh.\n\nPřehled se podává do jednoho měsíce po lhůtě pro podání daňového přiznání. Pokud vám vyšel doplatek, musíte ho zaplatit do 8 dnů od podání přehledu.',
 		legal:
-			'Povinnost podat prehled vyplyva z § 15 zakona c. 589/1992 Sb. o pojistnem na socialni zabezpeceni. Lhuta: do jednoho mesice po lhute pro podani danoveho priznani (§ 15 odst. 1). Doplatek pojistneho je splatny do 8 dnu po podani prehledu (§ 14a odst. 2). Nova vyse zalohy plati od mesice nasledujiciho po mesici podani prehledu.'
+			'Povinnost podat přehled vyplývá z § 15 zákona č. 589/1992 Sb. o pojistném na sociální zabezpečení. Lhůta: do jednoho měsíce po lhůtě pro podání daňového přiznání (§ 15 odst. 1). Doplatek pojistného je splatný do 8 dnů po podání přehledu (§ 14a odst. 2). Nová výše zálohy platí od měsíce následujícího po měsíci podání přehledu.'
 	},
 	'prehled-zp': {
-		title: 'Prehled OSVC pro zdravotni pojistovnu',
+		title: 'Přehled OSVČ pro zdravotní pojišťovnu',
 		simple:
-			'Prehled pro zdravotni pojistovnu je rocni formular, ve kterem vykazujete sve prijmy a vydaje. Pojistovna z nej vypocita vase zdravotni pojistne a novou vysi mesicnich zaloh.\n\nPrehled se podava do jednoho mesice po lhute pro podani danoveho priznani. Doplatek se plati do 8 dnu od podani.',
+			'Přehled pro zdravotní pojišťovnu je roční formulář, ve kterém vykazujete své příjmy a výdaje. Pojišťovna z něj vypočítá vaše zdravotní pojistné a novou výši měsíčních záloh.\n\nPřehled se podává do jednoho měsíce po lhůtě pro podání daňového přiznání. Doplatek se platí do 8 dnů od podání.',
 		legal:
-			'Povinnost podat prehled upravuje § 24 zakona c. 592/1992 Sb. o pojistnem na vseobecne zdravotni pojisteni. Lhuta: do jednoho mesice po lhute pro podani danoveho priznani (§ 24 odst. 2). Doplatek pojistneho je splatny do 8 dnu po podani prehledu (§ 7 odst. 2). OSVC prehled podava te pojistovne, u ktere byla pojistena k 1. lednu prislusneho roku.'
+			'Povinnost podat přehled upravuje § 24 zákona č. 592/1992 Sb. o pojistném na všeobecné zdravotní pojištění. Lhůta: do jednoho měsíce po lhůtě pro podání daňového přiznání (§ 24 odst. 2). Doplatek pojistného je splatný do 8 dnů po podání přehledu (§ 7 odst. 2). OSVČ přehled podává té pojišťovně, u které byla pojištěna k 1. lednu příslušného roku.'
 	},
 	'kapitalove-prijmy-s8': {
-		title: 'Kapitalove prijmy (§8)',
+		title: 'Kapitálové příjmy (§8)',
 		simple:
-			'Kapitalove prijmy zahrnuji dividendy, uroky z vkladu, kupony z dluhopisu a vyplaty z fondu. Vetsina techto prijmu je zdanena srazkovou dani (15 %) primo u zdroje -- banka nebo broker dan strhne automaticky.\n\nDo danoveho priznani (§8) uvadite jen prijmy, ktere nebyly zdaneny srazkovou dani, nebo zahranicni dividendy, kde chcete uplatnit zapocet dane.',
+			'Kapitálové příjmy zahrnují dividendy, úroky z vkladů, kupony z dluhopisů a výplaty z fondů. Většina těchto příjmů je zdaněna srážkovou daní (15 %) přímo u zdroje -- banka nebo broker daň strhne automaticky.\n\nDo daňového přiznání (§8) uvádíte jen příjmy, které nebyly zdaněny srážkovou daní, nebo zahraniční dividendy, kde chcete uplatnit zápočet daně.',
 		legal:
-			'Kapitalove prijmy jsou definovany v § 8 zakona c. 586/1992 Sb. Srazkova dan 15 % dle § 36 odst. 2 se uplatni u dividend, uroku a dalsich prijmu z § 8. Zahranicni kapitalove prijmy se uvadeji v priznani a pripadna zahranicni srazkova dan se zapocte dle smlouvy o zamezeni dvojiho zdaneni (§ 38f).'
+			'Kapitálové příjmy jsou definovány v § 8 zákona č. 586/1992 Sb. Srážková daň 15 % dle § 36 odst. 2 se uplatní u dividend, úroků a dalších příjmů z § 8. Zahraniční kapitálové příjmy se uvádějí v přiznání a případná zahraniční srážková daň se započte dle smlouvy o zamezení dvojího zdanění (§ 38f).'
 	},
 	'obchody-cp-s10': {
 		title: 'Obchody s CP a kryptem (§10)',
 		simple:
-			'Zisky z prodeje cennych papiru (akcii, ETF, dluhopisu) a kryptomen se dani v ramci § 10 jako "ostatni prijmy". Od prijmu z prodeje si odectete nabyvaci cenu (poradi FIFO) a poplatky.\n\nZdanitelny je pouze zisk, a to jen pokud nepreslo 3 roky od nakupu (casovy test). Pokud celkove ostatni prijmy za rok nepresahnou 100 000 Kc, muzou byt take osvobozeny.',
+			'Zisky z prodeje cenných papírů (akcií, ETF, dluhopisů) a kryptoměn se daní v rámci § 10 jako "ostatní příjmy". Od příjmů z prodeje si odečtete nabývací cenu (pořadí FIFO) a poplatky.\n\nZdanitelný je pouze zisk, a to jen pokud nepřešlo 3 roky od nákupu (časový test). Pokud celkové ostatní příjmy za rok nepřesáhnou 100 000 Kč, můžou být také osvobozeny.',
 		legal:
-			'Prijmy z prodeje cennych papiru a kryptomen upravuje § 10 odst. 1 pism. b) zakona c. 586/1992 Sb. Vydajem je nabyvaci cena dle § 10 odst. 4. Oslobozeni po casovem testu 3 roky dle § 4 odst. 1 pism. w). Limit oslobozeni pro ostatni prijmy do 100 000 Kc dle § 10 odst. 3 pism. a). Ztrata z § 10 se nekompenzuje se zisky z § 7.'
+			'Příjmy z prodeje cenných papírů a kryptoměn upravuje § 10 odst. 1 písm. b) zákona č. 586/1992 Sb. Výdajem je nabývací cena dle § 10 odst. 4. Osvobození po časovém testu 3 roky dle § 4 odst. 1 písm. w). Limit osvobození pro ostatní příjmy do 100 000 Kč dle § 10 odst. 3 písm. a). Ztráta z § 10 se nekompenzuje se zisky z § 7.'
 	},
 	'nutno-priznat-dp': {
-		title: 'Kdy priznat kapitalovy prijem v DP',
+		title: 'Kdy přiznat kapitálový příjem v DP',
 		simple:
-			'Kapitalove prijmy je treba priznat v danovem priznani, pokud:\n\n- Zahranicni dividendy nebyly zdaneny ceskou srazkovou dani\n- Chcete zapocist zahranicni dan\n- Prijem presahuje limit pro oslobozeni\n- Zdrojem je P2P platforma ci zahranicni broker bez ceske srazkove dane\n\nPrijmy jiz zdanene ceskou srazkovou dani (napr. CZ dividendy od ceskeho brokera) priznovat nemusite.',
+			'Kapitálové příjmy je třeba přiznat v daňovém přiznání, pokud:\n\n- Zahraniční dividendy nebyly zdaněny českou srážkovou daní\n- Chcete započíst zahraniční daň\n- Příjem přesahuje limit pro osvobození\n- Zdrojem je P2P platforma či zahraniční broker bez české srážkové daně\n\nPříjmy již zdaněné českou srážkovou daní (např. CZ dividendy od českého brokera) přiznávat nemusíte.',
 		legal:
-			'Povinnost priznat kapitalovy prijem vyplyva z § 8 a § 38g zakona c. 586/1992 Sb. Prijmy zdanene srazkovou dani dle § 36 se do zakladu dane nezahrnuji (§ 36 odst. 7), pokud se poplatnik nerozhodne je zahrnout (§ 36 odst. 7 veta druha). Zahranicni prijmy se uvadeji vzdy, zapocet dane dle § 38f a prislusne smlouvy o zamezeni dvojiho zdaneni.'
+			'Povinnost přiznat kapitálový příjem vyplývá z § 8 a § 38g zákona č. 586/1992 Sb. Příjmy zdaněné srážkovou daní dle § 36 se do základu daně nezahrnují (§ 36 odst. 7), pokud se poplatník nerozhodne je zahrnout (§ 36 odst. 7 věta druhá). Zahraniční příjmy se uvádějí vždy, zápočet daně dle § 38f a příslušné smlouvy o zamezení dvojího zdanění.'
 	},
 	'doplatek-preplatek': {
-		title: 'Doplatek vs preplatek',
+		title: 'Doplatek vs přeplatek',
 		simple:
-			'Vysledek danoveho priznani je bud doplatek, nebo preplatek:\n\n- Doplatek: vase dan je vyssi nez zaplacene zalohy -- rozdil musite doplatit\n- Preplatek: zaplatili jste na zalohach vice, nez cinila vase dan -- stat vam rozdil vrati\n\nDoplatek je splatny do lhuty pro podani danoveho priznani. O preplatek musite pozadat (formular "Zadost o vraceni preplatku").',
+			'Výsledek daňového přiznání je buď doplatek, nebo přeplatek:\n\n- Doplatek: vaše daň je vyšší než zaplacené zálohy -- rozdíl musíte doplatit\n- Přeplatek: zaplatili jste na zálohách více, než činila vaše daň -- stát vám rozdíl vrátí\n\nDoplatek je splatný do lhůty pro podání daňového přiznání. O přeplatek musíte požádat (formulář "Žádost o vrácení přeplatku").',
 		legal:
-			'Splatnost dane z prijmu upravuje § 135 zakona c. 280/2009 Sb. (danovy rad) -- dan je splatna v posledni den lhuty pro podani priznani. Preplatek na dani vraci spravce dane na zaklade zadosti do 30 dnu (§ 155 odst. 3 danoveho radu). Preplatek mensi nez 200 Kc se nevraci (§ 155 odst. 2).'
+			'Splatnost daně z příjmů upravuje § 135 zákona č. 280/2009 Sb. (daňový řád) -- daň je splatná v poslední den lhůty pro podání přiznání. Přeplatek na dani vrací správce daně na základě žádosti do 30 dnů (§ 155 odst. 3 daňového řádu). Přeplatek menší než 200 Kč se nevrací (§ 155 odst. 2).'
 	},
 	'srazena-dan': {
-		title: 'Srazena dan z kapitalu',
+		title: 'Srážená daň z kapitálu',
 		simple:
-			'Srazkova dan je dan, kterou za vas strhne banka nebo broker jeste pred vyplatou. U ceskych dividend a uroku je to 15 %. Vy obdrzite castku jiz po zdaneni.\n\nPrijem zdaneny srazkovou dani nemusite uvadete v danovem priznani -- dan je jiz vyporadana. Vyjimkou jsou zahranicni dividendy, kde muze byt srazkova dan jina a chcete ji zapocist.',
+			'Srážková daň je daň, kterou za vás strhne banka nebo broker ještě před výplatou. U českých dividend a úroků je to 15 %. Vy obdržíte částku již po zdanění.\n\nPříjem zdaněný srážkovou daní nemusíte uvádět v daňovém přiznání -- daň je již vypořádána. Výjimkou jsou zahraniční dividendy, kde může být srážková daň jiná a chcete ji započíst.',
 		legal:
-			'Srazkova dan je upravena v § 36 zakona c. 586/1992 Sb. Sazba 15 % se uplatni u dividend, uroku z vkladu, uroku z dluhopisu a dalsich prijmu z § 8 (§ 36 odst. 2). Platcem srazkove dane je vyplatce prijmu (§ 38d), ktery dan srazit a odvede do konce mesice nasledujiciho po mesici srazeni.'
+			'Srážková daň je upravena v § 36 zákona č. 586/1992 Sb. Sazba 15 % se uplatní u dividend, úroků z vkladů, úroků z dluhopisů a dalších příjmů z § 8 (§ 36 odst. 2). Plátcem srážkové daně je vyplácitel příjmu (§ 38d), který daň srazí a odvede do konce měsíce následujícího po měsíci sražení.'
 	},
 	'kurz-cnb': {
-		title: 'Kurz CNB pro prepocet',
+		title: 'Kurz ČNB pro přepočet',
 		simple:
-			'Zahranicni prijmy a vydaje se pro danove ucely prepocitavaji na ceske koruny kurzem CNB. Pouziva se kurz platny v den uskutecneni transakce (den obchodu, den vyplaty dividendy).\n\nAplikace pouziva devizovy kurz CNB. U men, ktere CNB neuvadi primo, se pouzije krizovy kurz pres USD.',
+			'Zahraniční příjmy a výdaje se pro daňové účely přepočítávají na české koruny kurzem ČNB. Používá se kurz platný v den uskutečnění transakce (den obchodu, den výplaty dividendy).\n\nAplikace používá devizový kurz ČNB. U měn, které ČNB neuvádí přímo, se použije křížový kurz přes USD.',
 		legal:
-			'Prepocet ciziho kurzu upravuje § 38 zakona c. 586/1992 Sb. Poplatnik pouzije jednotny kurz stanoveny GFR (rocni prumerny kurz) nebo kurz devizoveho trhu CNB platny v den uskutecneni transakce. Jednotny kurz vydava GFR v pokynu po skonceni roku. Pro ucely § 10 se bezne pouziva denni kurz CNB.'
+			'Přepočet cizího kurzu upravuje § 38 zákona č. 586/1992 Sb. Poplatník použije jednotný kurz stanovený GFŘ (roční průměrný kurz) nebo kurz devizového trhu ČNB platný v den uskutečnění transakce. Jednotný kurz vydává GFŘ v pokynu po skončení roku. Pro účely § 10 se běžně používá denní kurz ČNB.'
 	},
 	'nova-zaloha': {
-		title: 'Nova mesicni zaloha',
+		title: 'Nová měsíční záloha',
 		simple:
-			'Po podani prehledu CSSZ a ZP vam pojistovna vypocita novou vysi mesicni zalohy na dalsi obdobi. Vyse zalohy se odviji od vasich prijmu v minulem roce.\n\nPokud jste meli vyssi prijmy, zalohy se zvysi. Pokud nizsi, snizi se (ale ne pod zakonene minimum). Nova zaloha plati od mesice nasledujiciho po podani prehledu.',
+			'Po podání přehledu ČSSZ a ZP vám pojišťovna vypočítá novou výši měsíční zálohy na další období. Výše zálohy se odvíjí od vašich příjmů v minulém roce.\n\nPokud jste měli vyšší příjmy, zálohy se zvýší. Pokud nižší, sníží se (ale ne pod zákonné minimum). Nová záloha platí od měsíce následujícího po podání přehledu.',
 		legal:
-			'Zalohy na socialni pojisteni: § 14a zakona c. 589/1992 Sb. Nova vyse zalohy = 1/12 rocniho pojistneho. Minimalni zaloha se odviji od prumerne mzdy. Plati od mesice nasledujiciho po mesici podani prehledu. Zalohy na zdravotni pojisteni: § 7 zakona c. 592/1992 Sb. Minimalni zaloha je 50 % z minimalniho vymerovaceho zakladu.'
+			'Zálohy na sociální pojištění: § 14a zákona č. 589/1992 Sb. Nová výše zálohy = 1/12 ročního pojistného. Minimální záloha se odvíjí od průměrné mzdy. Platí od měsíce následujícího po měsíci podání přehledu. Zálohy na zdravotní pojištění: § 7 zákona č. 592/1992 Sb. Minimální záloha je 50 % z minimálního vyměřovacího základu.'
 	},
 	'fifo-prepocet': {
-		title: 'FIFO metoda pro nabyvaci cenu',
+		title: 'FIFO metoda pro nabývací cenu',
 		simple:
-			'FIFO (First In, First Out) je metoda pro urceni nabyvaci ceny pri prodeji cennych papiru. Znamena, ze pri prodeji se jako prvni "spotrebuji" nejstarsi nakupene kusy.\n\nPriklad: Koupili jste 10 ks za 100 Kc a pak 10 ks za 150 Kc. Pokud prodate 10 ks, nabyvaci cena bude 100 Kc (pouziji se prvni nakoupene kusy).\n\nFIFO metoda je pro OSVC jedina povolena metoda.',
+			'FIFO (First In, First Out) je metoda pro určení nabývací ceny při prodeji cenných papírů. Znamená, že při prodeji se jako první "spotřebují" nejstarší nakoupené kusy.\n\nPříklad: Koupili jste 10 ks za 100 Kč a pak 10 ks za 150 Kč. Pokud prodáte 10 ks, nabývací cena bude 100 Kč (použijí se první nakoupené kusy).\n\nFIFO metoda je pro OSVČ jediná povolená metoda.',
 		legal:
-			'FIFO metoda je jedina pripustna metoda ocenovani pro fyzicke osoby pri prodeji cennych papiru dle § 10 odst. 4 zakona c. 586/1992 Sb. a pokynu GFR-D-22. Pri FIFO se priradi vydaj k primo identifikovatelnemu nakupu, nebo se pouzije nejstarsi neprirazeneny nakup. Naklady na poplatky brokera jsou soucasti nabyvaci ceny.'
+			'FIFO metoda je jediná přípustná metoda oceňování pro fyzické osoby při prodeji cenných papírů dle § 10 odst. 4 zákona č. 586/1992 Sb. a pokynu GFŘ-D-22. Při FIFO se přiřadí výdaj k přímo identifikovatelnému nákupu, nebo se použije nejstarší nepřiřazený nákup. Náklady na poplatky brokera jsou součástí nabývací ceny.'
 	},
 };
 
@@ -526,71 +526,71 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 		...(staticTopics as Record<HelpTopicId, HelpTopic>),
 
 		'pausalni-vydaje': {
-			title: 'Pausalni vydaje',
+			title: 'Paušální výdaje',
 			simple: tc
-				? `Pausalni vydaje jsou zjednoduseny zpusob uplatnovani nakladu -- misto evidovani kazdeho vydaje si odectete procento z prijmu. Procenta a maxima pro rok ${tc.year}:\n\n` +
+				? `Paušální výdaje jsou zjednodušený způsob uplatňování nákladů -- místo evidování každého výdaje si odečtete procento z příjmů. Procenta a maxima pro rok ${tc.year}:\n\n` +
 					Object.entries(tc.flat_rate_caps)
 						.sort(([a], [b]) => Number(b) - Number(a))
 						.map(([pct, cap]) => `- ${pct} %: max ${fmtCZK(cap)}`)
 						.join('\n') +
-					'\n\nPausalni vydaje se hodi, pokud mate nizke skutecne naklady. Pozor: pri pausalnich vydajich nelze uplatnit slevu na manzela/ku ani danove zvyhodneni na deti.'
-				: 'Pausalni vydaje jsou zjednoduseny zpusob uplatnovani nakladu -- misto evidovani kazdeho vydaje si odectete procento z prijmu. Kazde procento ma rocni strop, ktery se muze lisit podle roku.\n\nPausalni vydaje se hodi, pokud mate nizke skutecne naklady. Pozor: pri pausalnich vydajich nelze uplatnit slevu na manzela/ku ani danove zvyhodneni na deti.',
+					'\n\nPaušální výdaje se hodí, pokud máte nízké skutečné náklady. Pozor: při paušálních výdajích nelze uplatnit slevu na manžela/ku ani daňové zvýhodnění na děti.'
+				: 'Paušální výdaje jsou zjednodušený způsob uplatňování nákladů -- místo evidování každého výdaje si odečtete procento z příjmů. Každé procento má roční strop, který se může lišit podle roku.\n\nPaušální výdaje se hodí, pokud máte nízké skutečné náklady. Pozor: při paušálních výdajích nelze uplatnit slevu na manžela/ku ani daňové zvýhodnění na děti.',
 			legal:
-				'Pausalni vydaje (vydaje procentem z prijmu) upravuje § 7 odst. 7 zakona c. 586/1992 Sb. Sazby: 80 % (zemedelstvi, remesla), 60 % (zivnost volna), 40 % (svobodna povolani), 30 % (najem). Stropy se meni podle roku. Pri pausalnich vydajich nelze uplatnit slevu na manzela (§ 35ca) ani danove zvyhodneni na deti (§ 35c odst. 9).'
+				'Paušální výdaje (výdaje procentem z příjmů) upravuje § 7 odst. 7 zákona č. 586/1992 Sb. Sazby: 80 % (zemědělství, řemesla), 60 % (živnost volná), 40 % (svobodná povolání), 30 % (nájem). Stropy se mění podle roku. Při paušálních výdajích nelze uplatnit slevu na manžela (§ 35ca) ani daňové zvýhodnění na děti (§ 35c odst. 9).'
 		},
 
 		'dan-15-23': {
-			title: 'Sazba dane 15 % a 23 %',
+			title: 'Sazba daně 15 % a 23 %',
 			simple: tc
-				? `Dan z prijmu fyzickych osob ma dve sazby:\n\n- 15 % ze zakladu dane do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z casti zakladu dane nad ${fmtCZK(tc.progressive_threshold)}\n\nPrah ${fmtCZK(tc.progressive_threshold)} odpovida 48nasobku prumerne mzdy pro rok ${tc.year}. Vetsina OSVC se vejde do 15% pasma.`
-				: 'Dan z prijmu fyzickych osob ma dve sazby:\n\n- 15 % ze zakladu dane do zakonem stanovenoho prahu\n- 23 % z casti zakladu dane nad tento prah\n\nPrah odpovida 48nasobku prumerne mzdy a meni se kazdy rok. Vetsina OSVC se vejde do 15% pasma.',
+				? `Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z části základu daně nad ${fmtCZK(tc.progressive_threshold)}\n\nPráh ${fmtCZK(tc.progressive_threshold)} odpovídá 48násobku průměrné mzdy pro rok ${tc.year}. Většina OSVČ se vejde do 15% pásma.`
+				: 'Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do zákonem stanoveného prahu\n- 23 % z části základu daně nad tento práh\n\nPráh odpovídá 48násobku průměrné mzdy a mění se každý rok. Většina OSVČ se vejde do 15% pásma.',
 			legal:
-				'Sazby dane z prijmu fyzickych osob upravuje § 16 zakona c. 586/1992 Sb. Zakladni sazba 15 % a solidarni sazba 23 % z casti zakladu dane presahujici 48nasobek prumerne mzdy (§ 16 odst. 2). Prumerna mzda se stanovi dle § 21g.'
+				'Sazby daně z příjmů fyzických osob upravuje § 16 zákona č. 586/1992 Sb. Základní sazba 15 % a solidární sazba 23 % z části základu daně přesahující 48násobek průměrné mzdy (§ 16 odst. 2). Průměrná mzda se stanoví dle § 21g.'
 		},
 
 		'sleva-na-poplatnika': {
-			title: 'Zakladni sleva na dani',
+			title: 'Základní sleva na dani',
 			simple: tc
-				? `Zakladni sleva na poplatnika je castka, kterou si kazdy automaticky odecte od vypoctene dane. Pro rok ${tc.year} cini ${fmtCZK(tc.basic_credit)} rocne (${fmtCZK(Math.round(tc.basic_credit / 12))} mesicne).\n\nDiky teto sleve neplatite dan z prvnich cca ${fmtCZK(Math.round(tc.basic_credit / 0.15))} zisku. Sleva se uplatni vzdy v plne vysi -- neproporcializuje se podle mesicu.`
-				: 'Zakladni sleva na poplatnika je castka, kterou si kazdy automaticky odecte od vypoctene dane. Konkretni vyse zavisi na zdanovacim obdobi.\n\nDiky teto sleve neplatite dan z urcite casti zisku. Sleva se uplatni vzdy v plne vysi -- neproporcializuje se podle mesicu.',
+				? `Základní sleva na poplatníka je částka, kterou si každý automaticky odečte od vypočtené daně. Pro rok ${tc.year} činí ${fmtCZK(tc.basic_credit)} ročně (${fmtCZK(Math.round(tc.basic_credit / 12))} měsíčně).\n\nDíky této slevě neplatíte daň z prvních cca ${fmtCZK(Math.round(tc.basic_credit / 0.15))} zisku. Sleva se uplatní vždy v plné výši -- neproporcionalizuje se podle měsíců.`
+				: 'Základní sleva na poplatníka je částka, kterou si každý automaticky odečte od vypočtené daně. Konkrétní výše závisí na zdaňovacím období.\n\nDíky této slevě neplatíte daň z určité části zisku. Sleva se uplatní vždy v plné výši -- neproporcionalizuje se podle měsíců.',
 			legal:
-				'Zakladni sleva na poplatnika je upravena v § 35ba odst. 1 pism. a) zakona c. 586/1992 Sb. Tuto slevu uplatnuje kazdy poplatnik bez ohledu na vysi prijmu. Na rozdil od ostatnich slev se neproporcializuje a uplatnuje se vzdy v plne rocni vysi.'
+				'Základní sleva na poplatníka je upravena v § 35ba odst. 1 písm. a) zákona č. 586/1992 Sb. Tuto slevu uplatňuje každý poplatník bez ohledu na výši příjmů. Na rozdíl od ostatních slev se neproporcionalizuje a uplatňuje se vždy v plné roční výši.'
 		},
 
 		'zvyhodneni-na-deti': {
-			title: 'Danove zvyhodneni na deti',
+			title: 'Daňové zvýhodnění na děti',
 			simple: tc
-				? `Danove zvyhodneni na deti je castka, kterou si odectete od dane za kazde vyzivovane dite. Rocni castky (${tc.year}):\n\n- 1. dite: ${fmtCZK(tc.child_benefit_1)}\n- 2. dite: ${fmtCZK(tc.child_benefit_2)}\n- 3. a dalsi: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dite drzitelem ZTP/P, castka se zdvojnasobuje. Zvyhodneni muze vytvorit "danovy bonus" -- pokud je vyssi nez vase dan, stat vam rozdil vrati (max ${fmtCZK(tc.max_child_bonus)}/rok).`
-				: 'Danove zvyhodneni na deti je castka, kterou si odectete od dane za kazde vyzivovane dite. Konkretni vyse se lisi podle poradi ditete a zdanovaciho obdobi.\n\nPokud je dite drzitelem ZTP/P, castka se zdvojnasobuje. Zvyhodneni muze vytvorit "danovy bonus" -- pokud je vyssi nez vase dan, stat vam rozdil vrati.',
+				? `Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Roční částky (${tc.year}):\n\n- 1. dítě: ${fmtCZK(tc.child_benefit_1)}\n- 2. dítě: ${fmtCZK(tc.child_benefit_2)}\n- 3. a další: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí (max ${fmtCZK(tc.max_child_bonus)}/rok).`
+				: 'Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Konkrétní výše se liší podle pořadí dítěte a zdaňovacího období.\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí.',
 			legal:
-				'Danove zvyhodneni na vyzivovane dite upravuje § 35c zakona c. 586/1992 Sb. Castky se meni podle roku. U ditete s ZTP/P se castky zdvojnasobuji (§ 35c odst. 1). Maximalni rocni danovy bonus je stanoven v § 35c odst. 3. Zvyhodneni nelze uplatnit pri pausalnich vydajich (§ 35c odst. 9).'
+				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Maximální roční daňový bonus je stanoven v § 35c odst. 3. Zvýhodnění nelze uplatnit při paušálních výdajích (§ 35c odst. 9).'
 		},
 
 		'nezdanitelne-odpocty': {
-			title: 'Odpocty ze zakladu dane',
+			title: 'Odpočty ze základu daně',
 			simple: tc
-				? `Nezdanitelne casti zakladu dane jsou castky, ktere si odectete od zakladu dane PRED vypoctem dane (na rozdil od slev, ktere se odecitaji od dane samotne). Patri sem:\n\n- Uroky z hypoteky (max ${fmtCZK(tc.deduction_cap_mortgage)}/rok)\n- Penzijni sporeni (max ${fmtCZK(tc.deduction_cap_pension)}/rok)\n- Zivotni pojisteni (max ${fmtCZK(tc.deduction_cap_life_insurance)}/rok)\n- Dary (max 15 % zakladu dane)\n- Odborove prispevky (max ${fmtCZK(tc.deduction_cap_union)}/rok)`
-				: 'Nezdanitelne casti zakladu dane jsou castky, ktere si odectete od zakladu dane PRED vypoctem dane (na rozdil od slev, ktere se odecitaji od dane samotne). Patri sem uroky z hypoteky, penzijni sporeni, zivotni pojisteni, dary a odborove prispevky. Konkretni stropy zavisi na zdanovacim obdobi.',
+				? `Nezdanitelné části základu daně jsou částky, které si odečtete od základu daně PŘED výpočtem daně (na rozdíl od slev, které se odečítají od daně samotné). Patří sem:\n\n- Úroky z hypotéky (max ${fmtCZK(tc.deduction_cap_mortgage)}/rok)\n- Penzijní spoření (max ${fmtCZK(tc.deduction_cap_pension)}/rok)\n- Životní pojištění (max ${fmtCZK(tc.deduction_cap_life_insurance)}/rok)\n- Dary (max 15 % základu daně)\n- Odborové příspěvky (max ${fmtCZK(tc.deduction_cap_union)}/rok)`
+				: 'Nezdanitelné části základu daně jsou částky, které si odečtete od základu daně PŘED výpočtem daně (na rozdíl od slev, které se odečítají od daně samotné). Patří sem úroky z hypotéky, penzijní spoření, životní pojištění, dary a odborové příspěvky. Konkrétní stropy závisí na zdaňovacím období.',
 			legal:
-				'Nezdanitelne casti zakladu dane upravuje § 15 zakona c. 586/1992 Sb. Uroky z uveru na bydleni (§ 15 odst. 3). Penzijni pripojisteni/sporeni (§ 15 odst. 5): castka nad 12 000 Kc. Soukrome zivotni pojisteni (§ 15 odst. 6). Dary na verejne prospesne ucely (§ 15 odst. 1): min 2 % zakladu dane nebo 1 000 Kc, max 15 %. Stropy se meni podle roku.'
+				'Nezdanitelné části základu daně upravuje § 15 zákona č. 586/1992 Sb. Úroky z úvěru na bydlení (§ 15 odst. 3). Penzijní připojištění/spoření (§ 15 odst. 5): částka nad 12 000 Kč. Soukromé životní pojištění (§ 15 odst. 6). Dary na veřejně prospěšné účely (§ 15 odst. 1): min 2 % základu daně nebo 1 000 Kč, max 15 %. Stropy se mění podle roku.'
 		},
 
 		ztpp: {
-			title: 'ZTP/P -- zvlaste tezke postizeni s pruvodcem',
+			title: 'ZTP/P -- zvláště těžké postižení s průvodcem',
 			simple: tc
-				? `ZTP/P je prukaz pro osoby se zvlaste tezkym zdravotnim postizenim. V kontextu dani ma ZTP/P vliv na:\n\n- Sleva na manzela/ku se zdvojnasobuje (z ${fmtCZK(tc.spouse_credit)} na ${fmtCZK(tc.spouse_credit * 2)})\n- Danove zvyhodneni na dite se zdvojnasobuje\n\nZTP/P status se prokazuje prukazem vydanym Uradem prace CR.`
-				: 'ZTP/P je prukaz pro osoby se zvlaste tezkym zdravotnim postizenim. V kontextu dani ma ZTP/P vliv na:\n\n- Sleva na manzela/ku se zdvojnasobuje\n- Danove zvyhodneni na dite se zdvojnasobuje\n\nZTP/P status se prokazuje prukazem vydanym Uradem prace CR.',
+				? `ZTP/P je průkaz pro osoby se zvláště těžkým zdravotním postižením. V kontextu daní má ZTP/P vliv na:\n\n- Sleva na manžela/ku se zdvojnásobuje (z ${fmtCZK(tc.spouse_credit)} na ${fmtCZK(tc.spouse_credit * 2)})\n- Daňové zvýhodnění na dítě se zdvojnásobuje\n\nZTP/P status se prokazuje průkazem vydaným Úřadem práce ČR.`
+				: 'ZTP/P je průkaz pro osoby se zvláště těžkým zdravotním postižením. V kontextu daní má ZTP/P vliv na:\n\n- Sleva na manžela/ku se zdvojnásobuje\n- Daňové zvýhodnění na dítě se zdvojnásobuje\n\nZTP/P status se prokazuje průkazem vydaným Úřadem práce ČR.',
 			legal:
-				'Drzitel prukazu ZTP/P je definovan v § 34 zakona c. 329/2011 Sb. o poskytovani davek osobam se zdravotnim postizenim. Zdvojnasobeni slevy na manzela/ku: § 35ba odst. 1 pism. b) zakona c. 586/1992 Sb. Zdvojnasobeni zvyhodneni na dite: § 35c odst. 1 tehoz zakona.'
+				'Držitel průkazu ZTP/P je definován v § 34 zákona č. 329/2011 Sb. o poskytování dávek osobám se zdravotním postižením. Zdvojnásobení slevy na manžela/ku: § 35ba odst. 1 písm. b) zákona č. 586/1992 Sb. Zdvojnásobení zvýhodnění na dítě: § 35c odst. 1 téhož zákona.'
 		},
 
 		'sleva-na-manzela': {
-			title: 'Sleva na manzela/ku',
+			title: 'Sleva na manžela/ku',
 			simple: tc
-				? `Slevu na manzela/ku si muzete uplatnit, pokud vas manzel/ka mel/a za zdanovaci obdobi vlastni rocni prijmy nepresahujici ${fmtCZK(tc.spouse_income_limit)}. Do techto prijmu se nezapocitavaji napr. rodikovsky prispevek, porodne, davky statnich socialniho podpory ci stipendia.\n\nSleva cini ${fmtCZK(tc.spouse_credit)} rocne. Pokud je manzel/ka drzitelem ZTP/P, sleva se zdvojnasobuje na ${fmtCZK(tc.spouse_credit * 2)}. Sleva se proporcializuje podle mesicu -- pocita se od mesice, na jehoz pocatku byly podminky splneny.\n\nDulezite: slevu na manzela/ku NELZE uplatnit, pokud pouzivate pausalni vydaje.`
-				: 'Slevu na manzela/ku si muzete uplatnit, pokud vas manzel/ka mel/a za zdanovaci obdobi nizke vlastni rocni prijmy. Do techto prijmu se nezapocitavaji napr. rodikovsky prispevek, porodne ci stipendia.\n\nKonkretni vyse slevy a limit prijmu zavisi na zdanovacim obdobi. Pokud je manzel/ka drzitelem ZTP/P, sleva se zdvojnasobuje. Sleva se proporcializuje podle mesicu.\n\nDulezite: slevu na manzela/ku NELZE uplatnit, pokud pouzivate pausalni vydaje.',
+				? `Slevu na manžela/ku si můžete uplatnit, pokud váš manžel/ka měl/a za zdaňovací období vlastní roční příjmy nepřesahující ${fmtCZK(tc.spouse_income_limit)}. Do těchto příjmů se nezapočítávají např. rodičovský příspěvek, porodné, dávky státní sociální podpory či stipendia.\n\nSleva činí ${fmtCZK(tc.spouse_credit)} ročně. Pokud je manžel/ka držitelem ZTP/P, sleva se zdvojnásobuje na ${fmtCZK(tc.spouse_credit * 2)}. Sleva se proporcionalizuje podle měsíců -- počítá se od měsíce, na jehož počátku byly podmínky splněny.\n\nDůležité: slevu na manžela/ku NELZE uplatnit, pokud používáte paušální výdaje.`
+				: 'Slevu na manžela/ku si můžete uplatnit, pokud váš manžel/ka měl/a za zdaňovací období nízké vlastní roční příjmy. Do těchto příjmů se nezapočítávají např. rodičovský příspěvek, porodné či stipendia.\n\nKonkrétní výše slevy a limit příjmů závisí na zdaňovacím období. Pokud je manžel/ka držitelem ZTP/P, sleva se zdvojnásobuje. Sleva se proporcionalizuje podle měsíců.\n\nDůležité: slevu na manžela/ku NELZE uplatnit, pokud používáte paušální výdaje.',
 			legal:
-				'Sleva na manzela/ku je upravena v § 35ba odst. 1 pism. b) zakona c. 586/1992 Sb. Podminka: manzel/ka zijici ve spolecne domacnosti s vlastnim rocnim prijmem nepresahujicim zakonem stanoveny limit. Do vlastniho prijmu se nezapocitavaji davky dle § 35ba odst. 1 pism. b).\n\nU drzitele ZTP/P se sleva zdvojnasobuje. Proporcializace dle § 35ba odst. 3 -- 1/12 za kazdy mesic, na jehoz pocatku byly podminky splneny. Pri pausalnich vydajich (§ 7 odst. 7) nelze slevu uplatnit (§ 35ca).'
+				'Sleva na manžela/ku je upravena v § 35ba odst. 1 písm. b) zákona č. 586/1992 Sb. Podmínka: manžel/ka žijící ve společné domácnosti s vlastním ročním příjmem nepřesahujícím zákonem stanovený limit. Do vlastního příjmu se nezapočítávají dávky dle § 35ba odst. 1 písm. b).\n\nU držitele ZTP/P se sleva zdvojnásobuje. Proporcionalizace dle § 35ba odst. 3 -- 1/12 za každý měsíc, na jehož počátku byly podmínky splněny. Při paušálních výdajích (§ 7 odst. 7) nelze slevu uplatnit (§ 35ca).'
 		}
 	};
 }

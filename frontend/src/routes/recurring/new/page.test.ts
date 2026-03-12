@@ -70,7 +70,7 @@ describe('New recurring invoice page', () => {
 		expect(screen.getByLabelText('Množství')).toBeInTheDocument();
 	});
 
-	it('adds a line item when Pridat polozku is clicked', async () => {
+	it('adds a line item when Přidat položku is clicked', async () => {
 		mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
 
 		render(Page);

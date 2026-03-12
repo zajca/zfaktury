@@ -194,10 +194,10 @@
 						required
 						onchange={handleDueDateChange}
 						presets={[
-							{ label: '+7 dni', days: 7 },
-							{ label: '+14 dni', days: 14 },
-							{ label: '+30 dni', days: 30 },
-							{ label: '+60 dni', days: 60 }
+							{ label: '+7 dní', days: 7 },
+							{ label: '+14 dní', days: 14 },
+							{ label: '+30 dní', days: 30 },
+							{ label: '+60 dní', days: 60 }
 						]}
 						relativeToValue={form.issue_date}
 					/>

@@ -3,10 +3,6 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal(
-	'confirm',
-	vi.fn(() => true)
-);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -282,7 +278,12 @@ describe('Control Statement Detail', () => {
 
 		await fireEvent.click(screen.getByText('Smazat'));
 
-		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat toto kontrolní hlášení?');
+		await waitFor(() => {
+			expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+		});
+		const dialog = screen.getByRole('alertdialog');
+		const confirmBtn = dialog.querySelectorAll('button')[1] as HTMLElement;
+		await fireEvent.click(confirmBtn);
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(

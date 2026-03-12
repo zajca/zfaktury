@@ -17,6 +17,7 @@
 	import ReminderCard from '$lib/components/ReminderCard.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
@@ -24,6 +25,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -36,6 +38,7 @@
 	let showCreditNoteDialog = $state(false);
 	let showSendEmailDialog = $state(false);
 	let settling = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	let invoiceId = $derived(Number(page.params.id));
 
@@ -155,6 +158,7 @@
 				type: invoice?.type ?? 'regular',
 				items: invoiceItems as Invoice['items']
 			});
+			toastSuccess('Faktura uložena');
 			editing = false;
 			await loadInvoice();
 		} catch (e) {
@@ -168,6 +172,7 @@
 		error = null;
 		try {
 			await invoicesApi.send(invoiceId);
+			toastSuccess('Faktura odeslána');
 			await loadInvoice();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se odeslat fakturu';
@@ -179,6 +184,7 @@
 		error = null;
 		try {
 			await invoicesApi.markPaid(invoiceId, invoice.total_amount, toISODate(new Date()));
+			toastSuccess('Faktura označena jako uhrazená');
 			await loadInvoice();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako uhrazenou';
@@ -189,17 +195,23 @@
 		error = null;
 		try {
 			const dup = await invoicesApi.duplicate(invoiceId);
+			toastSuccess('Faktura duplikována');
 			goto(`/invoices/${dup.id}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se duplikovat fakturu';
 		}
 	}
 
-	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat tuto fakturu?')) return;
+	function handleDelete() {
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		showDeleteConfirm = false;
 		error = null;
 		try {
 			await invoicesApi.delete(invoiceId);
+			toastSuccess('Faktura smazána');
 			goto('/invoices');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat fakturu';
@@ -211,6 +223,7 @@
 		error = null;
 		try {
 			const settled = await invoicesApi.settle(invoiceId);
+			toastSuccess('Záloha vypořádána');
 			goto(`/invoices/${settled.id}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vyrovnat zálohu';
@@ -707,3 +720,12 @@
 		{/if}
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat fakturu"
+	message="Opravdu chcete smazat tuto fakturu?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

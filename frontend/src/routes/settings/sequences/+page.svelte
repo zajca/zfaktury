@@ -1,12 +1,15 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { sequencesApi, type InvoiceSequence } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let sequences = $state<InvoiceSequence[]>([]);
 	let loading = $state(true);
@@ -24,8 +27,10 @@
 	let editingId = $state<number | null>(null);
 	let editNextNumber = $state(1);
 	let saving = $state(false);
+	let showDeleteConfirm = $state(false);
+	let deleteTargetId = $state<number | null>(null);
 
-	$effect(() => {
+	onMount(() => {
 		loadSequences();
 	});
 
@@ -92,14 +97,23 @@
 		}
 	}
 
-	async function handleDelete(id: number) {
-		if (!confirm('Opravdu chcete smazat tuto číselnou řadu?')) return;
+	function handleDelete(id: number) {
+		deleteTargetId = id;
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		if (!deleteTargetId) return;
+		showDeleteConfirm = false;
 		error = null;
 		try {
-			await sequencesApi.delete(id);
+			await sequencesApi.delete(deleteTargetId);
+			toastSuccess('Číselná řada smazána');
 			await loadSequences();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat číselnou řadu';
+		} finally {
+			deleteTargetId = null;
 		}
 	}
 
@@ -289,3 +303,12 @@
 		{/if}
 	</div>
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat číselnou řadu"
+	message="Opravdu chcete smazat tuto číselnou řadu?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

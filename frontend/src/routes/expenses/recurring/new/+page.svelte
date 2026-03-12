@@ -16,6 +16,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -91,6 +92,7 @@
 				end_date: form.end_date || undefined,
 				is_active: form.is_active
 			});
+			toastSuccess('Opakovaný náklad vytvořen');
 			goto('/expenses/recurring');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se uložit opakovaný náklad';

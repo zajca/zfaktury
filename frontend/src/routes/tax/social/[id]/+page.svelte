@@ -7,16 +7,20 @@
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let data = $state<SocialInsuranceOverview | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let actionLoading = $state<string | null>(null);
 	let taxConstants = $state<TaxConstants | null>(null);
+	let showFileConfirm = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -95,12 +99,17 @@
 		}
 	}
 
-	async function handleMarkFiled() {
-		if (!confirm('Opravdu chcete označit přehled ČSSZ jako podaný?')) return;
+	function handleMarkFiled() {
+		showFileConfirm = true;
+	}
+
+	async function confirmMarkFiled() {
+		showFileConfirm = false;
 		actionLoading = 'filed';
 		error = null;
 		try {
 			data = await socialInsuranceApi.markFiled(returnId);
+			toastSuccess('Přehled ČSSZ označen jako podaný');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako podané';
 		} finally {
@@ -108,12 +117,17 @@
 		}
 	}
 
-	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat tento přehled?')) return;
+	function handleDelete() {
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		showDeleteConfirm = false;
 		actionLoading = 'delete';
 		error = null;
 		try {
 			await socialInsuranceApi.delete(returnId);
+			toastSuccess('Přehled smazán');
 			goto('/tax');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat přehled';
@@ -276,3 +290,22 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showFileConfirm}
+	title="Označit jako podané"
+	message="Opravdu chcete označit přehled ČSSZ jako podaný?"
+	confirmLabel="Označit jako podané"
+	variant="warning"
+	onconfirm={confirmMarkFiled}
+	oncancel={() => showFileConfirm = false}
+/>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat přehled"
+	message="Opravdu chcete smazat tento přehled?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

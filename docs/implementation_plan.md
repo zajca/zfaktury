@@ -36,7 +36,7 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ### SQLite Schema & Database
 - Done: SQLite connection with WAL mode, foreign keys, busy timeout
-- Done: Goose migration framework with embedded SQL (14 migrations: 001-014)
+- Done: Goose migration framework with embedded SQL (19 migrations: 001-019)
 - Done: Initial schema + migration 002 (schema alignment fixes)
 - Done: Amount (int64 halere) consistency validated across all columns
 - Exists: audit_log table (in migration 001, but no repository/service writes to it)
@@ -131,6 +131,11 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: Payment reminder templates (`internal/service/email/reminder_template.go`)
 - Done: Attachment support, HTML/text bodies, TO/CC/BCC
 - Done: Mailpit integration for dev email testing (`config.dev.toml`, `scripts/dev.sh`)
+
+### Expense CSV Import (Done)
+- Done: CSV batch import handler (`internal/handler/import_handler.go`)
+- Done: Import service (`internal/service/import_svc.go`)
+- Done: Frontend import page (`/expenses/import/`)
 
 ### Still Missing
 - Missing: Customizable PDF templates (logo, colors, footer — currently hardcoded layout)
@@ -242,10 +247,84 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ## Phase 5 — Annual Tax
 
-**RFC:** `docs/rfc/005-annual-tax.md` (not yet written)
-**Goal:** Income tax return, social insurance overview, health insurance overview.
+**RFCs:** `docs/rfc/006-annual-tax.md`, `docs/rfc/007-tax-credits-deductions.md`
+**Goal:** Income tax return, social insurance overview, health insurance overview, tax credits & deductions, investment income.
 
-- Missing: Everything (no existing code beyond domain structs)
+### RFC-006: Annual Tax (Done)
+
+#### Income Tax Return — DPFO (Done)
+- Done: `IncomeTaxReturn` domain struct (`internal/domain/annual_tax.go`)
+- Done: Migration 015 (`income_tax_returns`, `social_insurance_returns`, `health_insurance_returns` tables)
+- Done: Repository (`internal/repository/income_tax_return_repo.go`)
+- Done: Service with 12-step Recalculate (`internal/service/income_tax_return_svc.go`)
+- Done: Handler (`internal/handler/income_tax_handler.go`)
+- Done: XML generation (`internal/annualtaxxml/income_tax_gen.go`, `income_tax_types.go`)
+- Done: Frontend pages (`/tax/income/`)
+
+#### Social Insurance — CSSZ (Done)
+- Done: Repository (`internal/repository/social_insurance_repo.go`)
+- Done: Service (`internal/service/social_insurance_svc.go`)
+- Done: Handler (`internal/handler/social_insurance_handler.go`)
+- Done: XML generation (`internal/annualtaxxml/social_insurance_gen.go`, `social_insurance_types.go`)
+- Done: Frontend pages (`/tax/social/`)
+
+#### Health Insurance — ZP (Done)
+- Done: Repository (`internal/repository/health_insurance_repo.go`)
+- Done: Service (`internal/service/health_insurance_svc.go`)
+- Done: Handler (`internal/handler/health_insurance_handler.go`)
+- Done: Frontend pages (`/tax/health/`)
+- Missing: Health insurance XML (ZP) — deferred until unified SZP-VZP format (expected July 2026)
+
+#### Tax Year Settings (Done)
+- Done: `TaxYearSettings` domain struct (`internal/domain/tax_year_settings.go`)
+- Done: Migration 016 (`tax_year_settings`, `tax_prepayments` tables)
+- Done: Repository (`internal/repository/tax_year_settings_repo.go`, `tax_prepayment_repo.go`)
+- Done: Service (`internal/service/tax_year_settings_svc.go`)
+- Done: Handler (`internal/handler/tax_year_settings_handler.go`)
+- Done: Frontend pages (`/tax/prepayments/`)
+
+#### Shared Services (Done)
+- Done: Revenue/expense aggregation (`internal/service/annual_tax_base.go`)
+- Done: Tax constants 2024-2026 (`internal/service/annual_tax_constants.go`)
+- Done: Constants HTTP endpoint (`internal/handler/tax_constants_handler.go`)
+
+#### Tax Dashboard (Done)
+- Done: Frontend dashboard (`/tax/`) with three-column grid (income, social, health)
+
+### RFC-007: Tax Credits & Deductions (Done)
+
+#### Tax Credits (Done)
+- Done: `TaxSpouseCredit`, `TaxChildCredit`, `TaxPersonalCredits` domain structs (`internal/domain/tax_credits.go`)
+- Done: Migration 017 (`tax_spouse_credits`, `tax_child_credits`, `tax_personal_credits` tables)
+- Done: Migration 018 (spouse months proportionalization)
+- Done: Repositories (`tax_spouse_credit_repo.go`, `tax_child_credit_repo.go`, `tax_personal_credits_repo.go`)
+- Done: Service (`internal/service/tax_credits_svc.go`)
+- Done: Handler (`internal/handler/tax_credits_handler.go`)
+
+#### Tax Deductions (Done)
+- Done: `TaxDeduction` domain struct (`internal/domain/tax_deductions.go`)
+- Done: Migration 017 (`tax_deductions` table)
+- Done: Repository (`internal/repository/tax_deduction_repo.go`)
+- Done: Deduction document upload + AI extraction (`tax_deduction_document_repo.go`, `tax_deduction_document_svc.go`, `tax_document_extraction_svc.go`)
+- Done: Handler (`internal/handler/tax_deductions_handler.go`)
+- Done: Statutory caps (mortgage, life insurance, pension, donations, union dues)
+
+#### Frontend (Done)
+- Done: Credits & deductions page (`/tax/credits/`)
+
+### Investment Income (Done)
+
+#### Capital Income §8 & Security Transactions §10 (Done)
+- Done: `InvestmentIncome` domain struct (`internal/domain/investment_income.go`)
+- Done: Migration 019 (`investment_incomes`, `investment_documents` tables)
+- Done: Repository (`internal/repository/investment_document_repo.go`)
+- Done: Service (`internal/service/investment_income_svc.go`) with FIFO and time-test exemption
+- Done: Investment document upload + AI extraction from broker statements (`investment_document_svc.go`, `investment_extraction_svc.go`)
+- Done: Handler (`internal/handler/investment_income_handler.go`)
+- Done: Frontend pages (`/tax/investments/`)
+
+### Still Missing in Phase 5
+- Missing: Health insurance XML (ZP) — deferred until unified SZP-VZP format (expected July 2026)
 
 **Dependencies:** Phase 2, Phase 3, Phase 4
 
@@ -276,11 +355,17 @@ Nothing is considered "done" until it passes through this process. Existing code
 - Done: Contact list + detail/edit with ARES lookup UI
 - Done: Invoice list + create form + detail/edit page (incl. proforma, credit notes)
 - Done: Expense list + create form + detail/edit page (incl. documents, OCR)
+- Done: Expense CSV import (`/expenses/import/`)
 - Done: Settings page (Identity/Address/Bank/VAT sections)
 - Done: Recurring invoice management (`/recurring/`)
 - Done: Recurring expense management (`/expenses/recurring/`)
 - Done: Tax review page (`/expenses/review/`)
 - Done: VAT filing pages (`/vat/returns/`, `/vat/control/`, `/vat/vies/`)
+- Done: Annual tax dashboard (`/tax/`) with income, social, health columns
+- Done: Income tax return (`/tax/income/`), social insurance (`/tax/social/`), health insurance (`/tax/health/`)
+- Done: Tax credits & deductions (`/tax/credits/`)
+- Done: Tax prepayments & year settings (`/tax/prepayments/`)
+- Done: Investment income (`/tax/investments/`)
 
 ### Reports
 - Missing: All reporting, charts, CSV/PDF export
@@ -310,6 +395,7 @@ Nothing is considered "done" until it passes through this process. Existing code
 | Structured logging | Done | `log/slog` throughout (middleware, services, email, OCR, overdue) |
 | Audit trail | Exists (partial) | Table exists in migration 001, no repository/service writes to it |
 | Error handling | Exists (partial) | Handlers return errors; no global strategy |
+| AI extraction | Done | OpenAI-based OCR for expenses, tax deduction documents, and investment broker statements |
 | Input validation | Done | Settings key allowlist, ICO validation, service-layer checks |
 | API documentation | Missing | No OpenAPI/Swagger |
 | Frontend error states | Exists (partial) | List pages have loading/error/empty states; no toast system |
@@ -321,17 +407,17 @@ Nothing is considered "done" until it passes through this process. Existing code
 ## Dependency Graph
 
 ```
-Phase 1 (Foundation)
+Phase 1 (Foundation) ✓
   |
-  +---> Phase 2 (Invoicing) --+
-  |                            |
-  +---> Phase 3 (Expenses) ----+---> Phase 4 (VAT) ---> Phase 5 (Tax)
-                               |
-                               +---> Phase 6 (Banking)
-                               |
-                               +---> Phase 7 (Web UI)
-                                          |
-                                          +---> Phase 8 (Polish)
+  +---> Phase 2 (Invoicing) ✓ --+
+  |                              |
+  +---> Phase 3 (Expenses) ✓ ---+---> Phase 4 (VAT) ✓ ---> Phase 5 (Tax) ✓
+                                |
+                                +---> Phase 6 (Banking)
+                                |
+                                +---> Phase 7 (Web UI)
+                                           |
+                                           +---> Phase 8 (Polish)
 ```
 
 ## RFC Schedule
@@ -341,6 +427,8 @@ Phase 1 (Foundation)
 3. **RFC-003** (Expenses) — Done (categories, documents, OCR, recurring, tax review)
 4. **RFC-004** (VAT Filings) — Done (VAT returns, kontrolni hlaseni, souhrnne hlaseni)
 5. **RFC-005** (VAT Polish) — Done (all items implemented during RFC-004)
-6. **RFC-006** (Banking) — Write after RFC-005
-7. **RFC-007** (Web UI) — Write incrementally as backend phases complete
-8. **RFC-008** (Polish) — Write last
+6. **RFC-006** (Annual Tax) — Done (income tax, social insurance, health insurance, tax year settings)
+7. **RFC-007** (Tax Credits & Deductions) — Done (spouse/child/personal credits, deductions with caps, investment income)
+8. **RFC-008** (Banking) — Next
+9. **RFC-009** (Web UI) — Write incrementally as backend phases complete
+10. **RFC-010** (Polish) — Write last

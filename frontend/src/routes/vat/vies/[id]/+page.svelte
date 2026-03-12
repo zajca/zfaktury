@@ -11,15 +11,19 @@
 	} from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let summary = $state<VIESSummary | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let actionLoading = $state(false);
+	let showFileConfirm = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	let summaryId = $derived(Number(page.params.id));
 
@@ -80,12 +84,17 @@
 		}
 	}
 
-	async function handleMarkFiled() {
-		if (!confirm('Opravdu chcete označit souhrnné hlášení jako podané?')) return;
+	function handleMarkFiled() {
+		showFileConfirm = true;
+	}
+
+	async function confirmMarkFiled() {
+		showFileConfirm = false;
 		actionLoading = true;
 		error = null;
 		try {
 			summary = await viesApi.markFiled(summaryId);
+			toastSuccess('Souhrnné hlášení označeno jako podané');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako podané';
 		} finally {
@@ -93,11 +102,16 @@
 		}
 	}
 
-	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat toto souhrnné hlášení?')) return;
+	function handleDelete() {
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		showDeleteConfirm = false;
 		error = null;
 		try {
 			await viesApi.delete(summaryId);
+			toastSuccess('Souhrnné hlášení smazáno');
 			goto('/vat');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat souhrnné hlášení';
@@ -235,3 +249,22 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showFileConfirm}
+	title="Označit jako podané"
+	message="Opravdu chcete označit souhrnné hlášení jako podané?"
+	confirmLabel="Označit jako podané"
+	variant="warning"
+	onconfirm={confirmMarkFiled}
+	oncancel={() => showFileConfirm = false}
+/>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat souhrnné hlášení"
+	message="Opravdu chcete smazat toto souhrnné hlášení?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

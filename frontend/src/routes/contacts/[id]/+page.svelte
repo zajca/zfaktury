@@ -3,12 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { contactsApi, type Contact } from '$lib/api/client';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let contact = $state<Contact | null>(null);
 	let loading = $state(true);
@@ -35,6 +37,8 @@
 		tags: '',
 		notes: ''
 	});
+
+	let showDeleteConfirm = $state(false);
 
 	let isNew = $derived(page.params.id === 'new');
 	let contactId = $derived(isNew ? null : Number(page.params.id));
@@ -74,7 +78,7 @@
 				notes: contact.notes
 			};
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load contact';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst kontakt';
 		} finally {
 			loading = false;
 		}
@@ -91,7 +95,7 @@
 			form.zip = result.zip;
 			form.country = result.country;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'ARES lookup failed';
+			error = e instanceof Error ? e.message : 'Nepodařilo se vyhledat v ARES';
 		}
 	}
 
@@ -104,22 +108,29 @@
 			} else if (contactId) {
 				await contactsApi.update(contactId, form);
 			}
+			toastSuccess('Kontakt uložen');
 			goto('/contacts');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to save contact';
+			error = e instanceof Error ? e.message : 'Nepodařilo se uložit kontakt';
 		} finally {
 			saving = false;
 		}
 	}
 
-	async function handleDelete() {
+	function handleDelete() {
 		if (!contactId) return;
-		if (!confirm('Opravdu chcete smazat tento kontakt?')) return;
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		if (!contactId) return;
+		showDeleteConfirm = false;
 		try {
 			await contactsApi.delete(contactId);
+			toastSuccess('Kontakt smazán');
 			goto('/contacts');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to delete contact';
+			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kontakt';
 		}
 	}
 
@@ -315,3 +326,12 @@
 		</form>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat kontakt"
+	message="Opravdu chcete smazat tento kontakt?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

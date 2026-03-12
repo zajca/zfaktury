@@ -4,10 +4,6 @@ import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal(
-	'confirm',
-	vi.fn(() => true)
-);
 
 function jsonResponse(data: unknown, status = 200) {
 	return new Response(JSON.stringify(data), {
@@ -42,7 +38,6 @@ const sampleCategories = [
 
 beforeEach(() => {
 	mockFetch.mockReset();
-	(globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValue(true);
 	mockFetch.mockResolvedValue(jsonResponse(sampleCategories));
 });
 
@@ -191,7 +186,12 @@ describe('Categories Settings Page', () => {
 
 		await fireEvent.click(deleteBtns[0]);
 
-		expect(globalThis.confirm).toHaveBeenCalled();
+		await waitFor(() => {
+			expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+		});
+		const dialog = screen.getByRole('alertdialog');
+		const confirmBtn = dialog.querySelectorAll('button')[1] as HTMLElement;
+		await fireEvent.click(confirmBtn);
 
 		await waitFor(() => {
 			const deleteCall = mockFetch.mock.calls.find(

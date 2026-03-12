@@ -4,10 +4,6 @@ import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal(
-	'confirm',
-	vi.fn(() => true)
-);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
@@ -66,7 +62,6 @@ const sampleRecurring = [
 
 beforeEach(() => {
 	mockFetch.mockReset();
-	vi.mocked(confirm).mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -106,7 +101,7 @@ describe('Recurring invoices list page', () => {
 		expect(screen.getByText('Neaktivní')).toBeInTheDocument();
 	});
 
-	it('process due button calls POST and shows success message', async () => {
+	it('process due button calls POST', async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleRecurring));
 
 		render(Page);
@@ -127,10 +122,6 @@ describe('Recurring invoices list page', () => {
 				expect.objectContaining({ method: 'POST' })
 			);
 		});
-
-		await waitFor(() => {
-			expect(screen.getByText('Vygenerováno faktur: 2')).toBeInTheDocument();
-		});
 	});
 
 	it('delete with confirmation calls DELETE', async () => {
@@ -148,7 +139,12 @@ describe('Recurring invoices list page', () => {
 
 		await fireEvent.click(screen.getAllByText('Smazat')[0]);
 
-		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat tuto opakující se fakturu?');
+		await waitFor(() => {
+			expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+		});
+		const dialog = screen.getByRole('alertdialog');
+		const confirmBtn = dialog.querySelectorAll('button')[1] as HTMLElement;
+		await fireEvent.click(confirmBtn);
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(

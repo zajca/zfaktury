@@ -3,10 +3,6 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal(
-	'confirm',
-	vi.fn(() => true)
-);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -266,6 +262,13 @@ describe('VAT return detail page', () => {
 
 		const btn = screen.getByText('Smazat');
 		await fireEvent.click(btn);
+
+		await waitFor(() => {
+			expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+		});
+		const dialog = screen.getByRole('alertdialog');
+		const confirmBtn = dialog.querySelectorAll('button')[1] as HTMLElement;
+		await fireEvent.click(confirmBtn);
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledTimes(2);

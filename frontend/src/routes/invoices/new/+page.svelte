@@ -12,6 +12,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let dueDateOffset = $state(14);
 
@@ -107,6 +108,7 @@
 				items: invoiceItems as InvoiceItem[]
 			});
 
+			toastSuccess('Faktura vytvořena');
 			goto('/invoices');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit fakturu';

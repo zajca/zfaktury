@@ -6,13 +6,12 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let settings = $state<Settings>({});
 	let loading = $state(true);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
-	let success = $state(false);
-
 	import { onMount } from 'svelte';
 
 	onMount(() => {
@@ -34,13 +33,9 @@
 	async function handleSave() {
 		saving = true;
 		error = null;
-		success = false;
 		try {
 			settings = await settingsApi.update(settings);
-			success = true;
-			setTimeout(() => {
-				success = false;
-			}, 3000);
+			toastSuccess('Email nastavení uloženo');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení';
 		} finally {
@@ -65,12 +60,6 @@
 	<PageHeader title="Email" description="Výchozí nastavení pro odesílání faktur emailem" />
 
 	<ErrorAlert {error} class="mt-4" />
-
-	{#if success}
-		<div role="alert" class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success">
-			Nastavení bylo uloženo.
-		</div>
-	{/if}
 
 	{#if loading}
 		<LoadingSpinner class="mt-8" />

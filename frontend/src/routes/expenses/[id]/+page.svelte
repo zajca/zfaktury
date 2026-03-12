@@ -12,12 +12,14 @@
 	import DocumentList from '$lib/components/DocumentList.svelte';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let expense = $state<Expense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -28,6 +30,7 @@
 	let documents = $state<ExpenseDocument[]>([]);
 	let ocrResult = $state<OCRResult | null>(null);
 	let ocrProcessing = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	let expenseId = $derived(Number(page.params.id));
 
@@ -137,6 +140,7 @@
 				payment_method: form.payment_method,
 				notes: form.notes
 			});
+			toastSuccess('Náklad uložen');
 			editing = false;
 			await loadExpense();
 		} catch (e) {
@@ -146,11 +150,16 @@
 		}
 	}
 
-	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat tento náklad?')) return;
+	function handleDelete() {
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		showDeleteConfirm = false;
 		error = null;
 		try {
 			await expensesApi.delete(expenseId);
+			toastSuccess('Náklad smazán');
 			goto('/expenses');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat náklad';
@@ -484,3 +493,12 @@
 		{/if}
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat náklad"
+	message="Opravdu chcete smazat tento náklad?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

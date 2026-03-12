@@ -1,17 +1,22 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { categoriesApi, type ExpenseCategory } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let categories = $state<ExpenseCategory[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let saving = $state(false);
+	let showDeleteConfirm = $state(false);
+	let deleteTargetCat = $state<ExpenseCategory | null>(null);
 
 	// Form state for create/edit
 	let showForm = $state(false);
@@ -24,7 +29,7 @@
 		sort_order: 0
 	});
 
-	$effect(() => {
+	onMount(() => {
 		loadCategories();
 	});
 
@@ -88,19 +93,27 @@
 		}
 	}
 
-	async function handleDelete(cat: ExpenseCategory) {
+	function handleDelete(cat: ExpenseCategory) {
 		if (cat.is_default) {
 			error = 'Výchozí kategorie nelze smazat';
 			return;
 		}
-		if (!confirm(`Opravdu chcete smazat kategorii "${cat.label_cs}"?`)) return;
+		deleteTargetCat = cat;
+		showDeleteConfirm = true;
+	}
 
+	async function confirmDelete() {
+		if (!deleteTargetCat) return;
+		showDeleteConfirm = false;
 		error = null;
 		try {
-			await categoriesApi.delete(cat.id);
+			await categoriesApi.delete(deleteTargetCat.id);
+			toastSuccess('Kategorie smazána');
 			await loadCategories();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kategorii';
+		} finally {
+			deleteTargetCat = null;
 		}
 	}
 </script>
@@ -284,3 +297,12 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat kategorii"
+	message={deleteTargetCat ? `Opravdu chcete smazat kategorii "${deleteTargetCat.label_cs}"?` : ''}
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

@@ -13,6 +13,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -78,6 +79,7 @@
 				payment_method: form.payment_method,
 				notes: form.notes
 			});
+			toastSuccess('Náklad vytvořen');
 			goto('/expenses');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se uložit náklad';

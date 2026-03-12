@@ -6,18 +6,21 @@
 	import { recurringInvoicesApi, type RecurringInvoice } from '$lib/api/client';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let recurringInvoices = $state<RecurringInvoice[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let processing = $state(false);
-	let successMessage = $state<string | null>(null);
+	let showDeleteConfirm = $state(false);
+	let deleteTargetId = $state<number | null>(null);
 
 	async function loadRecurringInvoices() {
 		loading = true;
@@ -34,13 +37,12 @@
 	async function processDue() {
 		processing = true;
 		error = null;
-		successMessage = null;
 		try {
 			const data = await recurringInvoicesApi.processDue();
 			if (data.generated_count > 0) {
 				await loadRecurringInvoices();
 			}
-			successMessage = `Vygenerováno faktur: ${data.generated_count}`;
+			toastSuccess(`Vygenerováno faktur: ${data.generated_count}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se zpracovat splatné faktury';
 		} finally {
@@ -48,13 +50,22 @@
 		}
 	}
 
-	async function deleteRecurring(id: number) {
-		if (!confirm('Opravdu chcete smazat tuto opakující se fakturu?')) return;
+	function deleteRecurring(id: number) {
+		deleteTargetId = id;
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		if (!deleteTargetId) return;
+		showDeleteConfirm = false;
 		try {
-			await recurringInvoicesApi.delete(id);
+			await recurringInvoicesApi.delete(deleteTargetId);
+			toastSuccess('Opakující se faktura smazána');
 			await loadRecurringInvoices();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat';
+		} finally {
+			deleteTargetId = null;
 		}
 	}
 
@@ -88,12 +99,6 @@
 		Šablony se automaticky převedou na nové faktury podle nastavené frekvence.
 		<HelpTip topic="opakovane-faktury" />
 	</p>
-
-	{#if successMessage}
-		<div class="mt-4 rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-sm text-success" role="status">
-			{successMessage}
-		</div>
-	{/if}
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -157,3 +162,12 @@
 		{/if}
 	</Card>
 </div>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat opakující se fakturu"
+	message="Opravdu chcete smazat tuto opakující se fakturu?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

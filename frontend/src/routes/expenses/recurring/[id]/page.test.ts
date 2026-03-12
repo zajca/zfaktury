@@ -3,10 +3,6 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/sv
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
-vi.stubGlobal(
-	'confirm',
-	vi.fn(() => true)
-);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -63,7 +59,6 @@ beforeEach(async () => {
 	mockFetch.mockReset();
 	const { goto } = await import('$app/navigation');
 	vi.mocked(goto).mockReset();
-	vi.mocked(confirm).mockReturnValue(true);
 	const { page } = await import('$app/state');
 	(page as any).params = { id: '1' };
 	(page as any).url = { pathname: '/expenses/recurring/1', searchParams: new URLSearchParams() };
@@ -161,7 +156,12 @@ describe('Recurring expense detail page', () => {
 
 		await fireEvent.click(screen.getByText('Smazat'));
 
-		expect(confirm).toHaveBeenCalledWith('Opravdu chcete smazat tento opakovaný náklad?');
+		await waitFor(() => {
+			expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+		});
+		const dialog = screen.getByRole('alertdialog');
+		const confirmBtn = dialog.querySelectorAll('button')[1] as HTMLElement;
+		await fireEvent.click(confirmBtn);
 
 		await waitFor(() => {
 			expect(mockFetch).toHaveBeenCalledWith(

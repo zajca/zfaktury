@@ -18,6 +18,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
@@ -89,6 +90,7 @@
 
 			await recurringInvoicesApi.create(body as Partial<RecurringInvoice>);
 
+			toastSuccess('Opakující se faktura vytvořena');
 			goto('/recurring');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit opakující se fakturu';

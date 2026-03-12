@@ -21,6 +21,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let id = $derived(Number(page.params.id));
 	let contacts = $state<Contact[]>([]);
@@ -131,6 +132,7 @@
 			};
 
 			recurringInvoice = await recurringInvoicesApi.update(id, body as Partial<RecurringInvoice>);
+			toastSuccess('Opakující se faktura uložena');
 			editing = false;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se uložit změny';
@@ -144,6 +146,7 @@
 		error = null;
 		try {
 			const invoice = await recurringInvoicesApi.generate(id);
+			toastSuccess('Faktura vygenerována');
 			goto(`/invoices/${invoice.id}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vygenerovat fakturu';

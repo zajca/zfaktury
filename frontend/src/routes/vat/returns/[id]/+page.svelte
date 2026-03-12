@@ -7,15 +7,19 @@
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import { toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let vatReturn = $state<VATReturn | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let actionLoading = $state<string | null>(null);
+	let showFileConfirm = $state(false);
+	let showDeleteConfirm = $state(false);
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -79,12 +83,17 @@
 		}
 	}
 
-	async function handleMarkFiled() {
-		if (!confirm('Opravdu chcete označit DPH přiznání jako podané?')) return;
+	function handleMarkFiled() {
+		showFileConfirm = true;
+	}
+
+	async function confirmMarkFiled() {
+		showFileConfirm = false;
 		actionLoading = 'filed';
 		error = null;
 		try {
 			vatReturn = await vatReturnApi.markFiled(returnId);
+			toastSuccess('Přiznání označeno jako podané');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako podané';
 		} finally {
@@ -92,12 +101,17 @@
 		}
 	}
 
-	async function handleDelete() {
-		if (!confirm('Opravdu chcete smazat toto přiznání?')) return;
+	function handleDelete() {
+		showDeleteConfirm = true;
+	}
+
+	async function confirmDelete() {
+		showDeleteConfirm = false;
 		actionLoading = 'delete';
 		error = null;
 		try {
 			await vatReturnApi.delete(returnId);
+			toastSuccess('Přiznání smazáno');
 			goto('/vat');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se smazat přiznání';
@@ -372,3 +386,22 @@
 		</div>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={showFileConfirm}
+	title="Označit jako podané"
+	message="Opravdu chcete označit DPH přiznání jako podané?"
+	confirmLabel="Označit jako podané"
+	variant="warning"
+	onconfirm={confirmMarkFiled}
+	oncancel={() => showFileConfirm = false}
+/>
+
+<ConfirmDialog
+	bind:open={showDeleteConfirm}
+	title="Smazat přiznání"
+	message="Opravdu chcete smazat toto přiznání?"
+	confirmLabel="Smazat"
+	onconfirm={confirmDelete}
+	oncancel={() => showDeleteConfirm = false}
+/>

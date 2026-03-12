@@ -332,11 +332,12 @@ Nothing is considered "done" until it passes through this process. Existing code
 
 ## Phase 6 — Banking & Automation
 
-**RFC:** `docs/rfc/006-banking.md` (not yet written)
-**Goal:** FIO Bank integration, automatic payment matching, bank statement import.
+**RFC:** `docs/rfc/009-banking.md`
+**Goal:** Generic bank transaction import (CSV), automatic payment matching by variable symbol & amount.
 
-- Exists: FIO config in config struct, BankTransaction domain struct
-- Missing: FIO API client, transaction import, matching, bank_transactions table, repository, frontend
+- Exists: BankTransaction domain struct (`internal/domain/bank.go`), FIO config in config struct
+- RFC: CSV import (AirBank, FIO, generic), transaction matching (exact/partial/amount-only), bank_imports + bank_transactions tables (migration 020)
+- Missing: Implementation (repository, service, handler, frontend)
 
 **Dependencies:** Phase 2
 
@@ -429,6 +430,7 @@ Phase 1 (Foundation) ✓
 5. **RFC-005** (VAT Polish) — Done (all items implemented during RFC-004)
 6. **RFC-006** (Annual Tax) — Done (income tax, social insurance, health insurance, tax year settings)
 7. **RFC-007** (Tax Credits & Deductions) — Done (spouse/child/personal credits, deductions with caps, investment income)
-8. **RFC-008** (Banking) — Next
-9. **RFC-009** (Web UI) — Write incrementally as backend phases complete
-10. **RFC-010** (Polish) — Write last
+8. **RFC-008** (Import System) — Done
+9. **RFC-009** (Banking) — Draft (ready for implementation)
+10. **RFC-010** (Web UI) — Write incrementally as backend phases complete
+11. **RFC-011** (Polish) — Write last

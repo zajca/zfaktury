@@ -184,7 +184,6 @@
 			error = e instanceof Error ? e.message : 'Nepodařilo se změnit stav';
 		}
 	}
-
 </script>
 
 <svelte:head>
@@ -211,7 +210,9 @@
 					{:else}
 						<Badge variant="muted">Neaktivní</Badge>
 					{/if}
-					<span class="text-sm text-tertiary">{frequencyLabels[item.frequency] ?? item.frequency}</span>
+					<span class="text-sm text-tertiary"
+						>{frequencyLabels[item.frequency] ?? item.frequency}</span
+					>
 				</div>
 			</div>
 			{#if !editing}
@@ -219,12 +220,8 @@
 					<Button variant="secondary" onclick={handleToggleActive}>
 						{item.is_active ? 'Deaktivovat' : 'Aktivovat'}
 					</Button>
-					<Button variant="secondary" onclick={startEditing}>
-						Upravit
-					</Button>
-					<Button variant="danger" onclick={handleDelete}>
-						Smazat
-					</Button>
+					<Button variant="secondary" onclick={startEditing}>Upravit</Button>
+					<Button variant="danger" onclick={handleDelete}>Smazat</Button>
 				</div>
 			{/if}
 		</div>
@@ -242,7 +239,8 @@
 					<h2 class="text-base font-semibold text-primary">Základní údaje</h2>
 					<div class="mt-4 space-y-4">
 						<div>
-							<label for="edit-name" class="block text-sm font-medium text-secondary">Název *</label>
+							<label for="edit-name" class="block text-sm font-medium text-secondary">Název *</label
+							>
 							<input
 								id="edit-name"
 								type="text"
@@ -252,7 +250,8 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-desc" class="block text-sm font-medium text-secondary">Popis *</label>
+							<label for="edit-desc" class="block text-sm font-medium text-secondary">Popis *</label
+							>
 							<input
 								id="edit-desc"
 								type="text"
@@ -343,7 +342,8 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-vat" class="block text-sm font-medium text-secondary">Sazba DPH</label
+							<label for="edit-vat" class="block text-sm font-medium text-secondary"
+								>Sazba DPH</label
 							>
 							<select
 								id="edit-vat"
@@ -453,7 +453,9 @@
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Frekvence</dt>
-							<dd class="mt-1 text-sm text-primary">{frequencyLabels[item.frequency] ?? item.frequency}</dd>
+							<dd class="mt-1 text-sm text-primary">
+								{frequencyLabels[item.frequency] ?? item.frequency}
+							</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Další datum</dt>
@@ -473,15 +475,21 @@
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Částka s DPH</dt>
-							<dd class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(item.amount)}</dd>
+							<dd class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+								{formatCZK(item.amount)}
+							</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-tertiary">DPH ({item.vat_rate_percent}%)</dt>
-							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">{formatCZK(item.vat_amount)}</dd>
+							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
+								{formatCZK(item.vat_amount)}
+							</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Základ</dt>
-							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">{formatCZK(item.amount - item.vat_amount)}</dd>
+							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
+								{formatCZK(item.amount - item.vat_amount)}
+							</dd>
 						</div>
 					</dl>
 				</Card>
@@ -521,5 +529,5 @@
 	message="Opravdu chcete smazat tento opakovaný náklad?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

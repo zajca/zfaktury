@@ -4,12 +4,12 @@ import "encoding/xml"
 
 // OSVC is the root element for CSSZ OSVC annual overview XML.
 type OSVC struct {
-	XMLName xml.Name     `xml:"OSVC"`
-	Xmlns   string       `xml:"xmlns,attr"`
-	Version string       `xml:"version,attr"`
-	Vendor  Vendor       `xml:"VENDOR"`
-	Sender  Sender       `xml:"SENDER"`
-	Prehled PrehledOSVC  `xml:"prehledosvc"`
+	XMLName xml.Name    `xml:"OSVC"`
+	Xmlns   string      `xml:"xmlns,attr"`
+	Version string      `xml:"version,attr"`
+	Vendor  Vendor      `xml:"VENDOR"`
+	Sender  Sender      `xml:"SENDER"`
+	Prehled PrehledOSVC `xml:"prehledosvc"`
 }
 
 // Vendor identifies the software generating the XML.
@@ -34,14 +34,14 @@ type PrehledOSVC struct {
 	VSDP string `xml:"vsdp,attr"`
 	Dat  string `xml:"dat,attr"`
 
-	Client Client `xml:"client"`
-	PVV    PVV    `xml:"pvv"`
+	Client  Client `xml:"client"`
+	PVV     PVV    `xml:"pvv"`
 	Prihldp string `xml:"prihldp"`
-	Zal    Zal    `xml:"zal"`
-	Pre    Pre    `xml:"pre"`
-	Prizn  Prizn  `xml:"prizn"`
-	Spo    Spo    `xml:"spo"`
-	DatEl  DatEl  `xml:"dat"`
+	Zal     Zal    `xml:"zal"`
+	Pre     Pre    `xml:"pre"`
+	Prizn   Prizn  `xml:"prizn"`
+	Spo     Spo    `xml:"spo"`
+	DatEl   DatEl  `xml:"dat"`
 }
 
 // Client contains taxpayer personal information.
@@ -130,22 +130,22 @@ type Vedc struct {
 type PVV struct {
 	Pri string `xml:"pri,attr"`
 
-	Mesc    HVPair `xml:"mesc"`
-	Mesv    HVPair `xml:"mesv"`
-	Mesp    string `xml:"mesp"`
-	Rdza    HVPair `xml:"rdza"`
-	VVZ     HVPair `xml:"vvz"`
-	DVZ     HVPair `xml:"dvz"`
-	MVZ     string `xml:"mvz"`
-	UVZ     string `xml:"uvz"`
-	Vzza    string `xml:"vzza"`
-	Vzsu    string `xml:"vzsu"`
-	Vzsvc   string `xml:"vzsvc"`
-	Poj     string `xml:"poj"`
-	Slev    string `xml:"slev"`
+	Mesc      HVPair `xml:"mesc"`
+	Mesv      HVPair `xml:"mesv"`
+	Mesp      string `xml:"mesp"`
+	Rdza      HVPair `xml:"rdza"`
+	VVZ       HVPair `xml:"vvz"`
+	DVZ       HVPair `xml:"dvz"`
+	MVZ       string `xml:"mvz"`
+	UVZ       string `xml:"uvz"`
+	Vzza      string `xml:"vzza"`
+	Vzsu      string `xml:"vzsu"`
+	Vzsvc     string `xml:"vzsvc"`
+	Poj       string `xml:"poj"`
+	Slev      string `xml:"slev"`
 	Pojposlev string `xml:"pojposlev"`
-	Zal     string `xml:"zal"`
-	Ned     string `xml:"ned"`
+	Zal       string `xml:"zal"`
+	Ned       string `xml:"ned"`
 }
 
 // HVPair holds an h/v attribute pair used in PVV fields.
@@ -166,11 +166,11 @@ type Zal struct {
 
 // Pre contains overpayment return information.
 type Pre struct {
-	Vra  string `xml:"vra,attr"`
-	Kam  string `xml:"kam,attr"`
-	Rok  string `xml:"rok"`
-	IBAN string `xml:"iban"`
-	BS   PreBS  `xml:"bs"`
+	Vra  string  `xml:"vra,attr"`
+	Kam  string  `xml:"kam,attr"`
+	Rok  string  `xml:"rok"`
+	IBAN string  `xml:"iban"`
+	BS   PreBS   `xml:"bs"`
 	Adr  Address `xml:"adr"`
 }
 

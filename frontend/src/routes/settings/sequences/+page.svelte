@@ -127,7 +127,12 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title="Číselné řady faktur" description="Správa číslování faktur podle roku a typu" backHref="/settings" backLabel="Zpět na nastavení">
+	<PageHeader
+		title="Číselné řady faktur"
+		description="Správa číslování faktur podle roku a typu"
+		backHref="/settings"
+		backLabel="Zpět na nastavení"
+	>
 		{#snippet actions()}
 			<Button
 				variant="primary"
@@ -159,7 +164,9 @@
 				>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 						<div>
-							<label for="create-prefix" class="block text-sm font-medium text-secondary">Prefix <HelpTip topic="prefix-format" /></label>
+							<label for="create-prefix" class="block text-sm font-medium text-secondary"
+								>Prefix <HelpTip topic="prefix-format" /></label
+							>
 							<input
 								id="create-prefix"
 								type="text"
@@ -193,7 +200,9 @@
 							/>
 						</div>
 						<div>
-							<label for="create-format" class="block text-sm font-medium text-secondary">Formát <HelpTip topic="prefix-format" /></label>
+							<label for="create-format" class="block text-sm font-medium text-secondary"
+								>Formát <HelpTip topic="prefix-format" /></label
+							>
 							<input
 								id="create-format"
 								type="text"
@@ -234,7 +243,9 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if sequences.length === 0}
-			<EmptyState message="Zatím žádné číselné řady. Vytvořte novou nebo se vytvoří automaticky při tvorbě faktury." />
+			<EmptyState
+				message="Zatím žádné číselné řady. Vytvořte novou nebo se vytvoří automaticky při tvorbě faktury."
+			/>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
@@ -272,10 +283,13 @@
 							<td class="px-4 py-2.5 text-right">
 								{#if editingId === seq.id}
 									<div class="flex justify-end gap-2">
-										<Button variant="ghost" size="sm" onclick={() => cancelEdit()}>
-											Zrušit
-										</Button>
-										<Button variant="primary" size="sm" onclick={() => handleUpdate(seq)} disabled={saving}>
+										<Button variant="ghost" size="sm" onclick={() => cancelEdit()}>Zrušit</Button>
+										<Button
+											variant="primary"
+											size="sm"
+											onclick={() => handleUpdate(seq)}
+											disabled={saving}
+										>
 											{saving ? 'Ukládám...' : 'Uložit'}
 										</Button>
 									</div>
@@ -310,5 +324,5 @@
 	message="Opravdu chcete smazat tuto číselnou řadu?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

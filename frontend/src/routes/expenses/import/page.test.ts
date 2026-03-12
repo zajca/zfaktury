@@ -173,9 +173,7 @@ describe('Expenses import page', () => {
 		await fireEvent.change(fileInput, { target: { files: [file] } });
 
 		await waitFor(() => {
-			expect(
-				screen.getByText('Soubor je příliš velký. Maximum je 20 MB.')
-			).toBeInTheDocument();
+			expect(screen.getByText('Soubor je příliš velký. Maximum je 20 MB.')).toBeInTheDocument();
 		});
 
 		expect(mockFetch).not.toHaveBeenCalled();

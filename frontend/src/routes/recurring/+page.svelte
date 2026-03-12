@@ -82,11 +82,22 @@
 	<PageHeader title="Opakující se faktury" description="Šablony pro automatické generování faktur">
 		{#snippet actions()}
 			<div class="flex gap-3">
-				<Button variant="secondary" onclick={processDue} disabled={processing} title="Vygeneruje nové faktury ze všech aktivních šablon, jejichž datum dalšího vystavení už nastalo">
+				<Button
+					variant="secondary"
+					onclick={processDue}
+					disabled={processing}
+					title="Vygeneruje nové faktury ze všech aktivních šablon, jejichž datum dalšího vystavení už nastalo"
+				>
 					{processing ? 'Zpracovávám...' : 'Zpracovat splatné'}
 				</Button>
 				<Button variant="primary" href="/recurring/new">
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
 					Nová opakující se faktura
@@ -106,7 +117,11 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if recurringInvoices.length === 0}
-			<EmptyState message="Zatím žádné opakující se faktury." actionHref="/recurring/new" actionLabel="Vytvořit šablonu" />
+			<EmptyState
+				message="Zatím žádné opakující se faktury."
+				actionHref="/recurring/new"
+				actionLabel="Vytvořit šablonu"
+			/>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
@@ -126,7 +141,9 @@
 							role="link"
 							tabindex="0"
 							onclick={() => goto(`/recurring/${ri.id}`)}
-							onkeydown={(e) => { if (e.key === 'Enter') goto(`/recurring/${ri.id}`); }}
+							onkeydown={(e) => {
+								if (e.key === 'Enter') goto(`/recurring/${ri.id}`);
+							}}
 						>
 							<td class="px-4 py-2.5">
 								<a href="/recurring/{ri.id}" class="text-accent-text hover:text-accent font-medium">
@@ -149,7 +166,10 @@
 							</td>
 							<td class="px-4 py-2.5 text-right">
 								<button
-									onclick={(e) => { e.stopPropagation(); deleteRecurring(ri.id); }}
+									onclick={(e) => {
+										e.stopPropagation();
+										deleteRecurring(ri.id);
+									}}
 									class="text-sm text-danger hover:text-danger/80"
 								>
 									Smazat
@@ -169,5 +189,5 @@
 	message="Opravdu chcete smazat tuto opakující se fakturu?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

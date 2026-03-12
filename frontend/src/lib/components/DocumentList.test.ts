@@ -60,9 +60,7 @@ describe('DocumentList', () => {
 
 	it('delete button triggers confirmation and calls delete API', async () => {
 		// Mock the DELETE request (returns 204)
-		mockFetch.mockResolvedValueOnce(
-			new Response(null, { status: 204, statusText: 'No Content' })
-		);
+		mockFetch.mockResolvedValueOnce(new Response(null, { status: 204, statusText: 'No Content' }));
 		const ondelete = vi.fn();
 
 		render(DocumentList, { props: { documents: sampleDocuments, ondelete } });
@@ -72,9 +70,7 @@ describe('DocumentList', () => {
 		await fireEvent.click(deleteButtons[0]);
 
 		// Confirmation dialog should appear
-		expect(
-			screen.getByText('Opravdu chcete smazat tento dokument?')
-		).toBeInTheDocument();
+		expect(screen.getByText('Opravdu chcete smazat tento dokument?')).toBeInTheDocument();
 
 		// Confirm deletion - find the confirm button in the dialog (it has different styling)
 		const confirmBtns = screen.getAllByRole('button', { name: 'Smazat' });
@@ -102,17 +98,13 @@ describe('DocumentList', () => {
 		const deleteButtons = screen.getAllByTitle('Smazat');
 		await fireEvent.click(deleteButtons[0]);
 
-		expect(
-			screen.getByText('Opravdu chcete smazat tento dokument?')
-		).toBeInTheDocument();
+		expect(screen.getByText('Opravdu chcete smazat tento dokument?')).toBeInTheDocument();
 
 		const cancelBtn = screen.getByRole('button', { name: 'Zrušit' });
 		await fireEvent.click(cancelBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.queryByText('Opravdu chcete smazat tento dokument?')
-			).not.toBeInTheDocument();
+			expect(screen.queryByText('Opravdu chcete smazat tento dokument?')).not.toBeInTheDocument();
 		});
 	});
 

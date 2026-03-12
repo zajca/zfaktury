@@ -107,18 +107,12 @@
 		ondragleave={handleDragLeave}
 		disabled={uploading}
 		class="w-full rounded-lg border-2 border-dashed p-6 text-center transition-colors
-			{dragOver
-			? 'border-accent bg-accent/5'
-			: 'border-border hover:border-secondary hover:bg-hover'}
+			{dragOver ? 'border-accent bg-accent/5' : 'border-border hover:border-secondary hover:bg-hover'}
 			{uploading ? 'cursor-wait opacity-60' : 'cursor-pointer'}"
 	>
 		{#if uploading}
 			<div role="status">
-				<svg
-					class="mx-auto mb-2 h-8 w-8 animate-spin text-accent"
-					viewBox="0 0 24 24"
-					fill="none"
-				>
+				<svg class="mx-auto mb-2 h-8 w-8 animate-spin text-accent" viewBox="0 0 24 24" fill="none">
 					<circle
 						class="opacity-25"
 						cx="12"
@@ -156,7 +150,10 @@
 	</button>
 
 	{#if error}
-		<div role="alert" class="mt-2 rounded-lg border border-danger/20 bg-danger-bg px-3 py-2 text-sm text-danger">
+		<div
+			role="alert"
+			class="mt-2 rounded-lg border border-danger/20 bg-danger-bg px-3 py-2 text-sm text-danger"
+		>
 			{error}
 		</div>
 	{/if}

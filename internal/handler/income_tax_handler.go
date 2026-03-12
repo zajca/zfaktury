@@ -60,9 +60,9 @@ type incomeTaxResponse struct {
 	TaxBase         int64 `json:"tax_base"`
 	TotalDeductions int64 `json:"total_deductions"`
 	TaxBaseRounded  int64 `json:"tax_base_rounded"`
-	TaxAt15        int64 `json:"tax_at_15"`
-	TaxAt23        int64 `json:"tax_at_23"`
-	TotalTax       int64 `json:"total_tax"`
+	TaxAt15         int64 `json:"tax_at_15"`
+	TaxAt23         int64 `json:"tax_at_23"`
+	TotalTax        int64 `json:"total_tax"`
 
 	CreditBasic      int64 `json:"credit_basic"`
 	CreditSpouse     int64 `json:"credit_spouse"`
@@ -109,9 +109,9 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 		TaxBase:         int64(itr.TaxBase),
 		TotalDeductions: int64(itr.TotalDeductions),
 		TaxBaseRounded:  int64(itr.TaxBaseRounded),
-		TaxAt15:        int64(itr.TaxAt15),
-		TaxAt23:        int64(itr.TaxAt23),
-		TotalTax:       int64(itr.TotalTax),
+		TaxAt15:         int64(itr.TaxAt15),
+		TaxAt23:         int64(itr.TaxAt23),
+		TotalTax:        int64(itr.TotalTax),
 
 		CreditBasic:      int64(itr.CreditBasic),
 		CreditSpouse:     int64(itr.CreditSpouse),

@@ -4,11 +4,7 @@
 	import { onMount } from 'svelte';
 	import { viesApi, type VIESSummary } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
-	import {
-		vatStatusLabels,
-		filingTypeLabels,
-		quarterLabels
-	} from '$lib/utils/vat';
+	import { vatStatusLabels, filingTypeLabels, quarterLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -118,7 +114,9 @@
 		}
 	}
 
-	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+	function statusBadgeVariant(
+		status: string
+	): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
 		switch (status) {
 			case 'filed':
 				return 'success';
@@ -150,7 +148,8 @@
 		<div class="mt-4">
 			<div class="flex items-center justify-between">
 				<h1 class="text-xl font-semibold text-primary">
-					Souhrnné hlášení <HelpTip topic="souhrnne-hlaseni" /> {summary.period.year} Q{summary.period.quarter}
+					Souhrnné hlášení <HelpTip topic="souhrnne-hlaseni" />
+					{summary.period.year} Q{summary.period.quarter}
 				</h1>
 				<div class="flex items-center gap-3">
 					<Badge variant={statusBadgeVariant(summary.status)}>
@@ -184,11 +183,7 @@
 				>
 					Generovat XML
 				</Button>
-				<Button
-					variant="secondary"
-					onclick={handleDownloadXml}
-					disabled={!summary.has_xml}
-				>
+				<Button variant="secondary" onclick={handleDownloadXml} disabled={!summary.has_xml}>
 					Stáhnout XML
 				</Button>
 				<Button
@@ -198,11 +193,7 @@
 				>
 					Označit za podané
 				</Button>
-				<Button
-					variant="danger"
-					onclick={handleDelete}
-					disabled={summary.status === 'filed'}
-				>
+				<Button variant="danger" onclick={handleDelete} disabled={summary.status === 'filed'}>
 					Smazat
 				</Button>
 			</div>
@@ -212,19 +203,29 @@
 		<div class="mt-6">
 			{#if !summary.lines || summary.lines.length === 0}
 				<Card>
-					<div class="py-4 text-center text-sm text-muted">
-						Žádné řádky v souhrnném hlášení
-					</div>
+					<div class="py-4 text-center text-sm text-muted">Žádné řádky v souhrnném hlášení</div>
 				</Card>
 			{:else}
 				<Card padding={false} class="overflow-x-auto">
 					<table class="w-full text-sm">
 						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Kód země</th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera <HelpTip topic="dic" /></th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Celková částka (CZK)</th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Kód plnění <HelpTip topic="kod-plneni" /></th>
+								<th
+									class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>Kód země</th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>DIC partnera <HelpTip topic="dic" /></th
+								>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Celková částka (CZK)</th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>Kód plnění <HelpTip topic="kod-plneni" /></th
+								>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
@@ -232,7 +233,9 @@
 								<tr class="hover:bg-hover transition-colors">
 									<td class="px-4 py-2.5 text-primary">{line.country_code}</td>
 									<td class="px-4 py-2.5 font-mono text-xs text-primary">{line.partner_dic}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatCZK(line.total_amount)}</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{formatCZK(line.total_amount)}</td
+									>
 									<td class="px-4 py-2.5 text-primary">{line.service_code}</td>
 								</tr>
 							{/each}
@@ -257,7 +260,7 @@
 	confirmLabel="Označit jako podané"
 	variant="warning"
 	onconfirm={confirmMarkFiled}
-	oncancel={() => showFileConfirm = false}
+	oncancel={() => (showFileConfirm = false)}
 />
 
 <ConfirmDialog
@@ -266,5 +269,5 @@
 	message="Opravdu chcete smazat toto souhrnné hlášení?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

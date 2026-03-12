@@ -5,7 +5,12 @@
 	import { toHalere } from '$lib/utils/money';
 	import { toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import InvoiceItemsEditor, { type FormItem, calcSubtotal, calcVatTotal, calcGrandTotal } from '$lib/components/InvoiceItemsEditor.svelte';
+	import InvoiceItemsEditor, {
+		type FormItem,
+		calcSubtotal,
+		calcVatTotal,
+		calcGrandTotal
+	} from '$lib/components/InvoiceItemsEditor.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
@@ -136,7 +141,9 @@
 	>
 		<!-- Invoice Type -->
 		<Card>
-			<h2 class="text-base font-semibold text-primary">Typ dokladu <HelpTip topic="typ-faktury" /></h2>
+			<h2 class="text-base font-semibold text-primary">
+				Typ dokladu <HelpTip topic="typ-faktury" />
+			</h2>
 			<div class="mt-4 flex gap-4">
 				<label class="flex items-center gap-2 cursor-pointer">
 					<input type="radio" bind:group={invoiceType} value="regular" class="accent-accent" />
@@ -205,13 +212,17 @@
 					/>
 				</div>
 				<div>
-					<label for="delivery_date" class="block text-sm font-medium text-secondary">DUZP <HelpTip topic="duzp" /></label>
+					<label for="delivery_date" class="block text-sm font-medium text-secondary"
+						>DUZP <HelpTip topic="duzp" /></label
+					>
 					<DateInput id="delivery_date" bind:value={form.delivery_date} />
 				</div>
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
-					<label for="vs" class="block text-sm font-medium text-secondary">Variabilní symbol <HelpTip topic="variabilni-symbol" /></label>
+					<label for="vs" class="block text-sm font-medium text-secondary"
+						>Variabilní symbol <HelpTip topic="variabilni-symbol" /></label
+					>
 					<input
 						id="vs"
 						type="text"
@@ -220,7 +231,9 @@
 					/>
 				</div>
 				<div>
-					<label for="payment" class="block text-sm font-medium text-secondary">Způsob platby <HelpTip topic="zpusob-platby" /></label>
+					<label for="payment" class="block text-sm font-medium text-secondary"
+						>Způsob platby <HelpTip topic="zpusob-platby" /></label
+					>
 					<select
 						id="payment"
 						bind:value={form.payment_method}

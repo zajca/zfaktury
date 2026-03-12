@@ -3,8 +3,12 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
-		invoicesApi, contactsApi, statusHistoryApi,
-		type Invoice, type Contact, type InvoiceStatusChange
+		invoicesApi,
+		contactsApi,
+		statusHistoryApi,
+		type Invoice,
+		type Contact,
+		type InvoiceStatusChange
 	} from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate, toISODate, addDays } from '$lib/utils/date';
@@ -231,8 +235,6 @@
 			settling = false;
 		}
 	}
-
-
 </script>
 
 <svelte:head>
@@ -240,7 +242,13 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title={invoice ? `${invoiceTypeLabels[invoice.type] ?? 'Faktura'} ${invoice.invoice_number}` : 'Faktura'} backHref="/invoices" backLabel="Zpět na faktury" />
+	<PageHeader
+		title={invoice
+			? `${invoiceTypeLabels[invoice.type] ?? 'Faktura'} ${invoice.invoice_number}`
+			: 'Faktura'}
+		backHref="/invoices"
+		backLabel="Zpět na faktury"
+	/>
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -274,7 +282,10 @@
 					{:else}
 						Související faktura:
 					{/if}
-					<a href="/invoices/{invoice.related_invoice_id}" class="text-accent-text hover:text-accent font-medium">
+					<a
+						href="/invoices/{invoice.related_invoice_id}"
+						class="text-accent-text hover:text-accent font-medium"
+					>
 						#{invoice.related_invoice_id}
 					</a>
 				</div>
@@ -299,21 +310,33 @@
 			{#if !editing}
 				<div class="mt-3 flex flex-wrap gap-2">
 					{#if invoice.status === 'draft'}
-						<Button variant="secondary" onclick={startEditing}>
-							Upravit
-						</Button>
-						<Button variant="primary" onclick={handleSend} title="Změní stav faktury na 'Odeslaná'. Pro odeslání emailem použijte 'Odeslat emailem'">
+						<Button variant="secondary" onclick={startEditing}>Upravit</Button>
+						<Button
+							variant="primary"
+							onclick={handleSend}
+							title="Změní stav faktury na 'Odeslaná'. Pro odeslání emailem použijte 'Odeslat emailem'"
+						>
 							Odeslat
 						</Button>
 					{/if}
 					{#if invoice.status === 'sent' || invoice.status === 'overdue'}
-						<Button variant="success" onclick={handleMarkPaid} title="Označí fakturu jako uhrazenou k dnešnímu datu">
+						<Button
+							variant="success"
+							onclick={handleMarkPaid}
+							title="Označí fakturu jako uhrazenou k dnešnímu datu"
+						>
 							Uhrazená
 						</Button>
 					{/if}
 					{#if invoice.type === 'proforma' && invoice.status === 'paid' && !invoice.related_invoice_id}
-						<Button variant="primary" onclick={handleSettle} disabled={settling} title="Vytvoří řádnou fakturu s odečtenou zálohou">
-							{settling ? 'Vyrovnávám...' : 'Vyrovnat zálohu'} <HelpTip topic="vyrovnani-zalohy" />
+						<Button
+							variant="primary"
+							onclick={handleSettle}
+							disabled={settling}
+							title="Vytvoří řádnou fakturu s odečtenou zálohou"
+						>
+							{settling ? 'Vyrovnávám...' : 'Vyrovnat zálohu'}
+							<HelpTip topic="vyrovnani-zalohy" />
 						</Button>
 					{/if}
 					<Button variant="secondary" href={invoicesApi.getPdfUrl(invoiceId)}>
@@ -332,24 +355,41 @@
 						</svg>
 						Stáhnout PDF
 					</Button>
-					<Button variant="secondary" onclick={() => { showSendEmailDialog = true; }}>
+					<Button
+						variant="secondary"
+						onclick={() => {
+							showSendEmailDialog = true;
+						}}
+					>
 						Odeslat emailem
 					</Button>
-					<Button variant="secondary" href={invoicesApi.getIsdocUrl(invoiceId)} title="Stáhne fakturu ve formátu ISDOC (český standard elektronické fakturace)">
+					<Button
+						variant="secondary"
+						href={invoicesApi.getIsdocUrl(invoiceId)}
+						title="Stáhne fakturu ve formátu ISDOC (český standard elektronické fakturace)"
+					>
 						Export ISDOC <HelpTip topic="isdoc-export" />
 					</Button>
-					<Button variant="secondary" onclick={handleDuplicate} title="Vytvoří novou fakturu jako kopii -- zkopíruje zákazníka, položky a nastavení, přiřadí nové číslo">
+					<Button
+						variant="secondary"
+						onclick={handleDuplicate}
+						title="Vytvoří novou fakturu jako kopii -- zkopíruje zákazníka, položky a nastavení, přiřadí nové číslo"
+					>
 						Duplikovat
 					</Button>
 					{#if invoice.type === 'regular' && (invoice.status === 'sent' || invoice.status === 'paid')}
-						<Button variant="secondary" onclick={() => { showCreditNoteDialog = true; }} title="Vytvoří opravný daňový doklad, který stornuje tuto fakturu">
+						<Button
+							variant="secondary"
+							onclick={() => {
+								showCreditNoteDialog = true;
+							}}
+							title="Vytvoří opravný daňový doklad, který stornuje tuto fakturu"
+						>
 							Vytvořit dobropis <HelpTip topic="dobropis" />
 						</Button>
 					{/if}
 					{#if invoice.status !== 'paid'}
-						<Button variant="danger" onclick={handleDelete}>
-							Smazat
-						</Button>
+						<Button variant="danger" onclick={handleDelete}>Smazat</Button>
 					{/if}
 				</div>
 			{/if}
@@ -416,7 +456,8 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-delivery" class="block text-sm font-medium text-secondary">DUZP <HelpTip topic="duzp" /></label
+							<label for="edit-delivery" class="block text-sm font-medium text-secondary"
+								>DUZP <HelpTip topic="duzp" /></label
 							>
 							<DateInput id="edit-delivery" bind:value={form.delivery_date} />
 						</div>
@@ -552,24 +593,50 @@
 						<table class="w-full text-left text-sm">
 							<thead class="border-b border-border">
 								<tr>
-									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted">Popis</th>
-									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Množství</th>
-									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted">Jednotka</th>
-									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Cena/ks</th>
-									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH %</th>
-									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH</th>
-									<th class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted">Celkem</th>
+									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted">Popis</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>Množství</th
+									>
+									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted"
+										>Jednotka</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>Cena/ks</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>DPH %</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>DPH</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>Celkem</th
+									>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border-subtle">
 								{#each invoice.items ?? [] as item (item.id)}
 									<tr>
 										<td class="py-2.5 text-primary">{item.description}</td>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{fromHalere(item.quantity)}</td>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
+											>{fromHalere(item.quantity)}</td
+										>
 										<td class="py-2.5 text-secondary">{item.unit}</td>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{formatCZK(item.unit_price)}</td>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{item.vat_rate_percent}%</td>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary">{formatCZK(item.vat_amount)}</td>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
+											>{formatCZK(item.unit_price)}</td
+										>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
+											>{item.vat_rate_percent}%</td
+										>
+										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
+											>{formatCZK(item.vat_amount)}</td
+										>
 										<td class="py-2.5 text-right font-mono tabular-nums font-medium text-primary"
 											>{formatCZK(item.total_amount)}</td
 										>
@@ -583,20 +650,28 @@
 						<div class="flex flex-col items-end gap-1 text-sm">
 							<div class="flex gap-8">
 								<span class="text-secondary">Základ:</span>
-								<span class="font-medium font-mono tabular-nums text-primary">{formatCZK(invoice.subtotal_amount)}</span>
+								<span class="font-medium font-mono tabular-nums text-primary"
+									>{formatCZK(invoice.subtotal_amount)}</span
+								>
 							</div>
 							<div class="flex gap-8">
 								<span class="text-secondary">DPH:</span>
-								<span class="font-medium font-mono tabular-nums text-primary">{formatCZK(invoice.vat_amount)}</span>
+								<span class="font-medium font-mono tabular-nums text-primary"
+									>{formatCZK(invoice.vat_amount)}</span
+								>
 							</div>
 							<div class="flex gap-8 border-t border-border pt-1 text-base">
 								<span class="font-semibold text-primary">Celkem:</span>
-								<span class="font-bold font-mono tabular-nums text-primary">{formatCZK(invoice.total_amount)}</span>
+								<span class="font-bold font-mono tabular-nums text-primary"
+									>{formatCZK(invoice.total_amount)}</span
+								>
 							</div>
 							{#if invoice.paid_amount > 0}
 								<div class="flex gap-8 text-success">
 									<span>Uhrazeno:</span>
-									<span class="font-medium font-mono tabular-nums">{formatCZK(invoice.paid_amount)}</span>
+									<span class="font-medium font-mono tabular-nums"
+										>{formatCZK(invoice.paid_amount)}</span
+									>
 								</div>
 							{/if}
 						</div>
@@ -687,7 +762,7 @@
 				{/if}
 
 				<!-- Reminders -->
-				<ReminderCard invoiceId={invoiceId} invoiceStatus={invoice.status} />
+				<ReminderCard {invoiceId} invoiceStatus={invoice.status} />
 
 				<!-- Timestamps -->
 				<div class="text-xs text-muted">
@@ -702,19 +777,28 @@
 			<!-- Dialogs -->
 			{#if showCreditNoteDialog}
 				<CreditNoteDialog
-					invoiceId={invoiceId}
-					onclose={() => { showCreditNoteDialog = false; }}
-					onsuccess={(newInvoice: Invoice) => { showCreditNoteDialog = false; goto(`/invoices/${newInvoice.id}`); }}
+					{invoiceId}
+					onclose={() => {
+						showCreditNoteDialog = false;
+					}}
+					onsuccess={(newInvoice: Invoice) => {
+						showCreditNoteDialog = false;
+						goto(`/invoices/${newInvoice.id}`);
+					}}
 				/>
 			{/if}
 
 			{#if showSendEmailDialog}
 				<SendEmailDialog
-					invoiceId={invoiceId}
+					{invoiceId}
 					invoiceNumber={invoice.invoice_number}
 					customerEmail={invoice.customer?.email}
-					onclose={() => { showSendEmailDialog = false; }}
-					onsuccess={() => { showSendEmailDialog = false; }}
+					onclose={() => {
+						showSendEmailDialog = false;
+					}}
+					onsuccess={() => {
+						showSendEmailDialog = false;
+					}}
 				/>
 			{/if}
 		{/if}
@@ -727,5 +811,5 @@
 	message="Opravdu chcete smazat tuto fakturu?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

@@ -119,7 +119,7 @@ describe('CurrencySelector', () => {
 	it('manual refetch button triggers API call', async () => {
 		mockFetch
 			.mockResolvedValueOnce(jsonResponse(mockRateResult))
-			.mockResolvedValueOnce(jsonResponse({ ...mockRateResult, rate: 25.50 }));
+			.mockResolvedValueOnce(jsonResponse({ ...mockRateResult, rate: 25.5 }));
 
 		render(CurrencySelector, { props: { currency: 'CZK', exchangeRate: 1 } });
 

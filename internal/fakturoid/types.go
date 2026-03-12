@@ -5,7 +5,7 @@ type Subject struct {
 	ID             int64  `json:"id"`
 	Name           string `json:"name"`
 	RegistrationNo string `json:"registration_no"` // ICO
-	VatNo          string `json:"vat_no"`           // DIC
+	VatNo          string `json:"vat_no"`          // DIC
 	Street         string `json:"street"`
 	City           string `json:"city"`
 	Zip            string `json:"zip"`

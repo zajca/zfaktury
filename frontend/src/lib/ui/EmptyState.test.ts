@@ -46,7 +46,9 @@ describe('EmptyState', () => {
 	});
 
 	it('accepts custom class', () => {
-		const { container } = render(EmptyState, { props: { message: 'Empty', class: 'custom-empty' } });
+		const { container } = render(EmptyState, {
+			props: { message: 'Empty', class: 'custom-empty' }
+		});
 		const wrapper = container.firstElementChild;
 		expect(wrapper?.className).toContain('custom-empty');
 	});

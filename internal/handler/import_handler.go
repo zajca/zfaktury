@@ -19,8 +19,8 @@ func NewImportHandler(svc *service.ImportService) *ImportHandler {
 
 // importResponse is the JSON response for an expense import operation.
 type importResponse struct {
-	Expense  expenseResponse   `json:"expense"`
-	Document documentResponse  `json:"document"`
+	Expense  expenseResponse    `json:"expense"`
+	Document documentResponse   `json:"document"`
 	OCR      *ocrResultResponse `json:"ocr,omitempty"`
 }
 

@@ -357,13 +357,31 @@
 
 	<!-- Year selector -->
 	<div class="mt-4 flex items-center gap-3">
-		<Button variant="ghost" size="sm" onclick={() => { selectedYear--; }} title="Předchozí rok" aria-label="Předchozí rok">
+		<Button
+			variant="ghost"
+			size="sm"
+			onclick={() => {
+				selectedYear--;
+			}}
+			title="Předchozí rok"
+			aria-label="Předchozí rok"
+		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 			</svg>
 		</Button>
-		<span class="min-w-[4rem] text-center text-xl font-semibold text-primary tabular-nums">{selectedYear}</span>
-		<Button variant="ghost" size="sm" onclick={() => { selectedYear++; }} title="Následující rok" aria-label="Následující rok">
+		<span class="min-w-[4rem] text-center text-xl font-semibold text-primary tabular-nums"
+			>{selectedYear}</span
+		>
+		<Button
+			variant="ghost"
+			size="sm"
+			onclick={() => {
+				selectedYear++;
+			}}
+			title="Následující rok"
+			aria-label="Následující rok"
+		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 			</svg>
@@ -378,19 +396,25 @@
 		<!-- Tabs -->
 		<div class="mt-6 flex gap-1 border-b border-border">
 			<button
-				class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'documents' ? 'border-b-2 border-accent text-accent' : 'text-tertiary hover:text-primary'}"
+				class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'documents'
+					? 'border-b-2 border-accent text-accent'
+					: 'text-tertiary hover:text-primary'}"
 				onclick={() => (activeTab = 'documents')}
 			>
 				Dokumenty ({documents.length})
 			</button>
 			<button
-				class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'capital' ? 'border-b-2 border-accent text-accent' : 'text-tertiary hover:text-primary'}"
+				class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'capital'
+					? 'border-b-2 border-accent text-accent'
+					: 'text-tertiary hover:text-primary'}"
 				onclick={() => (activeTab = 'capital')}
 			>
 				Dividendy a úroky ({capitalIncome.length})
 			</button>
 			<button
-				class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'securities' ? 'border-b-2 border-accent text-accent' : 'text-tertiary hover:text-primary'}"
+				class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'securities'
+					? 'border-b-2 border-accent text-accent'
+					: 'text-tertiary hover:text-primary'}"
 				onclick={() => (activeTab = 'securities')}
 			>
 				Obchody s CP a kryptem ({transactions.length})
@@ -404,7 +428,12 @@
 					<div class="flex items-center justify-between">
 						<h2 class="text-base font-semibold text-primary">Nahrané dokumenty</h2>
 						<div class="flex items-center gap-2">
-							<Select value={uploadPlatform} onchange={(e: Event) => { uploadPlatform = (e.currentTarget as HTMLSelectElement).value; }}>
+							<Select
+								value={uploadPlatform}
+								onchange={(e: Event) => {
+									uploadPlatform = (e.currentTarget as HTMLSelectElement).value;
+								}}
+							>
 								{#each Object.entries(platformLabels) as [key, label]}
 									<option value={key}>{label}</option>
 								{/each}
@@ -431,31 +460,53 @@
 									{#each documents as doc (doc.id)}
 										<tr class="border-b border-border-subtle">
 											<td class="py-2 pr-4">
-												<a href={investmentsApi.downloadDocumentUrl(doc.id)} class="text-accent hover:underline" target="_blank">{doc.filename}</a>
+												<a
+													href={investmentsApi.downloadDocumentUrl(doc.id)}
+													class="text-accent hover:underline"
+													target="_blank">{doc.filename}</a
+												>
 											</td>
-											<td class="py-2 pr-4 text-tertiary">{platformLabels[doc.platform] ?? doc.platform}</td>
+											<td class="py-2 pr-4 text-tertiary"
+												>{platformLabels[doc.platform] ?? doc.platform}</td
+											>
 											<td class="py-2 pr-4">
 												{#if statusLabels[doc.extraction_status]}
 													{@const status = statusLabels[doc.extraction_status]}
-													<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {status.class}">
+													<span
+														class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {status.class}"
+													>
 														{status.text}
 													</span>
 												{:else}
-													<span class="inline-flex rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-tertiary">
+													<span
+														class="inline-flex rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-tertiary"
+													>
 														{doc.extraction_status}
 													</span>
 												{/if}
 												{#if doc.extraction_error}
-													<span class="ml-1 text-xs text-danger" title={doc.extraction_error}>!</span>
+													<span class="ml-1 text-xs text-danger" title={doc.extraction_error}
+														>!</span
+													>
 												{/if}
 											</td>
 											<td class="py-2 pr-4 text-tertiary">{formatFileSize(doc.size)}</td>
 											<td class="py-2 text-right">
 												<div class="flex justify-end gap-1">
 													{#if doc.extraction_status !== 'extracted'}
-														<Button variant="secondary" size="sm" onclick={() => extractDocument(doc.id)} disabled={saving}>Extrahovat</Button>
+														<Button
+															variant="secondary"
+															size="sm"
+															onclick={() => extractDocument(doc.id)}
+															disabled={saving}>Extrahovat</Button
+														>
 													{/if}
-													<Button variant="danger" size="sm" onclick={() => deleteDocument(doc.id)} disabled={saving}>Smazat</Button>
+													<Button
+														variant="danger"
+														size="sm"
+														onclick={() => deleteDocument(doc.id)}
+														disabled={saving}>Smazat</Button
+													>
 												</div>
 											</td>
 										</tr>
@@ -464,16 +515,28 @@
 							</table>
 						</div>
 					{:else}
-						<p class="mt-4 text-sm text-tertiary">Žádné nahrané dokumenty. Nahrajte výpisy z investičních platforem pro automatickou extrakci dat.</p>
+						<p class="mt-4 text-sm text-tertiary">
+							Žádné nahrané dokumenty. Nahrajte výpisy z investičních platforem pro automatickou
+							extrakci dat.
+						</p>
 					{/if}
 				</Card>
 
-			<!-- Tab: Capital Income -->
+				<!-- Tab: Capital Income -->
 			{:else if activeTab === 'capital'}
 				<Card>
 					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">Kapitálové příjmy (§8) <HelpTip topic="kapitalove-prijmy-s8" /></h2>
-						<Button variant="primary" size="sm" onclick={() => { resetCapitalForm(); showCapitalForm = true; }}>Přidat ručně</Button>
+						<h2 class="text-base font-semibold text-primary">
+							Kapitálové příjmy (§8) <HelpTip topic="kapitalove-prijmy-s8" />
+						</h2>
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={() => {
+								resetCapitalForm();
+								showCapitalForm = true;
+							}}>Přidat ručně</Button
+						>
 					</div>
 
 					{#if capitalIncome.length > 0}
@@ -485,7 +548,8 @@
 										<th class="pb-2 pr-4">Kategorie</th>
 										<th class="pb-2 pr-4">Popis</th>
 										<th class="pb-2 pr-4 text-right">Hrubá částka</th>
-										<th class="pb-2 pr-4 text-right">Sražená daň <HelpTip topic="srazena-dan" /></th>
+										<th class="pb-2 pr-4 text-right">Sražená daň <HelpTip topic="srazena-dan" /></th
+										>
 										<th class="pb-2 pr-4">K přiznání</th>
 										<th class="pb-2 text-right">Akce</th>
 									</tr>
@@ -495,24 +559,41 @@
 										<tr class="border-b border-border-subtle">
 											<td class="py-2 pr-4 text-tertiary">{entry.income_date}</td>
 											<td class="py-2 pr-4">
-												<span class="text-xs font-medium uppercase text-accent">{capitalCategoryLabels[entry.category] ?? entry.category}</span>
+												<span class="text-xs font-medium uppercase text-accent"
+													>{capitalCategoryLabels[entry.category] ?? entry.category}</span
+												>
 											</td>
 											<td class="py-2 pr-4 text-primary">{entry.description}</td>
-											<td class="py-2 pr-4 text-right font-medium text-primary">{formatAmount(entry.gross_amount)}</td>
+											<td class="py-2 pr-4 text-right font-medium text-primary"
+												>{formatAmount(entry.gross_amount)}</td
+											>
 											<td class="py-2 pr-4 text-right text-tertiary">
 												{formatAmount(entry.withheld_tax_cz + entry.withheld_tax_foreign)}
 											</td>
 											<td class="py-2 pr-4">
 												{#if entry.needs_declaring}
-													<span class="inline-flex rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning">Ano</span>
+													<span
+														class="inline-flex rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning"
+														>Ano</span
+													>
 												{:else}
-													<span class="inline-flex rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">Ne</span>
+													<span
+														class="inline-flex rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success"
+														>Ne</span
+													>
 												{/if}
 											</td>
 											<td class="py-2 text-right">
 												<div class="flex justify-end gap-1">
-													<Button variant="ghost" size="sm" onclick={() => editCapitalEntry(entry)}>Upravit</Button>
-													<Button variant="danger" size="sm" onclick={() => deleteCapitalEntry(entry.id)} disabled={saving}>Smazat</Button>
+													<Button variant="ghost" size="sm" onclick={() => editCapitalEntry(entry)}
+														>Upravit</Button
+													>
+													<Button
+														variant="danger"
+														size="sm"
+														onclick={() => deleteCapitalEntry(entry.id)}
+														disabled={saving}>Smazat</Button
+													>
 												</div>
 											</td>
 										</tr>
@@ -525,7 +606,12 @@
 											{formatAmount(capitalIncome.reduce((sum, e) => sum + e.gross_amount, 0))}
 										</td>
 										<td class="py-2 pr-4 text-right text-tertiary">
-											{formatAmount(capitalIncome.reduce((sum, e) => sum + e.withheld_tax_cz + e.withheld_tax_foreign, 0))}
+											{formatAmount(
+												capitalIncome.reduce(
+													(sum, e) => sum + e.withheld_tax_cz + e.withheld_tax_foreign,
+													0
+												)
+											)}
 										</td>
 										<td colspan="2"></td>
 									</tr>
@@ -533,16 +619,25 @@
 							</table>
 						</div>
 					{:else}
-						<p class="mt-4 text-sm text-tertiary">Žádné kapitálové příjmy. Přidejte ručně nebo nahrajte dokument k extrakci.</p>
+						<p class="mt-4 text-sm text-tertiary">
+							Žádné kapitálové příjmy. Přidejte ručně nebo nahrajte dokument k extrakci.
+						</p>
 					{/if}
 
 					{#if showCapitalForm}
 						<div class="mt-4 rounded-lg border border-border-subtle bg-elevated p-4">
-							<h3 class="text-sm font-medium text-primary">{editingCapitalId ? 'Upravit záznam' : 'Přidat záznam'}</h3>
+							<h3 class="text-sm font-medium text-primary">
+								{editingCapitalId ? 'Upravit záznam' : 'Přidat záznam'}
+							</h3>
 							<div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
 								<div>
 									<span class="text-xs text-tertiary">Kategorie</span>
-									<Select value={capitalCategory} onchange={(e: Event) => { capitalCategory = (e.currentTarget as HTMLSelectElement).value; }}>
+									<Select
+										value={capitalCategory}
+										onchange={(e: Event) => {
+											capitalCategory = (e.currentTarget as HTMLSelectElement).value;
+										}}
+									>
 										{#each Object.entries(capitalCategoryLabels) as [key, label]}
 											<option value={key}>{label}</option>
 										{/each}
@@ -550,49 +645,107 @@
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Popis</span>
-									<Input value={capitalDescription} oninput={(e: Event) => { capitalDescription = (e.currentTarget as HTMLInputElement).value; }} placeholder="Název akcie / fondu" />
+									<Input
+										value={capitalDescription}
+										oninput={(e: Event) => {
+											capitalDescription = (e.currentTarget as HTMLInputElement).value;
+										}}
+										placeholder="Název akcie / fondu"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Datum</span>
-									<Input type="date" value={capitalDate} oninput={(e: Event) => { capitalDate = (e.currentTarget as HTMLInputElement).value; }} />
+									<Input
+										type="date"
+										value={capitalDate}
+										oninput={(e: Event) => {
+											capitalDate = (e.currentTarget as HTMLInputElement).value;
+										}}
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Hrubá částka (CZK)</span>
-									<Input type="number" value={capitalGrossAmount} oninput={(e: Event) => { capitalGrossAmount = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
+									<Input
+										type="number"
+										value={capitalGrossAmount}
+										oninput={(e: Event) => {
+											capitalGrossAmount = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.01"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Sražená daň ČR (CZK)</span>
-									<Input type="number" value={capitalWithheldCz} oninput={(e: Event) => { capitalWithheldCz = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
+									<Input
+										type="number"
+										value={capitalWithheldCz}
+										oninput={(e: Event) => {
+											capitalWithheldCz = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.01"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Sražená daň v zahraničí (CZK)</span>
-									<Input type="number" value={capitalWithheldForeign} oninput={(e: Event) => { capitalWithheldForeign = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
+									<Input
+										type="number"
+										value={capitalWithheldForeign}
+										oninput={(e: Event) => {
+											capitalWithheldForeign = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.01"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Země</span>
-									<Input value={capitalCountry} oninput={(e: Event) => { capitalCountry = (e.currentTarget as HTMLInputElement).value; }} placeholder="CZ" maxlength={2} />
+									<Input
+										value={capitalCountry}
+										oninput={(e: Event) => {
+											capitalCountry = (e.currentTarget as HTMLInputElement).value;
+										}}
+										placeholder="CZ"
+										maxlength={2}
+									/>
 								</div>
 								<label class="flex items-center gap-2 text-sm text-primary">
-									<input type="checkbox" bind:checked={capitalNeedsDeclaring} class="rounded border-border" />
+									<input
+										type="checkbox"
+										bind:checked={capitalNeedsDeclaring}
+										class="rounded border-border"
+									/>
 									Nutno přiznat v DP <HelpTip topic="nutno-priznat-dp" />
 								</label>
 							</div>
 							<div class="mt-3 flex gap-2">
-								<Button variant="primary" size="sm" onclick={saveCapitalEntry} disabled={saving}>Uložit</Button>
+								<Button variant="primary" size="sm" onclick={saveCapitalEntry} disabled={saving}
+									>Uložit</Button
+								>
 								<Button variant="ghost" size="sm" onclick={resetCapitalForm}>Zrušit</Button>
 							</div>
 						</div>
 					{/if}
 				</Card>
 
-			<!-- Tab: Security Transactions -->
+				<!-- Tab: Security Transactions -->
 			{:else if activeTab === 'securities'}
 				<Card>
 					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">Obchody s CP a kryptem (§10) <HelpTip topic="obchody-cp-s10" /></h2>
+						<h2 class="text-base font-semibold text-primary">
+							Obchody s CP a kryptem (§10) <HelpTip topic="obchody-cp-s10" />
+						</h2>
 						<div class="flex gap-2">
-							<Button variant="secondary" size="sm" onclick={recalculateFifo} disabled={saving}>Přepočítat FIFO</Button> <HelpTip topic="fifo-prepocet" />
-							<Button variant="primary" size="sm" onclick={() => { resetTransactionForm(); showTransactionForm = true; }}>Přidat ručně</Button>
+							<Button variant="secondary" size="sm" onclick={recalculateFifo} disabled={saving}
+								>Přepočítat FIFO</Button
+							>
+							<HelpTip topic="fifo-prepocet" />
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={() => {
+									resetTransactionForm();
+									showTransactionForm = true;
+								}}>Přidat ručně</Button
+							>
 						</div>
 					</div>
 
@@ -619,20 +772,37 @@
 										<tr class="border-b border-border-subtle">
 											<td class="py-2 pr-3 text-tertiary">{tx.transaction_date}</td>
 											<td class="py-2 pr-3">
-												<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {tx.transaction_type === 'buy' ? 'bg-accent-muted text-accent-text' : 'bg-warning-bg text-warning'}">
+												<span
+													class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {tx.transaction_type ===
+													'buy'
+														? 'bg-accent-muted text-accent-text'
+														: 'bg-warning-bg text-warning'}"
+												>
 													{tx.transaction_type === 'buy' ? 'Nákup' : 'Prodej'}
 												</span>
 											</td>
 											<td class="py-2 pr-3 text-primary">
-												<span class="text-xs uppercase text-tertiary">{assetTypeLabels[tx.asset_type] ?? tx.asset_type}</span>
+												<span class="text-xs uppercase text-tertiary"
+													>{assetTypeLabels[tx.asset_type] ?? tx.asset_type}</span
+												>
 												{tx.asset_name}
 											</td>
 											<td class="py-2 pr-3 font-mono text-xs text-tertiary">{tx.isin || '-'}</td>
 											<td class="py-2 pr-3 text-right tabular-nums">{tx.quantity}</td>
-											<td class="py-2 pr-3 text-right tabular-nums">{formatAmount(tx.total_amount)}</td>
-											<td class="py-2 pr-3 text-right tabular-nums text-tertiary">{formatAmount(tx.fees)}</td>
-											<td class="py-2 pr-3 text-right tabular-nums">{formatAmount(tx.cost_basis)}</td>
-											<td class="py-2 pr-3 text-right tabular-nums {tx.computed_gain >= 0 ? 'text-success' : 'text-danger'}">
+											<td class="py-2 pr-3 text-right tabular-nums"
+												>{formatAmount(tx.total_amount)}</td
+											>
+											<td class="py-2 pr-3 text-right tabular-nums text-tertiary"
+												>{formatAmount(tx.fees)}</td
+											>
+											<td class="py-2 pr-3 text-right tabular-nums"
+												>{formatAmount(tx.cost_basis)}</td
+											>
+											<td
+												class="py-2 pr-3 text-right tabular-nums {tx.computed_gain >= 0
+													? 'text-success'
+													: 'text-danger'}"
+											>
 												{#if tx.transaction_type === 'sell'}
 													{formatAmount(tx.computed_gain)}
 												{:else}
@@ -641,17 +811,30 @@
 											</td>
 											<td class="py-2 pr-3">
 												{#if tx.time_test_exempt}
-													<span class="inline-flex rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success">Osv.</span>
+													<span
+														class="inline-flex rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success"
+														>Osv.</span
+													>
 												{:else if tx.transaction_type === 'sell'}
-													<span class="inline-flex rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">Ne</span>
+													<span
+														class="inline-flex rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger"
+														>Ne</span
+													>
 												{:else}
 													<span class="text-tertiary">-</span>
 												{/if}
 											</td>
 											<td class="py-2 text-right">
 												<div class="flex justify-end gap-1">
-													<Button variant="ghost" size="sm" onclick={() => editTransaction(tx)}>Upravit</Button>
-													<Button variant="danger" size="sm" onclick={() => deleteTransaction(tx.id)} disabled={saving}>Smazat</Button>
+													<Button variant="ghost" size="sm" onclick={() => editTransaction(tx)}
+														>Upravit</Button
+													>
+													<Button
+														variant="danger"
+														size="sm"
+														onclick={() => deleteTransaction(tx.id)}
+														disabled={saving}>Smazat</Button
+													>
 												</div>
 											</td>
 										</tr>
@@ -660,16 +843,25 @@
 							</table>
 						</div>
 					{:else}
-						<p class="mt-4 text-sm text-tertiary">Žádné obchody s cennými papíry. Přidejte ručně nebo nahrajte dokument k extrakci.</p>
+						<p class="mt-4 text-sm text-tertiary">
+							Žádné obchody s cennými papíry. Přidejte ručně nebo nahrajte dokument k extrakci.
+						</p>
 					{/if}
 
 					{#if showTransactionForm}
 						<div class="mt-4 rounded-lg border border-border-subtle bg-elevated p-4">
-							<h3 class="text-sm font-medium text-primary">{editingTransactionId ? 'Upravit obchod' : 'Přidat obchod'}</h3>
+							<h3 class="text-sm font-medium text-primary">
+								{editingTransactionId ? 'Upravit obchod' : 'Přidat obchod'}
+							</h3>
 							<div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
 								<div>
 									<span class="text-xs text-tertiary">Typ aktiva</span>
-									<Select value={txAssetType} onchange={(e: Event) => { txAssetType = (e.currentTarget as HTMLSelectElement).value; }}>
+									<Select
+										value={txAssetType}
+										onchange={(e: Event) => {
+											txAssetType = (e.currentTarget as HTMLSelectElement).value;
+										}}
+									>
 										{#each Object.entries(assetTypeLabels) as [key, label]}
 											<option value={key}>{label}</option>
 										{/each}
@@ -677,50 +869,117 @@
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Název</span>
-									<Input value={txAssetName} oninput={(e: Event) => { txAssetName = (e.currentTarget as HTMLInputElement).value; }} placeholder="Apple Inc." />
+									<Input
+										value={txAssetName}
+										oninput={(e: Event) => {
+											txAssetName = (e.currentTarget as HTMLInputElement).value;
+										}}
+										placeholder="Apple Inc."
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">ISIN</span>
-									<Input value={txIsin} oninput={(e: Event) => { txIsin = (e.currentTarget as HTMLInputElement).value; }} placeholder="US0378331005" />
+									<Input
+										value={txIsin}
+										oninput={(e: Event) => {
+											txIsin = (e.currentTarget as HTMLInputElement).value;
+										}}
+										placeholder="US0378331005"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Typ obchodu</span>
-									<Select value={txType} onchange={(e: Event) => { txType = (e.currentTarget as HTMLSelectElement).value; }}>
+									<Select
+										value={txType}
+										onchange={(e: Event) => {
+											txType = (e.currentTarget as HTMLSelectElement).value;
+										}}
+									>
 										<option value="buy">Nákup</option>
 										<option value="sell">Prodej</option>
 									</Select>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Datum</span>
-									<Input type="date" value={txDate} oninput={(e: Event) => { txDate = (e.currentTarget as HTMLInputElement).value; }} />
+									<Input
+										type="date"
+										value={txDate}
+										oninput={(e: Event) => {
+											txDate = (e.currentTarget as HTMLInputElement).value;
+										}}
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Počet</span>
-									<Input type="number" value={txQuantity} oninput={(e: Event) => { txQuantity = Number((e.currentTarget as HTMLInputElement).value); }} step="0.0001" />
+									<Input
+										type="number"
+										value={txQuantity}
+										oninput={(e: Event) => {
+											txQuantity = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.0001"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Cena za kus</span>
-									<Input type="number" value={txUnitPrice} oninput={(e: Event) => { txUnitPrice = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
+									<Input
+										type="number"
+										value={txUnitPrice}
+										oninput={(e: Event) => {
+											txUnitPrice = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.01"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Celková částka</span>
-									<Input type="number" value={txTotalAmount} oninput={(e: Event) => { txTotalAmount = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
+									<Input
+										type="number"
+										value={txTotalAmount}
+										oninput={(e: Event) => {
+											txTotalAmount = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.01"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Poplatky</span>
-									<Input type="number" value={txFees} oninput={(e: Event) => { txFees = Number((e.currentTarget as HTMLInputElement).value); }} step="0.01" />
+									<Input
+										type="number"
+										value={txFees}
+										oninput={(e: Event) => {
+											txFees = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.01"
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Měna</span>
-									<Input value={txCurrency} oninput={(e: Event) => { txCurrency = (e.currentTarget as HTMLInputElement).value; }} placeholder="CZK" maxlength={3} />
+									<Input
+										value={txCurrency}
+										oninput={(e: Event) => {
+											txCurrency = (e.currentTarget as HTMLInputElement).value;
+										}}
+										placeholder="CZK"
+										maxlength={3}
+									/>
 								</div>
 								<div>
 									<span class="text-xs text-tertiary">Kurz ČNB <HelpTip topic="kurz-cnb" /></span>
-									<Input type="number" value={txExchangeRate} oninput={(e: Event) => { txExchangeRate = Number((e.currentTarget as HTMLInputElement).value); }} step="0.001" />
+									<Input
+										type="number"
+										value={txExchangeRate}
+										oninput={(e: Event) => {
+											txExchangeRate = Number((e.currentTarget as HTMLInputElement).value);
+										}}
+										step="0.001"
+									/>
 								</div>
 							</div>
 							<div class="mt-3 flex gap-2">
-								<Button variant="primary" size="sm" onclick={saveTransaction} disabled={saving}>Uložit</Button>
+								<Button variant="primary" size="sm" onclick={saveTransaction} disabled={saving}
+									>Uložit</Button
+								>
 								<Button variant="ghost" size="sm" onclick={resetTransactionForm}>Zrušit</Button>
 							</div>
 						</div>
@@ -731,7 +990,9 @@
 			<!-- Summary -->
 			{#if summary}
 				<Card>
-					<h2 class="text-base font-semibold text-primary">Souhrn investičních příjmů {selectedYear}</h2>
+					<h2 class="text-base font-semibold text-primary">
+						Souhrn investičních příjmů {selectedYear}
+					</h2>
 					<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
 						<!-- §8 Capital income -->
 						<div>
@@ -762,7 +1023,8 @@
 								</div>
 								<div class="flex justify-between">
 									<span class="text-tertiary">Výdaje (FIFO)</span>
-									<strong class="text-primary">{formatAmount(summary.other_income_expenses)}</strong>
+									<strong class="text-primary">{formatAmount(summary.other_income_expenses)}</strong
+									>
 								</div>
 								<div class="flex justify-between">
 									<span class="text-tertiary">Osvobozeno (časový test)</span>

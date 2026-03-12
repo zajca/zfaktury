@@ -143,7 +143,11 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title={isNew ? 'Nový kontakt' : 'Upravit kontakt'} backHref="/contacts" backLabel="Zpět na kontakty">
+	<PageHeader
+		title={isNew ? 'Nový kontakt' : 'Upravit kontakt'}
+		backHref="/contacts"
+		backLabel="Zpět na kontakty"
+	>
 		{#snippet actions()}
 			{#if !isNew}
 				<Button variant="danger" onclick={handleDelete}>Smazat</Button>
@@ -166,11 +170,7 @@
 			<!-- Type -->
 			<div>
 				<label for="type" class="block text-sm font-medium text-secondary">Typ</label>
-				<select
-					id="type"
-					bind:value={form.type}
-					class={inputClass}
-				>
+				<select id="type" bind:value={form.type} class={inputClass}>
 					<option value="company">Firma</option>
 					<option value="individual">Fyzická osoba</option>
 				</select>
@@ -178,7 +178,9 @@
 
 			<!-- ICO + ARES lookup -->
 			<div>
-				<label for="ico" class="block text-sm font-medium text-secondary">IČO <HelpTip topic="ico" /></label>
+				<label for="ico" class="block text-sm font-medium text-secondary"
+					>IČO <HelpTip topic="ico" /></label
+				>
 				<div class="mt-1 flex gap-2">
 					<input
 						id="ico"
@@ -186,7 +188,12 @@
 						bind:value={form.ico}
 						class="flex-1 rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					/>
-					<Button variant="secondary" size="sm" onclick={lookupAres} title="Doplní název, DIČ a adresu z registru ARES podle zadaného IČO">
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={lookupAres}
+						title="Doplní název, DIČ a adresu z registru ARES podle zadaného IČO"
+					>
 						ARES
 					</Button>
 				</div>
@@ -195,24 +202,15 @@
 			<!-- Name -->
 			<div>
 				<label for="name" class="block text-sm font-medium text-secondary">Název</label>
-				<input
-					id="name"
-					type="text"
-					bind:value={form.name}
-					required
-					class={inputClass}
-				/>
+				<input id="name" type="text" bind:value={form.name} required class={inputClass} />
 			</div>
 
 			<!-- DIC -->
 			<div>
-				<label for="dic" class="block text-sm font-medium text-secondary">DIČ <HelpTip topic="dic" /></label>
-				<input
-					id="dic"
-					type="text"
-					bind:value={form.dic}
-					class={inputClass}
-				/>
+				<label for="dic" class="block text-sm font-medium text-secondary"
+					>DIČ <HelpTip topic="dic" /></label
+				>
+				<input id="dic" type="text" bind:value={form.dic} class={inputClass} />
 			</div>
 
 			<!-- Address -->
@@ -220,31 +218,16 @@
 				<legend class="text-sm font-semibold text-primary">Adresa</legend>
 				<div>
 					<label for="street" class="block text-sm font-medium text-secondary">Ulice</label>
-					<input
-						id="street"
-						type="text"
-						bind:value={form.street}
-						class={inputClass}
-					/>
+					<input id="street" type="text" bind:value={form.street} class={inputClass} />
 				</div>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="city" class="block text-sm font-medium text-secondary">Město</label>
-						<input
-							id="city"
-							type="text"
-							bind:value={form.city}
-							class={inputClass}
-						/>
+						<input id="city" type="text" bind:value={form.city} class={inputClass} />
 					</div>
 					<div>
 						<label for="zip" class="block text-sm font-medium text-secondary">PSČ</label>
-						<input
-							id="zip"
-							type="text"
-							bind:value={form.zip}
-							class={inputClass}
-						/>
+						<input id="zip" type="text" bind:value={form.zip} class={inputClass} />
 					</div>
 				</div>
 			</fieldset>
@@ -255,21 +238,11 @@
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="email" class="block text-sm font-medium text-secondary">Email</label>
-						<input
-							id="email"
-							type="email"
-							bind:value={form.email}
-							class={inputClass}
-						/>
+						<input id="email" type="email" bind:value={form.email} class={inputClass} />
 					</div>
 					<div>
 						<label for="phone" class="block text-sm font-medium text-secondary">Telefon</label>
-						<input
-							id="phone"
-							type="text"
-							bind:value={form.phone}
-							class={inputClass}
-						/>
+						<input id="phone" type="text" bind:value={form.phone} class={inputClass} />
 					</div>
 				</div>
 			</fieldset>
@@ -290,13 +263,9 @@
 						/>
 					</div>
 					<div>
-						<label for="bank_code" class="block text-sm font-medium text-secondary">Kód banky</label>
-						<input
-							id="bank_code"
-							type="text"
-							bind:value={form.bank_code}
-							class={inputClass}
-						/>
+						<label for="bank_code" class="block text-sm font-medium text-secondary">Kód banky</label
+						>
+						<input id="bank_code" type="text" bind:value={form.bank_code} class={inputClass} />
 					</div>
 				</div>
 			</fieldset>
@@ -322,7 +291,13 @@
 			</div>
 
 			<!-- Submit -->
-			<FormActions {saving} saveLabel="Uložit" savingLabel="Ukládám..." cancelHref="/contacts" class="pt-4" />
+			<FormActions
+				{saving}
+				saveLabel="Uložit"
+				savingLabel="Ukládám..."
+				cancelHref="/contacts"
+				class="pt-4"
+			/>
 		</form>
 	{/if}
 </div>
@@ -333,5 +308,5 @@
 	message="Opravdu chcete smazat tento kontakt?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

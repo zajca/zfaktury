@@ -152,9 +152,7 @@ describe('ReminderCard', () => {
 		await fireEvent.click(screen.getByTestId('reminder-header'));
 
 		// Send fails with no-email error
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ error: 'customer has no email' }, 422)
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'customer has no email' }, 422));
 
 		await fireEvent.click(screen.getByText('Odeslat upomínku'));
 

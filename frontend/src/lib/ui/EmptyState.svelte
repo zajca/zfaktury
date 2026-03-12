@@ -8,7 +8,14 @@
 		class?: string;
 	}
 
-	let { message, filteredMessage, isFiltered = false, actionHref, actionLabel, class: className = '' }: Props = $props();
+	let {
+		message,
+		filteredMessage,
+		isFiltered = false,
+		actionHref,
+		actionLabel,
+		class: className = ''
+	}: Props = $props();
 </script>
 
 <div class="p-12 text-center text-muted {className}">

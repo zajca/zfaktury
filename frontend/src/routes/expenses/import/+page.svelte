@@ -105,7 +105,7 @@
 				vat_amount: data.vat_amount || undefined,
 				vat_rate_percent: data.vat_rate_percent || undefined,
 				currency_code: data.currency_code || undefined,
-				issue_date: data.issue_date || undefined,
+				issue_date: data.issue_date || undefined
 			});
 			toastSuccess('Náklad uložen');
 			goto(`/expenses/${expenseId}`);
@@ -121,7 +121,10 @@
 </svelte:head>
 
 <div class="mx-auto max-w-3xl">
-	<PageHeader title="Import z dokladu" description="Nahrajte doklad a data se automaticky rozpoznají pomocí OCR">
+	<PageHeader
+		title="Import z dokladu"
+		description="Nahrajte doklad a data se automaticky rozpoznají pomocí OCR"
+	>
 		{#snippet actions()}
 			<Button variant="secondary" href="/expenses">Zpět na náklady</Button>
 		{/snippet}
@@ -137,17 +140,31 @@
 	{#if pageState === 'idle'}
 		<Card class="mt-6">
 			<div
-				class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors {dragOver ? 'border-accent bg-accent/5' : 'border-border'}"
+				class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors {dragOver
+					? 'border-accent bg-accent/5'
+					: 'border-border'}"
 				role="button"
 				tabindex="0"
 				ondrop={handleDrop}
 				ondragover={handleDragOver}
 				ondragleave={handleDragLeave}
 				onclick={() => document.getElementById('file-input')?.click()}
-				onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('file-input')?.click(); }}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') document.getElementById('file-input')?.click();
+				}}
 			>
-				<svg class="h-12 w-12 text-muted mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+				<svg
+					class="h-12 w-12 text-muted mb-4"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+					/>
 				</svg>
 				<p class="text-primary font-medium mb-1">Přetáhni soubor sem</p>
 				<p class="text-sm text-muted mb-4">nebo klikni pro výběr</p>
@@ -180,8 +197,18 @@
 	{#if pageState === 'done'}
 		<Card class="mt-6">
 			<div class="flex flex-col items-center p-8 gap-3">
-				<svg class="h-10 w-10 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+				<svg
+					class="h-10 w-10 text-warning"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+					/>
 				</svg>
 				<p class="text-primary font-medium">Dokument nahrán, ale OCR není nastaveno</p>
 				<p class="text-sm text-secondary text-center">
@@ -198,10 +225,6 @@
 	{/if}
 
 	{#if pageState === 'review' && ocrResult}
-		<OCRReviewDialog
-			ocrResult={ocrResult}
-			onclose={handleOCRClose}
-			onconfirm={handleOCRConfirm}
-		/>
+		<OCRReviewDialog {ocrResult} onclose={handleOCRClose} onconfirm={handleOCRConfirm} />
 	{/if}
 </div>

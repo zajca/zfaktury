@@ -25,15 +25,15 @@ const (
 	SettingSWIFT         = "swift"
 
 	// Email settings.
-	SettingEmailAttachPDF      = "email_attach_pdf"
-	SettingEmailAttachISDOC    = "email_attach_isdoc"
-	SettingEmailSubjectTpl     = "email_subject_template"
-	SettingEmailBodyTpl        = "email_body_template"
+	SettingEmailAttachPDF   = "email_attach_pdf"
+	SettingEmailAttachISDOC = "email_attach_isdoc"
+	SettingEmailSubjectTpl  = "email_subject_template"
+	SettingEmailBodyTpl     = "email_body_template"
 
 	// Office codes (global, rarely change).
-	SettingHealthInsCode      = "health_insurance_code"
-	SettingFinancniUradCode   = "financni_urad_code"
-	SettingCSSZCode           = "cssz_code"
+	SettingHealthInsCode    = "health_insurance_code"
+	SettingFinancniUradCode = "financni_urad_code"
+	SettingCSSZCode         = "cssz_code"
 )
 
 // SettingsService provides business logic for application settings.
@@ -93,26 +93,26 @@ func (s *SettingsService) SetBulk(ctx context.Context, settings map[string]strin
 
 // knownKeys contains all valid setting keys.
 var knownKeys = map[string]bool{
-	SettingCompanyName:   true,
-	SettingICO:           true,
-	SettingDIC:           true,
-	SettingVATRegistered: true,
-	SettingStreet:        true,
-	SettingCity:          true,
-	SettingZIP:           true,
-	SettingEmail:         true,
-	SettingPhone:         true,
-	SettingBankAccount:   true,
-	SettingBankCode:      true,
-	SettingIBAN:              true,
-	SettingSWIFT:             true,
-	SettingEmailAttachPDF:    true,
-	SettingEmailAttachISDOC:  true,
-	SettingEmailSubjectTpl:   true,
-	SettingEmailBodyTpl:      true,
-	SettingHealthInsCode:     true,
-	SettingFinancniUradCode:  true,
-	SettingCSSZCode:          true,
+	SettingCompanyName:      true,
+	SettingICO:              true,
+	SettingDIC:              true,
+	SettingVATRegistered:    true,
+	SettingStreet:           true,
+	SettingCity:             true,
+	SettingZIP:              true,
+	SettingEmail:            true,
+	SettingPhone:            true,
+	SettingBankAccount:      true,
+	SettingBankCode:         true,
+	SettingIBAN:             true,
+	SettingSWIFT:            true,
+	SettingEmailAttachPDF:   true,
+	SettingEmailAttachISDOC: true,
+	SettingEmailSubjectTpl:  true,
+	SettingEmailBodyTpl:     true,
+	SettingHealthInsCode:    true,
+	SettingFinancniUradCode: true,
+	SettingCSSZCode:         true,
 }
 
 // validateKey checks that a setting key is valid and known.

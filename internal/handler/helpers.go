@@ -343,39 +343,39 @@ type relatedInvoiceResponse struct {
 
 // invoiceResponse is the JSON response for an invoice.
 type invoiceResponse struct {
-	ID               int64                 `json:"id"`
-	SequenceID       int64                 `json:"sequence_id"`
-	InvoiceNumber    string                `json:"invoice_number"`
-	Type             string                `json:"type"`
-	Status           string                `json:"status"`
-	CustomerID       int64                 `json:"customer_id"`
-	IssueDate        string                `json:"issue_date"`
-	DueDate          string                `json:"due_date"`
-	DeliveryDate     string                `json:"delivery_date"`
-	VariableSymbol   string                `json:"variable_symbol"`
-	ConstantSymbol   string                `json:"constant_symbol"`
-	CurrencyCode     string                `json:"currency_code"`
-	ExchangeRate     int64                 `json:"exchange_rate"`
-	PaymentMethod    string                `json:"payment_method"`
-	BankAccount      string                `json:"bank_account"`
-	BankCode         string                `json:"bank_code"`
-	IBAN             string                `json:"iban"`
-	SWIFT            string                `json:"swift"`
-	SubtotalAmount   int64                 `json:"subtotal_amount"`
-	VATAmount        int64                 `json:"vat_amount"`
-	TotalAmount      int64                 `json:"total_amount"`
-	PaidAmount       int64                 `json:"paid_amount"`
-	Notes            string                `json:"notes"`
-	InternalNotes    string                `json:"internal_notes"`
+	ID               int64                    `json:"id"`
+	SequenceID       int64                    `json:"sequence_id"`
+	InvoiceNumber    string                   `json:"invoice_number"`
+	Type             string                   `json:"type"`
+	Status           string                   `json:"status"`
+	CustomerID       int64                    `json:"customer_id"`
+	IssueDate        string                   `json:"issue_date"`
+	DueDate          string                   `json:"due_date"`
+	DeliveryDate     string                   `json:"delivery_date"`
+	VariableSymbol   string                   `json:"variable_symbol"`
+	ConstantSymbol   string                   `json:"constant_symbol"`
+	CurrencyCode     string                   `json:"currency_code"`
+	ExchangeRate     int64                    `json:"exchange_rate"`
+	PaymentMethod    string                   `json:"payment_method"`
+	BankAccount      string                   `json:"bank_account"`
+	BankCode         string                   `json:"bank_code"`
+	IBAN             string                   `json:"iban"`
+	SWIFT            string                   `json:"swift"`
+	SubtotalAmount   int64                    `json:"subtotal_amount"`
+	VATAmount        int64                    `json:"vat_amount"`
+	TotalAmount      int64                    `json:"total_amount"`
+	PaidAmount       int64                    `json:"paid_amount"`
+	Notes            string                   `json:"notes"`
+	InternalNotes    string                   `json:"internal_notes"`
 	RelatedInvoiceID *int64                   `json:"related_invoice_id,omitempty"`
 	RelationType     string                   `json:"relation_type,omitempty"`
 	RelatedInvoices  []relatedInvoiceResponse `json:"related_invoices,omitempty"`
-	SentAt           *string               `json:"sent_at,omitempty"`
-	PaidAt           *string               `json:"paid_at,omitempty"`
-	Items            []invoiceItemResponse `json:"items"`
-	Customer         *contactResponse      `json:"customer,omitempty"`
-	CreatedAt        string                `json:"created_at"`
-	UpdatedAt        string                `json:"updated_at"`
+	SentAt           *string                  `json:"sent_at,omitempty"`
+	PaidAt           *string                  `json:"paid_at,omitempty"`
+	Items            []invoiceItemResponse    `json:"items"`
+	Customer         *contactResponse         `json:"customer,omitempty"`
+	CreatedAt        string                   `json:"created_at"`
+	UpdatedAt        string                   `json:"updated_at"`
 }
 
 // invoiceFromDomain converts a domain.Invoice to an invoiceResponse.

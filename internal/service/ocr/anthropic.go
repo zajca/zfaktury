@@ -198,7 +198,7 @@ type anthropicRequest struct {
 }
 
 type anthropicMessage struct {
-	Role    string                `json:"role"`
+	Role    string                 `json:"role"`
 	Content []anthropicContentPart `json:"content"`
 }
 

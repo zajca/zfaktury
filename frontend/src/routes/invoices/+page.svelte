@@ -3,7 +3,12 @@
 	import { invoicesApi, statusHistoryApi, type Invoice } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
-	import { statusLabels, statusVariant, invoiceTypeLabels, invoiceTypeVariant } from '$lib/utils/invoice';
+	import {
+		statusLabels,
+		statusVariant,
+		invoiceTypeLabels,
+		invoiceTypeVariant
+	} from '$lib/utils/invoice';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -36,7 +41,7 @@
 				offset: (page - 1) * perPage,
 				search: search || undefined,
 				status: statusFilter || undefined,
-			type: typeFilter || undefined
+				type: typeFilter || undefined
 			});
 			invoices = res.data;
 			total = res.total;
@@ -80,11 +85,14 @@
 		overdueMessage = null;
 		try {
 			const result = await statusHistoryApi.checkOverdue();
-			overdueMessage = result.marked > 0
-				? `Označeno ${result.marked} faktur jako po splatnosti.`
-				: 'Žádné nové faktury po splatnosti.';
+			overdueMessage =
+				result.marked > 0
+					? `Označeno ${result.marked} faktur jako po splatnosti.`
+					: 'Žádné nové faktury po splatnosti.';
 			if (result.marked > 0) await loadInvoices();
-			setTimeout(() => { overdueMessage = null; }, 5000);
+			setTimeout(() => {
+				overdueMessage = null;
+			}, 5000);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se zkontrolovat splatnost';
 		} finally {
@@ -104,11 +112,22 @@
 		{#snippet actions()}
 			<div class="flex gap-2">
 				<Button variant="secondary" href="/recurring">Šablony</Button>
-				<Button variant="secondary" onclick={handleCheckOverdue} disabled={checkingOverdue} title="Zkontroluje odeslané faktury a označí ty po splatnosti">
+				<Button
+					variant="secondary"
+					onclick={handleCheckOverdue}
+					disabled={checkingOverdue}
+					title="Zkontroluje odeslané faktury a označí ty po splatnosti"
+				>
 					{checkingOverdue ? 'Kontroluji...' : 'Zkontrolovat po splatnosti'}
 				</Button>
 				<Button variant="primary" href="/invoices/new">
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
 					Nová faktura
@@ -161,7 +180,13 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if invoices.length === 0}
-			<EmptyState message="Zatím žádné faktury." filteredMessage="Žádné faktury neodpovídají filtru." isFiltered={!!(search || statusFilter || typeFilter)} actionHref="/invoices/new" actionLabel="Vytvořit první fakturu" />
+			<EmptyState
+				message="Zatím žádné faktury."
+				filteredMessage="Žádné faktury neodpovídají filtru."
+				isFiltered={!!(search || statusFilter || typeFilter)}
+				actionHref="/invoices/new"
+				actionLabel="Vytvořit první fakturu"
+			/>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
@@ -215,5 +240,14 @@
 	</Card>
 
 	<!-- Pagination -->
-	<Pagination {page} {totalPages} {total} label="faktur" onPageChange={(p) => { page = p; loadInvoices(); }} />
+	<Pagination
+		{page}
+		{totalPages}
+		{total}
+		label="faktur"
+		onPageChange={(p) => {
+			page = p;
+			loadInvoices();
+		}}
+	/>
 </div>

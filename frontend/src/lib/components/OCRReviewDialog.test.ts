@@ -18,18 +18,20 @@ function makeOCRResult(overrides: Partial<OCRResult> = {}): OCRResult {
 		description: 'Test expense',
 		items: [],
 		confidence: 0.92,
-		...overrides,
+		...overrides
 	};
 }
 
 beforeEach(() => {});
-afterEach(() => { cleanup(); });
+afterEach(() => {
+	cleanup();
+});
 
 describe('OCRReviewDialog', () => {
 	it('renders with OCR data in form fields', () => {
 		const result = makeOCRResult();
 		render(OCRReviewDialog, {
-			props: { ocrResult: result, onclose: vi.fn(), onconfirm: vi.fn() },
+			props: { ocrResult: result, onclose: vi.fn(), onconfirm: vi.fn() }
 		});
 
 		expect(screen.getByText('OCR - Kontrola dat')).toBeInTheDocument();
@@ -61,7 +63,11 @@ describe('OCRReviewDialog', () => {
 
 	it('shows confidence percentage with green color for high confidence', () => {
 		render(OCRReviewDialog, {
-			props: { ocrResult: makeOCRResult({ confidence: 0.92 }), onclose: vi.fn(), onconfirm: vi.fn() },
+			props: {
+				ocrResult: makeOCRResult({ confidence: 0.92 }),
+				onclose: vi.fn(),
+				onconfirm: vi.fn()
+			}
 		});
 
 		const badge = screen.getByTestId('confidence');
@@ -71,7 +77,11 @@ describe('OCRReviewDialog', () => {
 
 	it('shows confidence percentage with yellow color for medium confidence', () => {
 		render(OCRReviewDialog, {
-			props: { ocrResult: makeOCRResult({ confidence: 0.65 }), onclose: vi.fn(), onconfirm: vi.fn() },
+			props: {
+				ocrResult: makeOCRResult({ confidence: 0.65 }),
+				onclose: vi.fn(),
+				onconfirm: vi.fn()
+			}
 		});
 
 		const badge = screen.getByTestId('confidence');
@@ -81,7 +91,7 @@ describe('OCRReviewDialog', () => {
 
 	it('shows confidence percentage with red color for low confidence', () => {
 		render(OCRReviewDialog, {
-			props: { ocrResult: makeOCRResult({ confidence: 0.3 }), onclose: vi.fn(), onconfirm: vi.fn() },
+			props: { ocrResult: makeOCRResult({ confidence: 0.3 }), onclose: vi.fn(), onconfirm: vi.fn() }
 		});
 
 		const badge = screen.getByTestId('confidence');
@@ -93,7 +103,7 @@ describe('OCRReviewDialog', () => {
 		const onconfirm = vi.fn();
 		const result = makeOCRResult();
 		render(OCRReviewDialog, {
-			props: { ocrResult: result, onclose: vi.fn(), onconfirm },
+			props: { ocrResult: result, onclose: vi.fn(), onconfirm }
 		});
 
 		// Edit vendor name
@@ -119,7 +129,7 @@ describe('OCRReviewDialog', () => {
 	it('calls onclose on cancel button click', async () => {
 		const onclose = vi.fn();
 		render(OCRReviewDialog, {
-			props: { ocrResult: makeOCRResult(), onclose, onconfirm: vi.fn() },
+			props: { ocrResult: makeOCRResult(), onclose, onconfirm: vi.fn() }
 		});
 
 		const cancelBtn = screen.getByText('Zrušit');
@@ -131,7 +141,7 @@ describe('OCRReviewDialog', () => {
 	it('calls onclose on backdrop click', async () => {
 		const onclose = vi.fn();
 		render(OCRReviewDialog, {
-			props: { ocrResult: makeOCRResult(), onclose, onconfirm: vi.fn() },
+			props: { ocrResult: makeOCRResult(), onclose, onconfirm: vi.fn() }
 		});
 
 		const backdrop = document.querySelector('[role="presentation"]') as HTMLElement;

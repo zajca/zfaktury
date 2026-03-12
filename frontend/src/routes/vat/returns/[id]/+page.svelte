@@ -130,7 +130,9 @@
 		return `${vr.period.year}`;
 	}
 
-	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+	function statusBadgeVariant(
+		status: string
+	): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
 		switch (status) {
 			case 'filed':
 				return 'success';
@@ -183,27 +185,15 @@
 					{actionLoading === 'generate' ? 'Generuji...' : 'Generovat XML'}
 				</Button>
 				{#if vatReturn.has_xml}
-					<Button
-						variant="secondary"
-						onclick={handleDownloadXml}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="secondary" onclick={handleDownloadXml} disabled={actionLoading !== null}>
 						{actionLoading === 'download' ? 'Stahuji...' : 'Stáhnout XML'}
 					</Button>
 				{/if}
 				{#if vatReturn.status !== 'filed'}
-					<Button
-						variant="success"
-						onclick={handleMarkFiled}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit za podané'}
 					</Button>
-					<Button
-						variant="danger"
-						onclick={handleDelete}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="danger" onclick={handleDelete} disabled={actionLoading !== null}>
 						Smazat
 					</Button>
 				{/if}
@@ -214,15 +204,25 @@
 		<div class="mt-6 space-y-6">
 			<Card padding={false}>
 				<div class="p-5 pb-0">
-					<h2 class="text-base font-semibold text-primary">Výstupní DPH <HelpTip topic="vystupni-dph" /></h2>
+					<h2 class="text-base font-semibold text-primary">
+						Výstupní DPH <HelpTip topic="vystupni-dph" />
+					</h2>
 				</div>
 				<div class="mt-4 overflow-x-auto">
 					<table class="w-full text-left text-sm">
 						<thead class="border-b border-border">
 							<tr class="bg-elevated">
-								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba <HelpTip topic="sazba-dph" /></th>
-								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně <HelpTip topic="zaklad-dane" /></th>
-								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
+								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted"
+									>Sazba <HelpTip topic="sazba-dph" /></th
+								>
+								<th
+									class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Základ daně <HelpTip topic="zaklad-dane" /></th
+								>
+								<th
+									class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Daň</th
+								>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
@@ -269,15 +269,25 @@
 			{#if vatReturn.reverse_charge_base_21 > 0 || vatReturn.reverse_charge_base_12 > 0}
 				<Card padding={false}>
 					<div class="p-5 pb-0">
-						<h2 class="text-base font-semibold text-primary">Přenesení daňové povinnosti <HelpTip topic="preneseni-danove-povinnosti" /></h2>
+						<h2 class="text-base font-semibold text-primary">
+							Přenesení daňové povinnosti <HelpTip topic="preneseni-danove-povinnosti" />
+						</h2>
 					</div>
 					<div class="mt-4 overflow-x-auto">
 						<table class="w-full text-left text-sm">
 							<thead class="border-b border-border">
 								<tr class="bg-elevated">
-									<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
-									<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně</th>
-									<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
+									<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted"
+										>Sazba</th
+									>
+									<th
+										class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>Základ daně</th
+									>
+									<th
+										class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+										>Daň</th
+									>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-border-subtle">
@@ -308,15 +318,25 @@
 			<!-- Input VAT -->
 			<Card padding={false}>
 				<div class="p-5 pb-0">
-					<h2 class="text-base font-semibold text-primary">Vstupní DPH <HelpTip topic="vstupni-dph" /></h2>
+					<h2 class="text-base font-semibold text-primary">
+						Vstupní DPH <HelpTip topic="vstupni-dph" />
+					</h2>
 				</div>
 				<div class="mt-4 overflow-x-auto">
 					<table class="w-full text-left text-sm">
 						<thead class="border-b border-border">
 							<tr class="bg-elevated">
-								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Sazba</th>
-								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ daně</th>
-								<th class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Daň</th>
+								<th class="px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted"
+									>Sazba</th
+								>
+								<th
+									class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Základ daně</th
+								>
+								<th
+									class="px-5 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Daň</th
+								>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
@@ -354,21 +374,31 @@
 
 			<!-- Result -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Výsledek <HelpTip topic="nadmerny-odpocet" /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Výsledek <HelpTip topic="nadmerny-odpocet" />
+				</h2>
 				<div class="mt-4 flex flex-col items-end gap-2 text-sm">
 					<div class="flex gap-8">
 						<span class="text-secondary">Výstupní DPH:</span>
-						<span class="font-mono tabular-nums font-medium text-primary">{formatCZK(vatReturn.total_output_vat)}</span>
+						<span class="font-mono tabular-nums font-medium text-primary"
+							>{formatCZK(vatReturn.total_output_vat)}</span
+						>
 					</div>
 					<div class="flex gap-8">
 						<span class="text-secondary">Vstupní DPH:</span>
-						<span class="font-mono tabular-nums font-medium text-primary">{formatCZK(vatReturn.total_input_vat)}</span>
+						<span class="font-mono tabular-nums font-medium text-primary"
+							>{formatCZK(vatReturn.total_input_vat)}</span
+						>
 					</div>
 					<div class="flex gap-8 border-t border-border pt-2 text-base">
 						<span class="font-semibold text-primary"
 							>{vatReturn.net_vat >= 0 ? 'Vlastní daňová povinnost:' : 'Nadměrný odpočet:'}</span
 						>
-						<span class="font-mono tabular-nums font-semibold {vatReturn.net_vat >= 0 ? 'text-danger' : 'text-success'}">
+						<span
+							class="font-mono tabular-nums font-semibold {vatReturn.net_vat >= 0
+								? 'text-danger'
+								: 'text-success'}"
+						>
 							{formatCZK(Math.abs(vatReturn.net_vat))}
 						</span>
 					</div>
@@ -394,7 +424,7 @@
 	confirmLabel="Označit jako podané"
 	variant="warning"
 	onconfirm={confirmMarkFiled}
-	oncancel={() => showFileConfirm = false}
+	oncancel={() => (showFileConfirm = false)}
 />
 
 <ConfirmDialog
@@ -403,5 +433,5 @@
 	message="Opravdu chcete smazat toto přiznání?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

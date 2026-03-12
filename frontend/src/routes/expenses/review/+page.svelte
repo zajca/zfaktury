@@ -179,11 +179,12 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<PageHeader title="Daňová kontrola nákladů" description="Označte výdaje jako daňově zkontrolované">
+	<PageHeader
+		title="Daňová kontrola nákladů"
+		description="Označte výdaje jako daňově zkontrolované"
+	>
 		{#snippet actions()}
-			<Button variant="secondary" href="/expenses">
-				Zpět na náklady
-			</Button>
+			<Button variant="secondary" href="/expenses">Zpět na náklady</Button>
 		{/snippet}
 	</PageHeader>
 
@@ -215,9 +216,7 @@
 					<option value="reviewed">Zkontrolováno</option>
 				</select>
 			</div>
-			<Button variant="primary" onclick={applyFilters}>
-				Filtrovat
-			</Button>
+			<Button variant="primary" onclick={applyFilters}>Filtrovat</Button>
 		</div>
 	</Card>
 
@@ -306,7 +305,9 @@
 							<td class="px-4 py-2.5 text-right font-medium font-mono tabular-nums text-primary">
 								{formatCZK(expense.amount)}
 							</td>
-							<td class="hidden px-4 py-2.5 text-right font-mono tabular-nums text-secondary md:table-cell">
+							<td
+								class="hidden px-4 py-2.5 text-right font-mono tabular-nums text-secondary md:table-cell"
+							>
 								{formatCZK(expense.vat_amount)}
 							</td>
 							<td class="px-4 py-2.5 text-center">
@@ -326,9 +327,7 @@
 										</Badge>
 									</span>
 								{:else}
-									<Badge variant="muted">
-										Nekontrolováno
-									</Badge>
+									<Badge variant="muted">Nekontrolováno</Badge>
 								{/if}
 							</td>
 						</tr>
@@ -343,25 +342,42 @@
 		<div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
 			<Card>
 				<p class="text-xs font-medium text-muted">Celková částka</p>
-				<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(totalAmount)}</p>
+				<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+					{formatCZK(totalAmount)}
+				</p>
 			</Card>
 			<Card>
 				<p class="text-xs font-medium text-muted">Celkové DPH</p>
-				<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(totalVAT)}</p>
+				<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+					{formatCZK(totalVAT)}
+				</p>
 			</Card>
 			{#if someSelected}
 				<div class="rounded-lg border border-accent/20 bg-accent-muted p-5">
 					<p class="text-xs font-medium text-muted">Vybráno - částka</p>
-					<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(selectedAmount)}</p>
+					<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+						{formatCZK(selectedAmount)}
+					</p>
 				</div>
 				<div class="rounded-lg border border-accent/20 bg-accent-muted p-5">
 					<p class="text-xs font-medium text-muted">Vybráno - DPH</p>
-					<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(selectedVAT)}</p>
+					<p class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+						{formatCZK(selectedVAT)}
+					</p>
 				</div>
 			{/if}
 		</div>
 	{/if}
 
 	<!-- Pagination -->
-	<Pagination {page} {totalPages} {total} label="výdajů" onPageChange={(p) => { page = p; loadExpenses(); }} />
+	<Pagination
+		{page}
+		{totalPages}
+		{total}
+		label="výdajů"
+		onPageChange={(p) => {
+			page = p;
+			loadExpenses();
+		}}
+	/>
 </div>

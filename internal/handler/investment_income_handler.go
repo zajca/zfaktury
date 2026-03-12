@@ -360,9 +360,9 @@ func (h *InvestmentIncomeHandler) ExtractDocument(w http.ResponseWriter, r *http
 	// Convert extraction result to response DTOs.
 	type extractionResponse struct {
 		Platform       string                        `json:"platform"`
-		CapitalEntries []capitalIncomeResponse        `json:"capital_entries"`
-		Transactions   []securityTransactionResponse  `json:"transactions"`
-		Confidence     float64                        `json:"confidence"`
+		CapitalEntries []capitalIncomeResponse       `json:"capital_entries"`
+		Transactions   []securityTransactionResponse `json:"transactions"`
+		Confidence     float64                       `json:"confidence"`
 	}
 
 	resp := extractionResponse{

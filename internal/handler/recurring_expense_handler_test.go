@@ -32,15 +32,15 @@ func setupRecurringExpenseRouter(t *testing.T) *chi.Mux {
 
 func validRecurringExpenseBody() map[string]any {
 	return map[string]any{
-		"name":            "Monthly rent",
-		"description":     "Office rent",
-		"amount":          1500000,
-		"frequency":       "monthly",
-		"next_issue_date": "2026-04-01",
-		"currency_code":   "CZK",
+		"name":             "Monthly rent",
+		"description":      "Office rent",
+		"amount":           1500000,
+		"frequency":        "monthly",
+		"next_issue_date":  "2026-04-01",
+		"currency_code":    "CZK",
 		"business_percent": 100,
-		"payment_method":  "bank_transfer",
-		"is_active":       true,
+		"payment_method":   "bank_transfer",
+		"is_active":        true,
 	}
 }
 
@@ -331,22 +331,22 @@ func TestRecurringExpenseUpdateAllFields(t *testing.T) {
 
 	endDate := "2027-12-31"
 	updated := map[string]any{
-		"name":             "Updated rent",
-		"description":      "Updated office rent",
-		"amount":           2500000,
-		"currency_code":    "EUR",
-		"exchange_rate":    2500,
-		"vat_rate_percent": 21,
-		"vat_amount":       525000,
+		"name":              "Updated rent",
+		"description":       "Updated office rent",
+		"amount":            2500000,
+		"currency_code":     "EUR",
+		"exchange_rate":     2500,
+		"vat_rate_percent":  21,
+		"vat_amount":        525000,
 		"is_tax_deductible": true,
-		"business_percent": 80,
-		"payment_method":   "cash",
-		"notes":            "Some notes",
-		"frequency":        "quarterly",
-		"next_issue_date":  "2026-07-01",
-		"end_date":         endDate,
-		"is_active":        true,
-		"category":         "office",
+		"business_percent":  80,
+		"payment_method":    "cash",
+		"notes":             "Some notes",
+		"frequency":         "quarterly",
+		"next_issue_date":   "2026-07-01",
+		"end_date":          endDate,
+		"is_active":         true,
+		"category":          "office",
 	}
 	data, _ := json.Marshal(updated)
 

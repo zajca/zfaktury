@@ -87,12 +87,7 @@
 				</div>
 				<div>
 					<label for="quarter" class="block text-sm font-medium text-secondary">Čtvrtletí *</label>
-					<select
-						id="quarter"
-						bind:value={form.quarter}
-						required
-						class={inputClass}
-					>
+					<select id="quarter" bind:value={form.quarter} required class={inputClass}>
 						{#each quarters as q (q.value)}
 							<option value={q.value}>{q.label}</option>
 						{/each}
@@ -104,12 +99,10 @@
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Typ podání</h2>
 			<div class="mt-4">
-				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ <HelpTip topic="typ-podani" /></label>
-				<select
-					id="filing_type"
-					bind:value={form.filing_type}
-					class="{inputClass} max-w-xs"
+				<label for="filing_type" class="block text-sm font-medium text-secondary"
+					>Typ <HelpTip topic="typ-podani" /></label
 				>
+				<select id="filing_type" bind:value={form.filing_type} class="{inputClass} max-w-xs">
 					{#each filingTypes as ft (ft.value)}
 						<option value={ft.value}>{ft.label}</option>
 					{/each}
@@ -117,6 +110,11 @@
 			</div>
 		</Card>
 
-		<FormActions {saving} saveLabel="Vytvořit hlášení" savingLabel="Vytvářím..." cancelHref="/vat" />
+		<FormActions
+			{saving}
+			saveLabel="Vytvořit hlášení"
+			savingLabel="Vytvářím..."
+			cancelHref="/vat"
+		/>
 	</form>
 </div>

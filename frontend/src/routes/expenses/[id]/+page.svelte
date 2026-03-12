@@ -2,7 +2,16 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { expensesApi, contactsApi, documentsApi, ocrApi, type Expense, type Contact, type ExpenseDocument, type OCRResult } from '$lib/api/client';
+	import {
+		expensesApi,
+		contactsApi,
+		documentsApi,
+		ocrApi,
+		type Expense,
+		type Contact,
+		type ExpenseDocument,
+		type OCRResult
+	} from '$lib/api/client';
 	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import { paymentMethodLabels } from '$lib/utils/invoice';
@@ -213,12 +222,8 @@
 			</div>
 			{#if !editing}
 				<div class="flex gap-2">
-					<Button variant="secondary" onclick={startEditing}>
-						Upravit
-					</Button>
-					<Button variant="danger" onclick={handleDelete}>
-						Smazat
-					</Button>
+					<Button variant="secondary" onclick={startEditing}>Upravit</Button>
+					<Button variant="danger" onclick={handleDelete}>Smazat</Button>
 				</div>
 			{/if}
 		</div>
@@ -236,7 +241,8 @@
 					<h2 class="text-base font-semibold text-primary">Základní údaje</h2>
 					<div class="mt-4 space-y-4">
 						<div>
-							<label for="edit-desc" class="block text-sm font-medium text-secondary">Popis *</label>
+							<label for="edit-desc" class="block text-sm font-medium text-secondary">Popis *</label
+							>
 							<input
 								id="edit-desc"
 								type="text"
@@ -272,7 +278,8 @@
 						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
-								<label for="edit-date" class="block text-sm font-medium text-secondary">Datum</label>
+								<label for="edit-date" class="block text-sm font-medium text-secondary">Datum</label
+								>
 								<DateInput id="edit-date" bind:value={form.issue_date} required />
 							</div>
 							<div>
@@ -311,7 +318,8 @@
 							/>
 						</div>
 						<div>
-							<label for="edit-vat" class="block text-sm font-medium text-secondary">Sazba DPH <HelpTip topic="sazba-dph" /></label
+							<label for="edit-vat" class="block text-sm font-medium text-secondary"
+								>Sazba DPH <HelpTip topic="sazba-dph" /></label
 							>
 							<select
 								id="edit-vat"
@@ -421,11 +429,15 @@
 					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Částka s DPH</dt>
-							<dd class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">{formatCZK(expense.amount)}</dd>
+							<dd class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+								{formatCZK(expense.amount)}
+							</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-tertiary">DPH ({expense.vat_rate_percent}%)</dt>
-							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">{formatCZK(expense.vat_amount)}</dd>
+							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
+								{formatCZK(expense.vat_amount)}
+							</dd>
 						</div>
 						<div>
 							<dt class="text-sm font-medium text-tertiary">Základ</dt>
@@ -456,7 +468,9 @@
 					<div class="mt-4">
 						<DocumentUpload
 							{expenseId}
-							onuploaded={() => { loadDocuments(); }}
+							onuploaded={() => {
+								loadDocuments();
+							}}
 						/>
 						<div class="mt-4">
 							<DocumentList
@@ -471,7 +485,7 @@
 					</div>
 				</Card>
 
-			{#if expense.notes}
+				{#if expense.notes}
 					<Card>
 						<h2 class="text-base font-semibold text-primary">Poznámky</h2>
 						<p class="mt-2 text-sm text-primary whitespace-pre-wrap">{expense.notes}</p>
@@ -486,7 +500,9 @@
 			{#if ocrResult}
 				<OCRReviewDialog
 					{ocrResult}
-					onclose={() => { ocrResult = null; }}
+					onclose={() => {
+						ocrResult = null;
+					}}
 					onconfirm={handleOcrConfirm}
 				/>
 			{/if}
@@ -500,5 +516,5 @@
 	message="Opravdu chcete smazat tento náklad?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

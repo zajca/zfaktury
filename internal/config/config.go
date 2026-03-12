@@ -14,8 +14,8 @@ type Config struct {
 	DataDir string       `toml:"data_dir"`
 	Server  ServerConfig `toml:"server"`
 	SMTP    SMTPConfig   `toml:"smtp"`
-	FIO  FIOConfig `toml:"fio"`
-	OCR  OCRConfig `toml:"ocr"`
+	FIO     FIOConfig    `toml:"fio"`
+	OCR     OCRConfig    `toml:"ocr"`
 }
 
 // ServerConfig holds HTTP server settings.

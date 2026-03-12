@@ -97,7 +97,7 @@ type HealthInsuranceOverview struct {
 	MinAssessmentBase   Amount
 	FinalAssessmentBase Amount
 
-	InsuranceRate    int    // 135 = 13.5% (permille*10)
+	InsuranceRate    int // 135 = 13.5% (permille*10)
 	TotalInsurance   Amount
 	Prepayments      Amount
 	Difference       Amount

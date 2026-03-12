@@ -44,7 +44,9 @@
 <div class="mx-auto max-w-2xl">
 	<div class="mb-6">
 		<h1 class="text-xl font-semibold text-primary">Import z Fakturoidu</h1>
-		<p class="mt-1 text-sm text-secondary">Přeneste kontakty, faktury a náklady z Fakturoidu do ZFaktury.</p>
+		<p class="mt-1 text-sm text-secondary">
+			Přeneste kontakty, faktury a náklady z Fakturoidu do ZFaktury.
+		</p>
 	</div>
 
 	{#if step === 'idle' || step === 'importing'}
@@ -52,7 +54,13 @@
 			<div class="mb-4 rounded-md bg-red-500/10 p-3 text-sm text-red-400" role="alert">{error}</div>
 		{/if}
 
-		<form onsubmit={(e) => { e.preventDefault(); doImport(); }} class="rounded-lg border border-border bg-surface p-6 space-y-4">
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				doImport();
+			}}
+			class="rounded-lg border border-border bg-surface p-6 space-y-4"
+		>
 			<div>
 				<label for="slug" class="block text-sm font-medium text-primary">Slug účtu</label>
 				<input
@@ -64,7 +72,9 @@
 					disabled={submitting}
 					class="mt-1 block w-full rounded-md border border-border bg-hover px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
 				/>
-				<p class="mt-1 text-xs text-muted">Slug z URL vašeho Fakturoid účtu (app.fakturoid.cz/api/v3/accounts/<strong>slug</strong>)</p>
+				<p class="mt-1 text-xs text-muted">
+					Slug z URL vašeho Fakturoid účtu (app.fakturoid.cz/api/v3/accounts/<strong>slug</strong>)
+				</p>
 			</div>
 
 			<div>
@@ -102,8 +112,19 @@
 				{#if submitting}
 					<span class="flex items-center justify-center gap-2" role="status">
 						<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+							></path>
 						</svg>
 						Stahování a import dat z Fakturoidu...
 						<span class="sr-only">Načítání...</span>
@@ -145,7 +166,13 @@
 			{/if}
 			<div class="mt-4">
 				<button
-					onclick={() => { step = 'idle'; result = null; slug = ''; email = ''; apiToken = ''; }}
+					onclick={() => {
+						step = 'idle';
+						result = null;
+						slug = '';
+						email = '';
+						apiToken = '';
+					}}
 					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-hover transition-colors"
 				>
 					Nový import

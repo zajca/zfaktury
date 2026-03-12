@@ -9,7 +9,6 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
-
 // TaxCreditsService provides business logic for tax credits and deductions.
 type TaxCreditsService struct {
 	spouseRepo    repository.TaxSpouseCreditRepo

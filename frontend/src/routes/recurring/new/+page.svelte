@@ -105,7 +105,11 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title="Nová opakující se faktura" backHref="/recurring" backLabel="Zpět na opakující se faktury" />
+	<PageHeader
+		title="Nová opakující se faktura"
+		backHref="/recurring"
+		backLabel="Zpět na opakující se faktury"
+	/>
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -154,7 +158,9 @@
 			<h2 class="text-base font-semibold text-primary">Opakování</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="frequency" class="block text-sm font-medium text-secondary">Frekvence <HelpTip topic="frekvence-opakovani" /></label>
+					<label for="frequency" class="block text-sm font-medium text-secondary"
+						>Frekvence <HelpTip topic="frekvence-opakovani" /></label
+					>
 					<select
 						id="frequency"
 						bind:value={form.frequency}
@@ -180,7 +186,8 @@
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
-					<label for="payment" class="block text-sm font-medium text-secondary">Způsob platby</label>
+					<label for="payment" class="block text-sm font-medium text-secondary">Způsob platby</label
+					>
 					<select
 						id="payment"
 						bind:value={form.payment_method}

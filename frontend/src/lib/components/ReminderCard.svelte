@@ -97,7 +97,7 @@
 
 	{#if expanded}
 		<div class="border-t border-border px-5 pb-5" data-testid="reminder-content">
-			<ErrorAlert error={error} class="mt-4" />
+			<ErrorAlert {error} class="mt-4" />
 
 			{#if loading}
 				<LoadingSpinner class="py-6" />
@@ -107,7 +107,10 @@
 				{:else}
 					<div class="mt-4 space-y-3" data-testid="reminder-list">
 						{#each reminders as reminder (reminder.id)}
-							<div class="rounded-lg border border-border bg-elevated p-3" data-testid="reminder-item">
+							<div
+								class="rounded-lg border border-border bg-elevated p-3"
+								data-testid="reminder-item"
+							>
 								<div class="flex items-center justify-between">
 									<span class="text-sm font-medium text-primary">
 										Upomínka #{reminder.reminder_number}
@@ -125,12 +128,7 @@
 
 				{#if invoiceStatus === 'overdue'}
 					<div class="mt-4">
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={sendReminder}
-							disabled={sending}
-						>
+						<Button variant="primary" size="sm" onclick={sendReminder} disabled={sending}>
 							{#if sending}
 								Odesílám...
 							{:else}

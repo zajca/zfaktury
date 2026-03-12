@@ -72,7 +72,9 @@ describe('SendEmailDialog', () => {
 		});
 
 		await waitFor(() => {
-			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe('Faktura FV-2026-001');
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe(
+				'Faktura FV-2026-001'
+			);
 		});
 
 		const toInput = screen.getByLabelText('Příjemce') as HTMLInputElement;
@@ -83,7 +85,9 @@ describe('SendEmailDialog', () => {
 		renderWithDefaults();
 
 		await waitFor(() => {
-			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe('Faktura FV-2026-001');
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe(
+				'Faktura FV-2026-001'
+			);
 		});
 
 		// Mock the send-email call
@@ -113,7 +117,9 @@ describe('SendEmailDialog', () => {
 		renderWithDefaults();
 
 		await waitFor(() => {
-			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe('Faktura FV-2026-001');
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe(
+				'Faktura FV-2026-001'
+			);
 		});
 
 		mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'SMTP error' }, 500));

@@ -67,11 +67,26 @@
 	<PageHeader title="Náklady" description="Evidence výdajů a nákladů">
 		{#snippet actions()}
 			<div class="flex gap-2">
-				<Button variant="secondary" href="/expenses/import" title="Nahraje doklad (PDF, JPG) a automaticky rozpozná data pomocí OCR">Import z dokladu</Button>
+				<Button
+					variant="secondary"
+					href="/expenses/import"
+					title="Nahraje doklad (PDF, JPG) a automaticky rozpozná data pomocí OCR"
+					>Import z dokladu</Button
+				>
 				<Button variant="secondary" href="/expenses/recurring">Opakované</Button>
-				<Button variant="secondary" href="/expenses/review" title="Stránka pro hromadnou kontrolu daňové uznatelnosti nákladů">Daňový audit</Button>
+				<Button
+					variant="secondary"
+					href="/expenses/review"
+					title="Stránka pro hromadnou kontrolu daňové uznatelnosti nákladů">Daňový audit</Button
+				>
 				<Button variant="primary" href="/expenses/new">
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
 					Přidat náklad
@@ -96,7 +111,13 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if expenses.length === 0}
-			<EmptyState message="Zatím žádné náklady." filteredMessage="Žádné náklady neodpovídají hledání." isFiltered={!!search} actionHref="/expenses/new" actionLabel="Přidat první náklad" />
+			<EmptyState
+				message="Zatím žádné náklady."
+				filteredMessage="Žádné náklady neodpovídají hledání."
+				isFiltered={!!search}
+				actionHref="/expenses/new"
+				actionLabel="Přidat první náklad"
+			/>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
@@ -128,7 +149,8 @@
 									{expense.description}
 								</a>
 							</td>
-							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">{expense.category || '-'}</td
+							<td class="hidden px-4 py-2.5 text-secondary md:table-cell"
+								>{expense.category || '-'}</td
 							>
 							<td class="hidden px-4 py-2.5 text-secondary md:table-cell"
 								>{formatDate(expense.issue_date)}</td
@@ -143,5 +165,14 @@
 		{/if}
 	</Card>
 
-	<Pagination {page} {totalPages} {total} label="nákladů" onPageChange={(p) => { page = p; loadExpenses(); }} />
+	<Pagination
+		{page}
+		{totalPages}
+		{total}
+		label="nákladů"
+		onPageChange={(p) => {
+			page = p;
+			loadExpenses();
+		}}
+	/>
 </div>

@@ -31,9 +31,9 @@ func (h *TaxYearSettingsHandler) Routes() chi.Router {
 }
 
 type taxYearSettingsResponse struct {
-	Year            int                  `json:"year"`
-	FlatRatePercent int                  `json:"flat_rate_percent"`
-	Prepayments     []taxPrepaymentDTO   `json:"prepayments"`
+	Year            int                `json:"year"`
+	FlatRatePercent int                `json:"flat_rate_percent"`
+	Prepayments     []taxPrepaymentDTO `json:"prepayments"`
 }
 
 type taxPrepaymentDTO struct {

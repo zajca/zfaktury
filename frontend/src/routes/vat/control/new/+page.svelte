@@ -86,13 +86,10 @@
 					/>
 				</div>
 				<div>
-					<label for="month" class="block text-sm font-medium text-secondary">Měsíc <HelpTip topic="zdanovaci-obdobi" /> *</label>
-					<select
-						id="month"
-						bind:value={form.month}
-						required
-						class={inputClass}
+					<label for="month" class="block text-sm font-medium text-secondary"
+						>Měsíc <HelpTip topic="zdanovaci-obdobi" /> *</label
 					>
+					<select id="month" bind:value={form.month} required class={inputClass}>
 						{#each months as m (m.value)}
 							<option value={m.value}>{m.label}</option>
 						{/each}
@@ -104,12 +101,10 @@
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Typ podání</h2>
 			<div class="mt-4">
-				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ <HelpTip topic="typ-podani" /></label>
-				<select
-					id="filing_type"
-					bind:value={form.filing_type}
-					class="{inputClass} max-w-xs"
+				<label for="filing_type" class="block text-sm font-medium text-secondary"
+					>Typ <HelpTip topic="typ-podani" /></label
 				>
+				<select id="filing_type" bind:value={form.filing_type} class="{inputClass} max-w-xs">
 					{#each filingTypes as ft (ft.value)}
 						<option value={ft.value}>{ft.label}</option>
 					{/each}
@@ -117,6 +112,11 @@
 			</div>
 		</Card>
 
-		<FormActions {saving} saveLabel="Vytvořit hlášení" savingLabel="Vytvářím..." cancelHref="/vat" />
+		<FormActions
+			{saving}
+			saveLabel="Vytvořit hlášení"
+			savingLabel="Vytvářím..."
+			cancelHref="/vat"
+		/>
 	</form>
 </div>

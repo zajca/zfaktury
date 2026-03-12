@@ -15,7 +15,9 @@
 
 <div class={className}>
 	{#if backHref}
-		<a href={backHref} class="text-sm text-secondary hover:text-primary">&larr; {backLabel ?? 'Zpět'}</a>
+		<a href={backHref} class="text-sm text-secondary hover:text-primary"
+			>&larr; {backLabel ?? 'Zpět'}</a
+		>
 	{/if}
 	<div class="flex items-center justify-between {backHref ? 'mt-2' : ''}">
 		<div>

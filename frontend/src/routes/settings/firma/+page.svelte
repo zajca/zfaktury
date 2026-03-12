@@ -90,7 +90,9 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="ico" class="block text-sm font-medium text-secondary">IČO <HelpTip topic="ico" /></label>
+							<label for="ico" class="block text-sm font-medium text-secondary"
+								>IČO <HelpTip topic="ico" /></label
+							>
 							<input
 								id="ico"
 								type="text"
@@ -100,7 +102,9 @@
 							/>
 						</div>
 						<div>
-							<label for="dic" class="block text-sm font-medium text-secondary">DIČ <HelpTip topic="dic" /></label>
+							<label for="dic" class="block text-sm font-medium text-secondary"
+								>DIČ <HelpTip topic="dic" /></label
+							>
 							<input
 								id="dic"
 								type="text"
@@ -122,7 +126,9 @@
 								)}
 							class="h-4 w-4 rounded border-border accent-accent"
 						/>
-						<label for="vat_registered" class="text-sm font-medium text-secondary">Plátce DPH <HelpTip topic="platce-dph" /></label>
+						<label for="vat_registered" class="text-sm font-medium text-secondary"
+							>Plátce DPH <HelpTip topic="platce-dph" /></label
+						>
 					</div>
 				</div>
 			</Card>
@@ -226,7 +232,9 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
-							<label for="iban" class="block text-sm font-medium text-secondary">IBAN <HelpTip topic="iban" /></label>
+							<label for="iban" class="block text-sm font-medium text-secondary"
+								>IBAN <HelpTip topic="iban" /></label
+							>
 							<input
 								id="iban"
 								type="text"
@@ -236,7 +244,9 @@
 							/>
 						</div>
 						<div>
-							<label for="swift" class="block text-sm font-medium text-secondary">SWIFT/BIC <HelpTip topic="swift-bic" /></label>
+							<label for="swift" class="block text-sm font-medium text-secondary"
+								>SWIFT/BIC <HelpTip topic="swift-bic" /></label
+							>
 							<input
 								id="swift"
 								type="text"
@@ -256,18 +266,23 @@
 				<div class="mt-4 space-y-4">
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
-							<label for="financni_urad_code" class="block text-sm font-medium text-secondary">Kód finančního úřadu</label>
+							<label for="financni_urad_code" class="block text-sm font-medium text-secondary"
+								>Kód finančního úřadu</label
+							>
 							<input
 								id="financni_urad_code"
 								type="text"
 								value={field('financni_urad_code')}
-								oninput={(e) => setField('financni_urad_code', (e.target as HTMLInputElement).value)}
+								oninput={(e) =>
+									setField('financni_urad_code', (e.target as HTMLInputElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 								placeholder="např. 0451"
 							/>
 						</div>
 						<div>
-							<label for="cssz_code" class="block text-sm font-medium text-secondary">Kód OSSZ</label>
+							<label for="cssz_code" class="block text-sm font-medium text-secondary"
+								>Kód OSSZ</label
+							>
 							<input
 								id="cssz_code"
 								type="text"
@@ -278,12 +293,15 @@
 							/>
 						</div>
 						<div>
-							<label for="health_insurance_code" class="block text-sm font-medium text-secondary">Kód zdravotní pojišťovny</label>
+							<label for="health_insurance_code" class="block text-sm font-medium text-secondary"
+								>Kód zdravotní pojišťovny</label
+							>
 							<input
 								id="health_insurance_code"
 								type="text"
 								value={field('health_insurance_code')}
-								oninput={(e) => setField('health_insurance_code', (e.target as HTMLInputElement).value)}
+								oninput={(e) =>
+									setField('health_insurance_code', (e.target as HTMLInputElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 								placeholder="např. 111 (VZP)"
 							/>

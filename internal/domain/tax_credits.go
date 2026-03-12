@@ -5,16 +5,16 @@ import "time"
 // TaxSpouseCredit represents the spouse tax credit for a given year.
 // At most one record per year. Credit applies if spouse income < 68000 CZK.
 type TaxSpouseCredit struct {
-	ID               int64
-	Year             int
-	SpouseName       string
+	ID                int64
+	Year              int
+	SpouseName        string
 	SpouseBirthNumber string
-	SpouseIncome     Amount // if < 6800000 halere -> credit applies
-	SpouseZTP        bool   // ZTP/P holder -> doubled credit
-	MonthsClaimed    int    // 1-12
-	CreditAmount     Amount // computed by service
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	SpouseIncome      Amount // if < 6800000 halere -> credit applies
+	SpouseZTP         bool   // ZTP/P holder -> doubled credit
+	MonthsClaimed     int    // 1-12
+	CreditAmount      Amount // computed by service
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // TaxChildCredit represents a child tax benefit entry for a given year.

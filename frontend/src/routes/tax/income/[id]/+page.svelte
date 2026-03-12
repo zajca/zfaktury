@@ -46,7 +46,9 @@
 		try {
 			data = await incomeTaxApi.getById(returnId);
 			if (data) {
-				loadTaxConstants(data.year).then((tc) => { taxConstants = tc; });
+				loadTaxConstants(data.year).then((tc) => {
+					taxConstants = tc;
+				});
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst přiznání';
@@ -136,7 +138,9 @@
 		}
 	}
 
-	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+	function statusBadgeVariant(
+		status: string
+	): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
 		switch (status) {
 			case 'filed':
 				return 'success';
@@ -189,27 +193,15 @@
 					{actionLoading === 'generate' ? 'Generuji...' : 'Generovat XML'}
 				</Button>
 				{#if data.has_xml}
-					<Button
-						variant="secondary"
-						onclick={handleDownloadXml}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="secondary" onclick={handleDownloadXml} disabled={actionLoading !== null}>
 						{actionLoading === 'download' ? 'Stahuji...' : 'Stáhnout XML'}
 					</Button>
 				{/if}
 				{#if data.status !== 'filed'}
-					<Button
-						variant="success"
-						onclick={handleMarkFiled}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit jako podané'}
 					</Button>
-					<Button
-						variant="danger"
-						onclick={handleDelete}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="danger" onclick={handleDelete} disabled={actionLoading !== null}>
 						Smazat
 					</Button>
 				{/if}
@@ -222,12 +214,18 @@
 				<h2 class="text-base font-semibold text-primary">Příjmy a výdaje (Oddíl 7)</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Příjmy z podnikání</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.total_revenue)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.total_revenue)}
+					</dd>
 
 					<dt class="text-secondary">Skutečné výdaje</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.actual_expenses)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.actual_expenses)}
+					</dd>
 
-					<dt class="text-secondary">Paušální výdaje <HelpTip topic="pausalni-vydaje" {taxConstants} /></dt>
+					<dt class="text-secondary">
+						Paušální výdaje <HelpTip topic="pausalni-vydaje" {taxConstants} />
+					</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{data.flat_rate_percent}%
 						{#if data.flat_rate_amount > 0}
@@ -236,7 +234,9 @@
 					</dd>
 
 					<dt class="text-secondary">Použité výdaje</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.used_expenses)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.used_expenses)}
+					</dd>
 				</div>
 			</Card>
 
@@ -245,58 +245,86 @@
 				<h2 class="text-base font-semibold text-primary">Základ daně</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Základ daně</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_base)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.tax_base)}
+					</dd>
 
 					<dt class="text-secondary">Zaokrouhlený základ</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_base_rounded)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.tax_base_rounded)}
+					</dd>
 				</div>
 			</Card>
 
 			<!-- Tax Calculation -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Výpočet daně <HelpTip topic="dan-15-23" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Výpočet daně <HelpTip topic="dan-15-23" {taxConstants} />
+				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Daň 15%</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_at_15)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.tax_at_15)}
+					</dd>
 
 					<dt class="text-secondary">Daň 23%</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_at_23)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.tax_at_23)}
+					</dd>
 
 					<dt class="text-secondary">Celková daň</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.total_tax)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.total_tax)}
+					</dd>
 				</div>
 			</Card>
 
 			<!-- Tax Credits -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Slevy na dani <HelpTip topic="sleva-na-poplatnika" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Slevy na dani <HelpTip topic="sleva-na-poplatnika" {taxConstants} />
+				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Sleva na poplatníka</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.credit_basic)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.credit_basic)}
+					</dd>
 
 					{#if data.credit_spouse > 0}
 						<dt class="text-secondary">Sleva na manžela/ku</dt>
-						<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.credit_spouse)}</dd>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.credit_spouse)}
+						</dd>
 					{/if}
 
 					<dt class="text-secondary">Celkové slevy</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.total_credits)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.total_credits)}
+					</dd>
 
 					<dt class="text-secondary">Daň po slevách</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_after_credits)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.tax_after_credits)}
+					</dd>
 				</div>
 			</Card>
 
 			<!-- Child Benefit -->
 			{#if data.child_benefit > 0}
 				<Card>
-					<h2 class="text-base font-semibold text-primary">Daňové zvýhodnění <HelpTip topic="zvyhodneni-na-deti" {taxConstants} /></h2>
+					<h2 class="text-base font-semibold text-primary">
+						Daňové zvýhodnění <HelpTip topic="zvyhodneni-na-deti" {taxConstants} />
+					</h2>
 					<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 						<dt class="text-secondary">Zvýhodnění na děti</dt>
-						<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.child_benefit)}</dd>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.child_benefit)}
+						</dd>
 
 						<dt class="text-secondary">Daň po zvýhodnění</dt>
-						<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_after_benefit)}</dd>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.tax_after_benefit)}
+						</dd>
 					</div>
 				</Card>
 			{/if}
@@ -306,13 +334,20 @@
 				<h2 class="text-base font-semibold text-primary">Výsledek</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Zaplacené zálohy</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.prepayments)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.prepayments)}
+					</dd>
 				</div>
 				<div class="mt-4 flex items-center justify-between border-t border-border pt-4">
 					<span class="font-semibold text-primary">
-						{data.tax_due >= 0 ? 'Doplatek:' : 'Přeplatek:'} <HelpTip topic="doplatek-preplatek" {taxConstants} />
+						{data.tax_due >= 0 ? 'Doplatek:' : 'Přeplatek:'}
+						<HelpTip topic="doplatek-preplatek" {taxConstants} />
 					</span>
-					<span class="text-lg font-semibold tabular-nums {data.tax_due >= 0 ? 'text-danger' : 'text-success'}">
+					<span
+						class="text-lg font-semibold tabular-nums {data.tax_due >= 0
+							? 'text-danger'
+							: 'text-success'}"
+					>
 						{formatCZK(Math.abs(data.tax_due))}
 					</span>
 				</div>
@@ -337,7 +372,7 @@
 	confirmLabel="Označit jako podané"
 	variant="warning"
 	onconfirm={confirmMarkFiled}
-	oncancel={() => showFileConfirm = false}
+	oncancel={() => (showFileConfirm = false)}
 />
 
 <ConfirmDialog
@@ -346,5 +381,5 @@
 	message="Opravdu chcete smazat toto přiznání?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

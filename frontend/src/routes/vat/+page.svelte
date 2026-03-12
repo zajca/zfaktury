@@ -185,7 +185,10 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl">
-	<h1 class="text-xl font-semibold text-primary">DPH za rok {selectedYear} <HelpTip topic="priznani-dph" /></h1>
+	<h1 class="text-xl font-semibold text-primary">
+		DPH za rok {selectedYear}
+		<HelpTip topic="priznani-dph" />
+	</h1>
 
 	<!-- Year selector -->
 	<div class="mt-4 flex items-center gap-3">
@@ -202,7 +205,9 @@
 				<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
 			</svg>
 		</Button>
-		<span class="min-w-[4rem] text-center text-xl font-semibold text-primary tabular-nums">{selectedYear}</span>
+		<span class="min-w-[4rem] text-center text-xl font-semibold text-primary tabular-nums"
+			>{selectedYear}</span
+		>
 		<Button
 			variant="ghost"
 			size="sm"
@@ -227,8 +232,11 @@
 		<div class="mt-6 space-y-6">
 			{#each quarters as q (q.quarter)}
 				<Card padding={false} class="overflow-hidden">
-					<div class="bg-elevated px-4 py-2.5 text-sm font-medium text-secondary border-b border-border">
-						{q.label} {selectedYear}
+					<div
+						class="bg-elevated px-4 py-2.5 text-sm font-medium text-secondary border-b border-border"
+					>
+						{q.label}
+						{selectedYear}
 					</div>
 					<div class="divide-y divide-border-subtle">
 						{#each q.months as month (month)}

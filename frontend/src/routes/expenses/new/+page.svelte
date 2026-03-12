@@ -185,7 +185,9 @@
 					/>
 				</div>
 				<div>
-					<label for="vat_rate" class="block text-sm font-medium text-secondary">Sazba DPH <HelpTip topic="sazba-dph" /></label>
+					<label for="vat_rate" class="block text-sm font-medium text-secondary"
+						>Sazba DPH <HelpTip topic="sazba-dph" /></label
+					>
 					<select
 						id="vat_rate"
 						bind:value={form.vat_rate_percent}

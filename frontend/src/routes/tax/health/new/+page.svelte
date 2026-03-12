@@ -49,11 +49,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-2xl">
-	<PageHeader
-		title="Nový přehled OSVČ pro ZP"
-		backHref="/tax"
-		backLabel="Zpět na daně"
-	/>
+	<PageHeader title="Nový přehled OSVČ pro ZP" backHref="/tax" backLabel="Zpět na daně" />
 
 	<ErrorAlert {error} class="mt-4" />
 

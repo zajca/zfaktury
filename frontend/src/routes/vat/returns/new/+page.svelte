@@ -76,7 +76,9 @@
 		class="mt-6 space-y-6"
 	>
 		<Card>
-			<h2 class="text-base font-semibold text-primary">Období <HelpTip topic="zdanovaci-obdobi" /></h2>
+			<h2 class="text-base font-semibold text-primary">
+				Období <HelpTip topic="zdanovaci-obdobi" />
+			</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>
 					<label for="year" class="block text-sm font-medium text-secondary">Rok</label>
@@ -123,11 +125,7 @@
 			<div class="mt-4">
 				{#if periodType === 'monthly'}
 					<label for="month" class="block text-sm font-medium text-secondary">Měsíc</label>
-					<select
-						id="month"
-						bind:value={form.month}
-						class={inputClass}
-					>
+					<select id="month" bind:value={form.month} class={inputClass}>
 						<option value={0}>-- Nevybráno --</option>
 						{#each Object.entries(monthLabels) as [value, label] (value)}
 							<option value={Number(value)}>{label}</option>
@@ -135,11 +133,7 @@
 					</select>
 				{:else}
 					<label for="quarter" class="block text-sm font-medium text-secondary">Čtvrtletí</label>
-					<select
-						id="quarter"
-						bind:value={form.quarter}
-						class={inputClass}
-					>
+					<select id="quarter" bind:value={form.quarter} class={inputClass}>
 						<option value={0}>-- Nevybráno --</option>
 						{#each Object.entries(quarterLabels) as [value, label] (value)}
 							<option value={Number(value)}>{label}</option>
@@ -152,12 +146,10 @@
 		<Card>
 			<h2 class="text-base font-semibold text-primary">Typ přiznání</h2>
 			<div class="mt-4">
-				<label for="filing_type" class="block text-sm font-medium text-secondary">Typ podání <HelpTip topic="typ-podani" /></label>
-				<select
-					id="filing_type"
-					bind:value={form.filing_type}
-					class={inputClass}
+				<label for="filing_type" class="block text-sm font-medium text-secondary"
+					>Typ podání <HelpTip topic="typ-podani" /></label
 				>
+				<select id="filing_type" bind:value={form.filing_type} class={inputClass}>
 					{#each filingTypes as ft (ft.value)}
 						<option value={ft.value}>{ft.label}</option>
 					{/each}
@@ -165,6 +157,11 @@
 			</div>
 		</Card>
 
-		<FormActions {saving} saveLabel="Vytvořit přiznání" savingLabel="Vytvářím..." cancelHref="/vat" />
+		<FormActions
+			{saving}
+			saveLabel="Vytvořit přiznání"
+			savingLabel="Vytvářím..."
+			cancelHref="/vat"
+		/>
 	</form>
 </div>

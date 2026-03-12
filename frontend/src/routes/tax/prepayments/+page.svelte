@@ -81,7 +81,9 @@
 		loading = true;
 		error = null;
 		// Load tax constants independently (never fails)
-		loadTaxConstants(selectedYear).then((tc) => { taxConstants = tc; });
+		loadTaxConstants(selectedYear).then((tc) => {
+			taxConstants = tc;
+		});
 		try {
 			const data: TaxYearSettings = await taxYearSettingsApi.getByYear(selectedYear);
 			flatRatePercent = data.flat_rate_percent;
@@ -194,7 +196,10 @@
 	<ErrorAlert {error} class="mt-4" />
 
 	{#if success}
-		<div role="alert" class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success">
+		<div
+			role="alert"
+			class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success"
+		>
 			Nastavení bylo uloženo.
 		</div>
 	{/if}
@@ -205,7 +210,9 @@
 		<div class="mt-6 space-y-6">
 			<!-- Pausalni vydaje -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Paušální výdaje <HelpTip topic="pausalni-vydaje" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Paušální výdaje <HelpTip topic="pausalni-vydaje" {taxConstants} />
+				</h2>
 				<p class="mt-1 text-sm text-tertiary">
 					Procento paušálních výdajů pro výpočet daňového základu.
 				</p>
@@ -230,7 +237,9 @@
 
 			<!-- Měsíční zálohy -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Měsíční zálohy <HelpTip topic="nova-zaloha" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Měsíční zálohy <HelpTip topic="nova-zaloha" {taxConstants} />
+				</h2>
 				<p class="mt-1 text-sm text-tertiary">
 					Zadejte měsíční zálohy na daň z příjmu, sociální a zdravotní pojištění v Kč.
 				</p>
@@ -278,9 +287,7 @@
 											aria-label="Vyplnit vše - Zdravotní"
 											class="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-right text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 										/>
-										<Button variant="secondary" size="sm" onclick={fillAllMonths}>
-											Vyplnit
-										</Button>
+										<Button variant="secondary" size="sm" onclick={fillAllMonths}>Vyplnit</Button>
 									</div>
 								</td>
 							</tr>

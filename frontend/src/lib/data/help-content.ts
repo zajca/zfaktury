@@ -129,7 +129,8 @@ const staticTopics: Record<string, HelpTopic> = {
 		title: 'Interní poznámka',
 		simple:
 			'Soukromá poznámka, kterou vidíte jen vy. Na faktuře se nezobrazuje. Můžete sem napsat cokoliv pro vlastní evidenci -- např. "dohodnuto s Petrem 15.3.", "sleva za doporučení" apod.',
-		legal: 'Interní poznámka nemá právní relevanci a neobjevuje se na žádném dokladu. Slouží pouze pro interní evidenci podnikatele.'
+		legal:
+			'Interní poznámka nemá právní relevanci a neobjevuje se na žádném dokladu. Slouží pouze pro interní evidenci podnikatele.'
 	},
 	'qr-platba': {
 		title: 'QR platba',
@@ -348,7 +349,7 @@ const staticTopics: Record<string, HelpTopic> = {
 		legal:
 			'Daňový doklad je definován v § 26 zákona č. 235/2004 Sb. o DPH. Zálohová faktura není daňovým dokladem ve smyslu tohoto zákona -- jedná se o obchodní dokument vyzývající k platbě.\n\nPovinné náležitosti daňového dokladu upravuje § 29 téhož zákona. Po přijetí úhrady zálohové faktury vzniká povinnost vystavit řádný daňový doklad dle § 28 odst. 2.'
 	},
-	'dobropis': {
+	dobropis: {
 		title: 'Dobropis (opravný daňový doklad)',
 		simple:
 			'Dobropis je opravný doklad, který vystavujete, když potřebujete snížit částku na již vydané faktuře. Typické důvody: sleva, reklamace, chybně účtovaná částka nebo vrácení zboží.\n\nDobropis odkazuje na původní fakturu a obsahuje zápornou částku. Po jeho vystavení se sníží vaše daňové závazky.',
@@ -515,7 +516,7 @@ const staticTopics: Record<string, HelpTopic> = {
 			'FIFO (First In, First Out) je metoda pro určení nabývací ceny při prodeji cenných papírů. Znamená, že při prodeji se jako první "spotřebují" nejstarší nakoupené kusy.\n\nPříklad: Koupili jste 10 ks za 100 Kč a pak 10 ks za 150 Kč. Pokud prodáte 10 ks, nabývací cena bude 100 Kč (použijí se první nakoupené kusy).\n\nFIFO metoda je pro OSVČ jediná povolená metoda.',
 		legal:
 			'FIFO metoda je jediná přípustná metoda oceňování pro fyzické osoby při prodeji cenných papírů dle § 10 odst. 4 zákona č. 586/1992 Sb. a pokynu GFŘ-D-22. Při FIFO se přiřadí výdaj k přímo identifikovatelnému nákupu, nebo se použije nejstarší nepřiřazený nákup. Náklady na poplatky brokera jsou součástí nabývací ceny.'
-	},
+	}
 };
 
 // Dynamic topics with year-specific amounts.

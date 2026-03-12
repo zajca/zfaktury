@@ -3,9 +3,7 @@ import { render, screen, cleanup } from '@testing-library/svelte';
 import StatusTimeline from './StatusTimeline.svelte';
 import type { InvoiceStatusChange } from '$lib/api/client';
 
-function makeChange(
-	overrides: Partial<InvoiceStatusChange> & { id: number }
-): InvoiceStatusChange {
+function makeChange(overrides: Partial<InvoiceStatusChange> & { id: number }): InvoiceStatusChange {
 	return {
 		invoice_id: 1,
 		old_status: 'draft',
@@ -24,8 +22,18 @@ afterEach(() => {
 describe('StatusTimeline', () => {
 	it('renders timeline with multiple status changes', () => {
 		const history: InvoiceStatusChange[] = [
-			makeChange({ id: 1, old_status: 'draft', new_status: 'sent', changed_at: '2026-03-10T10:00:00Z' }),
-			makeChange({ id: 2, old_status: 'sent', new_status: 'paid', changed_at: '2026-03-11T14:00:00Z' })
+			makeChange({
+				id: 1,
+				old_status: 'draft',
+				new_status: 'sent',
+				changed_at: '2026-03-10T10:00:00Z'
+			}),
+			makeChange({
+				id: 2,
+				old_status: 'sent',
+				new_status: 'paid',
+				changed_at: '2026-03-11T14:00:00Z'
+			})
 		];
 
 		render(StatusTimeline, { props: { history } });
@@ -65,9 +73,7 @@ describe('StatusTimeline', () => {
 	});
 
 	it('shows notes when present', () => {
-		const history: InvoiceStatusChange[] = [
-			makeChange({ id: 1, note: 'Zaplaceno prevodem' })
-		];
+		const history: InvoiceStatusChange[] = [makeChange({ id: 1, note: 'Zaplaceno prevodem' })];
 
 		render(StatusTimeline, { props: { history } });
 
@@ -77,9 +83,7 @@ describe('StatusTimeline', () => {
 	});
 
 	it('does not show note element when note is empty', () => {
-		const history: InvoiceStatusChange[] = [
-			makeChange({ id: 1, note: '' })
-		];
+		const history: InvoiceStatusChange[] = [makeChange({ id: 1, note: '' })];
 
 		render(StatusTimeline, { props: { history } });
 
@@ -97,9 +101,24 @@ describe('StatusTimeline', () => {
 
 	it('orders entries newest first', () => {
 		const history: InvoiceStatusChange[] = [
-			makeChange({ id: 1, old_status: 'draft', new_status: 'sent', changed_at: '2026-03-10T10:00:00Z' }),
-			makeChange({ id: 2, old_status: 'sent', new_status: 'paid', changed_at: '2026-03-11T14:00:00Z' }),
-			makeChange({ id: 3, old_status: 'paid', new_status: 'cancelled', changed_at: '2026-03-09T08:00:00Z' })
+			makeChange({
+				id: 1,
+				old_status: 'draft',
+				new_status: 'sent',
+				changed_at: '2026-03-10T10:00:00Z'
+			}),
+			makeChange({
+				id: 2,
+				old_status: 'sent',
+				new_status: 'paid',
+				changed_at: '2026-03-11T14:00:00Z'
+			}),
+			makeChange({
+				id: 3,
+				old_status: 'paid',
+				new_status: 'cancelled',
+				changed_at: '2026-03-09T08:00:00Z'
+			})
 		];
 
 		render(StatusTimeline, { props: { history } });
@@ -126,7 +145,12 @@ describe('StatusTimeline', () => {
 
 	it('renders all status types with correct Czech labels', () => {
 		const history: InvoiceStatusChange[] = [
-			makeChange({ id: 1, old_status: 'draft', new_status: 'overdue', changed_at: '2026-03-10T10:00:00Z' })
+			makeChange({
+				id: 1,
+				old_status: 'draft',
+				new_status: 'overdue',
+				changed_at: '2026-03-10T10:00:00Z'
+			})
 		];
 
 		render(StatusTimeline, { props: { history } });

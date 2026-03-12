@@ -367,7 +367,13 @@ export const contactsApi = {
 // --- Invoices API ---
 
 export const invoicesApi = {
-	list(params?: { limit?: number; offset?: number; search?: string; status?: string; type?: string }) {
+	list(params?: {
+		limit?: number;
+		offset?: number;
+		search?: string;
+		status?: string;
+		type?: string;
+	}) {
 		const query = new URLSearchParams();
 		if (params?.limit) query.set('limit', String(params.limit));
 		if (params?.offset) query.set('offset', String(params.offset));
@@ -426,7 +432,10 @@ export const invoicesApi = {
 		return `${API_BASE}/invoices/${id}/isdoc`;
 	},
 
-	sendEmail(id: number, data: { to: string; subject: string; body: string; attach_pdf: boolean; attach_isdoc: boolean }) {
+	sendEmail(
+		id: number,
+		data: { to: string; subject: string; body: string; attach_pdf: boolean; attach_isdoc: boolean }
+	) {
 		return post<{ status: string }>(`/invoices/${id}/send-email`, data);
 	},
 
@@ -1357,7 +1366,16 @@ export const taxCreditsApi = {
 	getSummary(year: number) {
 		return get<TaxCreditsSummary>(`/tax-credits/${year}`);
 	},
-	upsertSpouse(year: number, data: { spouse_name: string; spouse_birth_number: string; spouse_income: number; spouse_ztp: boolean; months_claimed: number }) {
+	upsertSpouse(
+		year: number,
+		data: {
+			spouse_name: string;
+			spouse_birth_number: string;
+			spouse_income: number;
+			spouse_ztp: boolean;
+			months_claimed: number;
+		}
+	) {
 		return put<TaxSpouseCredit>(`/tax-credits/${year}/spouse`, data);
 	},
 	deleteSpouse(year: number) {
@@ -1366,16 +1384,38 @@ export const taxCreditsApi = {
 	listChildren(year: number) {
 		return get<TaxChildCredit[]>(`/tax-credits/${year}/children`);
 	},
-	createChild(year: number, data: { child_name: string; birth_number: string; child_order: number; months_claimed: number; ztp: boolean }) {
+	createChild(
+		year: number,
+		data: {
+			child_name: string;
+			birth_number: string;
+			child_order: number;
+			months_claimed: number;
+			ztp: boolean;
+		}
+	) {
 		return post<TaxChildCredit>(`/tax-credits/${year}/children`, data);
 	},
-	updateChild(year: number, id: number, data: { child_name: string; birth_number: string; child_order: number; months_claimed: number; ztp: boolean }) {
+	updateChild(
+		year: number,
+		id: number,
+		data: {
+			child_name: string;
+			birth_number: string;
+			child_order: number;
+			months_claimed: number;
+			ztp: boolean;
+		}
+	) {
 		return put<TaxChildCredit>(`/tax-credits/${year}/children/${id}`, data);
 	},
 	deleteChild(year: number, id: number) {
 		return del<void>(`/tax-credits/${year}/children/${id}`);
 	},
-	upsertPersonal(year: number, data: { is_student: boolean; student_months: number; disability_level: number }) {
+	upsertPersonal(
+		year: number,
+		data: { is_student: boolean; student_months: number; disability_level: number }
+	) {
 		return put<TaxPersonalCredits>(`/tax-credits/${year}/personal`, data);
 	},
 	copyFromYear(year: number, sourceYear: number) {
@@ -1392,7 +1432,11 @@ export const taxDeductionsApi = {
 	create(year: number, data: { category: string; description: string; claimed_amount: number }) {
 		return post<TaxDeduction>(`/tax-deductions/${year}`, data);
 	},
-	update(year: number, id: number, data: { category: string; description: string; claimed_amount: number }) {
+	update(
+		year: number,
+		id: number,
+		data: { category: string; description: string; claimed_amount: number }
+	) {
 		return put<TaxDeduction>(`/tax-deductions/${year}/${id}`, data);
 	},
 	delete(year: number, id: number) {
@@ -1401,7 +1445,11 @@ export const taxDeductionsApi = {
 	listDocuments(year: number, deductionId: number) {
 		return get<TaxDeductionDocument[]>(`/tax-deductions/${year}/${deductionId}/documents`);
 	},
-	async uploadDocument(year: number, deductionId: number, file: File): Promise<TaxDeductionDocument> {
+	async uploadDocument(
+		year: number,
+		deductionId: number,
+		file: File
+	): Promise<TaxDeductionDocument> {
 		const formData = new FormData();
 		formData.append('file', file);
 		const response = await fetch(`${API_BASE}/tax-deductions/${year}/${deductionId}/documents`, {
@@ -1518,7 +1566,11 @@ export const investmentsApi = {
 		});
 		if (!response.ok) {
 			let body: unknown;
-			try { body = await response.json(); } catch { /* ignore */ }
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
 			throw new ApiError(response.status, response.statusText, body);
 		}
 		return response.json();
@@ -1541,17 +1593,32 @@ export const investmentsApi = {
 		return get<CapitalIncomeEntry[]>(`/investments/capital-income?year=${year}`);
 	},
 	createCapitalIncome(data: {
-		year: number; category: string; description: string; income_date: string;
-		gross_amount: number; withheld_tax_cz: number; withheld_tax_foreign: number;
-		country_code: string; needs_declaring: boolean;
+		year: number;
+		category: string;
+		description: string;
+		income_date: string;
+		gross_amount: number;
+		withheld_tax_cz: number;
+		withheld_tax_foreign: number;
+		country_code: string;
+		needs_declaring: boolean;
 	}) {
 		return post<CapitalIncomeEntry>('/investments/capital-income', data);
 	},
-	updateCapitalIncome(id: number, data: {
-		year: number; category: string; description: string; income_date: string;
-		gross_amount: number; withheld_tax_cz: number; withheld_tax_foreign: number;
-		country_code: string; needs_declaring: boolean;
-	}) {
+	updateCapitalIncome(
+		id: number,
+		data: {
+			year: number;
+			category: string;
+			description: string;
+			income_date: string;
+			gross_amount: number;
+			withheld_tax_cz: number;
+			withheld_tax_foreign: number;
+			country_code: string;
+			needs_declaring: boolean;
+		}
+	) {
 		return put<CapitalIncomeEntry>(`/investments/capital-income/${id}`, data);
 	},
 	deleteCapitalIncome(id: number) {
@@ -1563,19 +1630,38 @@ export const investmentsApi = {
 		return get<SecurityTransaction[]>(`/investments/security-transactions?year=${year}`);
 	},
 	createSecurityTransaction(data: {
-		year: number; asset_type: string; asset_name: string; isin: string;
-		transaction_type: string; transaction_date: string; quantity: number;
-		unit_price: number; total_amount: number; fees: number;
-		currency_code: string; exchange_rate: number;
+		year: number;
+		asset_type: string;
+		asset_name: string;
+		isin: string;
+		transaction_type: string;
+		transaction_date: string;
+		quantity: number;
+		unit_price: number;
+		total_amount: number;
+		fees: number;
+		currency_code: string;
+		exchange_rate: number;
 	}) {
 		return post<SecurityTransaction>('/investments/security-transactions', data);
 	},
-	updateSecurityTransaction(id: number, data: {
-		year: number; asset_type: string; asset_name: string; isin: string;
-		transaction_type: string; transaction_date: string; quantity: number;
-		unit_price: number; total_amount: number; fees: number;
-		currency_code: string; exchange_rate: number;
-	}) {
+	updateSecurityTransaction(
+		id: number,
+		data: {
+			year: number;
+			asset_type: string;
+			asset_name: string;
+			isin: string;
+			transaction_type: string;
+			transaction_date: string;
+			quantity: number;
+			unit_price: number;
+			total_amount: number;
+			fees: number;
+			currency_code: string;
+			exchange_rate: number;
+		}
+	) {
 		return put<SecurityTransaction>(`/investments/security-transactions/${id}`, data);
 	},
 	deleteSecurityTransaction(id: number) {

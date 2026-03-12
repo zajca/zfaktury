@@ -5,10 +5,10 @@ import "time"
 // Deduction category constants (nezdanitelne casti zakladu dane).
 const (
 	DeductionMortgage      = "mortgage"       // uroky z hypoteky/stavebniho sporeni
-	DeductionLifeInsurance = "life_insurance"  // zivotni pojisteni
-	DeductionPension       = "pension"         // penzijni sporeni
-	DeductionDonation      = "donation"        // dary
-	DeductionUnionDues     = "union_dues"      // odborove prispevky
+	DeductionLifeInsurance = "life_insurance" // zivotni pojisteni
+	DeductionPension       = "pension"        // penzijni sporeni
+	DeductionDonation      = "donation"       // dary
+	DeductionUnionDues     = "union_dues"     // odborove prispevky
 )
 
 // TaxDeduction represents a single tax deduction entry for a year.

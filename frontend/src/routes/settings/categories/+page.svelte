@@ -123,12 +123,15 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title="Kategorie nákladů" description="Správa kategorií pro třídění nákladů" backHref="/settings" backLabel="Zpět na nastavení">
+	<PageHeader
+		title="Kategorie nákladů"
+		description="Správa kategorií pro třídění nákladů"
+		backHref="/settings"
+		backLabel="Zpět na nastavení"
+	>
 		{#snippet actions()}
 			{#if !showForm}
-				<Button variant="primary" onclick={startCreate}>
-					Přidat kategorii
-				</Button>
+				<Button variant="primary" onclick={startCreate}>Přidat kategorii</Button>
 			{/if}
 		{/snippet}
 	</PageHeader>
@@ -207,7 +210,9 @@
 						</div>
 					</div>
 					<div>
-						<label for="cat-sort" class="block text-sm font-medium text-secondary">Pořadí řazení</label>
+						<label for="cat-sort" class="block text-sm font-medium text-secondary"
+							>Pořadí řazení</label
+						>
 						<input
 							id="cat-sort"
 							type="number"
@@ -217,7 +222,12 @@
 						/>
 					</div>
 				</div>
-				<FormActions {saving} saveLabel={editingId ? 'Uložit změny' : 'Vytvořit'} oncancel={cancelForm} class="mt-6" />
+				<FormActions
+					{saving}
+					saveLabel={editingId ? 'Uložit změny' : 'Vytvořit'}
+					oncancel={cancelForm}
+					class="mt-6"
+				/>
 			</Card>
 		</form>
 	{/if}
@@ -264,7 +274,9 @@
 									style:background-color={cat.color}
 								></div>
 							</td>
-							<td class="whitespace-nowrap px-4 py-2.5 text-sm font-mono text-secondary">{cat.key}</td>
+							<td class="whitespace-nowrap px-4 py-2.5 text-sm font-mono text-secondary"
+								>{cat.key}</td
+							>
 							<td class="whitespace-nowrap px-4 py-2.5 text-sm text-primary">{cat.label_cs}</td>
 							<td class="whitespace-nowrap px-4 py-2.5 text-sm text-tertiary">{cat.label_en}</td>
 							<td class="whitespace-nowrap px-4 py-2.5 text-sm text-tertiary">{cat.sort_order}</td>
@@ -304,5 +316,5 @@
 	message={deleteTargetCat ? `Opravdu chcete smazat kategorii "${deleteTargetCat.label_cs}"?` : ''}
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

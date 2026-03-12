@@ -48,7 +48,9 @@
 			} else {
 				successMessage = 'Žádné náklady k vygenerování.';
 			}
-			setTimeout(() => { successMessage = null; }, 3000);
+			setTimeout(() => {
+				successMessage = null;
+			}, 3000);
 			await loadItems();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se vygenerovat náklady';
@@ -62,7 +64,6 @@
 	});
 
 	let totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
-
 </script>
 
 <svelte:head>
@@ -77,7 +78,13 @@
 					{generating ? 'Generuji...' : 'Vygenerovat splatné'}
 				</Button>
 				<Button variant="primary" href="/expenses/recurring/new">
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 					</svg>
 					Nový opakovaný náklad
@@ -89,7 +96,10 @@
 	<ErrorAlert {error} class="mt-4" />
 
 	{#if successMessage}
-		<div class="mt-4 rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-sm text-success" role="status">
+		<div
+			class="mt-4 rounded-lg border border-success/30 bg-success-bg px-4 py-3 text-sm text-success"
+			role="status"
+		>
 			{successMessage}
 		</div>
 	{/if}
@@ -155,5 +165,14 @@
 		{/if}
 	</Card>
 
-	<Pagination {page} {totalPages} {total} label="opakovaných nákladů" onPageChange={(p) => { page = p; loadItems(); }} />
+	<Pagination
+		{page}
+		{totalPages}
+		{total}
+		label="opakovaných nákladů"
+		onPageChange={(p) => {
+			page = p;
+			loadItems();
+		}}
+	/>
 </div>

@@ -14,12 +14,12 @@ import (
 
 // SocialInsuranceService provides business logic for social insurance overview management.
 type SocialInsuranceService struct {
-	repo               repository.SocialInsuranceOverviewRepo
-	invoiceRepo        repository.InvoiceRepo
-	expenseRepo        repository.ExpenseRepo
-	settingsRepo       repository.SettingsRepo
+	repo                repository.SocialInsuranceOverviewRepo
+	invoiceRepo         repository.InvoiceRepo
+	expenseRepo         repository.ExpenseRepo
+	settingsRepo        repository.SettingsRepo
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
-	taxPrepaymentRepo  repository.TaxPrepaymentRepo
+	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 }
 
 // NewSocialInsuranceService creates a new SocialInsuranceService.
@@ -32,12 +32,12 @@ func NewSocialInsuranceService(
 	taxPrepaymentRepo repository.TaxPrepaymentRepo,
 ) *SocialInsuranceService {
 	return &SocialInsuranceService{
-		repo:               repo,
-		invoiceRepo:        invoiceRepo,
-		expenseRepo:        expenseRepo,
-		settingsRepo:       settingsRepo,
+		repo:                repo,
+		invoiceRepo:         invoiceRepo,
+		expenseRepo:         expenseRepo,
+		settingsRepo:        settingsRepo,
 		taxYearSettingsRepo: taxYearSettingsRepo,
-		taxPrepaymentRepo:  taxPrepaymentRepo,
+		taxPrepaymentRepo:   taxPrepaymentRepo,
 	}
 }
 

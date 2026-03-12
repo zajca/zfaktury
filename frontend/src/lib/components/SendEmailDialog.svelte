@@ -79,16 +79,10 @@
 </script>
 
 <!-- Backdrop -->
-<div
-	class="fixed inset-0 z-50 bg-overlay"
-	role="presentation"
-	onclick={handleBackdropClick}
-></div>
+<div class="fixed inset-0 z-50 bg-overlay" role="presentation" onclick={handleBackdropClick}></div>
 
 <!-- Dialog -->
-<div
-	class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
 	<div
 		class="pointer-events-auto w-full max-w-lg rounded-xl border border-border bg-surface shadow-xl shadow-black/30"
 		role="dialog"
@@ -103,7 +97,10 @@
 
 		<form onsubmit={handleSubmit} class="px-6 py-4 space-y-4">
 			{#if error}
-				<div role="alert" class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+				<div
+					role="alert"
+					class="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+				>
 					{error}
 				</div>
 			{/if}
@@ -191,8 +188,19 @@
 					{#if sending}
 						<span role="status" class="inline-flex items-center gap-2">
 							<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+								<circle
+									class="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="4"
+								></circle>
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+								></path>
 							</svg>
 							Odesílám...
 							<span class="sr-only">Načítání...</span>

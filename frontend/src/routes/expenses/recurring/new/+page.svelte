@@ -107,7 +107,11 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title="Nový opakovaný náklad" backHref="/expenses/recurring" backLabel="Zpět na opakované náklady" />
+	<PageHeader
+		title="Nový opakovaný náklad"
+		backHref="/expenses/recurring"
+		backLabel="Zpět na opakované náklady"
+	/>
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -180,7 +184,8 @@
 			<h2 class="text-base font-semibold text-primary">Plánování</h2>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="frequency" class="block text-sm font-medium text-secondary">Frekvence *</label>
+					<label for="frequency" class="block text-sm font-medium text-secondary">Frekvence *</label
+					>
 					<select
 						id="frequency"
 						bind:value={form.frequency}

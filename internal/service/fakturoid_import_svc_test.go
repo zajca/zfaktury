@@ -551,7 +551,7 @@ func (m *fakturoidMockContactRepo) Create(_ context.Context, c *domain.Contact) 
 	return nil
 }
 func (m *fakturoidMockContactRepo) Update(_ context.Context, _ *domain.Contact) error { return nil }
-func (m *fakturoidMockContactRepo) Delete(_ context.Context, _ int64) error            { return nil }
+func (m *fakturoidMockContactRepo) Delete(_ context.Context, _ int64) error           { return nil }
 func (m *fakturoidMockContactRepo) GetByID(_ context.Context, _ int64) (*domain.Contact, error) {
 	return nil, nil
 }
@@ -574,7 +574,7 @@ func (m *fakturoidMockInvoiceRepo) Create(_ context.Context, inv *domain.Invoice
 	return nil
 }
 func (m *fakturoidMockInvoiceRepo) Update(_ context.Context, _ *domain.Invoice) error { return nil }
-func (m *fakturoidMockInvoiceRepo) Delete(_ context.Context, _ int64) error            { return nil }
+func (m *fakturoidMockInvoiceRepo) Delete(_ context.Context, _ int64) error           { return nil }
 func (m *fakturoidMockInvoiceRepo) GetByID(_ context.Context, _ int64) (*domain.Invoice, error) {
 	return nil, nil
 }
@@ -601,7 +601,7 @@ func (m *fakturoidMockExpenseRepo) Create(_ context.Context, exp *domain.Expense
 	return nil
 }
 func (m *fakturoidMockExpenseRepo) Update(_ context.Context, _ *domain.Expense) error { return nil }
-func (m *fakturoidMockExpenseRepo) Delete(_ context.Context, _ int64) error            { return nil }
+func (m *fakturoidMockExpenseRepo) Delete(_ context.Context, _ int64) error           { return nil }
 func (m *fakturoidMockExpenseRepo) GetByID(_ context.Context, _ int64) (*domain.Expense, error) {
 	return nil, nil
 }

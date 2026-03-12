@@ -72,7 +72,9 @@
 			class="mt-6 space-y-6"
 		>
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Šablony emailů <HelpTip topic="email-sablony" /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Šablony emailů <HelpTip topic="email-sablony" />
+				</h2>
 				<p class="mt-1 text-sm text-tertiary">Výchozí nastavení pro odesílání faktur emailem.</p>
 				<div class="mt-4 space-y-4">
 					<div class="flex gap-6">
@@ -88,7 +90,9 @@
 									)}
 								class="h-4 w-4 rounded border-border accent-accent"
 							/>
-							<label for="email_attach_pdf" class="text-sm font-medium text-secondary">Přikládat PDF</label>
+							<label for="email_attach_pdf" class="text-sm font-medium text-secondary"
+								>Přikládat PDF</label
+							>
 						</div>
 						<div class="flex items-center gap-3">
 							<input
@@ -102,7 +106,9 @@
 									)}
 								class="h-4 w-4 rounded border-border accent-accent"
 							/>
-							<label for="email_attach_isdoc" class="text-sm font-medium text-secondary">Přikládat ISDOC</label>
+							<label for="email_attach_isdoc" class="text-sm font-medium text-secondary"
+								>Přikládat ISDOC</label
+							>
 						</div>
 					</div>
 					<div>
@@ -113,10 +119,13 @@
 							id="email_subject_template"
 							type="text"
 							value={field('email_subject_template') || 'Faktura {invoice_number}'}
-							oninput={(e) => setField('email_subject_template', (e.target as HTMLInputElement).value)}
+							oninput={(e) =>
+								setField('email_subject_template', (e.target as HTMLInputElement).value)}
 							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 						/>
-						<p class="mt-1 text-xs text-muted">Použijte <code class="text-accent">{'{invoice_number}'}</code> pro číslo faktury.</p>
+						<p class="mt-1 text-xs text-muted">
+							Použijte <code class="text-accent">{'{invoice_number}'}</code> pro číslo faktury.
+						</p>
 					</div>
 					<div>
 						<label for="email_body_template" class="block text-sm font-medium text-secondary">
@@ -125,11 +134,15 @@
 						<textarea
 							id="email_body_template"
 							rows="4"
-							value={field('email_body_template') || 'Dobrý den,\n\nv příloze zasíláme fakturu {invoice_number}.\n\nS pozdravem'}
-							oninput={(e) => setField('email_body_template', (e.target as HTMLTextAreaElement).value)}
+							value={field('email_body_template') ||
+								'Dobrý den,\n\nv příloze zasíláme fakturu {invoice_number}.\n\nS pozdravem'}
+							oninput={(e) =>
+								setField('email_body_template', (e.target as HTMLTextAreaElement).value)}
 							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none resize-y"
 						></textarea>
-						<p class="mt-1 text-xs text-muted">Použijte <code class="text-accent">{'{invoice_number}'}</code> pro číslo faktury.</p>
+						<p class="mt-1 text-xs text-muted">
+							Použijte <code class="text-accent">{'{invoice_number}'}</code> pro číslo faktury.
+						</p>
 					</div>
 				</div>
 			</Card>

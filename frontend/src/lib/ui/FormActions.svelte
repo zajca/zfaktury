@@ -25,12 +25,8 @@
 		{saving ? savingLabel : saveLabel}
 	</Button>
 	{#if cancelHref}
-		<Button variant="secondary" href={cancelHref}>
-			Zrušit
-		</Button>
+		<Button variant="secondary" href={cancelHref}>Zrušit</Button>
 	{:else if oncancel}
-		<Button variant="secondary" onclick={oncancel}>
-			Zrušit
-		</Button>
+		<Button variant="secondary" onclick={oncancel}>Zrušit</Button>
 	{/if}
 </div>

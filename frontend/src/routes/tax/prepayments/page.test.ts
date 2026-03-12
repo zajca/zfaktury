@@ -13,13 +13,25 @@ function jsonResponse(data: unknown, status = 200) {
 	});
 }
 
-function makeTaxYearSettings(overrides?: Partial<{ flat_rate_percent: number; prepayments: Array<{ month: number; tax_amount: number; social_amount: number; health_amount: number }> }>) {
-	const prepayments = overrides?.prepayments ?? Array.from({ length: 12 }, (_, i) => ({
-		month: i + 1,
-		tax_amount: 0,
-		social_amount: 0,
-		health_amount: 0
-	}));
+function makeTaxYearSettings(
+	overrides?: Partial<{
+		flat_rate_percent: number;
+		prepayments: Array<{
+			month: number;
+			tax_amount: number;
+			social_amount: number;
+			health_amount: number;
+		}>;
+	}>
+) {
+	const prepayments =
+		overrides?.prepayments ??
+		Array.from({ length: 12 }, (_, i) => ({
+			month: i + 1,
+			tax_amount: 0,
+			social_amount: 0,
+			health_amount: 0
+		}));
 	return {
 		year: 2024,
 		flat_rate_percent: overrides?.flat_rate_percent ?? 0,
@@ -28,13 +40,26 @@ function makeTaxYearSettings(overrides?: Partial<{ flat_rate_percent: number; pr
 }
 
 const fakeTaxConstants = {
-	year: 2025, basic_credit: 30840, spouse_credit: 24840, spouse_income_limit: 68000,
-	student_credit: 4020, disability_credit_1: 2520, disability_credit_3: 5040,
-	disability_ztpp: 16140, child_benefit_1: 15204, child_benefit_2: 22320,
-	child_benefit_3_plus: 27840, max_child_bonus: 60300, progressive_threshold: 1935552,
-	flat_rate_caps: {}, deduction_cap_mortgage: 150000, deduction_cap_pension: 24000,
-	deduction_cap_life_insurance: 24000, deduction_cap_union: 3000,
-	time_test_years: 3, security_exemption_limit: 100000
+	year: 2025,
+	basic_credit: 30840,
+	spouse_credit: 24840,
+	spouse_income_limit: 68000,
+	student_credit: 4020,
+	disability_credit_1: 2520,
+	disability_credit_3: 5040,
+	disability_ztpp: 16140,
+	child_benefit_1: 15204,
+	child_benefit_2: 22320,
+	child_benefit_3_plus: 27840,
+	max_child_bonus: 60300,
+	progressive_threshold: 1935552,
+	flat_rate_caps: {},
+	deduction_cap_mortgage: 150000,
+	deduction_cap_pension: 24000,
+	deduction_cap_life_insurance: 24000,
+	deduction_cap_union: 3000,
+	time_test_years: 3,
+	security_exemption_limit: 100000
 };
 
 function mockSettingsAndConstants(settings: unknown, status = 200) {

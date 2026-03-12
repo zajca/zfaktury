@@ -41,12 +41,12 @@ func (h *TaxCreditsHandler) Routes() chi.Router {
 // --- DTOs ---
 
 type taxCreditsSummaryResponse struct {
-	Year              int                          `json:"year"`
-	Spouse            *taxSpouseCreditResponse     `json:"spouse"`
-	Children          []taxChildCreditResponse     `json:"children"`
-	Personal          *taxPersonalCreditsResponse  `json:"personal"`
-	TotalCredits      int64                        `json:"total_credits"`
-	TotalChildBenefit int64                        `json:"total_child_benefit"`
+	Year              int                         `json:"year"`
+	Spouse            *taxSpouseCreditResponse    `json:"spouse"`
+	Children          []taxChildCreditResponse    `json:"children"`
+	Personal          *taxPersonalCreditsResponse `json:"personal"`
+	TotalCredits      int64                       `json:"total_credits"`
+	TotalChildBenefit int64                       `json:"total_child_benefit"`
 }
 
 type taxSpouseCreditRequest struct {

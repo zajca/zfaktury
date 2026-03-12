@@ -8,31 +8,31 @@ import (
 
 // TaxYearConstants holds tax computation constants for a specific year.
 type TaxYearConstants struct {
-	ProgressiveThreshold domain.Amount            // prah pro 23% sazbu (in halere)
-	BasicCredit          domain.Amount            // sleva na poplatnika
-	SpouseCredit         domain.Amount            // sleva na manzela/ku
-	StudentCredit        domain.Amount            // student
-	DisabilityCredit1    domain.Amount            // invalidita 1. a 2. stupen
-	DisabilityCredit3    domain.Amount            // invalidita 3. stupen
-	DisabilityZTPP       domain.Amount            // drzitel prukazu ZTP/P
-	ChildBenefit1        domain.Amount            // 1. dite
-	ChildBenefit2        domain.Amount            // 2. dite
-	ChildBenefit3Plus    domain.Amount            // 3+ dite
-	ChildBenefitZTP      domain.Amount            // ZTP prirazka (double)
-	SocialMinMonthly     domain.Amount            // min mesicni vym. zaklad CSSZ
-	SocialRate           int                      // permille*10, e.g. 292 = 29.2%
-	HealthMinMonthly     domain.Amount            // min mesicni vym. zaklad ZP
-	HealthRate           int                      // permille*10, e.g. 135 = 13.5%
-	FlatRateCaps           map[int]domain.Amount    // percent -> max halere amount
-	TimeTestYears          int                      // years to hold for time test exemption
-	SecurityExemptionLimit domain.Amount             // max exempt amount per year (0 = no limit)
+	ProgressiveThreshold   domain.Amount         // prah pro 23% sazbu (in halere)
+	BasicCredit            domain.Amount         // sleva na poplatnika
+	SpouseCredit           domain.Amount         // sleva na manzela/ku
+	StudentCredit          domain.Amount         // student
+	DisabilityCredit1      domain.Amount         // invalidita 1. a 2. stupen
+	DisabilityCredit3      domain.Amount         // invalidita 3. stupen
+	DisabilityZTPP         domain.Amount         // drzitel prukazu ZTP/P
+	ChildBenefit1          domain.Amount         // 1. dite
+	ChildBenefit2          domain.Amount         // 2. dite
+	ChildBenefit3Plus      domain.Amount         // 3+ dite
+	ChildBenefitZTP        domain.Amount         // ZTP prirazka (double)
+	SocialMinMonthly       domain.Amount         // min mesicni vym. zaklad CSSZ
+	SocialRate             int                   // permille*10, e.g. 292 = 29.2%
+	HealthMinMonthly       domain.Amount         // min mesicni vym. zaklad ZP
+	HealthRate             int                   // permille*10, e.g. 135 = 13.5%
+	FlatRateCaps           map[int]domain.Amount // percent -> max halere amount
+	TimeTestYears          int                   // years to hold for time test exemption
+	SecurityExemptionLimit domain.Amount         // max exempt amount per year (0 = no limit)
 
-	SpouseIncomeLimit       domain.Amount // max spouse income for credit eligibility
-	DeductionCapMortgage    domain.Amount // max deduction for mortgage interest
+	SpouseIncomeLimit         domain.Amount // max spouse income for credit eligibility
+	DeductionCapMortgage      domain.Amount // max deduction for mortgage interest
 	DeductionCapLifeInsurance domain.Amount // max deduction for life insurance
-	DeductionCapPension     domain.Amount // max deduction for pension savings
-	DeductionCapUnionDues   domain.Amount // max deduction for union dues
-	MaxChildBonus           domain.Amount // max annual child tax bonus
+	DeductionCapPension       domain.Amount // max deduction for pension savings
+	DeductionCapUnionDues     domain.Amount // max deduction for union dues
+	MaxChildBonus             domain.Amount // max annual child tax bonus
 }
 
 // taxConstantsDB stores year-specific tax constants.
@@ -62,12 +62,12 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		TimeTestYears:          3,
 		SecurityExemptionLimit: domain.NewAmount(0, 0), // no limit before 2025
 
-		SpouseIncomeLimit:       domain.NewAmount(68_000, 0),
-		DeductionCapMortgage:    domain.NewAmount(150_000, 0),
+		SpouseIncomeLimit:         domain.NewAmount(68_000, 0),
+		DeductionCapMortgage:      domain.NewAmount(150_000, 0),
 		DeductionCapLifeInsurance: domain.NewAmount(24_000, 0),
-		DeductionCapPension:     domain.NewAmount(24_000, 0),
-		DeductionCapUnionDues:   domain.NewAmount(3_000, 0),
-		MaxChildBonus:           domain.NewAmount(60_300, 0),
+		DeductionCapPension:       domain.NewAmount(24_000, 0),
+		DeductionCapUnionDues:     domain.NewAmount(3_000, 0),
+		MaxChildBonus:             domain.NewAmount(60_300, 0),
 	},
 	2025: {
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -94,12 +94,12 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		TimeTestYears:          3,
 		SecurityExemptionLimit: domain.NewAmount(100_000_000, 0), // 1M CZK
 
-		SpouseIncomeLimit:       domain.NewAmount(68_000, 0),
-		DeductionCapMortgage:    domain.NewAmount(150_000, 0),
+		SpouseIncomeLimit:         domain.NewAmount(68_000, 0),
+		DeductionCapMortgage:      domain.NewAmount(150_000, 0),
 		DeductionCapLifeInsurance: domain.NewAmount(24_000, 0),
-		DeductionCapPension:     domain.NewAmount(24_000, 0),
-		DeductionCapUnionDues:   domain.NewAmount(3_000, 0),
-		MaxChildBonus:           domain.NewAmount(60_300, 0),
+		DeductionCapPension:       domain.NewAmount(24_000, 0),
+		DeductionCapUnionDues:     domain.NewAmount(3_000, 0),
+		MaxChildBonus:             domain.NewAmount(60_300, 0),
 	},
 	2026: {
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -126,12 +126,12 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		TimeTestYears:          3,
 		SecurityExemptionLimit: domain.NewAmount(100_000_000, 0), // 1M CZK
 
-		SpouseIncomeLimit:       domain.NewAmount(68_000, 0),
-		DeductionCapMortgage:    domain.NewAmount(150_000, 0),
+		SpouseIncomeLimit:         domain.NewAmount(68_000, 0),
+		DeductionCapMortgage:      domain.NewAmount(150_000, 0),
 		DeductionCapLifeInsurance: domain.NewAmount(24_000, 0),
-		DeductionCapPension:     domain.NewAmount(24_000, 0),
-		DeductionCapUnionDues:   domain.NewAmount(3_000, 0),
-		MaxChildBonus:           domain.NewAmount(60_300, 0),
+		DeductionCapPension:       domain.NewAmount(24_000, 0),
+		DeductionCapUnionDues:     domain.NewAmount(3_000, 0),
+		MaxChildBonus:             domain.NewAmount(60_300, 0),
 	},
 }
 

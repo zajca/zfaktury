@@ -12,12 +12,12 @@ import (
 
 // HealthInsuranceService provides business logic for health insurance overview management.
 type HealthInsuranceService struct {
-	repo               repository.HealthInsuranceOverviewRepo
-	invoiceRepo        repository.InvoiceRepo
-	expenseRepo        repository.ExpenseRepo
-	settingsRepo       repository.SettingsRepo
+	repo                repository.HealthInsuranceOverviewRepo
+	invoiceRepo         repository.InvoiceRepo
+	expenseRepo         repository.ExpenseRepo
+	settingsRepo        repository.SettingsRepo
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
-	taxPrepaymentRepo  repository.TaxPrepaymentRepo
+	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 }
 
 // NewHealthInsuranceService creates a new HealthInsuranceService.
@@ -30,12 +30,12 @@ func NewHealthInsuranceService(
 	taxPrepaymentRepo repository.TaxPrepaymentRepo,
 ) *HealthInsuranceService {
 	return &HealthInsuranceService{
-		repo:               repo,
-		invoiceRepo:        invoiceRepo,
-		expenseRepo:        expenseRepo,
-		settingsRepo:       settingsRepo,
+		repo:                repo,
+		invoiceRepo:         invoiceRepo,
+		expenseRepo:         expenseRepo,
+		settingsRepo:        settingsRepo,
 		taxYearSettingsRepo: taxYearSettingsRepo,
-		taxPrepaymentRepo:  taxPrepaymentRepo,
+		taxPrepaymentRepo:   taxPrepaymentRepo,
 	}
 }
 

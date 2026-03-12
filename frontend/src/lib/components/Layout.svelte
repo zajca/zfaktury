@@ -9,9 +9,7 @@
 	let { children }: Props = $props();
 
 	let sidebarOpen = $state(false);
-	let sidebarCollapsed = $state(
-		browser ? localStorage.getItem('zf-sidebar') === 'true' : false
-	);
+	let sidebarCollapsed = $state(browser ? localStorage.getItem('zf-sidebar') === 'true' : false);
 	let sidebarHovered = $state(false);
 	let sidebarExpanded = $derived(!sidebarCollapsed || sidebarHovered);
 
@@ -33,7 +31,13 @@
 	}
 
 	type NavAction = { href: string; label: string };
-	type NavItem = { href: string; label: string; icon: string; actions?: NavAction[]; children?: NavItem[] };
+	type NavItem = {
+		href: string;
+		label: string;
+		icon: string;
+		actions?: NavAction[];
+		children?: NavItem[];
+	};
 	type NavGroup = { section: string; items: NavItem[] };
 	type NavEntry = NavItem | NavGroup;
 
@@ -170,13 +174,19 @@
 	<!-- Desktop Sidebar -->
 	<aside
 		class="hidden lg:flex flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out shrink-0
-		{sidebarCollapsed ? (sidebarHovered ? 'absolute inset-y-0 left-0 z-50 w-52 shadow-xl shadow-black/30' : 'w-12') : 'w-52'}"
+		{sidebarCollapsed
+			? sidebarHovered
+				? 'absolute inset-y-0 left-0 z-50 w-52 shadow-xl shadow-black/30'
+				: 'w-12'
+			: 'w-52'}"
 		onmouseenter={() => sidebarCollapsed && (sidebarHovered = true)}
 		onmouseleave={() => (sidebarHovered = false)}
 	>
 		<!-- Logo + Toggle -->
-		<div class="flex h-12 items-center border-b border-border overflow-hidden
-			{sidebarExpanded ? 'px-3 gap-2 justify-between' : 'justify-center'}">
+		<div
+			class="flex h-12 items-center border-b border-border overflow-hidden
+			{sidebarExpanded ? 'px-3 gap-2 justify-between' : 'justify-center'}"
+		>
 			{#if sidebarExpanded}
 				<span class="text-sm font-semibold text-primary truncate">ZFaktury</span>
 				<button
@@ -184,11 +194,25 @@
 					class="shrink-0 rounded p-1 text-tertiary hover:text-primary transition-colors"
 					title="Toggle sidebar (Ctrl+Shift+L)"
 				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
 						{#if sidebarCollapsed}
-							<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+							/>
 						{:else}
-							<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+							/>
 						{/if}
 					</svg>
 				</button>
@@ -198,8 +222,18 @@
 					class="rounded p-1 text-tertiary hover:text-primary transition-colors"
 					title="Toggle sidebar (Ctrl+Shift+L)"
 				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="1.5"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+						/>
 					</svg>
 				</button>
 			{/if}
@@ -211,7 +245,9 @@
 				{#if isGroup(entry)}
 					{#if sidebarExpanded}
 						<div class="mt-4 mb-1.5 px-2">
-							<span class="text-[11px] font-medium uppercase tracking-wider text-muted">{entry.section}</span>
+							<span class="text-[11px] font-medium uppercase tracking-wider text-muted"
+								>{entry.section}</span
+							>
 						</div>
 					{:else}
 						<div class="mt-3 mb-1 border-t border-border-subtle mx-1"></div>
@@ -225,7 +261,13 @@
 								: 'text-secondary hover:text-primary hover:bg-hover'}"
 							title={sidebarExpanded ? undefined : item.label}
 						>
-							<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+							<svg
+								class="h-4 w-4 shrink-0"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
 								<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
 							</svg>
 							{#if sidebarExpanded}
@@ -239,30 +281,46 @@
 									class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
 									title={action.label}
 								>
-									<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+									<svg
+										class="h-3 w-3 shrink-0"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M12 4.5v15m7.5-7.5h-15"
+										/>
 									</svg>
 									<span class="truncate">{action.label}</span>
 								</a>
 							{/each}
 						{/if}
-					{#if sidebarExpanded && item.children}
-						{#each item.children as child (child.href)}
-							<a
-								href={child.href}
-								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+						{#if sidebarExpanded && item.children}
+							{#each item.children as child (child.href)}
+								<a
+									href={child.href}
+									class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
 								{isActive(child.href)
-									? 'bg-accent-muted text-accent-text'
-									: 'text-secondary hover:text-primary hover:bg-hover'}"
-								title={child.label}
-							>
-								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-									<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
-								</svg>
-								<span class="truncate">{child.label}</span>
-							</a>
-						{/each}
-					{/if}
+										? 'bg-accent-muted text-accent-text'
+										: 'text-secondary hover:text-primary hover:bg-hover'}"
+									title={child.label}
+								>
+									<svg
+										class="h-3 w-3 shrink-0"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+									</svg>
+									<span class="truncate">{child.label}</span>
+								</a>
+							{/each}
+						{/if}
 					{/each}
 				{:else}
 					<a
@@ -273,7 +331,13 @@
 							: 'text-secondary hover:text-primary hover:bg-hover'}"
 						title={sidebarExpanded ? undefined : entry.label}
 					>
-						<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<svg
+							class="h-4 w-4 shrink-0"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="1.5"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" d={entry.icon} />
 						</svg>
 						{#if sidebarExpanded}
@@ -287,30 +351,42 @@
 								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
 								title={action.label}
 							>
-								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<svg
+									class="h-3 w-3 shrink-0"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
 									<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 								</svg>
 								<span class="truncate">{action.label}</span>
 							</a>
 						{/each}
 					{/if}
-				{#if sidebarExpanded && entry.children}
-					{#each entry.children as child (child.href)}
-						<a
-							href={child.href}
-							class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+					{#if sidebarExpanded && entry.children}
+						{#each entry.children as child (child.href)}
+							<a
+								href={child.href}
+								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
 							{isActive(child.href)
-								? 'bg-accent-muted text-accent-text'
-								: 'text-secondary hover:text-primary hover:bg-hover'}"
-							title={child.label}
-						>
-							<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-								<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
-							</svg>
-							<span class="truncate">{child.label}</span>
-						</a>
-					{/each}
-				{/if}
+									? 'bg-accent-muted text-accent-text'
+									: 'text-secondary hover:text-primary hover:bg-hover'}"
+								title={child.label}
+							>
+								<svg
+									class="h-3 w-3 shrink-0"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+								</svg>
+								<span class="truncate">{child.label}</span>
+							</a>
+						{/each}
+					{/if}
 				{/if}
 			{/each}
 		</nav>
@@ -335,7 +411,9 @@
 			{#each navEntries as entry, i (i)}
 				{#if isGroup(entry)}
 					<div class="mt-4 mb-1.5 px-2">
-						<span class="text-[11px] font-medium uppercase tracking-wider text-muted">{entry.section}</span>
+						<span class="text-[11px] font-medium uppercase tracking-wider text-muted"
+							>{entry.section}</span
+						>
 					</div>
 					{#each entry.items as item (item.href)}
 						<a
@@ -346,7 +424,13 @@
 								? 'bg-accent-muted text-accent-text'
 								: 'text-secondary hover:text-primary hover:bg-hover'}"
 						>
-							<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+							<svg
+								class="h-4 w-4 shrink-0"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
 								<path stroke-linecap="round" stroke-linejoin="round" d={item.icon} />
 							</svg>
 							{item.label}
@@ -358,30 +442,46 @@
 									onclick={() => (sidebarOpen = false)}
 									class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
 								>
-									<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+									<svg
+										class="h-3 w-3 shrink-0"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M12 4.5v15m7.5-7.5h-15"
+										/>
 									</svg>
 									<span class="truncate">{action.label}</span>
 								</a>
 							{/each}
 						{/if}
-					{#if item.children}
-						{#each item.children as child (child.href)}
-							<a
-								href={child.href}
-								onclick={() => (sidebarOpen = false)}
-								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+						{#if item.children}
+							{#each item.children as child (child.href)}
+								<a
+									href={child.href}
+									onclick={() => (sidebarOpen = false)}
+									class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
 								{isActive(child.href)
-									? 'bg-accent-muted text-accent-text'
-									: 'text-secondary hover:text-primary hover:bg-hover'}"
-							>
-								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-									<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
-								</svg>
-								<span class="truncate">{child.label}</span>
-							</a>
-						{/each}
-					{/if}
+										? 'bg-accent-muted text-accent-text'
+										: 'text-secondary hover:text-primary hover:bg-hover'}"
+								>
+									<svg
+										class="h-3 w-3 shrink-0"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+									</svg>
+									<span class="truncate">{child.label}</span>
+								</a>
+							{/each}
+						{/if}
 					{/each}
 				{:else}
 					<a
@@ -392,7 +492,13 @@
 							? 'bg-accent-muted text-accent-text'
 							: 'text-secondary hover:text-primary hover:bg-hover'}"
 					>
-						<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+						<svg
+							class="h-4 w-4 shrink-0"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="1.5"
+						>
 							<path stroke-linecap="round" stroke-linejoin="round" d={entry.icon} />
 						</svg>
 						{entry.label}
@@ -404,30 +510,42 @@
 								onclick={() => (sidebarOpen = false)}
 								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
 							>
-								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<svg
+									class="h-3 w-3 shrink-0"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
 									<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 								</svg>
 								<span class="truncate">{action.label}</span>
 							</a>
 						{/each}
 					{/if}
-				{#if entry.children}
-					{#each entry.children as child (child.href)}
-						<a
-							href={child.href}
-							onclick={() => (sidebarOpen = false)}
-							class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
+					{#if entry.children}
+						{#each entry.children as child (child.href)}
+							<a
+								href={child.href}
+								onclick={() => (sidebarOpen = false)}
+								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-1 text-xs font-medium transition-colors
 							{isActive(child.href)
-								? 'bg-accent-muted text-accent-text'
-								: 'text-secondary hover:text-primary hover:bg-hover'}"
-						>
-							<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-								<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
-							</svg>
-							<span class="truncate">{child.label}</span>
-						</a>
-					{/each}
-				{/if}
+									? 'bg-accent-muted text-accent-text'
+									: 'text-secondary hover:text-primary hover:bg-hover'}"
+							>
+								<svg
+									class="h-3 w-3 shrink-0"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d={child.icon} />
+								</svg>
+								<span class="truncate">{child.label}</span>
+							</a>
+						{/each}
+					{/if}
 				{/if}
 			{/each}
 		</nav>
@@ -445,8 +563,18 @@
 				class="rounded-md p-1.5 text-secondary hover:bg-hover hover:text-primary transition-colors"
 				aria-label="Toggle menu"
 			>
-				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+				<svg
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+					/>
 				</svg>
 			</button>
 			<h1 class="ml-3 text-sm font-semibold text-primary">ZFaktury</h1>

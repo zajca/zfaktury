@@ -25,7 +25,12 @@ describe('FormActions', () => {
 
 	it('renders custom save labels', () => {
 		render(FormActions, {
-			props: { saving: false, saveLabel: 'Vytvořit', savingLabel: 'Vytvářím...', cancelHref: '/back' }
+			props: {
+				saving: false,
+				saveLabel: 'Vytvořit',
+				savingLabel: 'Vytvářím...',
+				cancelHref: '/back'
+			}
 		});
 		expect(screen.getByText('Vytvořit')).toBeInTheDocument();
 	});

@@ -662,7 +662,7 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{
 			Description:    "Consulting",
-			Quantity:       100,     // 1.00
+			Quantity:       100, // 1.00
 			Unit:           "hod",
 			UnitPrice:      1500000, // 15000.00 CZK
 			VATRatePercent: 21,

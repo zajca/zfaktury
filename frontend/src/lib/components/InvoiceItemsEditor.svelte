@@ -58,7 +58,13 @@
 			onclick={addItem}
 			class="inline-flex items-center gap-1.5 rounded-md border border-border-strong px-2.5 py-1.5 text-xs font-medium text-secondary hover:bg-hover hover:text-primary transition-colors"
 		>
-			<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+			<svg
+				class="h-3.5 w-3.5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
 			</svg>
 			Přidat položku
@@ -71,7 +77,9 @@
 				<div class="flex items-start gap-4">
 					<div class="flex-1 space-y-3">
 						<div>
-							<label for="{idPrefix}desc-{index}" class="block text-sm font-medium text-secondary">Popis</label>
+							<label for="{idPrefix}desc-{index}" class="block text-sm font-medium text-secondary"
+								>Popis</label
+							>
 							<input
 								id="{idPrefix}desc-{index}"
 								type="text"
@@ -82,7 +90,9 @@
 						</div>
 						<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 							<div>
-								<label for="{idPrefix}qty-{index}" class="block text-sm font-medium text-secondary">Množství</label>
+								<label for="{idPrefix}qty-{index}" class="block text-sm font-medium text-secondary"
+									>Množství</label
+								>
 								<input
 									id="{idPrefix}qty-{index}"
 									type="number"
@@ -93,7 +103,9 @@
 								/>
 							</div>
 							<div>
-								<label for="{idPrefix}unit-{index}" class="block text-sm font-medium text-secondary">Jednotka</label>
+								<label for="{idPrefix}unit-{index}" class="block text-sm font-medium text-secondary"
+									>Jednotka</label
+								>
 								<select
 									id="{idPrefix}unit-{index}"
 									bind:value={item.unit}
@@ -107,7 +119,10 @@
 								</select>
 							</div>
 							<div>
-								<label for="{idPrefix}price-{index}" class="block text-sm font-medium text-secondary">Cena/ks (CZK)</label>
+								<label
+									for="{idPrefix}price-{index}"
+									class="block text-sm font-medium text-secondary">Cena/ks (CZK)</label
+								>
 								<input
 									id="{idPrefix}price-{index}"
 									type="number"
@@ -118,7 +133,9 @@
 								/>
 							</div>
 							<div>
-								<label for="{idPrefix}vat-{index}" class="block text-sm font-medium text-secondary">DPH %</label>
+								<label for="{idPrefix}vat-{index}" class="block text-sm font-medium text-secondary"
+									>DPH %</label
+								>
 								<select
 									id="{idPrefix}vat-{index}"
 									bind:value={item.vat_rate_percent}
@@ -138,7 +155,13 @@
 							class="mt-6 rounded p-1 text-muted hover:text-danger transition-colors"
 							aria-label="Odebrat položku"
 						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<svg
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
 								<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 							</svg>
 						</button>
@@ -161,15 +184,21 @@
 		<div class="flex flex-col items-end gap-1 text-sm">
 			<div class="flex gap-8">
 				<span class="text-tertiary">Základ:</span>
-				<span class="font-medium text-primary font-mono tabular-nums">{formatCZK(toHalere(subtotal))}</span>
+				<span class="font-medium text-primary font-mono tabular-nums"
+					>{formatCZK(toHalere(subtotal))}</span
+				>
 			</div>
 			<div class="flex gap-8">
 				<span class="text-tertiary">DPH:</span>
-				<span class="font-medium text-primary font-mono tabular-nums">{formatCZK(toHalere(vatTotal))}</span>
+				<span class="font-medium text-primary font-mono tabular-nums"
+					>{formatCZK(toHalere(vatTotal))}</span
+				>
 			</div>
 			<div class="flex gap-8 border-t border-border pt-1 text-base">
 				<span class="font-semibold text-primary">Celkem:</span>
-				<span class="font-semibold text-primary font-mono tabular-nums">{formatCZK(toHalere(grandTotal))}</span>
+				<span class="font-semibold text-primary font-mono tabular-nums"
+					>{formatCZK(toHalere(grandTotal))}</span
+				>
 			</div>
 		</div>
 	</div>

@@ -88,7 +88,8 @@
 
 <div class="mx-auto max-w-6xl">
 	<h1 class="text-xl font-semibold text-primary">
-		Daně za rok {selectedYear} <HelpTip topic="rocni-dane" {taxConstants} />
+		Daně za rok {selectedYear}
+		<HelpTip topic="rocni-dane" {taxConstants} />
 	</h1>
 
 	<!-- Year selector -->
@@ -122,10 +123,7 @@
 				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 			</svg>
 		</Button>
-		<a
-			href="/tax/prepayments"
-			class="ml-auto text-sm text-accent hover:underline"
-		>
+		<a href="/tax/prepayments" class="ml-auto text-sm text-accent hover:underline">
 			Nastavení záloh
 		</a>
 	</div>
@@ -138,7 +136,9 @@
 		<div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
 			<!-- DPFO card -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Daňové přiznání (DPFO) <HelpTip topic="dan-15-23" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Daňové přiznání (DPFO) <HelpTip topic="dan-15-23" {taxConstants} />
+				</h2>
 				{#if incomeTaxReturns.length === 0}
 					<p class="mt-4 text-sm text-tertiary">Zatím nevytvořeno</p>
 					<div class="mt-4">
@@ -159,7 +159,9 @@
 						>
 							<div class="flex items-center justify-between">
 								<span
-									class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {statusColor(itr.status)}"
+									class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {statusColor(
+										itr.status
+									)}"
 								>
 									{statusLabel(itr.status)}
 								</span>
@@ -185,7 +187,9 @@
 
 			<!-- CSSZ card -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Přehled OSVČ pro ČSSZ <HelpTip topic="prehled-cssz" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Přehled OSVČ pro ČSSZ <HelpTip topic="prehled-cssz" {taxConstants} />
+				</h2>
 				{#if socialOverviews.length === 0}
 					<p class="mt-4 text-sm text-tertiary">Zatím nevytvořeno</p>
 					<div class="mt-4">
@@ -206,7 +210,9 @@
 						>
 							<div class="flex items-center justify-between">
 								<span
-									class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {statusColor(so.status)}"
+									class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {statusColor(
+										so.status
+									)}"
 								>
 									{statusLabel(so.status)}
 								</span>
@@ -214,15 +220,11 @@
 							<div class="mt-2 space-y-1 text-sm">
 								<div class="flex justify-between">
 									<span class="text-tertiary">Vyměřovací základ</span>
-									<span class="font-medium text-primary"
-										>{formatCZK(so.assessment_base)}</span
-									>
+									<span class="font-medium text-primary">{formatCZK(so.assessment_base)}</span>
 								</div>
 								<div class="flex justify-between">
 									<span class="text-tertiary">Roční pojistné</span>
-									<span class="font-medium text-primary"
-										>{formatCZK(so.total_insurance)}</span
-									>
+									<span class="font-medium text-primary">{formatCZK(so.total_insurance)}</span>
 								</div>
 								<div class="flex justify-between">
 									<span class="text-tertiary">Doplatek</span>
@@ -236,7 +238,9 @@
 
 			<!-- ZP card -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Přehled OSVČ pro ZP <HelpTip topic="prehled-zp" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Přehled OSVČ pro ZP <HelpTip topic="prehled-zp" {taxConstants} />
+				</h2>
 				{#if healthOverviews.length === 0}
 					<p class="mt-4 text-sm text-tertiary">Zatím nevytvořeno</p>
 					<div class="mt-4">
@@ -257,7 +261,9 @@
 						>
 							<div class="flex items-center justify-between">
 								<span
-									class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {statusColor(ho.status)}"
+									class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {statusColor(
+										ho.status
+									)}"
 								>
 									{statusLabel(ho.status)}
 								</span>
@@ -265,15 +271,11 @@
 							<div class="mt-2 space-y-1 text-sm">
 								<div class="flex justify-between">
 									<span class="text-tertiary">Vyměřovací základ</span>
-									<span class="font-medium text-primary"
-										>{formatCZK(ho.assessment_base)}</span
-									>
+									<span class="font-medium text-primary">{formatCZK(ho.assessment_base)}</span>
 								</div>
 								<div class="flex justify-between">
 									<span class="text-tertiary">Roční pojistné</span>
-									<span class="font-medium text-primary"
-										>{formatCZK(ho.total_insurance)}</span
-									>
+									<span class="font-medium text-primary">{formatCZK(ho.total_insurance)}</span>
 								</div>
 								<div class="flex justify-between">
 									<span class="text-tertiary">Doplatek</span>

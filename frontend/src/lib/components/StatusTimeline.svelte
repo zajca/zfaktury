@@ -12,9 +12,7 @@
 
 	// Sort newest first
 	const sorted = $derived(
-		[...history].sort(
-			(a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime()
-		)
+		[...history].sort((a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime())
 	);
 
 	// Dot color classes keyed by status
@@ -43,10 +41,7 @@
 			<div class="relative flex gap-4 pb-6 last:pb-0">
 				<!-- Vertical line -->
 				{#if i < sorted.length - 1}
-					<div
-						class="absolute left-[7px] top-5 bottom-0 w-px bg-border"
-						aria-hidden="true"
-					></div>
+					<div class="absolute left-[7px] top-5 bottom-0 w-px bg-border" aria-hidden="true"></div>
 				{/if}
 
 				<!-- Dot -->

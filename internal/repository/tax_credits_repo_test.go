@@ -17,13 +17,13 @@ func TestTaxSpouseCreditRepository_Upsert(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:             2025,
-		SpouseName:       "Jana Novakova",
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
 		SpouseBirthNumber: "8555012345",
-		SpouseIncome:     domain.NewAmount(50000, 0),
-		SpouseZTP:        false,
-		MonthsClaimed:    12,
-		CreditAmount:     domain.NewAmount(24840, 0),
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		SpouseZTP:         false,
+		MonthsClaimed:     12,
+		CreditAmount:      domain.NewAmount(24840, 0),
 	}
 
 	if err := repo.Upsert(ctx, credit); err != nil {
@@ -47,12 +47,12 @@ func TestTaxSpouseCreditRepository_Upsert_Replace(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:             2025,
-		SpouseName:       "Jana Novakova",
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
 		SpouseBirthNumber: "8555012345",
-		SpouseIncome:     domain.NewAmount(50000, 0),
-		MonthsClaimed:    12,
-		CreditAmount:     domain.NewAmount(24840, 0),
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		MonthsClaimed:     12,
+		CreditAmount:      domain.NewAmount(24840, 0),
 	}
 	if err := repo.Upsert(ctx, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
@@ -60,13 +60,13 @@ func TestTaxSpouseCreditRepository_Upsert_Replace(t *testing.T) {
 
 	// Upsert again with different values for the same year.
 	credit2 := &domain.TaxSpouseCredit{
-		Year:             2025,
-		SpouseName:       "Jana Novakova",
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
 		SpouseBirthNumber: "8555012345",
-		SpouseIncome:     domain.NewAmount(60000, 0),
-		SpouseZTP:        true,
-		MonthsClaimed:    6,
-		CreditAmount:     domain.NewAmount(12420, 0),
+		SpouseIncome:      domain.NewAmount(60000, 0),
+		SpouseZTP:         true,
+		MonthsClaimed:     6,
+		CreditAmount:      domain.NewAmount(12420, 0),
 	}
 	if err := repo.Upsert(ctx, credit2); err != nil {
 		t.Fatalf("Upsert() replace error: %v", err)
@@ -93,13 +93,13 @@ func TestTaxSpouseCreditRepository_GetByYear(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:             2025,
-		SpouseName:       "Jana Novakova",
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
 		SpouseBirthNumber: "8555012345",
-		SpouseIncome:     domain.NewAmount(50000, 0),
-		SpouseZTP:        true,
-		MonthsClaimed:    8,
-		CreditAmount:     domain.NewAmount(24840, 0),
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		SpouseZTP:         true,
+		MonthsClaimed:     8,
+		CreditAmount:      domain.NewAmount(24840, 0),
 	}
 	if err := repo.Upsert(ctx, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
@@ -153,12 +153,12 @@ func TestTaxSpouseCreditRepository_DeleteByYear(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:             2025,
-		SpouseName:       "Jana Novakova",
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
 		SpouseBirthNumber: "8555012345",
-		SpouseIncome:     domain.NewAmount(50000, 0),
-		MonthsClaimed:    12,
-		CreditAmount:     domain.NewAmount(24840, 0),
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		MonthsClaimed:     12,
+		CreditAmount:      domain.NewAmount(24840, 0),
 	}
 	if err := repo.Upsert(ctx, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)

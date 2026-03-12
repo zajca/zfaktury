@@ -23,7 +23,9 @@ describe('PageHeader', () => {
 	});
 
 	it('renders back link when backHref is provided', () => {
-		render(PageHeader, { props: { title: 'Detail', backHref: '/invoices', backLabel: 'Zpět na faktury' } });
+		render(PageHeader, {
+			props: { title: 'Detail', backHref: '/invoices', backLabel: 'Zpět na faktury' }
+		});
 		const link = screen.getByText(/Zpět na faktury/);
 		expect(link).toBeInTheDocument();
 		expect(link.getAttribute('href')).toBe('/invoices');

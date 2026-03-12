@@ -1128,7 +1128,7 @@ func TestInvestmentHandler_ExtractDocument_Success(t *testing.T) {
 
 	// Decode the extraction response.
 	var resp struct {
-		Platform       string                       `json:"platform"`
+		Platform       string                        `json:"platform"`
 		CapitalEntries []capitalIncomeResponse       `json:"capital_entries"`
 		Transactions   []securityTransactionResponse `json:"transactions"`
 		Confidence     float64                       `json:"confidence"`

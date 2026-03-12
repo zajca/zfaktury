@@ -165,7 +165,11 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title={recurringInvoice?.name ?? 'Detail'} backHref="/recurring" backLabel="Zpět na opakující se faktury" />
+	<PageHeader
+		title={recurringInvoice?.name ?? 'Detail'}
+		backHref="/recurring"
+		backLabel="Zpět na opakující se faktury"
+	/>
 
 	{#if loading}
 		<LoadingSpinner class="mt-8 p-12" />
@@ -177,9 +181,7 @@
 			<Button variant="secondary" onclick={generateInvoice} disabled={generating}>
 				{generating ? 'Generuji...' : 'Vygenerovat fakturu'}
 			</Button>
-			<Button variant="primary" onclick={startEdit}>
-				Upravit
-			</Button>
+			<Button variant="primary" onclick={startEdit}>Upravit</Button>
 		</div>
 
 		<ErrorAlert {error} class="mt-4" />
@@ -225,7 +227,8 @@
 					<div>
 						<dt class="text-sm font-medium text-tertiary">Způsob platby</dt>
 						<dd class="mt-1 text-sm text-primary">
-							{paymentMethodLabels[recurringInvoice.payment_method] ?? recurringInvoice.payment_method}
+							{paymentMethodLabels[recurringInvoice.payment_method] ??
+								recurringInvoice.payment_method}
 						</dd>
 					</div>
 				</dl>
@@ -259,8 +262,12 @@
 										>{(item.quantity / 100).toFixed(2)}</td
 									>
 									<td class="px-4 py-2.5 text-secondary">{item.unit}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatCZK(item.unit_price)}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{item.vat_rate_percent}%</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{formatCZK(item.unit_price)}</td
+									>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{item.vat_rate_percent}%</td
+									>
 								</tr>
 							{/each}
 						</tbody>
@@ -389,7 +396,15 @@
 				</div>
 			</Card>
 
-			<FormActions {saving} saveLabel="Uložit změny" savingLabel="Ukládám..." oncancel={() => { editing = false; error = null; }} />
+			<FormActions
+				{saving}
+				saveLabel="Uložit změny"
+				savingLabel="Ukládám..."
+				oncancel={() => {
+					editing = false;
+					error = null;
+				}}
+			/>
 		</form>
 	{/if}
 </div>

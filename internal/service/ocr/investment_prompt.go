@@ -81,10 +81,10 @@ func investmentUserPromptByPlatform(platform string) string {
 
 // InvestmentExtractionResponse is the expected JSON structure from the AI model.
 type InvestmentExtractionResponse struct {
-	Platform       string                    `json:"platform"`
-	CapitalEntries []capitalEntryResponse    `json:"capital_entries"`
-	Transactions   []securityTxResponse      `json:"transactions"`
-	Confidence     float64                   `json:"confidence"`
+	Platform       string                 `json:"platform"`
+	CapitalEntries []capitalEntryResponse `json:"capital_entries"`
+	Transactions   []securityTxResponse   `json:"transactions"`
+	Confidence     float64                `json:"confidence"`
 }
 
 type capitalEntryResponse struct {

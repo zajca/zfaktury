@@ -89,7 +89,13 @@
 		{#if loading}
 			<LoadingSpinner class="p-12" />
 		{:else if contacts.length === 0}
-			<EmptyState message="Zatím žádné kontakty." filteredMessage="Žádné kontakty neodpovídají hledání." isFiltered={!!search} actionHref="/contacts/new" actionLabel="Přidat první kontakt" />
+			<EmptyState
+				message="Zatím žádné kontakty."
+				filteredMessage="Žádné kontakty neodpovídají hledání."
+				isFiltered={!!search}
+				actionHref="/contacts/new"
+				actionLabel="Přidat první kontakt"
+			/>
 		{:else}
 			<table class="w-full text-left text-sm">
 				<thead class="border-b border-border bg-elevated">
@@ -116,8 +122,10 @@
 							<td class="px-4 py-2.5 text-secondary">{contact.ico || '-'}</td>
 							<td class="px-4 py-2.5 text-secondary">{contact.dic || '-'}</td>
 							<td class="hidden px-4 py-2.5 text-secondary md:table-cell">{contact.city || '-'}</td>
-							<td class="hidden px-4 py-2.5 text-secondary lg:table-cell">{contact.email || '-'}</td>
-							<td class="hidden px-4 py-2.5 text-secondary lg:table-cell">{contact.phone || '-'}</td>
+							<td class="hidden px-4 py-2.5 text-secondary lg:table-cell">{contact.email || '-'}</td
+							>
+							<td class="hidden px-4 py-2.5 text-secondary lg:table-cell">{contact.phone || '-'}</td
+							>
 						</tr>
 					{/each}
 				</tbody>
@@ -126,5 +134,14 @@
 	</Card>
 
 	<!-- Pagination -->
-	<Pagination {page} {totalPages} {total} label="kontaktů" onPageChange={(p) => { page = p; loadContacts(); }} />
+	<Pagination
+		{page}
+		{totalPages}
+		{total}
+		label="kontaktů"
+		onPageChange={(p) => {
+			page = p;
+			loadContacts();
+		}}
+	/>
 </div>

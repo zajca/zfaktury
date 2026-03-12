@@ -137,7 +137,9 @@
 		return formatCZK(halere);
 	}
 
-	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+	function statusBadgeVariant(
+		status: string
+	): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
 		switch (status) {
 			case 'filed':
 				return 'success';
@@ -169,10 +171,8 @@
 		<div class="mt-4">
 			<div class="flex items-center justify-between">
 				<h1 class="text-xl font-semibold text-primary">
-					Kontrolní hlášení <HelpTip topic="kontrolni-hlaseni" /> {statement.period.year}/{String(statement.period.month).padStart(
-						2,
-						'0'
-					)}
+					Kontrolní hlášení <HelpTip topic="kontrolni-hlaseni" />
+					{statement.period.year}/{String(statement.period.month).padStart(2, '0')}
 				</h1>
 				<div class="flex items-center gap-3">
 					<Badge variant={statusBadgeVariant(statement.status)}>
@@ -203,11 +203,7 @@
 				>
 					Generovat XML
 				</Button>
-				<Button
-					variant="secondary"
-					onclick={handleDownloadXml}
-					disabled={!statement.has_xml}
-				>
+				<Button variant="secondary" onclick={handleDownloadXml} disabled={!statement.has_xml}>
 					Stáhnout XML
 				</Button>
 				<Button
@@ -217,11 +213,7 @@
 				>
 					Označit za podané
 				</Button>
-				<Button
-					variant="danger"
-					onclick={handleDelete}
-					disabled={statement.status === 'filed'}
-				>
+				<Button variant="danger" onclick={handleDelete} disabled={statement.status === 'filed'}>
 					Smazat
 				</Button>
 			</div>
@@ -240,7 +232,8 @@
 							? 'border-accent text-accent-text'
 							: 'border-transparent text-tertiary hover:text-secondary hover:border-border-strong'}"
 					>
-						{tabLabels[tab]} <HelpTip topic="sekce-kontrolni-hlaseni" />
+						{tabLabels[tab]}
+						<HelpTip topic="sekce-kontrolni-hlaseni" />
 					</button>
 				{/each}
 			</nav>
@@ -260,12 +253,30 @@
 					<table class="w-full text-sm">
 						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DIC partnera <HelpTip topic="dic" /></th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">Číslo dokladu</th>
-								<th class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted">DPPD <HelpTip topic="dppd" /></th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ (CZK)</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH (CZK)</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba <HelpTip topic="sazba-dph" /></th>
+								<th
+									class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>DIC partnera <HelpTip topic="dic" /></th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>Číslo dokladu</th
+								>
+								<th
+									class="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>DPPD <HelpTip topic="dppd" /></th
+								>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Základ (CZK)</th
+								>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>DPH (CZK)</th
+								>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Sazba <HelpTip topic="sazba-dph" /></th
+								>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
@@ -274,9 +285,15 @@
 									<td class="px-4 py-2.5 font-mono text-xs text-primary">{line.partner_dic}</td>
 									<td class="px-4 py-2.5 text-primary">{line.document_number}</td>
 									<td class="px-4 py-2.5 text-primary">{line.dppd}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.base)}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.vat)}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{line.vat_rate_percent}%</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{formatAmountCZK(line.base)}</td
+									>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{formatAmountCZK(line.vat)}</td
+									>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{line.vat_rate_percent}%</td
+									>
 								</tr>
 							{/each}
 						</tbody>
@@ -288,17 +305,32 @@
 					<table class="w-full text-sm">
 						<thead class="border-b border-border bg-elevated">
 							<tr>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Základ (CZK)</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">DPH (CZK)</th>
-								<th class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted">Sazba <HelpTip topic="sazba-dph" /></th>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Základ (CZK)</th
+								>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>DPH (CZK)</th
+								>
+								<th
+									class="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-muted"
+									>Sazba <HelpTip topic="sazba-dph" /></th
+								>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-border-subtle">
 							{#each filteredLines as line, i (i)}
 								<tr class="hover:bg-hover transition-colors">
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.base)}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{formatAmountCZK(line.vat)}</td>
-									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary">{line.vat_rate_percent}%</td>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{formatAmountCZK(line.base)}</td
+									>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{formatAmountCZK(line.vat)}</td
+									>
+									<td class="px-4 py-2.5 text-right font-mono tabular-nums text-secondary"
+										>{line.vat_rate_percent}%</td
+									>
 								</tr>
 							{/each}
 						</tbody>
@@ -322,7 +354,7 @@
 	confirmLabel="Označit jako podané"
 	variant="warning"
 	onconfirm={confirmMarkFiled}
-	oncancel={() => showFileConfirm = false}
+	oncancel={() => (showFileConfirm = false)}
 />
 
 <ConfirmDialog
@@ -331,5 +363,5 @@
 	message="Opravdu chcete smazat toto kontrolní hlášení?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

@@ -2,7 +2,11 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { healthInsuranceApi, type HealthInsuranceOverview, type TaxConstants } from '$lib/api/client';
+	import {
+		healthInsuranceApi,
+		type HealthInsuranceOverview,
+		type TaxConstants
+	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
@@ -46,7 +50,9 @@
 		try {
 			data = await healthInsuranceApi.getById(returnId);
 			if (data) {
-				loadTaxConstants(data.year).then((tc) => { taxConstants = tc; });
+				loadTaxConstants(data.year).then((tc) => {
+					taxConstants = tc;
+				});
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst přehled';
@@ -104,7 +110,9 @@
 		}
 	}
 
-	function statusBadgeVariant(status: string): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
+	function statusBadgeVariant(
+		status: string
+	): 'default' | 'success' | 'danger' | 'warning' | 'info' | 'muted' {
 		switch (status) {
 			case 'filed':
 				return 'success';
@@ -149,38 +157,24 @@
 				>
 					{actionLoading === 'recalculate' ? 'Přepočítávám...' : 'Přepočítat'}
 				</Button>
-				<Button
-					variant="secondary"
-					disabled={true}
-					title="XML generování zatím není k dispozici"
-				>
+				<Button variant="secondary" disabled={true} title="XML generování zatím není k dispozici">
 					Generovat XML
 				</Button>
-				<Button
-					variant="secondary"
-					disabled={true}
-					title="XML generování zatím není k dispozici"
-				>
+				<Button variant="secondary" disabled={true} title="XML generování zatím není k dispozici">
 					Stáhnout XML
 				</Button>
 				{#if data.status !== 'filed'}
-					<Button
-						variant="success"
-						onclick={handleMarkFiled}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit jako podané'}
 					</Button>
-					<Button
-						variant="danger"
-						onclick={handleDelete}
-						disabled={actionLoading !== null}
-					>
+					<Button variant="danger" onclick={handleDelete} disabled={actionLoading !== null}>
 						Smazat
 					</Button>
 				{/if}
 			</div>
-			<p class="mt-2 text-xs text-muted">XML generování zatím není k dispozici pro zdravotní pojišťovnu.</p>
+			<p class="mt-2 text-xs text-muted">
+				XML generování zatím není k dispozici pro zdravotní pojišťovnu.
+			</p>
 		</div>
 
 		<div class="mt-6 space-y-6">
@@ -189,49 +183,75 @@
 				<h2 class="text-base font-semibold text-primary">Příjmy a výdaje</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Celkové příjmy</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.total_revenue)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.total_revenue)}
+					</dd>
 
 					<dt class="text-secondary">Použité výdaje</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.total_expenses)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.total_expenses)}
+					</dd>
 				</div>
 			</Card>
 
 			<!-- Assessment Base -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Vyměřovací základ <HelpTip topic="vymerovaci-zaklad" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Vyměřovací základ <HelpTip topic="vymerovaci-zaklad" {taxConstants} />
+				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Základ daně</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.tax_base)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.tax_base)}
+					</dd>
 
 					<dt class="text-secondary">Vyměřovací základ (50%)</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.assessment_base)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.assessment_base)}
+					</dd>
 
 					<dt class="text-secondary">Minimální vyměřovací základ</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.min_assessment_base)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.min_assessment_base)}
+					</dd>
 
 					<dt class="text-secondary">Výsledný vyměřovací základ</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.final_assessment_base)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.final_assessment_base)}
+					</dd>
 				</div>
 			</Card>
 
 			<!-- Insurance -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Pojistné <HelpTip topic="prehled-zp" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Pojistné <HelpTip topic="prehled-zp" {taxConstants} />
+				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Sazba pojistného</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{(data.insurance_rate / 10).toFixed(1)}%</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{(data.insurance_rate / 10).toFixed(1)}%
+					</dd>
 
 					<dt class="text-secondary">Celkové pojistné</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.total_insurance)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.total_insurance)}
+					</dd>
 
 					<dt class="text-secondary">Zaplacené zálohy</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.prepayments)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.prepayments)}
+					</dd>
 				</div>
 				<div class="mt-4 flex items-center justify-between border-t border-border pt-4">
 					<span class="font-semibold text-primary">
 						{data.difference >= 0 ? 'Doplatek:' : 'Přeplatek:'}
 					</span>
-					<span class="text-lg font-semibold tabular-nums {data.difference >= 0 ? 'text-danger' : 'text-success'}">
+					<span
+						class="text-lg font-semibold tabular-nums {data.difference >= 0
+							? 'text-danger'
+							: 'text-success'}"
+					>
 						{formatCZK(Math.abs(data.difference))}
 					</span>
 				</div>
@@ -239,10 +259,14 @@
 
 			<!-- New Prepayment -->
 			<Card>
-				<h2 class="text-base font-semibold text-primary">Nová záloha <HelpTip topic="nova-zaloha" {taxConstants} /></h2>
+				<h2 class="text-base font-semibold text-primary">
+					Nová záloha <HelpTip topic="nova-zaloha" {taxConstants} />
+				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
 					<dt class="text-secondary">Nová měsíční záloha</dt>
-					<dd class="text-right font-medium text-primary tabular-nums">{formatCZK(data.new_monthly_prepay)}</dd>
+					<dd class="text-right font-medium text-primary tabular-nums">
+						{formatCZK(data.new_monthly_prepay)}
+					</dd>
 				</div>
 			</Card>
 
@@ -265,7 +289,7 @@
 	confirmLabel="Označit jako podané"
 	variant="warning"
 	onconfirm={confirmMarkFiled}
-	oncancel={() => showFileConfirm = false}
+	oncancel={() => (showFileConfirm = false)}
 />
 
 <ConfirmDialog
@@ -274,5 +298,5 @@
 	message="Opravdu chcete smazat tento přehled?"
 	confirmLabel="Smazat"
 	onconfirm={confirmDelete}
-	oncancel={() => showDeleteConfirm = false}
+	oncancel={() => (showDeleteConfirm = false)}
 />

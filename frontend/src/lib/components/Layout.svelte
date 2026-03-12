@@ -32,7 +32,8 @@
 		}
 	}
 
-	type NavItem = { href: string; label: string; icon: string };
+	type NavAction = { href: string; label: string };
+	type NavItem = { href: string; label: string; icon: string; actions?: NavAction[] };
 	type NavGroup = { section: string; items: NavItem[] };
 	type NavEntry = NavItem | NavGroup;
 
@@ -45,17 +46,24 @@
 		{
 			href: '/invoices',
 			label: 'Faktury',
-			icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+			icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+			actions: [{ href: '/invoices/new', label: 'Nova faktura' }]
 		},
 		{
 			href: '/recurring',
 			label: 'Sablony faktur',
-			icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+			icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+			actions: [{ href: '/recurring/new', label: 'Nova sablona' }]
 		},
 		{
 			href: '/expenses',
 			label: 'Naklady',
-			icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z'
+			icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+			actions: [
+				{ href: '/expenses/new', label: 'Pridat naklad' },
+				{ href: '/expenses/import', label: 'Import dokladu' },
+				{ href: '/expenses/recurring/new', label: 'Opakovany naklad' }
+			]
 		},
 		{
 			section: 'Ucetnictvi',
@@ -80,7 +88,8 @@
 		{
 			href: '/contacts',
 			label: 'Kontakty',
-			icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z'
+			icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+			actions: [{ href: '/contacts/new', label: 'Novy kontakt' }]
 		},
 		{
 			section: 'Nastaveni',
@@ -202,6 +211,20 @@
 								<span class="truncate">{item.label}</span>
 							{/if}
 						</a>
+						{#if sidebarExpanded && item.actions}
+							{#each item.actions as action (action.href)}
+								<a
+									href={action.href}
+									class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
+									title={action.label}
+								>
+									<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+									</svg>
+									<span class="truncate">{action.label}</span>
+								</a>
+							{/each}
+						{/if}
 					{/each}
 				{:else}
 					<a
@@ -219,6 +242,20 @@
 							<span class="truncate">{entry.label}</span>
 						{/if}
 					</a>
+					{#if sidebarExpanded && entry.actions}
+						{#each entry.actions as action (action.href)}
+							<a
+								href={action.href}
+								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
+								title={action.label}
+							>
+								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+								</svg>
+								<span class="truncate">{action.label}</span>
+							</a>
+						{/each}
+					{/if}
 				{/if}
 			{/each}
 		</nav>
@@ -259,6 +296,20 @@
 							</svg>
 							{item.label}
 						</a>
+						{#if item.actions}
+							{#each item.actions as action (action.href)}
+								<a
+									href={action.href}
+									onclick={() => (sidebarOpen = false)}
+									class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
+								>
+									<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+									</svg>
+									<span class="truncate">{action.label}</span>
+								</a>
+							{/each}
+						{/if}
 					{/each}
 				{:else}
 					<a
@@ -274,6 +325,20 @@
 						</svg>
 						{entry.label}
 					</a>
+					{#if entry.actions}
+						{#each entry.actions as action (action.href)}
+							<a
+								href={action.href}
+								onclick={() => (sidebarOpen = false)}
+								class="flex items-center gap-1.5 rounded-md pl-8.5 pr-2 py-0.5 text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
+							>
+								<svg class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+								</svg>
+								<span class="truncate">{action.label}</span>
+							</a>
+						{/each}
+					{/if}
 				{/if}
 			{/each}
 		</nav>

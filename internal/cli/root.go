@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/zajca/zfaktury/internal/version"
 )
 
 var configFile string
@@ -19,6 +20,7 @@ and integration with Czech financial services (ARES, FIO Bank, CNB).`,
 }
 
 func init() {
+	rootCmd.Version = version.Full()
 	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "Path to config file (default: ~/.zfaktury/config.toml)")
 }
 

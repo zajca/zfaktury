@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: cd frontend && npm ci && npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+          retention-days: 1
+
+  build-binaries:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: web/frontend/build/
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X github.com/zajca/zfaktury/internal/version.Version=${VERSION} -X github.com/zajca/zfaktury/internal/version.Commit=${COMMIT} -X github.com/zajca/zfaktury/internal/version.Date=${DATE}"
+
+          EXT=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            EXT=".exe"
+          fi
+
+          go build -ldflags "${LDFLAGS}" -o "zfaktury${EXT}" ./cmd/zfaktury
+
+      - name: Archive (tar.gz)
+        if: matrix.goos != 'windows'
+        run: tar czf "zfaktury-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" zfaktury
+
+      - name: Archive (zip)
+        if: matrix.goos == 'windows'
+        run: zip "zfaktury-${{ matrix.goos }}-${{ matrix.goarch }}.zip" zfaktury.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "zfaktury-${{ matrix.goos }}-${{ matrix.goarch }}"
+          path: "zfaktury-*.*"
+          retention-days: 1
+
+  release:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zfaktury-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: sha256sum zfaktury-* > checksums.txt
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | sed -n '2p' || true)
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD")
+          else
+            LOG=$(git log --pretty=format:"- %s (%h)")
+          fi
+          {
+            echo "changelog<<EOF"
+            echo "$LOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Detect pre-release
+        id: prerelease
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ## Changes
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Checksums (SHA256)
+
+            ```
+            $(cat checksums.txt)
+            ```
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          files: |
+            zfaktury-*.tar.gz
+            zfaktury-*.zip
+            checksums.txt

@@ -1,11 +1,19 @@
 .PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend install-hooks
 
+VERSION ?= dev
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS  = -s -w \
+  -X github.com/zajca/zfaktury/internal/version.Version=$(VERSION) \
+  -X github.com/zajca/zfaktury/internal/version.Commit=$(COMMIT) \
+  -X github.com/zajca/zfaktury/internal/version.Date=$(DATE)
+
 # Build the complete application (frontend + Go binary)
 build:
 	@echo "Building frontend..."
 	cd frontend && npm ci && npm run build
 	@echo "Building Go binary..."
-	CGO_ENABLED=0 go build -o zfaktury ./cmd/zfaktury
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o zfaktury ./cmd/zfaktury
 	@echo "Build complete: ./zfaktury"
 
 # Run in development mode with hot reloading

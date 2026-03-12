@@ -41,6 +41,16 @@ type IncomeTaxReturn struct {
 	Prepayments Amount // zaplacene zalohy
 	TaxDue      Amount // doplatek (+) or preplatek (-)
 
+	// §8 capital income
+	CapitalIncomeGross Amount
+	CapitalIncomeTax   Amount
+	CapitalIncomeNet   Amount
+	// §10 other income (securities, crypto)
+	OtherIncomeGross    Amount
+	OtherIncomeExpenses Amount
+	OtherIncomeExempt   Amount
+	OtherIncomeNet      Amount
+
 	XMLData   []byte
 	Status    string // draft, ready, filed
 	FiledAt   *time.Time

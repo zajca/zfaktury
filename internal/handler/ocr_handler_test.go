@@ -28,6 +28,10 @@ func (m *mockOCRProvider) ProcessImage(ctx context.Context, imageData []byte, co
 	return m.result, m.err
 }
 
+func (m *mockOCRProvider) ProcessWithPrompt(_ context.Context, _ []byte, _ string, _, _ string) (string, error) {
+	return "", nil
+}
+
 func (m *mockOCRProvider) Name() string {
 	return "mock"
 }

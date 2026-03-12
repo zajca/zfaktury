@@ -27,6 +27,8 @@ const incomeTaxReturnColumns = `id, year, filing_type,
 	credit_basic, credit_spouse, credit_disability, credit_student, total_credits,
 	tax_after_credits, child_benefit, tax_after_benefit,
 	prepayments, tax_due,
+	capital_income_gross, capital_income_tax, capital_income_net,
+	other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
 	xml_data, status, filed_at, created_at, updated_at`
 
 // scanIncomeTaxReturn scans an IncomeTaxReturn from a row.
@@ -43,6 +45,8 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 		&itr.CreditBasic, &itr.CreditSpouse, &itr.CreditDisability, &itr.CreditStudent, &itr.TotalCredits,
 		&itr.TaxAfterCredits, &itr.ChildBenefit, &itr.TaxAfterBenefit,
 		&itr.Prepayments, &itr.TaxDue,
+		&itr.CapitalIncomeGross, &itr.CapitalIncomeTax, &itr.CapitalIncomeNet,
+		&itr.OtherIncomeGross, &itr.OtherIncomeExpenses, &itr.OtherIncomeExempt, &itr.OtherIncomeNet,
 		&xmlData, &itr.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
@@ -85,14 +89,18 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 			credit_basic, credit_spouse, credit_disability, credit_student, total_credits,
 			tax_after_credits, child_benefit, tax_after_benefit,
 			prepayments, tax_due,
+			capital_income_gross, capital_income_tax, capital_income_net,
+			other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
 		itr.TaxBase, itr.TotalDeductions, itr.TaxBaseRounded, itr.TaxAt15, itr.TaxAt23, itr.TotalTax,
 		itr.CreditBasic, itr.CreditSpouse, itr.CreditDisability, itr.CreditStudent, itr.TotalCredits,
 		itr.TaxAfterCredits, itr.ChildBenefit, itr.TaxAfterBenefit,
 		itr.Prepayments, itr.TaxDue,
+		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
+		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
 		nil, itr.Status, nil,
 		itr.CreatedAt.Format(time.RFC3339), itr.UpdatedAt.Format(time.RFC3339),
 	)
@@ -125,6 +133,8 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 			credit_basic = ?, credit_spouse = ?, credit_disability = ?, credit_student = ?, total_credits = ?,
 			tax_after_credits = ?, child_benefit = ?, tax_after_benefit = ?,
 			prepayments = ?, tax_due = ?,
+			capital_income_gross = ?, capital_income_tax = ?, capital_income_net = ?,
+			other_income_gross = ?, other_income_expenses = ?, other_income_exempt = ?, other_income_net = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		itr.Year, itr.FilingType,
@@ -133,6 +143,8 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 		itr.CreditBasic, itr.CreditSpouse, itr.CreditDisability, itr.CreditStudent, itr.TotalCredits,
 		itr.TaxAfterCredits, itr.ChildBenefit, itr.TaxAfterBenefit,
 		itr.Prepayments, itr.TaxDue,
+		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
+		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
 		itr.XMLData, itr.Status, filedAt,
 		itr.UpdatedAt.Format(time.RFC3339), itr.ID,
 	)

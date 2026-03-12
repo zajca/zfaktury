@@ -1038,6 +1038,13 @@ export interface IncomeTaxReturn {
 	tax_after_benefit: number;
 	prepayments: number;
 	tax_due: number;
+	capital_income_gross: number;
+	capital_income_tax: number;
+	capital_income_net: number;
+	other_income_gross: number;
+	other_income_expenses: number;
+	other_income_exempt: number;
+	other_income_net: number;
 	has_xml: boolean;
 	status: string;
 	filed_at: string | null;
@@ -1389,5 +1396,166 @@ export const taxDeductionsApi = {
 	},
 	extractDocument(id: number) {
 		return post<TaxExtractionResult>(`/tax-deduction-documents/${id}/extract`, {});
+	}
+};
+
+// --- Investment Income Types ---
+
+export interface InvestmentDocument {
+	id: number;
+	year: number;
+	platform: string;
+	filename: string;
+	content_type: string;
+	size: number;
+	extraction_status: string;
+	extraction_error?: string;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface CapitalIncomeEntry {
+	id: number;
+	year: number;
+	document_id?: number;
+	category: string;
+	description: string;
+	income_date: string;
+	gross_amount: number;
+	withheld_tax_cz: number;
+	withheld_tax_foreign: number;
+	country_code: string;
+	needs_declaring: boolean;
+	net_amount: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface SecurityTransaction {
+	id: number;
+	year: number;
+	document_id?: number;
+	asset_type: string;
+	asset_name: string;
+	isin: string;
+	transaction_type: string;
+	transaction_date: string;
+	quantity: number;
+	unit_price: number;
+	total_amount: number;
+	fees: number;
+	currency_code: string;
+	exchange_rate: number;
+	cost_basis: number;
+	computed_gain: number;
+	time_test_exempt: boolean;
+	exempt_amount: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface InvestmentYearSummary {
+	year: number;
+	capital_income_gross: number;
+	capital_income_tax: number;
+	capital_income_net: number;
+	other_income_gross: number;
+	other_income_expenses: number;
+	other_income_exempt: number;
+	other_income_net: number;
+}
+
+export interface InvestmentExtractionResult {
+	platform: string;
+	capital_entries_count: number;
+	transactions_count: number;
+	confidence: number;
+}
+
+// --- Investment Income API ---
+
+export const investmentsApi = {
+	// Documents
+	async uploadDocument(year: number, platform: string, file: File): Promise<InvestmentDocument> {
+		const formData = new FormData();
+		formData.append('file', file);
+		formData.append('year', String(year));
+		formData.append('platform', platform);
+		const response = await fetch(`${API_BASE}/investments/documents`, {
+			method: 'POST',
+			body: formData
+		});
+		if (!response.ok) {
+			let body: unknown;
+			try { body = await response.json(); } catch { /* ignore */ }
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.json();
+	},
+	listDocuments(year: number) {
+		return get<InvestmentDocument[]>(`/investments/documents?year=${year}`);
+	},
+	deleteDocument(id: number) {
+		return del<void>(`/investments/documents/${id}`);
+	},
+	extractDocument(id: number) {
+		return post<InvestmentExtractionResult>(`/investments/documents/${id}/extract`, {});
+	},
+	downloadDocumentUrl(id: number): string {
+		return `${API_BASE}/investments/documents/${id}/download`;
+	},
+
+	// Capital income (§8)
+	listCapitalIncome(year: number) {
+		return get<CapitalIncomeEntry[]>(`/investments/capital-income?year=${year}`);
+	},
+	createCapitalIncome(data: {
+		year: number; category: string; description: string; income_date: string;
+		gross_amount: number; withheld_tax_cz: number; withheld_tax_foreign: number;
+		country_code: string; needs_declaring: boolean;
+	}) {
+		return post<CapitalIncomeEntry>('/investments/capital-income', data);
+	},
+	updateCapitalIncome(id: number, data: {
+		year: number; category: string; description: string; income_date: string;
+		gross_amount: number; withheld_tax_cz: number; withheld_tax_foreign: number;
+		country_code: string; needs_declaring: boolean;
+	}) {
+		return put<CapitalIncomeEntry>(`/investments/capital-income/${id}`, data);
+	},
+	deleteCapitalIncome(id: number) {
+		return del<void>(`/investments/capital-income/${id}`);
+	},
+
+	// Security transactions (§10)
+	listSecurityTransactions(year: number) {
+		return get<SecurityTransaction[]>(`/investments/security-transactions?year=${year}`);
+	},
+	createSecurityTransaction(data: {
+		year: number; asset_type: string; asset_name: string; isin: string;
+		transaction_type: string; transaction_date: string; quantity: number;
+		unit_price: number; total_amount: number; fees: number;
+		currency_code: string; exchange_rate: number;
+	}) {
+		return post<SecurityTransaction>('/investments/security-transactions', data);
+	},
+	updateSecurityTransaction(id: number, data: {
+		year: number; asset_type: string; asset_name: string; isin: string;
+		transaction_type: string; transaction_date: string; quantity: number;
+		unit_price: number; total_amount: number; fees: number;
+		currency_code: string; exchange_rate: number;
+	}) {
+		return put<SecurityTransaction>(`/investments/security-transactions/${id}`, data);
+	},
+	deleteSecurityTransaction(id: number) {
+		return del<void>(`/investments/security-transactions/${id}`);
+	},
+
+	// Computation
+	getYearSummary(year: number) {
+		return get<InvestmentYearSummary>(`/investments/summary/${year}`);
+	},
+	recalculateFifo(year: number) {
+		return post<void>(`/investments/recalculate-fifo/${year}`, {});
 	}
 };

@@ -204,6 +204,89 @@ func (p *OpenAICompatibleProvider) buildChatRequest(dataURL string) chatRequest 
 	}
 }
 
+// ProcessWithPrompt sends data to the API with custom system and user prompts and returns the raw response text.
+func (p *OpenAICompatibleProvider) ProcessWithPrompt(ctx context.Context, imageData []byte, contentType string, sysPrompt, usrPrompt string) (string, error) {
+	if err := validateContentType(contentType); err != nil {
+		return "", err
+	}
+
+	b64Data := base64.StdEncoding.EncodeToString(imageData)
+	dataURL := fmt.Sprintf("data:%s;base64,%s", contentType, b64Data)
+
+	reqBody := chatRequest{
+		Model: p.model,
+		Messages: []chatMessage{
+			{
+				Role: "system",
+				Content: []contentPart{
+					{Type: "text", Text: sysPrompt},
+				},
+			},
+			{
+				Role: "user",
+				Content: []contentPart{
+					{Type: "text", Text: usrPrompt},
+					{Type: "image_url", ImageURL: &imageURL{URL: dataURL}},
+				},
+			},
+		},
+		MaxTokens:   defaultMaxTokens,
+		Temperature: 0.1,
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("marshalling %s request: %w", p.name, err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL, bytes.NewReader(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("creating %s request: %w", p.name, err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
+
+	resp, err := p.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("calling %s API: %w", p.name, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	const maxResponseBytes = 2 << 20 // 2 MB
+	limited := io.LimitReader(resp.Body, maxResponseBytes+1)
+	body, err := io.ReadAll(limited)
+	if err != nil {
+		return "", fmt.Errorf("reading %s response: %w", p.name, err)
+	}
+	if int64(len(body)) > maxResponseBytes {
+		return "", fmt.Errorf("%s response too large (> %d bytes)", p.name, maxResponseBytes)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%s API returned status %d: %s", p.name, resp.StatusCode, truncate(string(body), 500))
+	}
+
+	return parseChatResponseRaw(body, p.name)
+}
+
+// parseChatResponseRaw extracts the raw text content from the Chat Completions API response.
+func parseChatResponseRaw(body []byte, providerName string) (string, error) {
+	var chatResp chatResponse
+	if err := json.Unmarshal(body, &chatResp); err != nil {
+		return "", fmt.Errorf("parsing %s response JSON: %w", providerName, err)
+	}
+
+	if chatResp.Error != nil {
+		return "", fmt.Errorf("%s API error: %s", providerName, chatResp.Error.Message)
+	}
+
+	if len(chatResp.Choices) == 0 {
+		return "", fmt.Errorf("%s returned no choices", providerName)
+	}
+
+	return chatResp.Choices[0].Message.Content, nil
+}
+
 // parseChatResponse extracts the OCR result from the Chat Completions API response body.
 func parseChatResponse(body []byte, providerName string) (*domain.OCRResult, error) {
 	var chatResp chatResponse

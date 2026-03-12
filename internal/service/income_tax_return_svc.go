@@ -20,6 +20,7 @@ type IncomeTaxReturnService struct {
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 	taxCreditsSvc       *TaxCreditsService
+	investmentSvc       *InvestmentIncomeService // nullable
 }
 
 // NewIncomeTaxReturnService creates a new IncomeTaxReturnService.
@@ -41,6 +42,11 @@ func NewIncomeTaxReturnService(
 		taxPrepaymentRepo:   taxPrepaymentRepo,
 		taxCreditsSvc:       taxCreditsSvc,
 	}
+}
+
+// SetInvestmentService sets the optional investment income service for §8/§10 integration.
+func (s *IncomeTaxReturnService) SetInvestmentService(investmentSvc *InvestmentIncomeService) {
+	s.investmentSvc = investmentSvc
 }
 
 // Create validates and persists a new income tax return.
@@ -174,8 +180,23 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.UsedExpenses = itr.ActualExpenses
 	}
 
-	// Step 5: Tax base.
-	taxBase := itr.TotalRevenue - itr.UsedExpenses
+	// Step 4b: §8 capital income and §10 other income (investments).
+	if s.investmentSvc != nil {
+		summary, sumErr := s.investmentSvc.GetYearSummary(ctx, itr.Year)
+		if sumErr != nil {
+			return nil, fmt.Errorf("computing investment income for income_tax_return: %w", sumErr)
+		}
+		itr.CapitalIncomeGross = summary.CapitalIncomeGross
+		itr.CapitalIncomeTax = summary.CapitalIncomeTax
+		itr.CapitalIncomeNet = summary.CapitalIncomeNet
+		itr.OtherIncomeGross = summary.OtherIncomeGross
+		itr.OtherIncomeExpenses = summary.OtherIncomeExpenses
+		itr.OtherIncomeExempt = summary.OtherIncomeExempt
+		itr.OtherIncomeNet = summary.OtherIncomeNet
+	}
+
+	// Step 5: Tax base (§7 + §8 + §10).
+	taxBase := itr.TotalRevenue - itr.UsedExpenses + itr.CapitalIncomeNet + itr.OtherIncomeNet
 	if taxBase < 0 {
 		taxBase = 0
 	}

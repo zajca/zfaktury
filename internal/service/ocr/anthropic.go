@@ -96,6 +96,99 @@ func (p *AnthropicProvider) ProcessImage(ctx context.Context, imageData []byte, 
 	return parseAnthropicResponse(body)
 }
 
+// ProcessWithPrompt sends data to the Anthropic API with custom prompts and returns the raw response text.
+func (p *AnthropicProvider) ProcessWithPrompt(ctx context.Context, imageData []byte, contentType string, sysPrompt, usrPrompt string) (string, error) {
+	if err := validateContentType(contentType); err != nil {
+		return "", err
+	}
+
+	b64Data := base64.StdEncoding.EncodeToString(imageData)
+
+	reqBody := anthropicRequest{
+		Model:     p.model,
+		MaxTokens: defaultMaxTokens,
+		System:    sysPrompt,
+		Messages: []anthropicMessage{
+			{
+				Role: "user",
+				Content: []anthropicContentPart{
+					{
+						Type: "image",
+						Source: &anthropicImageSource{
+							Type:      "base64",
+							MediaType: contentType,
+							Data:      b64Data,
+						},
+					},
+					{
+						Type: "text",
+						Text: usrPrompt,
+					},
+				},
+			},
+		},
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("marshalling anthropic request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL, bytes.NewReader(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("creating anthropic request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", p.apiKey)
+	httpReq.Header.Set("anthropic-version", anthropicAPIVersion)
+
+	resp, err := p.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("calling anthropic API: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	const maxResponseBytes = 2 << 20 // 2 MB
+	limited := io.LimitReader(resp.Body, maxResponseBytes+1)
+	body, err := io.ReadAll(limited)
+	if err != nil {
+		return "", fmt.Errorf("reading anthropic response: %w", err)
+	}
+	if int64(len(body)) > maxResponseBytes {
+		return "", fmt.Errorf("anthropic response too large (> %d bytes)", maxResponseBytes)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("anthropic API returned status %d: %s", resp.StatusCode, truncate(string(body), 500))
+	}
+
+	return parseAnthropicResponseRaw(body)
+}
+
+// parseAnthropicResponseRaw extracts the raw text content from the Anthropic Messages API response.
+func parseAnthropicResponseRaw(body []byte) (string, error) {
+	var resp anthropicResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", fmt.Errorf("parsing anthropic response JSON: %w", err)
+	}
+
+	if resp.Error != nil {
+		return "", fmt.Errorf("anthropic API error: %s", resp.Error.Message)
+	}
+
+	if len(resp.Content) == 0 {
+		return "", fmt.Errorf("anthropic returned no content")
+	}
+
+	for _, block := range resp.Content {
+		if block.Type == "text" {
+			return block.Text, nil
+		}
+	}
+
+	return "", fmt.Errorf("anthropic returned no text content")
+}
+
 // Anthropic Messages API request types.
 type anthropicRequest struct {
 	Model     string             `json:"model"`

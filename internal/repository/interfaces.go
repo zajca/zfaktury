@@ -234,6 +234,41 @@ type TaxDeductionRepo interface {
 	ListByYear(ctx context.Context, year int) ([]domain.TaxDeduction, error)
 }
 
+// InvestmentDocumentRepo defines the persistence interface for investment documents.
+type InvestmentDocumentRepo interface {
+	Create(ctx context.Context, doc *domain.InvestmentDocument) error
+	GetByID(ctx context.Context, id int64) (*domain.InvestmentDocument, error)
+	ListByYear(ctx context.Context, year int) ([]domain.InvestmentDocument, error)
+	Delete(ctx context.Context, id int64) error
+	UpdateExtraction(ctx context.Context, id int64, status string, extractionError string) error
+}
+
+// CapitalIncomeRepo defines the persistence interface for capital income entries.
+type CapitalIncomeRepo interface {
+	Create(ctx context.Context, entry *domain.CapitalIncomeEntry) error
+	Update(ctx context.Context, entry *domain.CapitalIncomeEntry) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.CapitalIncomeEntry, error)
+	ListByYear(ctx context.Context, year int) ([]domain.CapitalIncomeEntry, error)
+	ListByDocumentID(ctx context.Context, documentID int64) ([]domain.CapitalIncomeEntry, error)
+	SumByYear(ctx context.Context, year int) (grossTotal, taxTotal, netTotal domain.Amount, err error)
+	DeleteByDocumentID(ctx context.Context, documentID int64) error
+}
+
+// SecurityTransactionRepo defines the persistence interface for security transactions.
+type SecurityTransactionRepo interface {
+	Create(ctx context.Context, tx *domain.SecurityTransaction) error
+	Update(ctx context.Context, tx *domain.SecurityTransaction) error
+	Delete(ctx context.Context, id int64) error
+	GetByID(ctx context.Context, id int64) (*domain.SecurityTransaction, error)
+	ListByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error)
+	ListByDocumentID(ctx context.Context, documentID int64) ([]domain.SecurityTransaction, error)
+	ListBuysForFIFO(ctx context.Context, assetName, assetType string) ([]domain.SecurityTransaction, error)
+	ListSellsByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error)
+	UpdateFIFOResults(ctx context.Context, id int64, costBasis, computedGain, exemptAmount domain.Amount, timeTestExempt bool) error
+	DeleteByDocumentID(ctx context.Context, documentID int64) error
+}
+
 // TaxDeductionDocumentRepo defines the persistence interface for tax deduction documents.
 type TaxDeductionDocumentRepo interface {
 	Create(ctx context.Context, doc *domain.TaxDeductionDocument) error

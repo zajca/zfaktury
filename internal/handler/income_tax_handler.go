@@ -77,6 +77,15 @@ type incomeTaxResponse struct {
 	Prepayments int64 `json:"prepayments"`
 	TaxDue      int64 `json:"tax_due"`
 
+	CapitalIncomeGross int64 `json:"capital_income_gross"`
+	CapitalIncomeTax   int64 `json:"capital_income_tax"`
+	CapitalIncomeNet   int64 `json:"capital_income_net"`
+
+	OtherIncomeGross    int64 `json:"other_income_gross"`
+	OtherIncomeExpenses int64 `json:"other_income_expenses"`
+	OtherIncomeExempt   int64 `json:"other_income_exempt"`
+	OtherIncomeNet      int64 `json:"other_income_net"`
+
 	HasXML    bool    `json:"has_xml"`
 	Status    string  `json:"status"`
 	FiledAt   *string `json:"filed_at,omitempty"`
@@ -116,6 +125,15 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 
 		Prepayments: int64(itr.Prepayments),
 		TaxDue:      int64(itr.TaxDue),
+
+		CapitalIncomeGross: int64(itr.CapitalIncomeGross),
+		CapitalIncomeTax:   int64(itr.CapitalIncomeTax),
+		CapitalIncomeNet:   int64(itr.CapitalIncomeNet),
+
+		OtherIncomeGross:    int64(itr.OtherIncomeGross),
+		OtherIncomeExpenses: int64(itr.OtherIncomeExpenses),
+		OtherIncomeExempt:   int64(itr.OtherIncomeExempt),
+		OtherIncomeNet:      int64(itr.OtherIncomeNet),
 
 		HasXML:    len(itr.XMLData) > 0,
 		Status:    itr.Status,

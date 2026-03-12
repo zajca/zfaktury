@@ -23,7 +23,9 @@ type TaxYearConstants struct {
 	SocialRate           int                      // permille*10, e.g. 292 = 29.2%
 	HealthMinMonthly     domain.Amount            // min mesicni vym. zaklad ZP
 	HealthRate           int                      // permille*10, e.g. 135 = 13.5%
-	FlatRateCaps         map[int]domain.Amount    // percent -> max halere amount
+	FlatRateCaps           map[int]domain.Amount    // percent -> max halere amount
+	TimeTestYears          int                      // years to hold for time test exemption
+	SecurityExemptionLimit domain.Amount             // max exempt amount per year (0 = no limit)
 }
 
 // taxConstantsDB stores year-specific tax constants.
@@ -50,6 +52,8 @@ var taxConstantsDB = map[int]TaxYearConstants{
 			40: domain.NewAmount(800_000, 0),
 			30: domain.NewAmount(600_000, 0),
 		},
+		TimeTestYears:          3,
+		SecurityExemptionLimit: domain.NewAmount(0, 0), // no limit before 2025
 	},
 	2025: {
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -73,6 +77,8 @@ var taxConstantsDB = map[int]TaxYearConstants{
 			40: domain.NewAmount(800_000, 0),
 			30: domain.NewAmount(600_000, 0),
 		},
+		TimeTestYears:          3,
+		SecurityExemptionLimit: domain.NewAmount(100_000_000, 0), // 1M CZK
 	},
 	2026: {
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -96,6 +102,8 @@ var taxConstantsDB = map[int]TaxYearConstants{
 			40: domain.NewAmount(800_000, 0),
 			30: domain.NewAmount(600_000, 0),
 		},
+		TimeTestYears:          3,
+		SecurityExemptionLimit: domain.NewAmount(100_000_000, 0), // 1M CZK
 	},
 }
 

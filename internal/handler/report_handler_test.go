@@ -115,6 +115,24 @@ func TestReportHandler_Revenue_InvalidYear(t *testing.T) {
 	}
 }
 
+func TestReportHandler_Revenue_OutOfRangeYear(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	reportRepo := repository.NewReportRepository(db)
+	reportSvc := service.NewReportService(reportRepo)
+	h := NewReportHandler(reportSvc)
+
+	r := chi.NewRouter()
+	r.Get("/revenue", h.Revenue)
+
+	req := httptest.NewRequest(http.MethodGet, "/revenue?year=1999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
 func TestReportHandler_Expenses_DefaultYear(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	reportRepo := repository.NewReportRepository(db)

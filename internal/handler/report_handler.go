@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -64,14 +65,15 @@ func NewReportHandler(svc *service.ReportService) *ReportHandler {
 }
 
 // parseReportYear extracts the year query parameter, defaulting to the current year.
+// Validates the range [2000, 2100] to match export and tax calendar handlers.
 func parseReportYear(r *http.Request) (int, error) {
 	yearStr := r.URL.Query().Get("year")
 	if yearStr == "" {
 		return time.Now().Year(), nil
 	}
 	year, err := strconv.Atoi(yearStr)
-	if err != nil {
-		return 0, err
+	if err != nil || year < 2000 || year > 2100 {
+		return 0, fmt.Errorf("invalid year")
 	}
 	return year, nil
 }

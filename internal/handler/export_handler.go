@@ -58,7 +58,7 @@ func (h *ExportHandler) ExportInvoices(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("faktury_%d.csv", year)
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.WriteHeader(http.StatusOK)
 
 	// Write UTF-8 BOM for Excel compatibility.
@@ -129,7 +129,7 @@ func (h *ExportHandler) ExportExpenses(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("vydaje_%d.csv", year)
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.WriteHeader(http.StatusOK)
 
 	// Write UTF-8 BOM for Excel compatibility.

@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -68,7 +69,7 @@ func NewRouter(
 	r.Use(securityHeadersMiddleware)
 	r.Use(slogMiddleware)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
+	r.Use(adaptiveTimeoutMiddleware)
 
 	// CORS middleware for dev mode.
 	if cfg.DevMode {
@@ -289,6 +290,20 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		next.ServeHTTP(w, r)
+	})
+}
+
+// adaptiveTimeoutMiddleware applies a longer timeout for long-running import
+// endpoints and the default 30s timeout for everything else.
+func adaptiveTimeoutMiddleware(next http.Handler) http.Handler {
+	longTimeout := middleware.Timeout(10 * time.Minute)
+	shortTimeout := middleware.Timeout(30 * time.Second)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/import/fakturoid") {
+			longTimeout(next).ServeHTTP(w, r)
+		} else {
+			shortTimeout(next).ServeHTTP(w, r)
+		}
 	})
 }
 

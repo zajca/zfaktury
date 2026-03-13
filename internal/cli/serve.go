@@ -225,7 +225,7 @@ var serveCmd = &cobra.Command{
 			Addr:         addr,
 			Handler:      router,
 			ReadTimeout:  15 * time.Second,
-			WriteTimeout: 30 * time.Second,
+			WriteTimeout: 10 * time.Minute,
 			IdleTimeout:  60 * time.Second,
 		}
 

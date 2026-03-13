@@ -38,12 +38,13 @@ const (
 
 // SettingsService provides business logic for application settings.
 type SettingsService struct {
-	repo *repository.SettingsRepository
+	repo  *repository.SettingsRepository
+	audit *AuditService
 }
 
 // NewSettingsService creates a new SettingsService.
-func NewSettingsService(repo *repository.SettingsRepository) *SettingsService {
-	return &SettingsService{repo: repo}
+func NewSettingsService(repo *repository.SettingsRepository, audit *AuditService) *SettingsService {
+	return &SettingsService{repo: repo, audit: audit}
 }
 
 // GetAll retrieves all settings.
@@ -72,8 +73,12 @@ func (s *SettingsService) Set(ctx context.Context, key, value string) error {
 	if err := validateKey(key); err != nil {
 		return err
 	}
+	oldVal, _ := s.repo.Get(ctx, key)
 	if err := s.repo.Set(ctx, key, value); err != nil {
 		return fmt.Errorf("setting %q: %w", key, err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "settings", 0, "set", map[string]string{key: oldVal}, map[string]string{key: value})
 	}
 	return nil
 }
@@ -85,8 +90,22 @@ func (s *SettingsService) SetBulk(ctx context.Context, settings map[string]strin
 			return err
 		}
 	}
+	oldSettings, _ := s.repo.GetAll(ctx)
 	if err := s.repo.SetBulk(ctx, settings); err != nil {
 		return fmt.Errorf("setting bulk settings: %w", err)
+	}
+	if s.audit != nil {
+		changed := make(map[string]string)
+		old := make(map[string]string)
+		for k, v := range settings {
+			if oldSettings[k] != v {
+				changed[k] = v
+				old[k] = oldSettings[k]
+			}
+		}
+		if len(changed) > 0 {
+			s.audit.Log(ctx, "settings", 0, "set_bulk", old, changed)
+		}
 	}
 	return nil
 }

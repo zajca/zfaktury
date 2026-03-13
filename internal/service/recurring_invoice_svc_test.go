@@ -18,9 +18,9 @@ func newRecurringInvoiceTestStack(t *testing.T) (*RecurringInvoiceService, *Invo
 	sequenceRepo := repository.NewSequenceRepository(db)
 	recurringRepo := repository.NewRecurringInvoiceRepository(db)
 	contactSvc := NewContactService(contactRepo, nil, nil)
-	sequenceSvc := NewSequenceService(sequenceRepo)
+	sequenceSvc := NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	recurringSvc := NewRecurringInvoiceService(recurringRepo, invoiceSvc)
+	recurringSvc := NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil)
 
 	// Seed a default invoice sequence.
 	testutil.SeedInvoiceSequence(t, db, "FV", 2026)

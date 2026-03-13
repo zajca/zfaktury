@@ -27,7 +27,7 @@ func setupIncomeTaxRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 
 	svc := service.NewIncomeTaxReturnService(
 		incomeTaxRepo, invoiceRepo, expenseRepo,
-		settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, nil,
+		settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, nil, nil,
 	)
 	h := NewIncomeTaxHandler(svc)
 

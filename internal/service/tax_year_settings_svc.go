@@ -13,16 +13,19 @@ import (
 type TaxYearSettingsService struct {
 	settingsRepo   repository.TaxYearSettingsRepo
 	prepaymentRepo repository.TaxPrepaymentRepo
+	audit          *AuditService
 }
 
 // NewTaxYearSettingsService creates a new TaxYearSettingsService.
 func NewTaxYearSettingsService(
 	settingsRepo repository.TaxYearSettingsRepo,
 	prepaymentRepo repository.TaxPrepaymentRepo,
+	audit *AuditService,
 ) *TaxYearSettingsService {
 	return &TaxYearSettingsService{
 		settingsRepo:   settingsRepo,
 		prepaymentRepo: prepaymentRepo,
+		audit:          audit,
 	}
 }
 
@@ -63,6 +66,9 @@ func (s *TaxYearSettingsService) GetPrepayments(ctx context.Context, year int) (
 
 // Save upserts both tax year settings and all 12 months of prepayments.
 func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePercent int, prepayments []domain.TaxPrepayment) error {
+	// Fetch existing settings before upsert for audit logging.
+	existing, _ := s.settingsRepo.GetByYear(ctx, year)
+
 	tys := &domain.TaxYearSettings{
 		Year:            year,
 		FlatRatePercent: flatRatePercent,
@@ -74,6 +80,18 @@ func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePer
 	if err := s.prepaymentRepo.UpsertAll(ctx, year, prepayments); err != nil {
 		return fmt.Errorf("saving prepayments: %w", err)
 	}
+
+	if s.audit != nil {
+		action := "create"
+		if existing != nil {
+			action = "update"
+		}
+		s.audit.Log(ctx, "tax_year_settings", int64(year), action, existing, map[string]any{
+			"year":              year,
+			"flat_rate_percent": flatRatePercent,
+		})
+	}
+
 	return nil
 }
 

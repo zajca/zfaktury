@@ -21,6 +21,7 @@ type IncomeTaxReturnService struct {
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 	taxCreditsSvc       *TaxCreditsService
 	investmentSvc       *InvestmentIncomeService // nullable
+	audit               *AuditService
 }
 
 // NewIncomeTaxReturnService creates a new IncomeTaxReturnService.
@@ -32,6 +33,7 @@ func NewIncomeTaxReturnService(
 	taxYearSettingsRepo repository.TaxYearSettingsRepo,
 	taxPrepaymentRepo repository.TaxPrepaymentRepo,
 	taxCreditsSvc *TaxCreditsService,
+	audit *AuditService,
 ) *IncomeTaxReturnService {
 	return &IncomeTaxReturnService{
 		repo:                repo,
@@ -41,6 +43,7 @@ func NewIncomeTaxReturnService(
 		taxYearSettingsRepo: taxYearSettingsRepo,
 		taxPrepaymentRepo:   taxPrepaymentRepo,
 		taxCreditsSvc:       taxCreditsSvc,
+		audit:               audit,
 	}
 }
 
@@ -81,6 +84,9 @@ func (s *IncomeTaxReturnService) Create(ctx context.Context, itr *domain.IncomeT
 
 	if err := s.repo.Create(ctx, itr); err != nil {
 		return fmt.Errorf("creating income_tax_return: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "income_tax_return", itr.ID, "create", nil, itr)
 	}
 	return nil
 }
@@ -125,6 +131,9 @@ func (s *IncomeTaxReturnService) Delete(ctx context.Context, id int64) error {
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting income_tax_return: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "income_tax_return", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -286,6 +295,9 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("linking expenses to income_tax_return: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "income_tax_return", id, "update", nil, itr)
+	}
 	return itr, nil
 }
 
@@ -323,6 +335,9 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("saving income_tax_return XML: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "income_tax_return", id, "generate_xml", nil, nil)
+	}
 	return itr, nil
 }
 
@@ -358,6 +373,9 @@ func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, id int64) (*doma
 
 	if err := s.repo.Update(ctx, itr); err != nil {
 		return nil, fmt.Errorf("marking income_tax_return as filed: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "income_tax_return", id, "mark_filed", nil, nil)
 	}
 	return itr, nil
 }

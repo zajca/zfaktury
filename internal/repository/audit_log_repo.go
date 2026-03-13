@@ -68,6 +68,77 @@ func (r *AuditLogRepository) ListByEntity(ctx context.Context, entityType string
 	return entries, nil
 }
 
+// List returns audit log entries matching the given filter with total count.
+func (r *AuditLogRepository) List(ctx context.Context, filter domain.AuditLogFilter) ([]domain.AuditLogEntry, int, error) {
+	where := ""
+	var args []any
+
+	if filter.EntityType != "" {
+		where += " AND entity_type = ?"
+		args = append(args, filter.EntityType)
+	}
+	if filter.EntityID != nil {
+		where += " AND entity_id = ?"
+		args = append(args, *filter.EntityID)
+	}
+	if filter.Action != "" {
+		where += " AND action = ?"
+		args = append(args, filter.Action)
+	}
+	if !filter.From.IsZero() {
+		where += " AND created_at >= ?"
+		args = append(args, filter.From.Format(time.RFC3339))
+	}
+	if !filter.To.IsZero() {
+		where += " AND created_at <= ?"
+		args = append(args, filter.To.Format(time.RFC3339))
+	}
+
+	// Count total matching entries.
+	countQuery := "SELECT COUNT(*) FROM audit_log WHERE 1=1" + where
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("counting audit log entries: %w", err)
+	}
+
+	// Fetch paginated results.
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	query := "SELECT id, entity_type, entity_id, action, old_values, new_values, created_at FROM audit_log WHERE 1=1" + where + " ORDER BY id DESC LIMIT ? OFFSET ?"
+	queryArgs := make([]any, len(args), len(args)+2)
+	copy(queryArgs, args)
+	queryArgs = append(queryArgs, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listing audit log entries: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var entries []domain.AuditLogEntry
+	for rows.Next() {
+		entry, err := scanAuditLogRow(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterating audit log rows: %w", err)
+	}
+	return entries, total, nil
+}
+
 // scanAuditLogRow extracts an AuditLogEntry from a row scanner.
 func scanAuditLogRow(scanner interface{ Scan(dest ...any) error }) (domain.AuditLogEntry, error) {
 	var entry domain.AuditLogEntry

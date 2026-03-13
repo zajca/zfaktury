@@ -18,7 +18,7 @@ func setupTaxYearSettingsRouter(t *testing.T) *chi.Mux {
 	db := testutil.NewTestDB(t)
 	settingsRepo := repository.NewTaxYearSettingsRepository(db)
 	prepaymentRepo := repository.NewTaxPrepaymentRepository(db)
-	svc := service.NewTaxYearSettingsService(settingsRepo, prepaymentRepo)
+	svc := service.NewTaxYearSettingsService(settingsRepo, prepaymentRepo, nil)
 	h := NewTaxYearSettingsHandler(svc)
 
 	r := chi.NewRouter()

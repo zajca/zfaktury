@@ -24,8 +24,8 @@ func setupTaxDeductionsRouter(t *testing.T) *chi.Mux {
 	deductionRepo := repository.NewTaxDeductionRepository(db)
 	docRepo := repository.NewTaxDeductionDocumentRepository(db)
 
-	creditsSvc := service.NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo)
-	docSvc := service.NewTaxDeductionDocumentService(docRepo, deductionRepo, t.TempDir())
+	creditsSvc := service.NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo, nil)
+	docSvc := service.NewTaxDeductionDocumentService(docRepo, deductionRepo, t.TempDir(), nil)
 	h := NewTaxDeductionsHandler(creditsSvc, docSvc, nil)
 
 	r := chi.NewRouter()

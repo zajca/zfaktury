@@ -25,7 +25,7 @@ func setupExportHandler(t *testing.T) (*ExportHandler, *chi.Mux) {
 	seqRepo := repository.NewSequenceRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	seqSvc := service.NewSequenceService(seqRepo)
+	seqSvc := service.NewSequenceService(seqRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, seqSvc, nil)
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
 
@@ -107,7 +107,7 @@ func TestExportHandler_ExportInvoices_WithData(t *testing.T) {
 	seqRepo := repository.NewSequenceRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	seqSvc := service.NewSequenceService(seqRepo)
+	seqSvc := service.NewSequenceService(seqRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, seqSvc, nil)
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
 
@@ -176,7 +176,7 @@ func TestExportHandler_ExportInvoices_InvalidYear(t *testing.T) {
 	seqRepo := repository.NewSequenceRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	seqSvc := service.NewSequenceService(seqRepo)
+	seqSvc := service.NewSequenceService(seqRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, seqSvc, nil)
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
 
@@ -203,7 +203,7 @@ func TestExportHandler_ExportExpenses_Empty(t *testing.T) {
 	seqRepo := repository.NewSequenceRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	seqSvc := service.NewSequenceService(seqRepo)
+	seqSvc := service.NewSequenceService(seqRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, seqSvc, nil)
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
 
@@ -269,7 +269,7 @@ func TestExportHandler_ExportExpenses_WithData(t *testing.T) {
 	seqRepo := repository.NewSequenceRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	seqSvc := service.NewSequenceService(seqRepo)
+	seqSvc := service.NewSequenceService(seqRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, seqSvc, nil)
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
 

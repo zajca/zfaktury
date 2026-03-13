@@ -23,7 +23,7 @@ func setupTaxCreditsRouter(t *testing.T) *chi.Mux {
 	personalRepo := repository.NewTaxPersonalCreditsRepository(db)
 	deductionRepo := repository.NewTaxDeductionRepository(db)
 
-	svc := service.NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo)
+	svc := service.NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo, nil)
 	h := NewTaxCreditsHandler(svc)
 
 	r := chi.NewRouter()

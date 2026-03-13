@@ -26,7 +26,7 @@ func setupInvoiceRouter(t *testing.T) (*chi.Mux, int64) {
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	sequenceRepo := repository.NewSequenceRepository(db)
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
 
 	contactHandler := NewContactHandler(contactSvc)
@@ -945,9 +945,9 @@ func setupInvoiceRouterWithSettings(t *testing.T) (*chi.Mux, *sql.DB, int64) {
 	settingsRepo := repository.NewSettingsRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	settingsSvc := service.NewSettingsService(settingsRepo)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
 	pdfGen := pdf.NewInvoicePDFGenerator()
 	isdocGen := isdoc.NewISDOCGenerator()
 

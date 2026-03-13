@@ -40,7 +40,7 @@ func newInvestmentExtractionTestService(t *testing.T, provider ocr.Provider) (*I
 	capitalRepo := repository.NewCapitalIncomeRepository(db)
 	securityRepo := repository.NewSecurityTransactionRepository(db)
 	dataDir := t.TempDir()
-	docSvc := NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir)
+	docSvc := NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir, nil)
 	extractionSvc := NewInvestmentExtractionService(provider, docSvc, capitalRepo, securityRepo, docRepo)
 	return extractionSvc, docSvc, capitalRepo, securityRepo
 }

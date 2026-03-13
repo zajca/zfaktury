@@ -16,6 +16,7 @@ type VIESSummaryService struct {
 	repo     repository.VIESSummaryRepo
 	invoices repository.InvoiceRepo
 	contacts repository.ContactRepo
+	audit    *AuditService
 }
 
 // NewVIESSummaryService creates a new VIESSummaryService.
@@ -23,11 +24,13 @@ func NewVIESSummaryService(
 	repo repository.VIESSummaryRepo,
 	invoices repository.InvoiceRepo,
 	contacts repository.ContactRepo,
+	audit *AuditService,
 ) *VIESSummaryService {
 	return &VIESSummaryService{
 		repo:     repo,
 		invoices: invoices,
 		contacts: contacts,
+		audit:    audit,
 	}
 }
 
@@ -61,6 +64,9 @@ func (s *VIESSummaryService) Create(ctx context.Context, vs *domain.VIESSummary)
 	vs.Status = domain.FilingStatusDraft
 	if err := s.repo.Create(ctx, vs); err != nil {
 		return fmt.Errorf("creating VIES summary: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vies_summary", vs.ID, "create", nil, vs)
 	}
 	return nil
 }
@@ -107,6 +113,9 @@ func (s *VIESSummaryService) Delete(ctx context.Context, id int64) error {
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting VIES summary: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vies_summary", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -226,6 +235,9 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 		}
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "vies_summary", id, "recalculate", nil, nil)
+	}
 	return nil
 }
 
@@ -252,6 +264,9 @@ func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic stri
 		return fmt.Errorf("storing VIES XML data: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "vies_summary", id, "generate_xml", nil, nil)
+	}
 	return nil
 }
 
@@ -272,6 +287,9 @@ func (s *VIESSummaryService) MarkFiled(ctx context.Context, id int64) error {
 
 	if err := s.repo.Update(ctx, vs); err != nil {
 		return fmt.Errorf("updating VIES summary status: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vies_summary", id, "mark_filed", nil, nil)
 	}
 	return nil
 }

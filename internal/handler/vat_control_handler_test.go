@@ -25,8 +25,8 @@ func setupVATControlRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	contactRepo := repository.NewContactRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
 
-	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo)
-	settingsSvc := service.NewSettingsService(settingsRepo)
+	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, nil)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
 	h := NewVATControlStatementHandler(vatControlSvc, settingsSvc)
 
 	r := chi.NewRouter()

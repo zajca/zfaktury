@@ -19,12 +19,13 @@ var hexColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$`)
 
 // CategoryService provides business logic for expense category management.
 type CategoryService struct {
-	repo repository.CategoryRepo
+	repo  repository.CategoryRepo
+	audit *AuditService
 }
 
 // NewCategoryService creates a new CategoryService.
-func NewCategoryService(repo repository.CategoryRepo) *CategoryService {
-	return &CategoryService{repo: repo}
+func NewCategoryService(repo repository.CategoryRepo, audit *AuditService) *CategoryService {
+	return &CategoryService{repo: repo, audit: audit}
 }
 
 // Create validates and persists a new expense category.
@@ -46,6 +47,9 @@ func (s *CategoryService) Create(ctx context.Context, cat *domain.ExpenseCategor
 	if err := s.repo.Create(ctx, cat); err != nil {
 		return fmt.Errorf("creating category: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "category", cat.ID, "create", nil, cat)
+	}
 	return nil
 }
 
@@ -60,13 +64,22 @@ func (s *CategoryService) Update(ctx context.Context, cat *domain.ExpenseCategor
 	}
 
 	// Check for duplicate key (excluding self).
-	existing, err := s.repo.GetByKey(ctx, cat.Key)
-	if err == nil && existing != nil && existing.ID != cat.ID {
+	existingByKey, err := s.repo.GetByKey(ctx, cat.Key)
+	if err == nil && existingByKey != nil && existingByKey.ID != cat.ID {
 		return errors.New("category with this key already exists")
+	}
+
+	// Fetch existing state for audit logging.
+	existing, err := s.repo.GetByID(ctx, cat.ID)
+	if err != nil {
+		return fmt.Errorf("fetching category for update: %w", err)
 	}
 
 	if err := s.repo.Update(ctx, cat); err != nil {
 		return fmt.Errorf("updating category: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "category", cat.ID, "update", existing, cat)
 	}
 	return nil
 }
@@ -89,6 +102,9 @@ func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting category: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "category", id, "delete", nil, nil)
 	}
 	return nil
 }

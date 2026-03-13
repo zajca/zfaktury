@@ -104,7 +104,7 @@ func newImportTestService(t *testing.T, ocrProvider ocr.Provider) (*ImportServic
 
 	docRepo := newMockDocumentRepo()
 	dataDir := t.TempDir()
-	docSvc := NewDocumentService(docRepo, dataDir)
+	docSvc := NewDocumentService(docRepo, dataDir, nil)
 
 	var ocrSvc *OCRService
 	if ocrProvider != nil {
@@ -220,7 +220,7 @@ func TestImportService_ImportFromDocument_UploadFailureRollsBackExpense(t *testi
 		createErr:        errors.New("database connection lost"),
 	}
 	dataDir := t.TempDir()
-	docSvc := NewDocumentService(failDocRepo, dataDir)
+	docSvc := NewDocumentService(failDocRepo, dataDir, nil)
 
 	importSvc := NewImportService(expenseSvc, docSvc, nil)
 	ctx := context.Background()
@@ -248,7 +248,7 @@ func TestImportService_ImportFromDocument_UploadFailureRollbackDeleteFails(t *te
 		createErr:        errors.New("database connection lost"),
 	}
 	dataDir := t.TempDir()
-	docSvc := NewDocumentService(failDocRepo, dataDir)
+	docSvc := NewDocumentService(failDocRepo, dataDir, nil)
 
 	importSvc := NewImportService(expenseSvc, docSvc, nil)
 	ctx := context.Background()

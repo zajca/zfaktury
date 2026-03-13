@@ -17,7 +17,7 @@ func TestVATReturnService_Create(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	vr := &domain.VATReturn{
@@ -45,7 +45,7 @@ func TestVATReturnService_Create_DuplicateRegular(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	vr := &domain.VATReturn{
@@ -78,7 +78,7 @@ func TestVATReturnService_Create_InvalidInput(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	// Missing year.
@@ -106,7 +106,7 @@ func TestVATReturnService_GetByID(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	vr := &domain.VATReturn{
@@ -135,7 +135,7 @@ func TestVATReturnService_Delete(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	vr := &domain.VATReturn{
@@ -165,7 +165,7 @@ func TestVATReturnService_Delete_Filed(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	vr := &domain.VATReturn{
@@ -197,7 +197,7 @@ func TestVATReturnService_MarkFiled(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	vr := &domain.VATReturn{
@@ -235,7 +235,7 @@ func TestVATReturnService_List(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	for _, m := range []int{1, 2, 3} {
@@ -266,7 +266,7 @@ func TestVATReturnService_Recalculate(t *testing.T) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	ctx := context.Background()
 
 	// Create a contact and invoice in March 2025.
@@ -432,7 +432,7 @@ func setupVATReturnSvc(t *testing.T) (*VATReturnService, *sql.DB) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	setRepo := repository.NewSettingsRepository(db)
-	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo)
+	svc := NewVATReturnService(vatRepo, invRepo, expRepo, setRepo, nil)
 	return svc, db
 }
 

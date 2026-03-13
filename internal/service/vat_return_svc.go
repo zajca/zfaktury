@@ -17,6 +17,7 @@ type VATReturnService struct {
 	invoiceRepo  repository.InvoiceRepo
 	expenseRepo  repository.ExpenseRepo
 	settingsRepo repository.SettingsRepo
+	audit        *AuditService
 }
 
 // NewVATReturnService creates a new VATReturnService.
@@ -25,12 +26,14 @@ func NewVATReturnService(
 	invoiceRepo repository.InvoiceRepo,
 	expenseRepo repository.ExpenseRepo,
 	settingsRepo repository.SettingsRepo,
+	audit *AuditService,
 ) *VATReturnService {
 	return &VATReturnService{
 		repo:         repo,
 		invoiceRepo:  invoiceRepo,
 		expenseRepo:  expenseRepo,
 		settingsRepo: settingsRepo,
+		audit:        audit,
 	}
 }
 
@@ -76,6 +79,9 @@ func (s *VATReturnService) Create(ctx context.Context, vr *domain.VATReturn) err
 	if err := s.repo.Create(ctx, vr); err != nil {
 		return fmt.Errorf("creating vat_return: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_return", vr.ID, "create", nil, vr)
+	}
 	return nil
 }
 
@@ -120,6 +126,9 @@ func (s *VATReturnService) Delete(ctx context.Context, id int64) error {
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting vat_return: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_return", id, "delete", nil, nil)
+	}
 	return nil
 }
 
@@ -136,6 +145,9 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	if vr.Status == domain.FilingStatusFiled {
 		return nil, domain.ErrFilingAlreadyFiled
 	}
+
+	// Capture existing state for audit logging.
+	existing := *vr
 
 	// Determine date range from period.
 	dateFrom, dateTo := periodDateRange(vr.Period)
@@ -265,6 +277,9 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("linking expenses to vat_return: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_return", id, "update", &existing, vr)
+	}
 	return vr, nil
 }
 
@@ -296,6 +311,9 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("storing XML data for vat_return: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_return", id, "generate_xml", nil, nil)
+	}
 	return vr, nil
 }
 
@@ -331,6 +349,9 @@ func (s *VATReturnService) MarkFiled(ctx context.Context, id int64) (*domain.VAT
 
 	if err := s.repo.Update(ctx, vr); err != nil {
 		return nil, fmt.Errorf("marking vat_return as filed: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_return", id, "update", nil, vr)
 	}
 	return vr, nil
 }

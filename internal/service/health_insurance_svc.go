@@ -18,6 +18,7 @@ type HealthInsuranceService struct {
 	settingsRepo        repository.SettingsRepo
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
+	audit               *AuditService
 }
 
 // NewHealthInsuranceService creates a new HealthInsuranceService.
@@ -28,6 +29,7 @@ func NewHealthInsuranceService(
 	settingsRepo repository.SettingsRepo,
 	taxYearSettingsRepo repository.TaxYearSettingsRepo,
 	taxPrepaymentRepo repository.TaxPrepaymentRepo,
+	audit *AuditService,
 ) *HealthInsuranceService {
 	return &HealthInsuranceService{
 		repo:                repo,
@@ -36,6 +38,7 @@ func NewHealthInsuranceService(
 		settingsRepo:        settingsRepo,
 		taxYearSettingsRepo: taxYearSettingsRepo,
 		taxPrepaymentRepo:   taxPrepaymentRepo,
+		audit:               audit,
 	}
 }
 
@@ -70,6 +73,9 @@ func (s *HealthInsuranceService) Create(ctx context.Context, hi *domain.HealthIn
 
 	if err := s.repo.Create(ctx, hi); err != nil {
 		return fmt.Errorf("creating health_insurance_overview: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "health_insurance", hi.ID, "create", nil, hi)
 	}
 	return nil
 }
@@ -114,6 +120,9 @@ func (s *HealthInsuranceService) Delete(ctx context.Context, id int64) error {
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting health_insurance_overview: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "health_insurance", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -207,6 +216,9 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("updating health_insurance_overview after recalculation: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "health_insurance", id, "update", nil, hi)
+	}
 	return hi, nil
 }
 
@@ -257,6 +269,9 @@ func (s *HealthInsuranceService) MarkFiled(ctx context.Context, id int64) (*doma
 
 	if err := s.repo.Update(ctx, hi); err != nil {
 		return nil, fmt.Errorf("marking health_insurance_overview as filed: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "health_insurance", id, "mark_filed", nil, hi)
 	}
 	return hi, nil
 }

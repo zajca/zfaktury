@@ -17,7 +17,7 @@ func setupSettingsRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	settingsRepo := repository.NewSettingsRepository(db)
-	settingsSvc := service.NewSettingsService(settingsRepo)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
 	h := NewSettingsHandler(settingsSvc)
 
 	r := chi.NewRouter()

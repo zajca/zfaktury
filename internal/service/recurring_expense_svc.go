@@ -14,11 +14,12 @@ import (
 type RecurringExpenseService struct {
 	repo     repository.RecurringExpenseRepo
 	expenses *ExpenseService
+	audit    *AuditService
 }
 
 // NewRecurringExpenseService creates a new RecurringExpenseService.
-func NewRecurringExpenseService(repo repository.RecurringExpenseRepo, expenses *ExpenseService) *RecurringExpenseService {
-	return &RecurringExpenseService{repo: repo, expenses: expenses}
+func NewRecurringExpenseService(repo repository.RecurringExpenseRepo, expenses *ExpenseService, audit *AuditService) *RecurringExpenseService {
+	return &RecurringExpenseService{repo: repo, expenses: expenses, audit: audit}
 }
 
 // validFrequencies lists accepted frequency values.
@@ -67,6 +68,9 @@ func (s *RecurringExpenseService) Create(ctx context.Context, re *domain.Recurri
 	if err := s.repo.Create(ctx, re); err != nil {
 		return fmt.Errorf("creating recurring expense: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_expense", re.ID, "create", nil, re)
+	}
 	return nil
 }
 
@@ -99,8 +103,16 @@ func (s *RecurringExpenseService) Update(ctx context.Context, re *domain.Recurri
 		re.VATAmount = re.Amount.Multiply(float64(re.VATRatePercent) / (100.0 + float64(re.VATRatePercent)))
 	}
 
+	existing, err := s.repo.GetByID(ctx, re.ID)
+	if err != nil {
+		return fmt.Errorf("fetching recurring expense for audit: %w", err)
+	}
+
 	if err := s.repo.Update(ctx, re); err != nil {
 		return fmt.Errorf("updating recurring expense: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_expense", re.ID, "update", existing, re)
 	}
 	return nil
 }
@@ -112,6 +124,9 @@ func (s *RecurringExpenseService) Delete(ctx context.Context, id int64) error {
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting recurring expense: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_expense", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -154,6 +169,9 @@ func (s *RecurringExpenseService) Activate(ctx context.Context, id int64) error 
 	if err := s.repo.Activate(ctx, id); err != nil {
 		return fmt.Errorf("activating recurring expense: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_expense", id, "activate", nil, nil)
+	}
 	return nil
 }
 
@@ -164,6 +182,9 @@ func (s *RecurringExpenseService) Deactivate(ctx context.Context, id int64) erro
 	}
 	if err := s.repo.Deactivate(ctx, id); err != nil {
 		return fmt.Errorf("deactivating recurring expense: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_expense", id, "deactivate", nil, nil)
 	}
 	return nil
 }

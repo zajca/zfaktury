@@ -27,11 +27,11 @@ func setupInvestmentRouter(t *testing.T) *chi.Mux {
 	capitalRepo := repository.NewCapitalIncomeRepository(db)
 	securityRepo := repository.NewSecurityTransactionRepository(db)
 
-	investmentSvc := service.NewInvestmentIncomeService(capitalRepo, securityRepo)
+	investmentSvc := service.NewInvestmentIncomeService(capitalRepo, securityRepo, nil)
 
 	docRepo := repository.NewInvestmentDocumentRepository(db)
 	dataDir := t.TempDir()
-	docSvc := service.NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir)
+	docSvc := service.NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir, nil)
 
 	h := NewInvestmentIncomeHandler(investmentSvc, docSvc, nil)
 
@@ -746,11 +746,11 @@ func setupInvestmentRouterWithExtraction(t *testing.T, provider ocr.Provider) *c
 	capitalRepo := repository.NewCapitalIncomeRepository(db)
 	securityRepo := repository.NewSecurityTransactionRepository(db)
 
-	investmentSvc := service.NewInvestmentIncomeService(capitalRepo, securityRepo)
+	investmentSvc := service.NewInvestmentIncomeService(capitalRepo, securityRepo, nil)
 
 	docRepo := repository.NewInvestmentDocumentRepository(db)
 	dataDir := t.TempDir()
-	docSvc := service.NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir)
+	docSvc := service.NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir, nil)
 
 	extractionSvc := service.NewInvestmentExtractionService(provider, docSvc, capitalRepo, securityRepo, docRepo)
 

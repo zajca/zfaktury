@@ -16,7 +16,7 @@ func newRecurringExpenseTestStack(t *testing.T) (*RecurringExpenseService, *Expe
 	expRepo := repository.NewExpenseRepository(db)
 	expSvc := NewExpenseService(expRepo, nil)
 	recRepo := repository.NewRecurringExpenseRepository(db)
-	recSvc := NewRecurringExpenseService(recRepo, expSvc)
+	recSvc := NewRecurringExpenseService(recRepo, expSvc, nil)
 	return recSvc, expSvc
 }
 

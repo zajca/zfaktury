@@ -14,13 +14,15 @@ import (
 type RecurringInvoiceService struct {
 	repo     repository.RecurringInvoiceRepo
 	invoices *InvoiceService
+	audit    *AuditService
 }
 
 // NewRecurringInvoiceService creates a new RecurringInvoiceService.
-func NewRecurringInvoiceService(repo repository.RecurringInvoiceRepo, invoices *InvoiceService) *RecurringInvoiceService {
+func NewRecurringInvoiceService(repo repository.RecurringInvoiceRepo, invoices *InvoiceService, audit *AuditService) *RecurringInvoiceService {
 	return &RecurringInvoiceService{
 		repo:     repo,
 		invoices: invoices,
+		audit:    audit,
 	}
 }
 
@@ -50,6 +52,9 @@ func (s *RecurringInvoiceService) Create(ctx context.Context, ri *domain.Recurri
 	if err := s.repo.Create(ctx, ri); err != nil {
 		return fmt.Errorf("creating recurring invoice: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_invoice", ri.ID, "create", nil, ri)
+	}
 	return nil
 }
 
@@ -68,14 +73,17 @@ func (s *RecurringInvoiceService) Update(ctx context.Context, ri *domain.Recurri
 		return errors.New("at least one line item is required")
 	}
 
-	// Verify it exists.
-	_, err := s.repo.GetByID(ctx, ri.ID)
+	// Fetch existing for audit trail.
+	existing, err := s.repo.GetByID(ctx, ri.ID)
 	if err != nil {
 		return fmt.Errorf("fetching recurring invoice for update: %w", err)
 	}
 
 	if err := s.repo.Update(ctx, ri); err != nil {
 		return fmt.Errorf("updating recurring invoice: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_invoice", ri.ID, "update", existing, ri)
 	}
 	return nil
 }
@@ -87,6 +95,9 @@ func (s *RecurringInvoiceService) Delete(ctx context.Context, id int64) error {
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting recurring invoice: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "recurring_invoice", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -140,6 +151,9 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
 		if ri.EndDate != nil && today.After(*ri.EndDate) {
 			if err := s.repo.Deactivate(ctx, ri.ID); err != nil {
 				return count, fmt.Errorf("deactivating expired recurring invoice %d: %w", ri.ID, err)
+			}
+			if s.audit != nil {
+				s.audit.Log(ctx, "recurring_invoice", ri.ID, "deactivate", nil, nil)
 			}
 			continue
 		}

@@ -11,6 +11,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
 	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import AuditLogPanel from '$lib/components/AuditLogPanel.svelte';
 
 	let contact = $state<Contact | null>(null);
 	let loading = $state(true);
@@ -299,6 +300,10 @@
 				class="pt-4"
 			/>
 		</form>
+	{/if}
+
+	{#if contact}
+		<AuditLogPanel entityType="contact" entityId={contact.id} />
 	{/if}
 </div>
 

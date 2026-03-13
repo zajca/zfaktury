@@ -20,7 +20,7 @@ func newInvestmentDocumentService(t *testing.T) (*InvestmentDocumentService, *re
 	capitalRepo := repository.NewCapitalIncomeRepository(db)
 	securityRepo := repository.NewSecurityTransactionRepository(db)
 	dataDir := t.TempDir()
-	svc := NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir)
+	svc := NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir, nil)
 	return svc, docRepo
 }
 
@@ -379,7 +379,7 @@ func TestInvestmentDocumentService_Delete_CascadesLinkedEntries(t *testing.T) {
 	capitalRepo := repository.NewCapitalIncomeRepository(db)
 	securityRepo := repository.NewSecurityTransactionRepository(db)
 	dataDir := t.TempDir()
-	svc := NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir)
+	svc := NewInvestmentDocumentService(docRepo, capitalRepo, securityRepo, dataDir, nil)
 	ctx := context.Background()
 
 	// Upload a document.

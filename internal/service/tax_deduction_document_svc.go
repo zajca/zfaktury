@@ -20,6 +20,7 @@ type TaxDeductionDocumentService struct {
 	repo       repository.TaxDeductionDocumentRepo
 	deductRepo repository.TaxDeductionRepo
 	dataDir    string
+	audit      *AuditService
 }
 
 // NewTaxDeductionDocumentService creates a new TaxDeductionDocumentService.
@@ -27,11 +28,13 @@ func NewTaxDeductionDocumentService(
 	repo repository.TaxDeductionDocumentRepo,
 	deductRepo repository.TaxDeductionRepo,
 	dataDir string,
+	audit *AuditService,
 ) *TaxDeductionDocumentService {
 	return &TaxDeductionDocumentService{
 		repo:       repo,
 		deductRepo: deductRepo,
 		dataDir:    dataDir,
+		audit:      audit,
 	}
 }
 
@@ -112,6 +115,16 @@ func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID in
 		return nil, fmt.Errorf("saving document record: %w", err)
 	}
 
+	if s.audit != nil {
+		meta := map[string]any{
+			"id":           doc.ID,
+			"deduction_id": doc.TaxDeductionID,
+			"filename":     doc.Filename,
+			"content_type": doc.ContentType,
+		}
+		s.audit.Log(ctx, "tax_deduction_document", doc.ID, "create", nil, meta)
+	}
+
 	return doc, nil
 }
 
@@ -157,6 +170,10 @@ func (s *TaxDeductionDocumentService) Delete(ctx context.Context, id int64) erro
 	// Best-effort removal; do not fail if file is already gone.
 	if doc.StoragePath != "" {
 		_ = os.Remove(doc.StoragePath)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_deduction_document", id, "delete", nil, nil)
 	}
 
 	return nil

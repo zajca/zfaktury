@@ -12,3 +12,14 @@ type AuditLogEntry struct {
 	NewValues  string
 	CreatedAt  time.Time
 }
+
+// AuditLogFilter defines filtering options for listing audit log entries.
+type AuditLogFilter struct {
+	EntityType string
+	EntityID   *int64
+	Action     string
+	From       time.Time
+	To         time.Time
+	Limit      int
+	Offset     int
+}

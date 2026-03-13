@@ -56,6 +56,7 @@ func NewRouter(
 	reportSvc *service.ReportService,
 	taxCalendarSvc *service.TaxCalendarService,
 	emailSender *email.EmailSender,
+	auditSvc *service.AuditService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -224,6 +225,10 @@ func NewRouter(
 		exportHandler := NewExportHandler(invoiceSvc, expenseSvc)
 		api.Get("/export/invoices", exportHandler.ExportInvoices)
 		api.Get("/export/expenses", exportHandler.ExportExpenses)
+
+		// Audit log
+		auditLogHandler := NewAuditLogHandler(auditSvc)
+		api.Mount("/audit-log", auditLogHandler.Routes())
 	})
 
 	// Health check endpoint.

@@ -1818,6 +1818,46 @@ export const reportsApi = {
 	}
 };
 
+// --- Audit Log API ---
+
+export interface AuditLogEntry {
+	id: number;
+	entity_type: string;
+	entity_id: number;
+	action: string;
+	old_values: string;
+	new_values: string;
+	created_at: string;
+}
+
+export interface AuditLogListResponse {
+	items: AuditLogEntry[];
+	total: number;
+}
+
+export const auditLogApi = {
+	list(params?: {
+		entity_type?: string;
+		entity_id?: number;
+		action?: string;
+		from?: string;
+		to?: string;
+		limit?: number;
+		offset?: number;
+	}) {
+		const query = new URLSearchParams();
+		if (params?.entity_type) query.set('entity_type', params.entity_type);
+		if (params?.entity_id != null) query.set('entity_id', String(params.entity_id));
+		if (params?.action) query.set('action', params.action);
+		if (params?.from) query.set('from', params.from);
+		if (params?.to) query.set('to', params.to);
+		if (params?.limit) query.set('limit', String(params.limit));
+		if (params?.offset) query.set('offset', String(params.offset));
+		const qs = query.toString();
+		return get<AuditLogListResponse>(`/audit-log${qs ? `?${qs}` : ''}`);
+	}
+};
+
 // --- Export API ---
 
 export const exportApi = {

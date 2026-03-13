@@ -18,7 +18,7 @@ func newInvoiceTestStack(t *testing.T) (*InvoiceService, *ContactService, *repos
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	sequenceRepo := repository.NewSequenceRepository(db)
 	contactSvc := NewContactService(contactRepo, nil, nil)
-	sequenceSvc := NewSequenceService(sequenceRepo)
+	sequenceSvc := NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
 
 	// Seed a default invoice sequence so SequenceID references are valid.

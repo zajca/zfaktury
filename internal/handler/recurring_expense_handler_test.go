@@ -21,7 +21,7 @@ func setupRecurringExpenseRouter(t *testing.T) *chi.Mux {
 	recurringRepo := repository.NewRecurringExpenseRepository(db)
 
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
-	recurringExpenseSvc := service.NewRecurringExpenseService(recurringRepo, expenseSvc)
+	recurringExpenseSvc := service.NewRecurringExpenseService(recurringRepo, expenseSvc, nil)
 
 	h := NewRecurringExpenseHandler(recurringExpenseSvc)
 

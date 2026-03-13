@@ -12,12 +12,13 @@ import (
 
 // SequenceService provides business logic for invoice sequence management.
 type SequenceService struct {
-	repo repository.InvoiceSequenceRepo
+	repo  repository.InvoiceSequenceRepo
+	audit *AuditService
 }
 
 // NewSequenceService creates a new SequenceService.
-func NewSequenceService(repo repository.InvoiceSequenceRepo) *SequenceService {
-	return &SequenceService{repo: repo}
+func NewSequenceService(repo repository.InvoiceSequenceRepo, audit *AuditService) *SequenceService {
+	return &SequenceService{repo: repo, audit: audit}
 }
 
 // Create validates uniqueness (prefix+year) and persists a new invoice sequence.
@@ -48,6 +49,9 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 	if err := s.repo.Create(ctx, seq); err != nil {
 		return fmt.Errorf("creating sequence: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "sequence", seq.ID, "create", nil, seq)
+	}
 	return nil
 }
 
@@ -67,6 +71,12 @@ func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequenc
 		return errors.New("next number must be positive")
 	}
 
+	// Fetch existing for audit logging.
+	existing, err := s.repo.GetByID(ctx, seq.ID)
+	if err != nil {
+		return fmt.Errorf("fetching existing sequence: %w", err)
+	}
+
 	// Prevent lowering next_number below already-used numbers.
 	maxUsed, err := s.repo.MaxUsedNumber(ctx, seq.ID)
 	if err != nil {
@@ -77,13 +87,16 @@ func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequenc
 	}
 
 	// Check uniqueness of prefix+year if they changed.
-	existing, err := s.repo.GetByPrefixAndYear(ctx, seq.Prefix, seq.Year)
-	if err == nil && existing != nil && existing.ID != seq.ID {
+	duplicate, err := s.repo.GetByPrefixAndYear(ctx, seq.Prefix, seq.Year)
+	if err == nil && duplicate != nil && duplicate.ID != seq.ID {
 		return fmt.Errorf("sequence with prefix %q and year %d already exists", seq.Prefix, seq.Year)
 	}
 
 	if err := s.repo.Update(ctx, seq); err != nil {
 		return fmt.Errorf("updating sequence: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "sequence", seq.ID, "update", existing, seq)
 	}
 	return nil
 }
@@ -105,6 +118,9 @@ func (s *SequenceService) Delete(ctx context.Context, id int64) error {
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting sequence: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "sequence", id, "delete", nil, nil)
 	}
 	return nil
 }

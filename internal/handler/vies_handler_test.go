@@ -24,8 +24,8 @@ func setupVIESRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	contactRepo := repository.NewContactRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
 
-	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo)
-	settingsSvc := service.NewSettingsService(settingsRepo)
+	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, nil)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
 	h := NewVIESHandler(viesSvc, settingsSvc)
 
 	r := chi.NewRouter()

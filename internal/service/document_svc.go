@@ -34,11 +34,12 @@ const (
 type DocumentService struct {
 	repo    repository.DocumentRepo
 	dataDir string
+	audit   *AuditService
 }
 
 // NewDocumentService creates a new DocumentService.
-func NewDocumentService(repo repository.DocumentRepo, dataDir string) *DocumentService {
-	return &DocumentService{repo: repo, dataDir: dataDir}
+func NewDocumentService(repo repository.DocumentRepo, dataDir string, audit *AuditService) *DocumentService {
+	return &DocumentService{repo: repo, dataDir: dataDir, audit: audit}
 }
 
 // Upload validates, stores, and registers a new document for an expense.
@@ -122,6 +123,16 @@ func (s *DocumentService) Upload(ctx context.Context, expenseID int64, filename 
 		return nil, fmt.Errorf("saving document record: %w", err)
 	}
 
+	if s.audit != nil {
+		meta := map[string]any{
+			"id":           doc.ID,
+			"expense_id":   doc.ExpenseID,
+			"filename":     doc.Filename,
+			"content_type": doc.ContentType,
+		}
+		s.audit.Log(ctx, "document", doc.ID, "create", nil, meta)
+	}
+
 	return doc, nil
 }
 
@@ -167,6 +178,10 @@ func (s *DocumentService) Delete(ctx context.Context, id int64) error {
 	// Best-effort removal; do not fail if file is already gone.
 	if doc.StoragePath != "" {
 		_ = os.Remove(doc.StoragePath)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "document", id, "delete", nil, nil)
 	}
 
 	return nil

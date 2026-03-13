@@ -14,7 +14,7 @@ func newSequenceTestStack(t *testing.T) (*SequenceService, *repository.SequenceR
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	repo := repository.NewSequenceRepository(db)
-	svc := NewSequenceService(repo)
+	svc := NewSequenceService(repo, nil)
 	return svc, repo
 }
 

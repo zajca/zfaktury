@@ -19,7 +19,7 @@ func setupCategoryHandler(t *testing.T) (*CategoryHandler, *repository.CategoryR
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	repo := repository.NewCategoryRepository(db)
-	svc := service.NewCategoryService(repo)
+	svc := service.NewCategoryService(repo, nil)
 	h := NewCategoryHandler(svc)
 	return h, repo
 }

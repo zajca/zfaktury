@@ -18,6 +18,7 @@ type VATControlStatementService struct {
 	expenses repository.ExpenseRepo
 	contacts repository.ContactRepo
 	xmlGen   *vatxml.ControlStatementGenerator
+	audit    *AuditService
 }
 
 // NewVATControlStatementService creates a new VATControlStatementService.
@@ -26,6 +27,7 @@ func NewVATControlStatementService(
 	invoices repository.InvoiceRepo,
 	expenses repository.ExpenseRepo,
 	contacts repository.ContactRepo,
+	audit *AuditService,
 ) *VATControlStatementService {
 	return &VATControlStatementService{
 		repo:     repo,
@@ -33,6 +35,7 @@ func NewVATControlStatementService(
 		expenses: expenses,
 		contacts: contacts,
 		xmlGen:   vatxml.NewControlStatementGenerator(),
+		audit:    audit,
 	}
 }
 
@@ -68,6 +71,9 @@ func (s *VATControlStatementService) Create(ctx context.Context, cs *domain.VATC
 	if err := s.repo.Create(ctx, cs); err != nil {
 		return fmt.Errorf("creating control statement: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_control_statement", cs.ID, "create", nil, cs)
+	}
 	return nil
 }
 
@@ -101,6 +107,9 @@ func (s *VATControlStatementService) Delete(ctx context.Context, id int64) error
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting control statement: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_control_statement", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -160,6 +169,9 @@ func (s *VATControlStatementService) Recalculate(ctx context.Context, id int64) 
 		return fmt.Errorf("updating control statement status: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_control_statement", id, "recalculate", nil, nil)
+	}
 	return nil
 }
 
@@ -399,6 +411,9 @@ func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, 
 		return nil, fmt.Errorf("storing generated XML: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_control_statement", id, "generate_xml", nil, nil)
+	}
 	return xmlData, nil
 }
 
@@ -415,6 +430,9 @@ func (s *VATControlStatementService) MarkFiled(ctx context.Context, id int64) er
 
 	if err := s.repo.Update(ctx, cs); err != nil {
 		return fmt.Errorf("marking control statement as filed: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "vat_control_statement", id, "mark_filed", nil, nil)
 	}
 	return nil
 }

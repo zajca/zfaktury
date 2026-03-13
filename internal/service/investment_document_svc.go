@@ -29,6 +29,7 @@ type InvestmentDocumentService struct {
 	capitalRepo  repository.CapitalIncomeRepo
 	securityRepo repository.SecurityTransactionRepo
 	dataDir      string
+	audit        *AuditService
 }
 
 // NewInvestmentDocumentService creates a new InvestmentDocumentService.
@@ -37,12 +38,14 @@ func NewInvestmentDocumentService(
 	capitalRepo repository.CapitalIncomeRepo,
 	securityRepo repository.SecurityTransactionRepo,
 	dataDir string,
+	audit *AuditService,
 ) *InvestmentDocumentService {
 	return &InvestmentDocumentService{
 		repo:         repo,
 		capitalRepo:  capitalRepo,
 		securityRepo: securityRepo,
 		dataDir:      dataDir,
+		audit:        audit,
 	}
 }
 
@@ -126,6 +129,17 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 		return nil, fmt.Errorf("saving document record: %w", err)
 	}
 
+	if s.audit != nil {
+		meta := map[string]any{
+			"id":           doc.ID,
+			"year":         doc.Year,
+			"platform":     doc.Platform,
+			"filename":     doc.Filename,
+			"content_type": doc.ContentType,
+		}
+		s.audit.Log(ctx, "investment_document", doc.ID, "create", nil, meta)
+	}
+
 	return doc, nil
 }
 
@@ -182,6 +196,10 @@ func (s *InvestmentDocumentService) Delete(ctx context.Context, id int64) error 
 	// Best-effort removal; do not fail if file is already gone.
 	if doc.StoragePath != "" {
 		_ = os.Remove(doc.StoragePath)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "investment_document", id, "delete", nil, nil)
 	}
 
 	return nil

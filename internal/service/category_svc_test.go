@@ -13,7 +13,7 @@ func newCategoryService(t *testing.T) (*CategoryService, *repository.CategoryRep
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	repo := repository.NewCategoryRepository(db)
-	svc := NewCategoryService(repo)
+	svc := NewCategoryService(repo, nil)
 	return svc, repo
 }
 

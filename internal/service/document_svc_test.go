@@ -98,7 +98,7 @@ func newDocumentTestService(t *testing.T) (*DocumentService, *mockDocumentRepo) 
 	t.Helper()
 	repo := newMockDocumentRepo()
 	dataDir := t.TempDir()
-	svc := NewDocumentService(repo, dataDir)
+	svc := NewDocumentService(repo, dataDir, nil)
 	return svc, repo
 }
 

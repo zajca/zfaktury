@@ -12,7 +12,7 @@ func newSettingsService(t *testing.T) *SettingsService {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	repo := repository.NewSettingsRepository(db)
-	return NewSettingsService(repo)
+	return NewSettingsService(repo, nil)
 }
 
 func TestSettings_GetAll_EmptyDB(t *testing.T) {

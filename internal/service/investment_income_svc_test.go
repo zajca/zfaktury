@@ -17,7 +17,7 @@ func newInvestmentIncomeService(t *testing.T) (*InvestmentIncomeService, *reposi
 	db := testutil.NewTestDB(t)
 	capitalRepo := repository.NewCapitalIncomeRepository(db)
 	securityRepo := repository.NewSecurityTransactionRepository(db)
-	svc := NewInvestmentIncomeService(capitalRepo, securityRepo)
+	svc := NewInvestmentIncomeService(capitalRepo, securityRepo, nil)
 	return svc, capitalRepo, securityRepo
 }
 

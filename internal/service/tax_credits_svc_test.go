@@ -18,7 +18,7 @@ func setupTaxCreditsSvc(t *testing.T) (*TaxCreditsService, *sql.DB) {
 	childRepo := repository.NewTaxChildCreditRepository(db)
 	personalRepo := repository.NewTaxPersonalCreditsRepository(db)
 	deductionRepo := repository.NewTaxDeductionRepository(db)
-	svc := NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo)
+	svc := NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo, nil)
 	return svc, db
 }
 

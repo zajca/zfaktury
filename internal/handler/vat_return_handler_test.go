@@ -24,7 +24,7 @@ func setupVATReturnRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	expenseRepo := repository.NewExpenseRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
 
-	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo)
+	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, nil)
 	h := NewVATReturnHandler(vatReturnSvc)
 
 	r := chi.NewRouter()

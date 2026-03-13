@@ -28,9 +28,9 @@ func setupEmailRouter(t *testing.T) *chi.Mux {
 	settingsRepo := repository.NewSettingsRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	settingsSvc := service.NewSettingsService(settingsRepo)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
 	pdfGen := pdf.NewInvoicePDFGenerator()
 	// Empty SMTPConfig means IsConfigured() returns false.
 	sender := email.NewEmailSender(config.SMTPConfig{})
@@ -113,9 +113,9 @@ func setupEmailConfiguredRouter(t *testing.T) (*chi.Mux, int64) {
 	settingsRepo := repository.NewSettingsRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	settingsSvc := service.NewSettingsService(settingsRepo)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
 	pdfGen := pdf.NewInvoicePDFGenerator()
 	// Configured sender -- has SMTP host set so IsConfigured() returns true.
 	sender := email.NewEmailSender(config.SMTPConfig{

@@ -27,7 +27,7 @@ func setupSocialInsuranceRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 
 	svc := service.NewSocialInsuranceService(
 		socialRepo, invoiceRepo, expenseRepo,
-		settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo,
+		settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, nil,
 	)
 	h := NewSocialInsuranceHandler(svc)
 

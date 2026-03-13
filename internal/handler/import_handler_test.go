@@ -27,7 +27,7 @@ func setupImportRouter(t *testing.T) *chi.Mux {
 	docRepo := repository.NewDocumentRepository(db)
 
 	expenseSvc := service.NewExpenseService(expenseRepo, nil)
-	docSvc := service.NewDocumentService(docRepo, dataDir)
+	docSvc := service.NewDocumentService(docRepo, dataDir, nil)
 	importSvc := service.NewImportService(expenseSvc, docSvc, nil)
 
 	h := NewImportHandler(importSvc)

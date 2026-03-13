@@ -18,7 +18,7 @@ func setupSequenceRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	sequenceRepo := repository.NewSequenceRepository(db)
-	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	sequenceHandler := NewSequenceHandler(sequenceSvc)
 
 	r := chi.NewRouter()

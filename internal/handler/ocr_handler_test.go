@@ -48,7 +48,7 @@ func setupOCRRouter(t *testing.T, provider ocr.Provider) (*chi.Mux, int64) {
 	expense := testutil.SeedExpense(t, db, nil)
 
 	docRepo := repository.NewDocumentRepository(db)
-	docSvc := service.NewDocumentService(docRepo, dataDir)
+	docSvc := service.NewDocumentService(docRepo, dataDir, nil)
 	ocrSvc := service.NewOCRService(provider, docSvc)
 
 	docHandler := NewDocumentHandler(docSvc)

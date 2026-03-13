@@ -19,7 +19,7 @@ func newVIESSvc(t *testing.T) (*VIESSummaryService, *sql.DB) {
 	viesRepo := repository.NewVIESSummaryRepository(db)
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	contactRepo := repository.NewContactRepository(db)
-	svc := NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo)
+	svc := NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, nil)
 	return svc, db
 }
 

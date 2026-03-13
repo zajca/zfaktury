@@ -21,7 +21,7 @@ func setupSocialInsuranceSvc(t *testing.T) (*SocialInsuranceService, *sql.DB) {
 	setRepo := repository.NewSettingsRepository(db)
 	tysRepo := repository.NewTaxYearSettingsRepository(db)
 	tpRepo := repository.NewTaxPrepaymentRepository(db)
-	svc := NewSocialInsuranceService(sioRepo, invRepo, expRepo, setRepo, tysRepo, tpRepo)
+	svc := NewSocialInsuranceService(sioRepo, invRepo, expRepo, setRepo, tysRepo, tpRepo, nil)
 	return svc, db
 }
 

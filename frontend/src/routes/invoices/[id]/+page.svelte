@@ -30,6 +30,7 @@
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
 	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import AuditLogPanel from '$lib/components/AuditLogPanel.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -802,6 +803,10 @@
 				/>
 			{/if}
 		{/if}
+	{/if}
+
+	{#if invoice}
+		<AuditLogPanel entityType="invoice" entityId={invoice.id} />
 	{/if}
 </div>
 

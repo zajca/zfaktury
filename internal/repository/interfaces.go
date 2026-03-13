@@ -273,6 +273,7 @@ type SecurityTransactionRepo interface {
 type AuditLogRepo interface {
 	Create(ctx context.Context, entry *domain.AuditLogEntry) error
 	ListByEntity(ctx context.Context, entityType string, entityID int64) ([]domain.AuditLogEntry, error)
+	List(ctx context.Context, filter domain.AuditLogFilter) ([]domain.AuditLogEntry, int, error)
 }
 
 // FakturoidImportLogRepo defines the persistence interface for Fakturoid import logs.

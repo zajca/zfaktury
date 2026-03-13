@@ -121,23 +121,23 @@ var serveCmd = &cobra.Command{
 
 		// Wire services.
 		contactSvc := service.NewContactService(contactRepo, aresClient, auditSvc)
-		sequenceSvc := service.NewSequenceService(sequenceRepo)
+		sequenceSvc := service.NewSequenceService(sequenceRepo, auditSvc)
 		invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, auditSvc)
 		expenseSvc := service.NewExpenseService(expenseRepo, auditSvc)
-		settingsSvc := service.NewSettingsService(settingsRepo)
-		categorySvc := service.NewCategoryService(categoryRepo)
-		documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir)
-		recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc)
-		recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc)
+		settingsSvc := service.NewSettingsService(settingsRepo, auditSvc)
+		categorySvc := service.NewCategoryService(categoryRepo, auditSvc)
+		documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir, auditSvc)
+		recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc, auditSvc)
+		recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc, auditSvc)
 
-		vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo)
-		vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo)
-		viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo)
+		vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, auditSvc)
+		vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, auditSvc)
+		viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, auditSvc)
 
-		taxYearSettingsSvc := service.NewTaxYearSettingsService(taxYearSettingsRepo, taxPrepaymentRepo)
+		taxYearSettingsSvc := service.NewTaxYearSettingsService(taxYearSettingsRepo, taxPrepaymentRepo, auditSvc)
 
-		taxCreditsSvc := service.NewTaxCreditsService(taxSpouseCreditRepo, taxChildCreditRepo, taxPersonalCreditsRepo, taxDeductionRepo)
-		taxDeductionDocSvc := service.NewTaxDeductionDocumentService(taxDeductionDocRepo, taxDeductionRepo, cfg.DataDir)
+		taxCreditsSvc := service.NewTaxCreditsService(taxSpouseCreditRepo, taxChildCreditRepo, taxPersonalCreditsRepo, taxDeductionRepo, auditSvc)
+		taxDeductionDocSvc := service.NewTaxDeductionDocumentService(taxDeductionDocRepo, taxDeductionRepo, cfg.DataDir, auditSvc)
 
 		// Wire investment repos.
 		investmentDocRepo := repository.NewInvestmentDocumentRepository(db)
@@ -145,13 +145,13 @@ var serveCmd = &cobra.Command{
 		securityTransactionRepo := repository.NewSecurityTransactionRepository(db)
 
 		// Wire investment services.
-		investmentDocSvc := service.NewInvestmentDocumentService(investmentDocRepo, capitalIncomeRepo, securityTransactionRepo, cfg.DataDir)
-		investmentIncomeSvc := service.NewInvestmentIncomeService(capitalIncomeRepo, securityTransactionRepo)
+		investmentDocSvc := service.NewInvestmentDocumentService(investmentDocRepo, capitalIncomeRepo, securityTransactionRepo, cfg.DataDir, auditSvc)
+		investmentIncomeSvc := service.NewInvestmentIncomeService(capitalIncomeRepo, securityTransactionRepo, auditSvc)
 
-		incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, taxCreditsSvc)
+		incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, taxCreditsSvc, auditSvc)
 		incomeTaxSvc.SetInvestmentService(investmentIncomeSvc)
-		socialInsuranceSvc := service.NewSocialInsuranceService(socialInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
-		healthInsuranceSvc := service.NewHealthInsuranceService(healthInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo)
+		socialInsuranceSvc := service.NewSocialInsuranceService(socialInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, auditSvc)
+		healthInsuranceSvc := service.NewHealthInsuranceService(healthInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, auditSvc)
 
 		// Wire OCR service (conditional on API key).
 		var ocrSvc *service.OCRService
@@ -197,7 +197,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

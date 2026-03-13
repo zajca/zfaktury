@@ -15,6 +15,7 @@ type TaxCreditsService struct {
 	childRepo     repository.TaxChildCreditRepo
 	personalRepo  repository.TaxPersonalCreditsRepo
 	deductionRepo repository.TaxDeductionRepo
+	audit         *AuditService
 }
 
 // NewTaxCreditsService creates a new TaxCreditsService.
@@ -23,12 +24,14 @@ func NewTaxCreditsService(
 	childRepo repository.TaxChildCreditRepo,
 	personalRepo repository.TaxPersonalCreditsRepo,
 	deductionRepo repository.TaxDeductionRepo,
+	audit *AuditService,
 ) *TaxCreditsService {
 	return &TaxCreditsService{
 		spouseRepo:    spouseRepo,
 		childRepo:     childRepo,
 		personalRepo:  personalRepo,
 		deductionRepo: deductionRepo,
+		audit:         audit,
 	}
 }
 
@@ -48,8 +51,19 @@ func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.Tax
 	if credit.MonthsClaimed < 1 || credit.MonthsClaimed > 12 {
 		return fmt.Errorf("months claimed must be 1-12: %w", domain.ErrInvalidInput)
 	}
+	var existing *domain.TaxSpouseCredit
+	if s.audit != nil {
+		existing, _ = s.spouseRepo.GetByYear(ctx, credit.Year)
+	}
 	if err := s.spouseRepo.Upsert(ctx, credit); err != nil {
 		return fmt.Errorf("upserting spouse credit: %w", err)
+	}
+	if s.audit != nil {
+		action := "create"
+		if existing != nil {
+			action = "update"
+		}
+		s.audit.Log(ctx, "tax_spouse_credit", int64(credit.Year), action, existing, credit)
 	}
 	return nil
 }
@@ -67,6 +81,9 @@ func (s *TaxCreditsService) GetSpouse(ctx context.Context, year int) (*domain.Ta
 func (s *TaxCreditsService) DeleteSpouse(ctx context.Context, year int) error {
 	if err := s.spouseRepo.DeleteByYear(ctx, year); err != nil {
 		return fmt.Errorf("deleting spouse credit: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_spouse_credit", int64(year), "delete", nil, nil)
 	}
 	return nil
 }
@@ -87,6 +104,9 @@ func (s *TaxCreditsService) CreateChild(ctx context.Context, credit *domain.TaxC
 	if err := s.childRepo.Create(ctx, credit); err != nil {
 		return fmt.Errorf("creating child credit: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_child_credit", credit.ID, "create", nil, credit)
+	}
 	return nil
 }
 
@@ -101,8 +121,21 @@ func (s *TaxCreditsService) UpdateChild(ctx context.Context, credit *domain.TaxC
 	if credit.MonthsClaimed < 1 || credit.MonthsClaimed > 12 {
 		return fmt.Errorf("months claimed must be 1-12: %w", domain.ErrInvalidInput)
 	}
+	var existing *domain.TaxChildCredit
+	if s.audit != nil {
+		children, _ := s.childRepo.ListByYear(ctx, credit.Year)
+		for i := range children {
+			if children[i].ID == credit.ID {
+				existing = &children[i]
+				break
+			}
+		}
+	}
 	if err := s.childRepo.Update(ctx, credit); err != nil {
 		return fmt.Errorf("updating child credit: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_child_credit", credit.ID, "update", existing, credit)
 	}
 	return nil
 }
@@ -111,6 +144,9 @@ func (s *TaxCreditsService) UpdateChild(ctx context.Context, credit *domain.TaxC
 func (s *TaxCreditsService) DeleteChild(ctx context.Context, id int64) error {
 	if err := s.childRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting child credit: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_child_credit", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -137,8 +173,19 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 	if credits.DisabilityLevel < 0 || credits.DisabilityLevel > 3 {
 		return fmt.Errorf("disability level must be 0-3: %w", domain.ErrInvalidInput)
 	}
+	var existing *domain.TaxPersonalCredits
+	if s.audit != nil {
+		existing, _ = s.personalRepo.GetByYear(ctx, credits.Year)
+	}
 	if err := s.personalRepo.Upsert(ctx, credits); err != nil {
 		return fmt.Errorf("upserting personal credits: %w", err)
+	}
+	if s.audit != nil {
+		action := "create"
+		if existing != nil {
+			action = "update"
+		}
+		s.audit.Log(ctx, "tax_personal_credits", int64(credits.Year), action, existing, credits)
 	}
 	return nil
 }
@@ -177,6 +224,9 @@ func (s *TaxCreditsService) CreateDeduction(ctx context.Context, ded *domain.Tax
 	if err := s.deductionRepo.Create(ctx, ded); err != nil {
 		return fmt.Errorf("creating deduction: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_deduction", ded.ID, "create", nil, ded)
+	}
 	return nil
 }
 
@@ -191,8 +241,15 @@ func (s *TaxCreditsService) UpdateDeduction(ctx context.Context, ded *domain.Tax
 	if ded.ClaimedAmount < 0 || ded.ClaimedAmount > domain.NewAmount(100_000_000, 0) {
 		return fmt.Errorf("claimed amount out of valid range: %w", domain.ErrInvalidInput)
 	}
+	var existing *domain.TaxDeduction
+	if s.audit != nil {
+		existing, _ = s.deductionRepo.GetByID(ctx, ded.ID)
+	}
 	if err := s.deductionRepo.Update(ctx, ded); err != nil {
 		return fmt.Errorf("updating deduction: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_deduction", ded.ID, "update", existing, ded)
 	}
 	return nil
 }
@@ -201,6 +258,9 @@ func (s *TaxCreditsService) UpdateDeduction(ctx context.Context, ded *domain.Tax
 func (s *TaxCreditsService) DeleteDeduction(ctx context.Context, id int64) error {
 	if err := s.deductionRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting deduction: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "tax_deduction", id, "delete", nil, nil)
 	}
 	return nil
 }

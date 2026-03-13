@@ -23,9 +23,9 @@ func setupRecurringInvoiceRouter(t *testing.T) (*chi.Mux, int64) {
 	recurringRepo := repository.NewRecurringInvoiceRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
-	sequenceSvc := service.NewSequenceService(sequenceRepo)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringRepo, invoiceSvc)
+	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil)
 
 	contactHandler := NewContactHandler(contactSvc)
 	h := NewRecurringInvoiceHandler(recurringInvoiceSvc)

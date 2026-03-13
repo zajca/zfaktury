@@ -14,7 +14,7 @@ func newTaxYearSettingsSvc(t *testing.T) (*TaxYearSettingsService, *repository.T
 	db := testutil.NewTestDB(t)
 	settingsRepo := repository.NewTaxYearSettingsRepository(db)
 	prepaymentRepo := repository.NewTaxPrepaymentRepository(db)
-	svc := NewTaxYearSettingsService(settingsRepo, prepaymentRepo)
+	svc := NewTaxYearSettingsService(settingsRepo, prepaymentRepo, nil)
 	return svc, settingsRepo, prepaymentRepo
 }
 

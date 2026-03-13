@@ -56,3 +56,8 @@ func (s *AuditService) Log(ctx context.Context, entityType string, entityID int6
 func (s *AuditService) ListByEntity(ctx context.Context, entityType string, entityID int64) ([]domain.AuditLogEntry, error) {
 	return s.repo.ListByEntity(ctx, entityType, entityID)
 }
+
+// List returns audit log entries matching the given filter with total count.
+func (s *AuditService) List(ctx context.Context, filter domain.AuditLogFilter) ([]domain.AuditLogEntry, int, error) {
+	return s.repo.List(ctx, filter)
+}

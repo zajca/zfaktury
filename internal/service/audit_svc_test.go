@@ -34,6 +34,10 @@ func (m *mockAuditLogRepo) ListByEntity(_ context.Context, entityType string, en
 	return result, nil
 }
 
+func (m *mockAuditLogRepo) List(_ context.Context, _ domain.AuditLogFilter) ([]domain.AuditLogEntry, int, error) {
+	return m.entries, len(m.entries), nil
+}
+
 func TestAuditService_Log_Success(t *testing.T) {
 	repo := &mockAuditLogRepo{}
 	svc := NewAuditService(repo)

@@ -20,6 +20,7 @@ type SocialInsuranceService struct {
 	settingsRepo        repository.SettingsRepo
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
+	audit               *AuditService
 }
 
 // NewSocialInsuranceService creates a new SocialInsuranceService.
@@ -30,6 +31,7 @@ func NewSocialInsuranceService(
 	settingsRepo repository.SettingsRepo,
 	taxYearSettingsRepo repository.TaxYearSettingsRepo,
 	taxPrepaymentRepo repository.TaxPrepaymentRepo,
+	audit *AuditService,
 ) *SocialInsuranceService {
 	return &SocialInsuranceService{
 		repo:                repo,
@@ -38,6 +40,7 @@ func NewSocialInsuranceService(
 		settingsRepo:        settingsRepo,
 		taxYearSettingsRepo: taxYearSettingsRepo,
 		taxPrepaymentRepo:   taxPrepaymentRepo,
+		audit:               audit,
 	}
 }
 
@@ -74,6 +77,9 @@ func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialI
 
 	if err := s.repo.Create(ctx, sio); err != nil {
 		return fmt.Errorf("creating social_insurance_overview: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", sio.ID, "create", nil, sio)
 	}
 	return nil
 }
@@ -118,6 +124,9 @@ func (s *SocialInsuranceService) Delete(ctx context.Context, id int64) error {
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting social_insurance_overview: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -224,6 +233,9 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("updating social_insurance_overview after recalculation: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
+	}
 	return sio, nil
 }
 
@@ -267,6 +279,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("saving social_insurance_overview XML: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "generate_xml", nil, sio)
+	}
 	return sio, nil
 }
 
@@ -302,6 +317,9 @@ func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*doma
 
 	if err := s.repo.Update(ctx, sio); err != nil {
 		return nil, fmt.Errorf("marking social_insurance_overview as filed: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "mark_filed", nil, sio)
 	}
 	return sio, nil
 }

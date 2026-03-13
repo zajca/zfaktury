@@ -195,7 +195,7 @@ func (m *vcMockContactRepo) GetByID(_ context.Context, id int64) (*domain.Contac
 
 func TestVATControlStatementService_Create(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{})
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -216,7 +216,7 @@ func TestVATControlStatementService_Create(t *testing.T) {
 
 func TestVATControlStatementService_Create_Duplicate(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{})
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
 
 	cs1 := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -238,7 +238,7 @@ func TestVATControlStatementService_Create_Duplicate(t *testing.T) {
 
 func TestVATControlStatementService_Create_InvalidMonth(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{})
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
 
 	cs := &domain.VATControlStatement{
 		Period: domain.TaxPeriod{Year: 2025, Month: 13},
@@ -251,7 +251,7 @@ func TestVATControlStatementService_Create_InvalidMonth(t *testing.T) {
 
 func TestVATControlStatementService_Delete_Filed(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{})
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -361,7 +361,7 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 		},
 	}
 
-	svc := NewVATControlStatementService(csRepo, invoiceRepo, expenseRepo, contactRepo)
+	svc := NewVATControlStatementService(csRepo, invoiceRepo, expenseRepo, contactRepo, nil)
 
 	// Create the control statement.
 	cs := &domain.VATControlStatement{
@@ -435,7 +435,7 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 
 func TestVATControlStatementService_MarkFiled(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{})
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -466,7 +466,7 @@ func setupVATControlSvc(t *testing.T) (*VATControlStatementService, *sql.DB) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	contactRepo := repository.NewContactRepository(db)
-	svc := NewVATControlStatementService(csRepo, invRepo, expRepo, contactRepo)
+	svc := NewVATControlStatementService(csRepo, invRepo, expRepo, contactRepo, nil)
 	return svc, db
 }
 

@@ -13,16 +13,19 @@ import (
 type InvestmentIncomeService struct {
 	capitalRepo  repository.CapitalIncomeRepo
 	securityRepo repository.SecurityTransactionRepo
+	audit        *AuditService
 }
 
 // NewInvestmentIncomeService creates a new InvestmentIncomeService.
 func NewInvestmentIncomeService(
 	capitalRepo repository.CapitalIncomeRepo,
 	securityRepo repository.SecurityTransactionRepo,
+	audit *AuditService,
 ) *InvestmentIncomeService {
 	return &InvestmentIncomeService{
 		capitalRepo:  capitalRepo,
 		securityRepo: securityRepo,
+		audit:        audit,
 	}
 }
 
@@ -37,6 +40,9 @@ func (s *InvestmentIncomeService) CreateCapitalEntry(ctx context.Context, entry 
 	if err := s.capitalRepo.Create(ctx, entry); err != nil {
 		return fmt.Errorf("creating capital entry: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "capital_income", entry.ID, "create", nil, entry)
+	}
 	return nil
 }
 
@@ -45,9 +51,20 @@ func (s *InvestmentIncomeService) UpdateCapitalEntry(ctx context.Context, entry 
 	if err := validateCapitalCategory(entry.Category); err != nil {
 		return err
 	}
+	var existing *domain.CapitalIncomeEntry
+	if s.audit != nil {
+		var err error
+		existing, err = s.capitalRepo.GetByID(ctx, entry.ID)
+		if err != nil {
+			return fmt.Errorf("fetching capital entry for audit: %w", err)
+		}
+	}
 	entry.NetAmount = entry.GrossAmount - entry.WithheldTaxCZ - entry.WithheldTaxForeign
 	if err := s.capitalRepo.Update(ctx, entry); err != nil {
 		return fmt.Errorf("updating capital entry: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "capital_income", entry.ID, "update", existing, entry)
 	}
 	return nil
 }
@@ -56,6 +73,9 @@ func (s *InvestmentIncomeService) UpdateCapitalEntry(ctx context.Context, entry 
 func (s *InvestmentIncomeService) DeleteCapitalEntry(ctx context.Context, id int64) error {
 	if err := s.capitalRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting capital entry: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "capital_income", id, "delete", nil, nil)
 	}
 	return nil
 }
@@ -100,6 +120,9 @@ func (s *InvestmentIncomeService) CreateSecurityTransaction(ctx context.Context,
 	if err := s.securityRepo.Create(ctx, tx); err != nil {
 		return fmt.Errorf("creating security transaction: %w", err)
 	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "security_transaction", tx.ID, "create", nil, tx)
+	}
 	return nil
 }
 
@@ -111,8 +134,19 @@ func (s *InvestmentIncomeService) UpdateSecurityTransaction(ctx context.Context,
 	if err := validateTransactionType(tx.TransactionType); err != nil {
 		return err
 	}
+	var existing *domain.SecurityTransaction
+	if s.audit != nil {
+		var err error
+		existing, err = s.securityRepo.GetByID(ctx, tx.ID)
+		if err != nil {
+			return fmt.Errorf("fetching security transaction for audit: %w", err)
+		}
+	}
 	if err := s.securityRepo.Update(ctx, tx); err != nil {
 		return fmt.Errorf("updating security transaction: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "security_transaction", tx.ID, "update", existing, tx)
 	}
 	return nil
 }
@@ -121,6 +155,9 @@ func (s *InvestmentIncomeService) UpdateSecurityTransaction(ctx context.Context,
 func (s *InvestmentIncomeService) DeleteSecurityTransaction(ctx context.Context, id int64) error {
 	if err := s.securityRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting security transaction: %w", err)
+	}
+	if s.audit != nil {
+		s.audit.Log(ctx, "security_transaction", id, "delete", nil, nil)
 	}
 	return nil
 }

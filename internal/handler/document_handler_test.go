@@ -26,7 +26,7 @@ func setupDocumentRouter(t *testing.T) (*chi.Mux, int64) {
 	expense := testutil.SeedExpense(t, db, nil)
 
 	docRepo := repository.NewDocumentRepository(db)
-	docSvc := service.NewDocumentService(docRepo, dataDir)
+	docSvc := service.NewDocumentService(docRepo, dataDir, nil)
 	h := NewDocumentHandler(docSvc)
 
 	r := chi.NewRouter()

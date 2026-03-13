@@ -159,8 +159,7 @@ describe('Expenses import page', () => {
 		await waitFor(() => {
 			expect(
 				toasts.some(
-					(t) =>
-						t.message === 'Nepodporovaný formát souboru. Povolené: PDF, JPG, PNG, WebP.'
+					(t) => t.message === 'Nepodporovaný formát souboru. Povolené: PDF, JPG, PNG, WebP.'
 				)
 			).toBe(true);
 		});
@@ -178,9 +177,9 @@ describe('Expenses import page', () => {
 		await fireEvent.change(fileInput, { target: { files: [file] } });
 
 		await waitFor(() => {
-			expect(
-				toasts.some((t) => t.message === 'Soubor je příliš velký. Maximum je 20 MB.')
-			).toBe(true);
+			expect(toasts.some((t) => t.message === 'Soubor je příliš velký. Maximum je 20 MB.')).toBe(
+				true
+			);
 		});
 
 		expect(mockFetch).not.toHaveBeenCalled();

@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+	import {
+		Chart,
+		BarController,
+		BarElement,
+		CategoryScale,
+		LinearScale,
+		Tooltip,
+		Legend
+	} from 'chart.js';
 
 	Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -33,7 +41,9 @@
 			}
 		});
 
-		return () => { chart?.destroy(); };
+		return () => {
+			chart?.destroy();
+		};
 	});
 
 	// Update chart when data changes

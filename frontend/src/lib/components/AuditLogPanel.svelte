@@ -134,7 +134,7 @@
 			{#if loading}
 				<LoadingSpinner class="py-6" />
 			{:else if error}
-				<ErrorAlert error={error} class="mt-4" />
+				<ErrorAlert {error} class="mt-4" />
 			{:else if entries.length === 0}
 				<p class="py-4 text-sm text-muted">Zadne zaznamy</p>
 			{:else}
@@ -162,11 +162,7 @@
 										stroke="currentColor"
 										stroke-width="2"
 									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M19 9l-7 7-7-7"
-										/>
+										<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
 									</svg>
 								{/if}
 							</button>
@@ -178,14 +174,18 @@
 											<div>
 												<p class="mb-1 text-xs font-medium text-muted">Pred zmenou</p>
 												<pre
-													class="max-h-48 overflow-auto rounded bg-danger-bg p-2 text-xs text-danger">{formatJson(entry.old_values)}</pre>
+													class="max-h-48 overflow-auto rounded bg-danger-bg p-2 text-xs text-danger">{formatJson(
+														entry.old_values
+													)}</pre>
 											</div>
 										{/if}
 										{#if entry.new_values}
 											<div>
 												<p class="mb-1 text-xs font-medium text-muted">Po zmene</p>
 												<pre
-													class="max-h-48 overflow-auto rounded bg-success-bg p-2 text-xs text-success">{formatJson(entry.new_values)}</pre>
+													class="max-h-48 overflow-auto rounded bg-success-bg p-2 text-xs text-success">{formatJson(
+														entry.new_values
+													)}</pre>
 											</div>
 										{/if}
 									</div>

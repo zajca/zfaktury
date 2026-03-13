@@ -116,7 +116,7 @@ func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, year int) ([]M
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly revenue for %d: %w", year, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []MonthlyAmount
 	for rows.Next() {
@@ -150,7 +150,7 @@ func (r *DashboardRepository) MonthlyExpenses(ctx context.Context, year int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly expenses for %d: %w", year, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []MonthlyAmount
 	for rows.Next() {
@@ -182,7 +182,7 @@ func (r *DashboardRepository) RecentInvoices(ctx context.Context, limit int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("querying recent invoices: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []RecentInvoice
 	for rows.Next() {
@@ -215,7 +215,7 @@ func (r *DashboardRepository) RecentExpenses(ctx context.Context, limit int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("querying recent expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []RecentExpense
 	for rows.Next() {

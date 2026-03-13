@@ -42,12 +42,34 @@
 	let topCustomersData = $state<TopCustomer[] | null>(null);
 	let taxCalendarData = $state<TaxCalendar | null>(null);
 
-	const monthLabels = ['Led', 'Úno', 'Bře', 'Dub', 'Kvě', 'Čer', 'Črc', 'Srp', 'Zář', 'Říj', 'Lis', 'Pro'];
+	const monthLabels = [
+		'Led',
+		'Úno',
+		'Bře',
+		'Dub',
+		'Kvě',
+		'Čer',
+		'Črc',
+		'Srp',
+		'Zář',
+		'Říj',
+		'Lis',
+		'Pro'
+	];
 
 	const chartColors = [
-		'#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
-		'#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16',
-		'#06b6d4', '#d946ef'
+		'#3b82f6',
+		'#ef4444',
+		'#22c55e',
+		'#f59e0b',
+		'#8b5cf6',
+		'#ec4899',
+		'#14b8a6',
+		'#f97316',
+		'#6366f1',
+		'#84cc16',
+		'#06b6d4',
+		'#d946ef'
 	];
 
 	const deadlineTypeLabels: Record<string, string> = {
@@ -140,8 +162,12 @@
 
 	let expenseMonthly = $derived(expenseData ? toMonthlyArray(expenseData.monthly) : []);
 
-	let profitRevenueMonthly = $derived(profitLossData ? toMonthlyArray(profitLossData.monthly_revenue) : []);
-	let profitExpenseMonthly = $derived(profitLossData ? toMonthlyArray(profitLossData.monthly_expenses) : []);
+	let profitRevenueMonthly = $derived(
+		profitLossData ? toMonthlyArray(profitLossData.monthly_revenue) : []
+	);
+	let profitExpenseMonthly = $derived(
+		profitLossData ? toMonthlyArray(profitLossData.monthly_expenses) : []
+	);
 
 	let profitMonthlyTable = $derived(
 		profitRevenueMonthly.map((rev, i) => ({
@@ -222,7 +248,7 @@
 	</div>
 
 	<!-- Error -->
-	<ErrorAlert error={error} class="mt-4" />
+	<ErrorAlert {error} class="mt-4" />
 
 	<!-- Loading -->
 	{#if loading}
@@ -235,14 +261,20 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 					<Card class="lg:col-span-1">
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Celkové příjmy</p>
-						<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums" title={formatCZK(revenueData.total)}>
+						<p
+							class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums"
+							title={formatCZK(revenueData.total)}
+						>
 							{formatCZK(revenueData.total)}
 						</p>
 					</Card>
 					{#each revenueData.quarterly as q}
 						<Card>
 							<p class="text-xs font-medium uppercase tracking-wider text-muted">Q{q.quarter}</p>
-							<p class="mt-2 text-base font-semibold text-primary font-mono tabular-nums sm:text-lg" title={formatCZK(q.amount)}>
+							<p
+								class="mt-2 text-base font-semibold text-primary font-mono tabular-nums sm:text-lg"
+								title={formatCZK(q.amount)}
+							>
 								{formatCZK(q.amount)}
 							</p>
 						</Card>
@@ -271,7 +303,10 @@
 					{#each expenseData.quarterly as q}
 						<Card>
 							<p class="text-xs font-medium uppercase tracking-wider text-muted">Q{q.quarter}</p>
-							<p class="mt-2 text-base font-semibold text-primary font-mono tabular-nums sm:text-lg" title={formatCZK(q.amount)}>
+							<p
+								class="mt-2 text-base font-semibold text-primary font-mono tabular-nums sm:text-lg"
+								title={formatCZK(q.amount)}
+							>
 								{formatCZK(q.amount)}
 							</p>
 						</Card>
@@ -315,13 +350,19 @@
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 					<Card>
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Celkové příjmy</p>
-						<p class="mt-2 text-lg font-semibold text-success font-mono tabular-nums" title={formatCZK(plRevenueTotal)}>
+						<p
+							class="mt-2 text-lg font-semibold text-success font-mono tabular-nums"
+							title={formatCZK(plRevenueTotal)}
+						>
 							{formatCZK(plRevenueTotal)}
 						</p>
 					</Card>
 					<Card>
 						<p class="text-xs font-medium uppercase tracking-wider text-muted">Celkové náklady</p>
-						<p class="mt-2 text-lg font-semibold text-danger font-mono tabular-nums" title={formatCZK(plExpenseTotal)}>
+						<p
+							class="mt-2 text-lg font-semibold text-danger font-mono tabular-nums"
+							title={formatCZK(plExpenseTotal)}
+						>
 							{formatCZK(plExpenseTotal)}
 						</p>
 					</Card>
@@ -397,9 +438,7 @@
 			<!-- Top Customers tab -->
 			{#if activeTab === 'top-customers' && topCustomersData}
 				{#if topCustomersData.length === 0}
-					<Card class="text-center text-sm text-muted">
-						Žádní zákazníci v tomto roce.
-					</Card>
+					<Card class="text-center text-sm text-muted">Žádní zákazníci v tomto roce.</Card>
 				{:else}
 					<Card padding={false}>
 						<div class="overflow-x-auto">
@@ -435,9 +474,7 @@
 			<!-- Tax Calendar tab -->
 			{#if activeTab === 'tax-calendar' && taxCalendarData}
 				{#if taxCalendarData.deadlines.length === 0}
-					<Card class="text-center text-sm text-muted">
-						Žádné daňové povinnosti pro tento rok.
-					</Card>
+					<Card class="text-center text-sm text-muted">Žádné daňové povinnosti pro tento rok.</Card>
 				{:else}
 					<!-- Upcoming deadlines -->
 					{#if upcomingDeadlines.length > 0}
@@ -475,7 +512,8 @@
 					<!-- Past deadlines -->
 					{#if pastDeadlines.length > 0}
 						<h3
-							class="mb-3 text-sm font-semibold uppercase tracking-wider text-secondary {upcomingDeadlines.length > 0
+							class="mb-3 text-sm font-semibold uppercase tracking-wider text-secondary {upcomingDeadlines.length >
+							0
 								? 'mt-8'
 								: ''}"
 						>

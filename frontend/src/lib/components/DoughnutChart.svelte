@@ -30,7 +30,9 @@
 			}
 		});
 
-		return () => { chart?.destroy(); };
+		return () => {
+			chart?.destroy();
+		};
 	});
 
 	$effect(() => {

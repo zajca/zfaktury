@@ -40,16 +40,6 @@ func setupInvoiceDocumentRouter(t *testing.T) (*chi.Mux, int64, string) {
 	return r, invoice.ID, dataDir
 }
 
-// uploadInvoiceDocument is a helper that inserts a document directly via service for handler tests.
-func uploadInvoiceDocument(t *testing.T, db interface{}, svc *service.InvoiceDocumentService, invoiceID int64, filename string, data []byte) int64 {
-	t.Helper()
-	doc, err := svc.Upload(t.Context(), invoiceID, filename, "application/pdf", data)
-	if err != nil {
-		t.Fatalf("uploading test document: %v", err)
-	}
-	return doc.ID
-}
-
 // setupInvoiceDocumentRouterWithDoc creates a test router and uploads one document, returning the document ID.
 func setupInvoiceDocumentRouterWithDoc(t *testing.T) (*chi.Mux, int64, int64, string) {
 	t.Helper()

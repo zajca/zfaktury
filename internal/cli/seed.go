@@ -330,7 +330,7 @@ func seedContacts(ctx context.Context, svc *service.ContactService) (contactIDs,
 		}},
 		{"dataflow", domain.Contact{
 			Type: domain.ContactTypeCompany, Name: "DataFlow Analytics GmbH",
-			DIC: "DE812345678",
+			DIC:    "DE812345678",
 			Street: "Friedrichstrasse 120", City: "Berlin", ZIP: "10117", Country: "DE",
 			Email: "billing@dataflow-analytics.de", Phone: "+49 30 123 4567",
 			IBAN: "DE89370400440532013000", SWIFT: "COBADEFFXXX",
@@ -752,9 +752,9 @@ func seedTaxYearSettings(ctx context.Context, svc *service.TaxYearSettingsServic
 		prepayments2025[m-1] = domain.TaxPrepayment{
 			Year:         2025,
 			Month:        m,
-			TaxAmount:    domain.Amount(450000),  // 4 500 CZK DPFO
-			SocialAmount: domain.Amount(320000),  // 3 200 CZK CSSZ
-			HealthAmount: domain.Amount(280000),  // 2 800 CZK ZP
+			TaxAmount:    domain.Amount(450000), // 4 500 CZK DPFO
+			SocialAmount: domain.Amount(320000), // 3 200 CZK CSSZ
+			HealthAmount: domain.Amount(280000), // 2 800 CZK ZP
 		}
 	}
 	if err := svc.Save(ctx, 2025, 0, prepayments2025); err != nil {
@@ -767,9 +767,9 @@ func seedTaxYearSettings(ctx context.Context, svc *service.TaxYearSettingsServic
 		prepayments2026[m-1] = domain.TaxPrepayment{
 			Year:         2026,
 			Month:        m,
-			TaxAmount:    domain.Amount(550000),  // 5 500 CZK DPFO
-			SocialAmount: domain.Amount(380000),  // 3 800 CZK CSSZ
-			HealthAmount: domain.Amount(320000),  // 3 200 CZK ZP
+			TaxAmount:    domain.Amount(550000), // 5 500 CZK DPFO
+			SocialAmount: domain.Amount(380000), // 3 800 CZK CSSZ
+			HealthAmount: domain.Amount(320000), // 3 200 CZK ZP
 		}
 	}
 	return svc.Save(ctx, 2026, 0, prepayments2026)
@@ -1060,8 +1060,8 @@ func seedSettings(ctx context.Context, svc *service.SettingsService) error {
 		service.SettingIBAN:          "CZ6508000000001234567890",
 		service.SettingSWIFT:         "KOMBCZPPXXX",
 
-		service.SettingEmailSubjectTpl: "Faktura {{.InvoiceNumber}} - Jan Novak",
-		service.SettingEmailBodyTpl:    "Dobry den,\n\nv priloze zasilam fakturu c. {{.InvoiceNumber}} na castku {{.TotalAmount}} {{.Currency}}.\n\nDekuji za spolupráci.\n\nJan Novak",
+		service.SettingEmailSubjectTpl:  "Faktura {{.InvoiceNumber}} - Jan Novak",
+		service.SettingEmailBodyTpl:     "Dobry den,\n\nv priloze zasilam fakturu c. {{.InvoiceNumber}} na castku {{.TotalAmount}} {{.Currency}}.\n\nDekuji za spolupráci.\n\nJan Novak",
 		service.SettingEmailAttachPDF:   "true",
 		service.SettingEmailAttachISDOC: "true",
 

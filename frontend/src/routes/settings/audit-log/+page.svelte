@@ -185,8 +185,7 @@
 <Card padding={false} class="mt-4">
 	<div class="flex flex-wrap items-end gap-3 border-b border-border p-4">
 		<div>
-			<label for="filter-entity" class="mb-1 block text-xs font-medium text-muted"
-				>Typ entity</label
+			<label for="filter-entity" class="mb-1 block text-xs font-medium text-muted">Typ entity</label
 			>
 			<select
 				id="filter-entity"
@@ -237,7 +236,7 @@
 		<LoadingSpinner class="py-8" />
 	{:else if error}
 		<div class="p-4">
-			<ErrorAlert error={error} />
+			<ErrorAlert {error} />
 		</div>
 	{:else if entries.length === 0}
 		<p class="py-8 text-center text-sm text-muted">Zadne zaznamy</p>
@@ -295,14 +294,18 @@
 											<div>
 												<p class="mb-1 text-xs font-medium text-muted">Pred zmenou</p>
 												<pre
-													class="max-h-48 overflow-auto rounded bg-danger-bg p-2 text-xs text-danger">{formatJson(entry.old_values)}</pre>
+													class="max-h-48 overflow-auto rounded bg-danger-bg p-2 text-xs text-danger">{formatJson(
+														entry.old_values
+													)}</pre>
 											</div>
 										{/if}
 										{#if entry.new_values}
 											<div>
 												<p class="mb-1 text-xs font-medium text-muted">Po zmene</p>
 												<pre
-													class="max-h-48 overflow-auto rounded bg-success-bg p-2 text-xs text-success">{formatJson(entry.new_values)}</pre>
+													class="max-h-48 overflow-auto rounded bg-success-bg p-2 text-xs text-success">{formatJson(
+														entry.new_values
+													)}</pre>
 											</div>
 										{/if}
 									</div>

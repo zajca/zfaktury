@@ -102,7 +102,9 @@
 			</div>
 
 			<div>
-				<label for="client-secret" class="block text-sm font-medium text-primary">Client Secret</label>
+				<label for="client-secret" class="block text-sm font-medium text-primary"
+					>Client Secret</label
+				>
 				<input
 					id="client-secret"
 					type="password"
@@ -113,7 +115,8 @@
 					class="mt-1 block w-full rounded-md border border-border bg-hover px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
 				/>
 				<p class="mt-1 text-xs text-muted">
-					Client ID a Client Secret najdete v nastaveni vaseho Fakturoid uctu (Nastaveni &rarr; Uzivatelsky ucet).
+					Client ID a Client Secret najdete v nastaveni vaseho Fakturoid uctu (Nastaveni &rarr;
+					Uzivatelsky ucet).
 				</p>
 			</div>
 
@@ -125,12 +128,11 @@
 					disabled={submitting}
 					class="h-4 w-4 rounded border-border text-accent focus:ring-accent"
 				/>
-				<label for="download-attachments" class="text-sm text-primary">
-					Stáhnout přílohy
-				</label>
+				<label for="download-attachments" class="text-sm text-primary"> Stáhnout přílohy </label>
 			</div>
 			<p class="text-xs text-muted -mt-2">
-				Stáhne přílohy (účtenky, smlouvy) u nově importovaných faktur a nákladů. Zvyšuje počet API požadavků.
+				Stáhne přílohy (účtenky, smlouvy) u nově importovaných faktur a nákladů. Zvyšuje počet API
+				požadavků.
 			</p>
 
 			<button

@@ -13,7 +13,20 @@
 	let loading = $state(true);
 	let error = $state('');
 
-	const monthLabels = ['Led', 'Uno', 'Bre', 'Dub', 'Kve', 'Cer', 'Crv', 'Srp', 'Zar', 'Rij', 'Lis', 'Pro'];
+	const monthLabels = [
+		'Led',
+		'Uno',
+		'Bre',
+		'Dub',
+		'Kve',
+		'Cer',
+		'Crv',
+		'Srp',
+		'Zar',
+		'Rij',
+		'Lis',
+		'Pro'
+	];
 
 	function toMonthlyArray(items: { month: number; amount: number }[]): number[] {
 		const arr = new Array(12).fill(0);
@@ -64,14 +77,27 @@
 
 	{#if loading}
 		<div class="mt-12 flex justify-center" role="status">
-			<svg class="h-8 w-8 animate-spin text-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-				<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-				<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+			<svg
+				class="h-8 w-8 animate-spin text-muted"
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+			>
+				<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+				></circle>
+				<path
+					class="opacity-75"
+					fill="currentColor"
+					d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+				></path>
 			</svg>
 			<span class="sr-only">Nacitani...</span>
 		</div>
 	{:else if error}
-		<div class="mt-6 rounded-lg border border-danger-border bg-danger-bg p-4 text-sm text-danger" role="alert">
+		<div
+			class="mt-6 rounded-lg border border-danger-border bg-danger-bg p-4 text-sm text-danger"
+			role="alert"
+		>
 			{error}
 		</div>
 	{:else if data}
@@ -81,30 +107,54 @@
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Prijmy tento mesic <HelpTip topic="prijmy-naklady" />
 				</p>
-				<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums sm:text-xl" title={formatCZK(data.revenue_current_month)}>{formatCZK(data.revenue_current_month)}</p>
+				<p
+					class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums sm:text-xl"
+					title={formatCZK(data.revenue_current_month)}
+				>
+					{formatCZK(data.revenue_current_month)}
+				</p>
 			</Card>
 
 			<Card>
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Naklady tento mesic <HelpTip topic="prijmy-naklady" />
 				</p>
-				<p class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums sm:text-xl" title={formatCZK(data.expenses_current_month)}>{formatCZK(data.expenses_current_month)}</p>
+				<p
+					class="mt-2 text-lg font-semibold text-primary font-mono tabular-nums sm:text-xl"
+					title={formatCZK(data.expenses_current_month)}
+				>
+					{formatCZK(data.expenses_current_month)}
+				</p>
 			</Card>
 
 			<Card>
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Neuhrazene faktury <HelpTip topic="neuhrazene-faktury" />
 				</p>
-				<p class="mt-2 text-lg font-semibold text-warning font-mono tabular-nums sm:text-xl">{data.unpaid_count}</p>
-				<p class="mt-1 text-xs text-muted font-mono tabular-nums" title={formatCZK(data.unpaid_total)}>{formatCZK(data.unpaid_total)}</p>
+				<p class="mt-2 text-lg font-semibold text-warning font-mono tabular-nums sm:text-xl">
+					{data.unpaid_count}
+				</p>
+				<p
+					class="mt-1 text-xs text-muted font-mono tabular-nums"
+					title={formatCZK(data.unpaid_total)}
+				>
+					{formatCZK(data.unpaid_total)}
+				</p>
 			</Card>
 
 			<Card>
 				<p class="text-xs font-medium uppercase tracking-wider text-muted">
 					Faktury po splatnosti <HelpTip topic="faktury-po-splatnosti" />
 				</p>
-				<p class="mt-2 text-lg font-semibold text-danger font-mono tabular-nums sm:text-xl">{data.overdue_count}</p>
-				<p class="mt-1 text-xs text-muted font-mono tabular-nums" title={formatCZK(data.overdue_total)}>{formatCZK(data.overdue_total)}</p>
+				<p class="mt-2 text-lg font-semibold text-danger font-mono tabular-nums sm:text-xl">
+					{data.overdue_count}
+				</p>
+				<p
+					class="mt-1 text-xs text-muted font-mono tabular-nums"
+					title={formatCZK(data.overdue_total)}
+				>
+					{formatCZK(data.overdue_total)}
+				</p>
 			</Card>
 		</div>
 
@@ -126,7 +176,9 @@
 						<div class="overflow-x-auto">
 							<table class="w-full text-sm">
 								<thead>
-									<tr class="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted">
+									<tr
+										class="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>
 										<th class="px-4 py-3">Cislo</th>
 										<th class="px-4 py-3">Stav</th>
 										<th class="px-4 py-3 text-right">Castka</th>
@@ -144,12 +196,20 @@
 										>
 											<td class="px-4 py-3 font-medium text-primary">{invoice.invoice_number}</td>
 											<td class="px-4 py-3">
-												<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusColors[invoice.status] ?? ''}">
+												<span
+													class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusColors[
+														invoice.status
+													] ?? ''}"
+												>
 													{statusLabels[invoice.status] ?? invoice.status}
 												</span>
 											</td>
-											<td class="px-4 py-3 text-right font-mono tabular-nums">{formatCZK(invoice.total_amount)}</td>
-											<td class="px-4 py-3 text-right text-muted">{formatDate(invoice.issue_date)}</td>
+											<td class="px-4 py-3 text-right font-mono tabular-nums"
+												>{formatCZK(invoice.total_amount)}</td
+											>
+											<td class="px-4 py-3 text-right text-muted"
+												>{formatDate(invoice.issue_date)}</td
+											>
 										</tr>
 									{/each}
 								</tbody>
@@ -157,9 +217,7 @@
 						</div>
 					</Card>
 				{:else}
-					<Card class="mt-4 text-center text-sm text-muted">
-						Zatim zadne faktury.
-					</Card>
+					<Card class="mt-4 text-center text-sm text-muted">Zatim zadne faktury.</Card>
 				{/if}
 			</div>
 
@@ -171,7 +229,9 @@
 						<div class="overflow-x-auto">
 							<table class="w-full text-sm">
 								<thead>
-									<tr class="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted">
+									<tr
+										class="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted"
+									>
 										<th class="px-4 py-3">Popis</th>
 										<th class="px-4 py-3">Kategorie</th>
 										<th class="px-4 py-3 text-right">Castka</th>
@@ -189,8 +249,12 @@
 										>
 											<td class="px-4 py-3 font-medium text-primary">{expense.description}</td>
 											<td class="px-4 py-3 text-muted">{expense.category}</td>
-											<td class="px-4 py-3 text-right font-mono tabular-nums">{formatCZK(expense.amount)}</td>
-											<td class="px-4 py-3 text-right text-muted">{formatDate(expense.issue_date)}</td>
+											<td class="px-4 py-3 text-right font-mono tabular-nums"
+												>{formatCZK(expense.amount)}</td
+											>
+											<td class="px-4 py-3 text-right text-muted"
+												>{formatDate(expense.issue_date)}</td
+											>
 										</tr>
 									{/each}
 								</tbody>
@@ -198,9 +262,7 @@
 						</div>
 					</Card>
 				{:else}
-					<Card class="mt-4 text-center text-sm text-muted">
-						Zatim zadne naklady.
-					</Card>
+					<Card class="mt-4 text-center text-sm text-muted">Zatim zadne naklady.</Card>
 				{/if}
 			</div>
 		</div>

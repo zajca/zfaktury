@@ -38,15 +38,15 @@ type fakturoidImportRequest struct {
 }
 
 type fakturoidImportResponse struct {
-	ContactsCreated      int      `json:"contacts_created"`
-	ContactsSkipped      int      `json:"contacts_skipped"`
-	InvoicesCreated      int      `json:"invoices_created"`
-	InvoicesSkipped      int      `json:"invoices_skipped"`
-	ExpensesCreated      int      `json:"expenses_created"`
-	ExpensesSkipped      int      `json:"expenses_skipped"`
-	AttachmentsDownloaded int     `json:"attachments_downloaded"`
-	AttachmentsSkipped   int      `json:"attachments_skipped"`
-	Errors               []string `json:"errors"`
+	ContactsCreated       int      `json:"contacts_created"`
+	ContactsSkipped       int      `json:"contacts_skipped"`
+	InvoicesCreated       int      `json:"invoices_created"`
+	InvoicesSkipped       int      `json:"invoices_skipped"`
+	ExpensesCreated       int      `json:"expenses_created"`
+	ExpensesSkipped       int      `json:"expenses_skipped"`
+	AttachmentsDownloaded int      `json:"attachments_downloaded"`
+	AttachmentsSkipped    int      `json:"attachments_skipped"`
+	Errors                []string `json:"errors"`
 }
 
 // Import performs a full import from Fakturoid using credentials from the request body.
@@ -74,14 +74,14 @@ func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, fakturoidImportResponse{
-		ContactsCreated:      result.ContactsCreated,
-		ContactsSkipped:      result.ContactsSkipped,
-		InvoicesCreated:      result.InvoicesCreated,
-		InvoicesSkipped:      result.InvoicesSkipped,
-		ExpensesCreated:      result.ExpensesCreated,
-		ExpensesSkipped:      result.ExpensesSkipped,
+		ContactsCreated:       result.ContactsCreated,
+		ContactsSkipped:       result.ContactsSkipped,
+		InvoicesCreated:       result.InvoicesCreated,
+		InvoicesSkipped:       result.InvoicesSkipped,
+		ExpensesCreated:       result.ExpensesCreated,
+		ExpensesSkipped:       result.ExpensesSkipped,
 		AttachmentsDownloaded: result.AttachmentsDownloaded,
-		AttachmentsSkipped:   result.AttachmentsSkipped,
-		Errors:               result.Errors,
+		AttachmentsSkipped:    result.AttachmentsSkipped,
+		Errors:                result.Errors,
 	})
 }

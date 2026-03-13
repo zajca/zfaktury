@@ -54,8 +54,12 @@ describe('Fakturoid import page', () => {
 		// Fill in credentials
 		await fireEvent.input(screen.getByLabelText('Slug účtu'), { target: { value: 'test-slug' } });
 		await fireEvent.input(screen.getByLabelText('Email'), { target: { value: 'test@test.cz' } });
-		await fireEvent.input(screen.getByLabelText('Client ID'), { target: { value: 'test-client-id' } });
-		await fireEvent.input(screen.getByLabelText('Client Secret'), { target: { value: 'test-client-secret' } });
+		await fireEvent.input(screen.getByLabelText('Client ID'), {
+			target: { value: 'test-client-id' }
+		});
+		await fireEvent.input(screen.getByLabelText('Client Secret'), {
+			target: { value: 'test-client-secret' }
+		});
 
 		// Remove required attrs to bypass HTML5 validation in jsdom
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
@@ -86,8 +90,12 @@ describe('Fakturoid import page', () => {
 
 		await fireEvent.input(screen.getByLabelText('Slug účtu'), { target: { value: 'test-slug' } });
 		await fireEvent.input(screen.getByLabelText('Email'), { target: { value: 'test@test.cz' } });
-		await fireEvent.input(screen.getByLabelText('Client ID'), { target: { value: 'test-client-id' } });
-		await fireEvent.input(screen.getByLabelText('Client Secret'), { target: { value: 'test-client-secret' } });
+		await fireEvent.input(screen.getByLabelText('Client ID'), {
+			target: { value: 'test-client-id' }
+		});
+		await fireEvent.input(screen.getByLabelText('Client Secret'), {
+			target: { value: 'test-client-secret' }
+		});
 
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
@@ -108,8 +116,12 @@ describe('Fakturoid import page', () => {
 
 		await fireEvent.input(screen.getByLabelText('Slug účtu'), { target: { value: 'test-slug' } });
 		await fireEvent.input(screen.getByLabelText('Email'), { target: { value: 'test@test.cz' } });
-		await fireEvent.input(screen.getByLabelText('Client ID'), { target: { value: 'test-client-id' } });
-		await fireEvent.input(screen.getByLabelText('Client Secret'), { target: { value: 'test-client-secret' } });
+		await fireEvent.input(screen.getByLabelText('Client ID'), {
+			target: { value: 'test-client-id' }
+		});
+		await fireEvent.input(screen.getByLabelText('Client Secret'), {
+			target: { value: 'test-client-secret' }
+		});
 
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
@@ -135,8 +147,12 @@ describe('Fakturoid import page', () => {
 
 		await fireEvent.input(screen.getByLabelText('Slug účtu'), { target: { value: 'test-slug' } });
 		await fireEvent.input(screen.getByLabelText('Email'), { target: { value: 'test@test.cz' } });
-		await fireEvent.input(screen.getByLabelText('Client ID'), { target: { value: 'test-client-id' } });
-		await fireEvent.input(screen.getByLabelText('Client Secret'), { target: { value: 'test-client-secret' } });
+		await fireEvent.input(screen.getByLabelText('Client ID'), {
+			target: { value: 'test-client-id' }
+		});
+		await fireEvent.input(screen.getByLabelText('Client Secret'), {
+			target: { value: 'test-client-secret' }
+		});
 
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 
@@ -160,8 +176,12 @@ describe('Fakturoid import page', () => {
 
 		await fireEvent.input(screen.getByLabelText('Slug účtu'), { target: { value: 'test-slug' } });
 		await fireEvent.input(screen.getByLabelText('Email'), { target: { value: 'test@test.cz' } });
-		await fireEvent.input(screen.getByLabelText('Client ID'), { target: { value: 'test-client-id' } });
-		await fireEvent.input(screen.getByLabelText('Client Secret'), { target: { value: 'test-client-secret' } });
+		await fireEvent.input(screen.getByLabelText('Client ID'), {
+			target: { value: 'test-client-id' }
+		});
+		await fireEvent.input(screen.getByLabelText('Client Secret'), {
+			target: { value: 'test-client-secret' }
+		});
 
 		document.querySelectorAll('[required]').forEach((el) => el.removeAttribute('required'));
 

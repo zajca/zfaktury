@@ -5,9 +5,41 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
+
+// configTemplate is the default configuration file template.
+const configTemplate = `# ZFaktury configuration
+# See https://github.com/zajca/zfaktury for documentation.
+
+# [database]
+# path = ""                        # Custom DB path (default: <data_dir>/zfaktury.db)
+
+# [log]
+# path = ""                        # Log file path (default: stderr only)
+# level = "info"                   # debug, info, warn, error
+
+# [server]
+# port = 8080
+
+# [smtp]
+# host = ""
+# port = 587
+# username = ""
+# password = ""
+# from = ""
+
+# [fio]
+# api_token = ""
+
+# [ocr]
+# provider = ""
+# api_key = ""
+# model = ""
+# base_url = ""
+`
 
 // Config holds the application configuration loaded from config.toml.
 type Config struct {
@@ -68,7 +100,76 @@ func defaultDataDir() (string, error) {
 	return filepath.Join(home, ".zfaktury"), nil
 }
 
-// Load reads configuration from the given configPath, or from DataDir/config.toml if empty.
+// ExpandHome replaces a leading ~ with the user's home directory.
+func ExpandHome(path string) string {
+	if path == "" || !strings.HasPrefix(path, "~") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	return filepath.Join(home, path[1:])
+}
+
+// DefaultConfigPath returns the default config file path (~/.zfaktury/config.toml).
+func DefaultConfigPath() (string, error) {
+	dataDir, err := defaultDataDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dataDir, "config.toml"), nil
+}
+
+// WriteTemplate creates a config file with commented-out defaults at the given path.
+// Parent directories are created if needed.
+func WriteTemplate(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+	if err := os.WriteFile(path, []byte(configTemplate), 0o644); err != nil {
+		return fmt.Errorf("writing config template: %w", err)
+	}
+	return nil
+}
+
+// Resolve determines the config file path and creates a template if needed.
+// If explicit is non-empty, it is used as the config path. When the file does not exist:
+//   - if initConfig is true, a template is created
+//   - otherwise an error is returned suggesting --init-config
+//
+// If explicit is empty, the default path is used and a template is created
+// automatically if it does not exist.
+func Resolve(explicit string, initConfig bool) (string, error) {
+	if explicit != "" {
+		path := ExpandHome(explicit)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			if !initConfig {
+				return "", fmt.Errorf("config file not found: %s\nUse --init-config to create a default config file", path)
+			}
+			if err := WriteTemplate(path); err != nil {
+				return "", fmt.Errorf("creating config file: %w", err)
+			}
+			slog.Info("created default config file", "path", path)
+		}
+		return path, nil
+	}
+
+	path, err := DefaultConfigPath()
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := WriteTemplate(path); err != nil {
+			return "", fmt.Errorf("creating config file: %w", err)
+		}
+		slog.Info("created default config file", "path", path)
+	}
+	return path, nil
+}
+
+// Load reads configuration from the given configPath.
+// The config file must exist -- call WriteTemplate first if needed.
 // If DataDir is not set, it defaults to ~/.zfaktury.
 // The DataDir is created if it does not exist.
 func Load(configPath string) (*Config, error) {
@@ -94,18 +195,15 @@ func Load(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("creating data directory %s: %w", cfg.DataDir, err)
 	}
 
-	if configPath == "" {
-		configPath = filepath.Join(cfg.DataDir, "config.toml")
-	}
-
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		slog.Warn("config file not found, using defaults", "path", configPath)
-		return cfg, nil
-	}
+	configPath = ExpandHome(configPath)
 
 	if _, err := toml.DecodeFile(configPath, cfg); err != nil {
 		return nil, fmt.Errorf("reading config file %s: %w", configPath, err)
 	}
+
+	cfg.DataDir = ExpandHome(cfg.DataDir)
+	cfg.Database.Path = ExpandHome(cfg.Database.Path)
+	cfg.Log.Path = ExpandHome(cfg.Log.Path)
 
 	slog.Info("config loaded", "path", configPath, "data_dir", cfg.DataDir)
 	return cfg, nil

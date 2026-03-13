@@ -35,13 +35,15 @@ import (
 )
 
 var (
-	servePort int
-	serveDev  bool
+	servePort      int
+	serveDev       bool
+	serveInitConfig bool
 )
 
 func init() {
 	serveCmd.Flags().IntVar(&servePort, "port", 8080, "HTTP server port")
 	serveCmd.Flags().BoolVar(&serveDev, "dev", false, "Enable development mode (proxy frontend to Vite)")
+	serveCmd.Flags().BoolVar(&serveInitConfig, "init-config", false, "Create a default config file if it does not exist")
 	rootCmd.AddCommand(serveCmd)
 }
 
@@ -50,7 +52,12 @@ var serveCmd = &cobra.Command{
 	Short: "Start the HTTP server",
 	Long:  "Start the ZFaktury HTTP server serving both the API and the frontend.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg, err := config.Load(configFile)
+		cfgPath, err := config.Resolve(configFile, serveInitConfig)
+		if err != nil {
+			return err
+		}
+
+		cfg, err := config.Load(cfgPath)
 		if err != nil {
 			return fmt.Errorf("loading config: %w", err)
 		}

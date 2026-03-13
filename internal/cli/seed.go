@@ -40,7 +40,11 @@ func (noopARES) LookupByICO(_ context.Context, _ string) (*domain.Contact, error
 }
 
 func runSeed() error {
-	cfg, err := config.Load(configFile)
+	cfgPath, err := config.Resolve(configFile, false)
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}

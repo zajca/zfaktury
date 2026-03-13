@@ -16,7 +16,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let statement = $state<ControlStatement | null>(null);
 	let loading = $state(true);
@@ -60,11 +60,10 @@
 
 	async function handleRecalculate() {
 		actionLoading = true;
-		error = null;
 		try {
 			statement = await controlStatementApi.recalculate(statementId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se přepočítat';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se přepočítat');
 		} finally {
 			actionLoading = false;
 		}
@@ -72,18 +71,16 @@
 
 	async function handleGenerateXml() {
 		actionLoading = true;
-		error = null;
 		try {
 			statement = await controlStatementApi.generateXml(statementId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se generovat XML';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se generovat XML');
 		} finally {
 			actionLoading = false;
 		}
 	}
 
 	async function handleDownloadXml() {
-		error = null;
 		try {
 			const blob = await controlStatementApi.downloadXml(statementId);
 			const url = URL.createObjectURL(blob);
@@ -95,7 +92,7 @@
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		}
 	}
 
@@ -106,12 +103,11 @@
 	async function confirmMarkFiled() {
 		showFileConfirm = false;
 		actionLoading = true;
-		error = null;
 		try {
 			statement = await controlStatementApi.markFiled(statementId);
 			toastSuccess('Kontrolní hlášení označeno jako podané');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako podané';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se označit jako podané');
 		} finally {
 			actionLoading = false;
 		}
@@ -123,13 +119,12 @@
 
 	async function confirmDelete() {
 		showDeleteConfirm = false;
-		error = null;
 		try {
 			await controlStatementApi.delete(statementId);
 			toastSuccess('Kontrolní hlášení smazáno');
 			goto('/vat');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kontrolní hlášení';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat kontrolní hlášení');
 		}
 	}
 

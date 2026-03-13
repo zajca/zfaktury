@@ -11,6 +11,7 @@
 	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { formatCZK, fromHalere, toHalere } from '$lib/utils/money';
+	import { toastError } from '$lib/data/toast-state.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
@@ -136,7 +137,6 @@
 
 	async function saveSpouse() {
 		saving = true;
-		error = null;
 		try {
 			await taxCreditsApi.upsertSpouse(selectedYear, {
 				spouse_name: spouseName,
@@ -147,7 +147,7 @@
 			});
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při ukládání';
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání');
 		} finally {
 			saving = false;
 		}
@@ -155,13 +155,12 @@
 
 	async function deleteSpouse() {
 		saving = true;
-		error = null;
 		try {
 			await taxCreditsApi.deleteSpouse(selectedYear);
 			resetSpouseForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -169,7 +168,6 @@
 
 	async function savePersonal() {
 		saving = true;
-		error = null;
 		try {
 			await taxCreditsApi.upsertPersonal(selectedYear, {
 				is_student: isStudent,
@@ -178,7 +176,7 @@
 			});
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při ukládání';
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání');
 		} finally {
 			saving = false;
 		}
@@ -186,7 +184,6 @@
 
 	async function saveChild() {
 		saving = true;
-		error = null;
 		try {
 			const data = {
 				child_name: childName,
@@ -203,7 +200,7 @@
 			resetChildForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při ukládání';
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání');
 		} finally {
 			saving = false;
 		}
@@ -211,12 +208,11 @@
 
 	async function deleteChild(id: number) {
 		saving = true;
-		error = null;
 		try {
 			await taxCreditsApi.deleteChild(selectedYear, id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -241,7 +237,6 @@
 
 	async function saveDeduction() {
 		saving = true;
-		error = null;
 		try {
 			const data = {
 				category: deductionCategory,
@@ -256,7 +251,7 @@
 			resetDeductionForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při ukládání';
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání');
 		} finally {
 			saving = false;
 		}
@@ -264,12 +259,11 @@
 
 	async function deleteDeduction(id: number) {
 		saving = true;
-		error = null;
 		try {
 			await taxDeductionsApi.delete(selectedYear, id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -291,12 +285,11 @@
 			const file = input.files?.[0];
 			if (!file) return;
 			saving = true;
-			error = null;
 			try {
 				await taxDeductionsApi.uploadDocument(selectedYear, deductionId, file);
 				await loadData();
 			} catch (e) {
-				error = e instanceof Error ? e.message : 'Chyba při nahrávání';
+				toastError(e instanceof Error ? e.message : 'Chyba při nahrávání');
 			} finally {
 				saving = false;
 			}
@@ -306,7 +299,6 @@
 
 	async function extractAmount(docId: number) {
 		saving = true;
-		error = null;
 		try {
 			const result: TaxExtractionResult = await taxDeductionsApi.extractDocument(docId);
 			if (result.amount_czk > 0) {
@@ -314,7 +306,7 @@
 				await loadData();
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při extrakci';
+			toastError(e instanceof Error ? e.message : 'Chyba při extrakci');
 		} finally {
 			saving = false;
 		}
@@ -322,12 +314,11 @@
 
 	async function deleteDocument(docId: number) {
 		saving = true;
-		error = null;
 		try {
 			await taxDeductionsApi.deleteDocument(docId);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -335,12 +326,11 @@
 
 	async function copyFromPreviousYear() {
 		saving = true;
-		error = null;
 		try {
 			await taxCreditsApi.copyFromYear(selectedYear, selectedYear - 1);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při kopírování';
+			toastError(e instanceof Error ? e.message : 'Chyba při kopírování');
 		} finally {
 			saving = false;
 		}

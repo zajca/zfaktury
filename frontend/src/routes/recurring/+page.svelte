@@ -13,7 +13,7 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let recurringInvoices = $state<RecurringInvoice[]>([]);
 	let loading = $state(true);
@@ -36,7 +36,6 @@
 
 	async function processDue() {
 		processing = true;
-		error = null;
 		try {
 			const data = await recurringInvoicesApi.processDue();
 			if (data.generated_count > 0) {
@@ -44,7 +43,7 @@
 			}
 			toastSuccess(`Vygenerováno faktur: ${data.generated_count}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se zpracovat splatné faktury';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se zpracovat splatné faktury');
 		} finally {
 			processing = false;
 		}
@@ -63,7 +62,7 @@
 			toastSuccess('Opakující se faktura smazána');
 			await loadRecurringInvoices();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat');
 		} finally {
 			deleteTargetId = null;
 		}

@@ -17,6 +17,7 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Pagination from '$lib/ui/Pagination.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { toastError } from '$lib/data/toast-state.svelte';
 
 	let invoices = $state<Invoice[]>([]);
 	let total = $state(0);
@@ -94,7 +95,7 @@
 				overdueMessage = null;
 			}, 5000);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se zkontrolovat splatnost';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se zkontrolovat splatnost');
 		} finally {
 			checkingOverdue = false;
 		}

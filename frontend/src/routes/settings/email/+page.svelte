@@ -6,7 +6,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let settings = $state<Settings>({});
 	let loading = $state(true);
@@ -32,12 +32,11 @@
 
 	async function handleSave() {
 		saving = true;
-		error = null;
 		try {
 			settings = await settingsApi.update(settings);
 			toastSuccess('Email nastavení uloženo');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení');
 		} finally {
 			saving = false;
 		}

@@ -7,6 +7,7 @@ vi.stubGlobal('fetch', mockFetch);
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/environment', () => ({ browser: true }));
 
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 function jsonResponse(data: unknown, status = 200) {
@@ -29,6 +30,7 @@ const importResult = {
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	clearAllToasts();
 });
 
 afterEach(() => {
@@ -91,7 +93,7 @@ describe('Fakturoid import page', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Importovat' }));
 
 		await waitFor(() => {
-			expect(screen.getByRole('alert')).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 
 		// Should return to idle state with form still visible

@@ -8,6 +8,7 @@
 		type InvestmentYearSummary
 	} from '$lib/api/client';
 	import { formatCZK, fromHalere, toHalere } from '$lib/utils/money';
+	import { toastError } from '$lib/data/toast-state.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
@@ -134,12 +135,11 @@
 			const file = input.files?.[0];
 			if (!file) return;
 			uploading = true;
-			error = null;
 			try {
 				await investmentsApi.uploadDocument(selectedYear, uploadPlatform, file);
 				await loadData();
 			} catch (e) {
-				error = e instanceof Error ? e.message : 'Chyba při nahrávání';
+				toastError(e instanceof Error ? e.message : 'Chyba při nahrávání');
 			} finally {
 				uploading = false;
 			}
@@ -149,12 +149,11 @@
 
 	async function extractDocument(id: number) {
 		saving = true;
-		error = null;
 		try {
 			await investmentsApi.extractDocument(id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při extrakci';
+			toastError(e instanceof Error ? e.message : 'Chyba při extrakci');
 		} finally {
 			saving = false;
 		}
@@ -162,12 +161,11 @@
 
 	async function deleteDocument(id: number) {
 		saving = true;
-		error = null;
 		try {
 			await investmentsApi.deleteDocument(id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -203,7 +201,6 @@
 
 	async function saveCapitalEntry() {
 		saving = true;
-		error = null;
 		try {
 			const data = {
 				year: selectedYear,
@@ -224,7 +221,7 @@
 			resetCapitalForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při ukládání';
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání');
 		} finally {
 			saving = false;
 		}
@@ -232,12 +229,11 @@
 
 	async function deleteCapitalEntry(id: number) {
 		saving = true;
-		error = null;
 		try {
 			await investmentsApi.deleteCapitalIncome(id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -279,7 +275,6 @@
 
 	async function saveTransaction() {
 		saving = true;
-		error = null;
 		try {
 			const data = {
 				year: selectedYear,
@@ -303,7 +298,7 @@
 			resetTransactionForm();
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při ukládání';
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání');
 		} finally {
 			saving = false;
 		}
@@ -311,12 +306,11 @@
 
 	async function deleteTransaction(id: number) {
 		saving = true;
-		error = null;
 		try {
 			await investmentsApi.deleteSecurityTransaction(id);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při mazání';
+			toastError(e instanceof Error ? e.message : 'Chyba při mazání');
 		} finally {
 			saving = false;
 		}
@@ -324,12 +318,11 @@
 
 	async function recalculateFifo() {
 		saving = true;
-		error = null;
 		try {
 			await investmentsApi.recalculateFifo(selectedYear);
 			await loadData();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při přepočtu FIFO';
+			toastError(e instanceof Error ? e.message : 'Chyba při přepočtu FIFO');
 		} finally {
 			saving = false;
 		}

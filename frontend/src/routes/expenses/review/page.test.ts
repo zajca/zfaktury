@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
@@ -71,6 +72,7 @@ beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-03-10T12:00:00Z'));
 	mockFetch.mockReset();
+	clearAllToasts();
 	// Default: return sample expenses for the initial onMount load
 	mockFetch.mockResolvedValue(jsonResponse(sampleExpenses));
 });
@@ -379,8 +381,7 @@ describe('Expense Tax Review', () => {
 		await fireEvent.click(markBtn);
 
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-danger');
-			expect(errorDiv).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 	});
 

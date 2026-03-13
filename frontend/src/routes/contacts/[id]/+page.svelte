@@ -10,7 +10,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import AuditLogPanel from '$lib/components/AuditLogPanel.svelte';
 
 	let contact = $state<Contact | null>(null);
@@ -96,13 +96,12 @@
 			form.zip = result.zip;
 			form.country = result.country;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vyhledat v ARES';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vyhledat v ARES');
 		}
 	}
 
 	async function handleSubmit() {
 		saving = true;
-		error = null;
 		try {
 			if (isNew) {
 				await contactsApi.create(form);
@@ -112,7 +111,7 @@
 			toastSuccess('Kontakt uložen');
 			goto('/contacts');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit kontakt';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit kontakt');
 		} finally {
 			saving = false;
 		}
@@ -131,7 +130,7 @@
 			toastSuccess('Kontakt smazán');
 			goto('/contacts');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kontakt';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat kontakt');
 		}
 	}
 

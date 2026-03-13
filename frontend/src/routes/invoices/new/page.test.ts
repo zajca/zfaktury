@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
@@ -29,6 +30,7 @@ beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-03-10T12:00:00Z'));
 	mockFetch.mockReset();
+	clearAllToasts();
 	// Default: contacts load (contactsApi.list calls fetch with /api/v1/contacts)
 	mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
 });
@@ -132,9 +134,7 @@ describe('Invoice Create', () => {
 		// Advance fake timers to let Svelte flush updates
 		await vi.advanceTimersByTimeAsync(10);
 
-		const errorDiv = document.querySelector('.text-danger');
-		expect(errorDiv).toBeInTheDocument();
-		expect(errorDiv?.textContent).toContain('Vyberte zákazníka');
+		expect(toasts.some((t) => t.message === 'Vyberte zákazníka')).toBe(true);
 	});
 
 	it('renders date input fields', () => {
@@ -274,8 +274,7 @@ describe('Invoice Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-danger');
-			expect(errorDiv).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 	});
 

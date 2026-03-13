@@ -2,8 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { incomeTaxApi } from '$lib/api/client';
+	import { toastError } from '$lib/data/toast-state.svelte';
 	import Card from '$lib/ui/Card.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
@@ -16,7 +16,6 @@
 	const paramYear = page.url.searchParams.get('year');
 
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 
 	let form = $state({
 		year: paramYear ? Number(paramYear) : new Date().getFullYear() - 1,
@@ -25,8 +24,6 @@
 
 	async function handleSubmit() {
 		saving = true;
-		error = null;
-
 		try {
 			const result = await incomeTaxApi.create({
 				year: form.year,
@@ -34,7 +31,7 @@
 			});
 			goto(`/tax/income/${result.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit daňové přiznání';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vytvořit daňové přiznání');
 		} finally {
 			saving = false;
 		}
@@ -50,8 +47,6 @@
 
 <div class="mx-auto max-w-2xl">
 	<PageHeader title="Nové daňové přiznání (DPFO)" backHref="/tax" backLabel="Zpět na daně" />
-
-	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {

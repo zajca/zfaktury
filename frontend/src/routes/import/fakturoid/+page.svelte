@@ -5,7 +5,6 @@
 	type Step = 'idle' | 'importing' | 'done';
 
 	let step: Step = $state('idle');
-	let error = $state('');
 	let result: FakturoidImportResult | null = $state(null);
 
 	let slug = $state('');
@@ -15,7 +14,6 @@
 	let submitting = $state(false);
 
 	async function doImport() {
-		error = '';
 		submitting = true;
 		step = 'importing';
 		try {
@@ -33,7 +31,7 @@
 				toastError(`${result.errors.length} chyb při importu`);
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Chyba při importu';
+			toastError(e instanceof Error ? e.message : 'Chyba při importu');
 			step = 'idle';
 		} finally {
 			submitting = false;
@@ -50,10 +48,6 @@
 	</div>
 
 	{#if step === 'idle' || step === 'importing'}
-		{#if error}
-			<div class="mb-4 rounded-md bg-red-500/10 p-3 text-sm text-red-400" role="alert">{error}</div>
-		{/if}
-
 		<form
 			onsubmit={(e) => {
 				e.preventDefault();

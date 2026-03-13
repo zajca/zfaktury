@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -33,6 +34,7 @@ const sampleCategories = [
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	clearAllToasts();
 });
 
 afterEach(() => {
@@ -88,7 +90,7 @@ describe('New recurring expense page', () => {
 		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Název je povinný')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Název je povinný')).toBe(true);
 		});
 	});
 
@@ -111,7 +113,7 @@ describe('New recurring expense page', () => {
 		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Popis je povinný')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Popis je povinný')).toBe(true);
 		});
 	});
 
@@ -134,7 +136,7 @@ describe('New recurring expense page', () => {
 		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Částka musí být větší než 0')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Částka musí být větší než 0')).toBe(true);
 		});
 	});
 
@@ -200,7 +202,7 @@ describe('New recurring expense page', () => {
 		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Server error')).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 	});
 });

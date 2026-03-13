@@ -29,7 +29,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import AuditLogPanel from '$lib/components/AuditLogPanel.svelte';
 
 	let invoice = $state<Invoice | null>(null);
@@ -147,7 +147,6 @@
 
 	async function handleSave() {
 		saving = true;
-		error = null;
 		try {
 			const invoiceItems = items.map((item, index) => ({
 				description: item.description,
@@ -167,43 +166,40 @@
 			editing = false;
 			await loadInvoice();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit fakturu');
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function handleSend() {
-		error = null;
 		try {
 			await invoicesApi.send(invoiceId);
 			toastSuccess('Faktura odeslána');
 			await loadInvoice();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se odeslat fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se odeslat fakturu');
 		}
 	}
 
 	async function handleMarkPaid() {
 		if (!invoice) return;
-		error = null;
 		try {
 			await invoicesApi.markPaid(invoiceId, invoice.total_amount, toISODate(new Date()));
 			toastSuccess('Faktura označena jako uhrazená');
 			await loadInvoice();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako uhrazenou';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se označit jako uhrazenou');
 		}
 	}
 
 	async function handleDuplicate() {
-		error = null;
 		try {
 			const dup = await invoicesApi.duplicate(invoiceId);
 			toastSuccess('Faktura duplikována');
 			goto(`/invoices/${dup.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se duplikovat fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se duplikovat fakturu');
 		}
 	}
 
@@ -213,25 +209,23 @@
 
 	async function confirmDelete() {
 		showDeleteConfirm = false;
-		error = null;
 		try {
 			await invoicesApi.delete(invoiceId);
 			toastSuccess('Faktura smazána');
 			goto('/invoices');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat fakturu');
 		}
 	}
 
 	async function handleSettle() {
 		settling = true;
-		error = null;
 		try {
 			const settled = await invoicesApi.settle(invoiceId);
 			toastSuccess('Záloha vypořádána');
 			goto(`/invoices/${settled.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vyrovnat zálohu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vyrovnat zálohu');
 		} finally {
 			settling = false;
 		}

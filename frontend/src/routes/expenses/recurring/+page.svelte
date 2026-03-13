@@ -13,6 +13,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Pagination from '$lib/ui/Pagination.svelte';
+	import { toastError } from '$lib/data/toast-state.svelte';
 
 	let items = $state<RecurringExpense[]>([]);
 	let total = $state(0);
@@ -39,7 +40,6 @@
 
 	async function handleGenerate() {
 		generating = true;
-		error = null;
 		successMessage = null;
 		try {
 			const result = await recurringExpensesApi.generate();
@@ -53,7 +53,7 @@
 			}, 3000);
 			await loadItems();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vygenerovat náklady';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vygenerovat náklady');
 		} finally {
 			generating = false;
 		}

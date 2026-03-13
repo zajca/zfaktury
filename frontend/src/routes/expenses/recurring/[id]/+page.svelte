@@ -21,7 +21,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let item = $state<RecurringExpense | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -108,20 +108,19 @@
 
 	async function handleSave() {
 		if (!form.name) {
-			error = 'Název je povinný';
+			toastError('Název je povinný');
 			return;
 		}
 		if (!form.description) {
-			error = 'Popis je povinný';
+			toastError('Popis je povinný');
 			return;
 		}
 		if (form.amount <= 0) {
-			error = 'Částka musí být větší než 0';
+			toastError('Částka musí být větší než 0');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			await recurringExpensesApi.update(itemId, {
@@ -147,7 +146,7 @@
 			editing = false;
 			await loadItem();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit opakovaný náklad';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit opakovaný náklad');
 		} finally {
 			saving = false;
 		}
@@ -159,18 +158,16 @@
 
 	async function confirmDelete() {
 		showDeleteConfirm = false;
-		error = null;
 		try {
 			await recurringExpensesApi.delete(itemId);
 			toastSuccess('Opakovaný náklad smazán');
 			goto('/expenses/recurring');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat opakovaný náklad';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat opakovaný náklad');
 		}
 	}
 
 	async function handleToggleActive() {
-		error = null;
 		const wasActive = item?.is_active;
 		try {
 			if (wasActive) {
@@ -181,7 +178,7 @@
 			toastSuccess(wasActive ? 'Opakovaný náklad deaktivován' : 'Opakovaný náklad aktivován');
 			await loadItem();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se změnit stav';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se změnit stav');
 		}
 	}
 </script>

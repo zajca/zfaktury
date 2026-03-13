@@ -9,7 +9,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let sequences = $state<InvoiceSequence[]>([]);
 	let loading = $state(true);
@@ -48,7 +48,6 @@
 
 	async function handleCreate() {
 		creating = true;
-		error = null;
 		try {
 			await sequencesApi.create({
 				prefix: createPrefix,
@@ -63,7 +62,7 @@
 			createFormatPattern = '{prefix}{year}{number:04d}';
 			await loadSequences();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit číselnou řadu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vytvořit číselnou řadu');
 		} finally {
 			creating = false;
 		}
@@ -80,7 +79,6 @@
 
 	async function handleUpdate(seq: InvoiceSequence) {
 		saving = true;
-		error = null;
 		try {
 			await sequencesApi.update(seq.id, {
 				prefix: seq.prefix,
@@ -91,7 +89,7 @@
 			editingId = null;
 			await loadSequences();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit změny';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit změny');
 		} finally {
 			saving = false;
 		}
@@ -105,13 +103,12 @@
 	async function confirmDelete() {
 		if (!deleteTargetId) return;
 		showDeleteConfirm = false;
-		error = null;
 		try {
 			await sequencesApi.delete(deleteTargetId);
 			toastSuccess('Číselná řada smazána');
 			await loadSequences();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat číselnou řadu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat číselnou řadu');
 		} finally {
 			deleteTargetId = null;
 		}

@@ -3,8 +3,8 @@
 	import { page } from '$app/state';
 	import { vatReturnApi } from '$lib/api/client';
 	import { filingTypeLabels, monthLabels, quarterLabels } from '$lib/utils/vat';
+	import { toastError } from '$lib/data/toast-state.svelte';
 	import Card from '$lib/ui/Card.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -16,7 +16,6 @@
 	const paramQuarter = page.url.searchParams.get('quarter');
 
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 	let periodType = $state<'monthly' | 'quarterly'>(paramQuarter ? 'quarterly' : 'monthly');
 
 	let form = $state({
@@ -36,7 +35,6 @@
 
 	async function handleSubmit() {
 		saving = true;
-		error = null;
 
 		try {
 			const payload: { year: number; month?: number; quarter?: number; filing_type?: string } = {
@@ -49,7 +47,7 @@
 			const result = await vatReturnApi.create(payload);
 			goto(`/vat/returns/${result.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit přiznání';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vytvořit přiznání');
 		} finally {
 			saving = false;
 		}
@@ -65,8 +63,6 @@
 
 <div class="mx-auto max-w-2xl">
 	<PageHeader title="Nové DPH přiznání" backHref="/vat" backLabel="Zpět na DPH" />
-
-	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {

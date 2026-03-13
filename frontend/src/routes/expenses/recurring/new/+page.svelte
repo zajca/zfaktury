@@ -13,14 +13,12 @@
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 
 	let form = $state({
 		name: '',
@@ -57,20 +55,19 @@
 
 	async function handleSubmit() {
 		if (!form.name) {
-			error = 'Název je povinný';
+			toastError('Název je povinný');
 			return;
 		}
 		if (!form.description) {
-			error = 'Popis je povinný';
+			toastError('Popis je povinný');
 			return;
 		}
 		if (form.amount <= 0) {
-			error = 'Částka musí být větší než 0';
+			toastError('Částka musí být větší než 0');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			await recurringExpensesApi.create({
@@ -95,7 +92,7 @@
 			toastSuccess('Opakovaný náklad vytvořen');
 			goto('/expenses/recurring');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit opakovaný náklad';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit opakovaný náklad');
 		} finally {
 			saving = false;
 		}
@@ -112,8 +109,6 @@
 		backHref="/expenses/recurring"
 		backLabel="Zpět na opakované náklady"
 	/>
-
-	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {

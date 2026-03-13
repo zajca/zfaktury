@@ -1,17 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { importApi, expensesApi, type OCRResult } from '$lib/api/client';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
 	let pageState: 'idle' | 'processing' | 'review' | 'saving' | 'done' = $state('idle');
-	let error = $state<string | null>(null);
 	let dragOver = $state(false);
 
 	let expenseId = $state<number | null>(null);
@@ -32,12 +30,11 @@
 	async function processFile(file: File) {
 		const validationError = validateFile(file);
 		if (validationError) {
-			error = validationError;
+			toastError(validationError);
 			return;
 		}
 
 		pageState = 'processing';
-		error = null;
 
 		try {
 			const result = await importApi.importDocument(file);
@@ -54,7 +51,7 @@
 				}, 3000);
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Import se nezdaril';
+			toastError(e instanceof Error ? e.message : 'Import se nezdaril');
 			pageState = 'idle';
 		}
 	}
@@ -95,7 +92,6 @@
 	async function handleOCRConfirm(data: OCRResult) {
 		if (!expenseId) return;
 		pageState = 'saving';
-		error = null;
 
 		try {
 			await expensesApi.update(expenseId, {
@@ -110,7 +106,7 @@
 			toastSuccess('Náklad uložen');
 			goto(`/expenses/${expenseId}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Ukládání se nezdařilo';
+			toastError(e instanceof Error ? e.message : 'Ukládání se nezdařilo');
 			pageState = 'review';
 		}
 	}
@@ -134,8 +130,6 @@
 		Nahrání faktury nebo účtenky (PDF, JPG, PNG, WebP) s automatickým rozpoznáním dat.
 		<HelpTip topic="ocr-import" />
 	</p>
-
-	<ErrorAlert {error} class="mt-4" />
 
 	{#if pageState === 'idle'}
 		<Card class="mt-6">

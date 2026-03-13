@@ -7,9 +7,9 @@
 		type TaxConstants
 	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -40,8 +40,6 @@
 	let selectedYear = $state(new Date().getFullYear() - 1);
 	let loading = $state(true);
 	let saving = $state(false);
-	let error = $state<string | null>(null);
-	let success = $state(false);
 	let taxConstants = $state<TaxConstants | null>(null);
 
 	let flatRatePercent = $state(0);
@@ -79,7 +77,6 @@
 
 	async function loadData() {
 		loading = true;
-		error = null;
 		// Load tax constants independently (never fails)
 		loadTaxConstants(selectedYear).then((tc) => {
 			taxConstants = tc;
@@ -103,19 +100,14 @@
 
 	async function handleSave() {
 		saving = true;
-		error = null;
-		success = false;
 		try {
 			await taxYearSettingsApi.save(selectedYear, {
 				flat_rate_percent: flatRatePercent,
 				prepayments
 			});
-			success = true;
-			setTimeout(() => {
-				success = false;
-			}, 3000);
+			toastSuccess('Nastavení bylo uloženo');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení');
 		} finally {
 			saving = false;
 		}
@@ -192,17 +184,6 @@
 			</svg>
 		</Button>
 	</div>
-
-	<ErrorAlert {error} class="mt-4" />
-
-	{#if success}
-		<div
-			role="alert"
-			class="mt-4 rounded-lg border border-success/20 bg-success-bg p-3 text-sm text-success"
-		>
-			Nastavení bylo uloženo.
-		</div>
-	{/if}
 
 	{#if loading}
 		<LoadingSpinner class="mt-8 p-12" />

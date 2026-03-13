@@ -21,7 +21,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let id = $derived(Number(page.params.id));
 	let contacts = $state<Contact[]>([]);
@@ -103,16 +103,15 @@
 
 	async function handleSave() {
 		if (!form.name.trim()) {
-			error = 'Zadejte název';
+			toastError('Zadejte název');
 			return;
 		}
 		if (!form.customer_id) {
-			error = 'Vyberte zákazníka';
+			toastError('Vyberte zákazníka');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			const requestItems = items.map((item, index) => ({
@@ -135,7 +134,7 @@
 			toastSuccess('Opakující se faktura uložena');
 			editing = false;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit změny';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit změny');
 		} finally {
 			saving = false;
 		}
@@ -143,13 +142,12 @@
 
 	async function generateInvoice() {
 		generating = true;
-		error = null;
 		try {
 			const invoice = await recurringInvoicesApi.generate(id);
 			toastSuccess('Faktura vygenerována');
 			goto(`/invoices/${invoice.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vygenerovat fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vygenerovat fakturu');
 		} finally {
 			generating = false;
 		}

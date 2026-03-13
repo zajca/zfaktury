@@ -9,7 +9,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let categories = $state<ExpenseCategory[]>([]);
 	let loading = $state(true);
@@ -70,12 +70,11 @@
 
 	async function handleSave() {
 		if (!form.key || !form.label_cs || !form.label_en) {
-			error = 'Klíč, český a anglický název jsou povinné';
+			toastError('Klíč, český a anglický název jsou povinné');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			if (editingId) {
@@ -87,7 +86,7 @@
 			editingId = null;
 			await loadCategories();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit kategorii';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit kategorii');
 		} finally {
 			saving = false;
 		}
@@ -95,7 +94,7 @@
 
 	function handleDelete(cat: ExpenseCategory) {
 		if (cat.is_default) {
-			error = 'Výchozí kategorie nelze smazat';
+			toastError('Výchozí kategorie nelze smazat');
 			return;
 		}
 		deleteTargetCat = cat;
@@ -105,13 +104,12 @@
 	async function confirmDelete() {
 		if (!deleteTargetCat) return;
 		showDeleteConfirm = false;
-		error = null;
 		try {
 			await categoriesApi.delete(deleteTargetCat.id);
 			toastSuccess('Kategorie smazána');
 			await loadCategories();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat kategorii';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat kategorii');
 		} finally {
 			deleteTargetCat = null;
 		}

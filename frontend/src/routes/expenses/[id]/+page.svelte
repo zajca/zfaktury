@@ -28,7 +28,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import AuditLogPanel from '$lib/components/AuditLogPanel.svelte';
 
 	let expense = $state<Expense | null>(null);
@@ -122,16 +122,15 @@
 
 	async function handleSave() {
 		if (!form.description) {
-			error = 'Popis je povinný';
+			toastError('Popis je povinný');
 			return;
 		}
 		if (form.amount <= 0) {
-			error = 'Částka musí být větší než 0';
+			toastError('Částka musí být větší než 0');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			await expensesApi.update(expenseId, {
@@ -154,7 +153,7 @@
 			editing = false;
 			await loadExpense();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit náklad';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit náklad');
 		} finally {
 			saving = false;
 		}
@@ -166,23 +165,21 @@
 
 	async function confirmDelete() {
 		showDeleteConfirm = false;
-		error = null;
 		try {
 			await expensesApi.delete(expenseId);
 			toastSuccess('Náklad smazán');
 			goto('/expenses');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat náklad';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat náklad');
 		}
 	}
 
 	async function handleOcr(docId: number) {
 		ocrProcessing = true;
-		error = null;
 		try {
 			ocrResult = await ocrApi.processDocument(docId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'OCR zpracování selhalo';
+			toastError(e instanceof Error ? e.message : 'OCR zpracování selhalo');
 		} finally {
 			ocrProcessing = false;
 		}

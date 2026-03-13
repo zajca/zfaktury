@@ -6,6 +6,7 @@ vi.stubGlobal('fetch', mockFetch);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 function jsonResponse(data: unknown, status = 200) {
@@ -45,6 +46,7 @@ const createdReturn = {
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	clearAllToasts();
 });
 
 afterEach(() => {
@@ -106,7 +108,7 @@ describe('New VAT return page', () => {
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
-			expect(screen.getByRole('alert')).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 	});
 

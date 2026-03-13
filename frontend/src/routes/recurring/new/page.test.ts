@@ -6,6 +6,7 @@ vi.stubGlobal('fetch', mockFetch);
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 function jsonResponse(data: unknown, status = 200) {
@@ -28,6 +29,7 @@ const sampleContacts = {
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	clearAllToasts();
 });
 
 afterEach(() => {
@@ -100,7 +102,7 @@ describe('New recurring invoice page', () => {
 		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadejte název')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Zadejte název')).toBe(true);
 		});
 	});
 
@@ -123,7 +125,7 @@ describe('New recurring invoice page', () => {
 		await fireEvent.click(screen.getByText('Uložit'));
 
 		await waitFor(() => {
-			expect(screen.getByText('Vyberte zákazníka')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Vyberte zákazníka')).toBe(true);
 		});
 	});
 

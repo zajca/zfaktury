@@ -12,7 +12,7 @@
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastError, toastSuccess } from '$lib/data/toast-state.svelte';
 
 	let data = $state<IncomeTaxReturn | null>(null);
 	let loading = $state(true);
@@ -59,11 +59,10 @@
 
 	async function handleRecalculate() {
 		actionLoading = 'recalculate';
-		error = null;
 		try {
 			data = await incomeTaxApi.recalculate(returnId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se přepočítat';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se přepočítat');
 		} finally {
 			actionLoading = null;
 		}
@@ -71,11 +70,10 @@
 
 	async function handleGenerateXml() {
 		actionLoading = 'generate';
-		error = null;
 		try {
 			data = await incomeTaxApi.generateXml(returnId);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se generovat XML';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se generovat XML');
 		} finally {
 			actionLoading = null;
 		}
@@ -83,7 +81,6 @@
 
 	async function handleDownloadXml() {
 		actionLoading = 'download';
-		error = null;
 		try {
 			const blob = await incomeTaxApi.downloadXml(returnId);
 			const url = URL.createObjectURL(blob);
@@ -95,7 +92,7 @@
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		} finally {
 			actionLoading = null;
 		}
@@ -108,12 +105,11 @@
 	async function confirmMarkFiled() {
 		showFileConfirm = false;
 		actionLoading = 'filed';
-		error = null;
 		try {
 			data = await incomeTaxApi.markFiled(returnId);
 			toastSuccess('Přiznání označeno jako podané');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se označit jako podané';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se označit jako podané');
 		} finally {
 			actionLoading = null;
 		}
@@ -126,13 +122,12 @@
 	async function confirmDelete() {
 		showDeleteConfirm = false;
 		actionLoading = 'delete';
-		error = null;
 		try {
 			await incomeTaxApi.delete(returnId);
 			toastSuccess('Přiznání smazáno');
 			goto('/tax');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se smazat přiznání';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat přiznání');
 		} finally {
 			actionLoading = null;
 		}

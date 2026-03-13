@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
@@ -19,6 +20,7 @@ beforeEach(async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-03-10T12:00:00Z'));
 	mockFetch.mockReset();
+	clearAllToasts();
 	const { goto } = await import('$app/navigation');
 	(goto as ReturnType<typeof vi.fn>).mockReset();
 	mockFetch.mockResolvedValue(jsonResponse({}));
@@ -133,7 +135,7 @@ describe('Control Statement Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Duplicate period')).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 	});
 
@@ -151,7 +153,7 @@ describe('Control Statement Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Zadejte platný rok')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Zadejte platný rok')).toBe(true);
 		});
 	});
 

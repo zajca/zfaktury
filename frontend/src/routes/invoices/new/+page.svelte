@@ -13,11 +13,10 @@
 	} from '$lib/components/InvoiceItemsEditor.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let dueDateOffset = $state(14);
 
@@ -36,7 +35,6 @@
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 	let invoiceType = $state<'regular' | 'proforma'>('regular');
 
 	let form = $state({
@@ -76,12 +74,11 @@
 
 	async function handleSubmit() {
 		if (!form.customer_id) {
-			error = 'Vyberte zákazníka';
+			toastError('Vyberte zákazníka');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			const invoiceItems: Partial<InvoiceItem>[] = items.map((item, index) => {
@@ -116,7 +113,7 @@
 			toastSuccess('Faktura vytvořena');
 			goto('/invoices');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vytvořit fakturu');
 		} finally {
 			saving = false;
 		}
@@ -129,8 +126,6 @@
 
 <div class="mx-auto max-w-5xl">
 	<PageHeader title="Nová faktura" backHref="/invoices" backLabel="Zpět na faktury" />
-
-	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {

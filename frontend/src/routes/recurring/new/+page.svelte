@@ -14,15 +14,13 @@
 	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 
 	let form = $state({
 		name: '',
@@ -60,16 +58,15 @@
 
 	async function handleSubmit() {
 		if (!form.name.trim()) {
-			error = 'Zadejte název';
+			toastError('Zadejte název');
 			return;
 		}
 		if (!form.customer_id) {
-			error = 'Vyberte zákazníka';
+			toastError('Vyberte zákazníka');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			const requestItems = items.map((item, index) => ({
@@ -93,7 +90,7 @@
 			toastSuccess('Opakující se faktura vytvořena');
 			goto('/recurring');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se vytvořit opakující se fakturu';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se vytvořit opakující se fakturu');
 		} finally {
 			saving = false;
 		}
@@ -110,8 +107,6 @@
 		backHref="/recurring"
 		backLabel="Zpět na opakující se faktury"
 	/>
-
-	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {

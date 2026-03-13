@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
@@ -35,6 +36,7 @@ beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-03-10T12:00:00Z'));
 	mockFetch.mockReset();
+	clearAllToasts();
 	// Default: respond to both contacts and categories fetches
 	mockFetch.mockImplementation((url: string) => {
 		if (typeof url === 'string' && url.includes('/expense-categories')) {
@@ -152,7 +154,7 @@ describe('Expense Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Popis je povinný')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Popis je povinný')).toBe(true);
 		});
 	});
 
@@ -167,7 +169,7 @@ describe('Expense Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Částka musí být větší než 0')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Částka musí být větší než 0')).toBe(true);
 		});
 	});
 
@@ -265,8 +267,7 @@ describe('Expense Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			const errorDiv = document.querySelector('.text-danger');
-			expect(errorDiv).toBeInTheDocument();
+			expect(toasts.some((t) => t.type === 'error')).toBe(true);
 		});
 	});
 

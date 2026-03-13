@@ -10,14 +10,12 @@
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import Textarea from '$lib/ui/Textarea.svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
-	let error = $state<string | null>(null);
 
 	let form = $state({
 		vendor_id: null as number | null,
@@ -51,16 +49,15 @@
 
 	async function handleSubmit() {
 		if (!form.description) {
-			error = 'Popis je povinný';
+			toastError('Popis je povinný');
 			return;
 		}
 		if (form.amount <= 0) {
-			error = 'Částka musí být větší než 0';
+			toastError('Částka musí být větší než 0');
 			return;
 		}
 
 		saving = true;
-		error = null;
 
 		try {
 			await expensesApi.create({
@@ -82,7 +79,7 @@
 			toastSuccess('Náklad vytvořen');
 			goto('/expenses');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se uložit náklad';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit náklad');
 		} finally {
 			saving = false;
 		}
@@ -95,8 +92,6 @@
 
 <div class="mx-auto max-w-5xl">
 	<PageHeader title="Nový náklad" backHref="/expenses" backLabel="Zpět na náklady" />
-
-	<ErrorAlert {error} class="mt-4" />
 
 	<form
 		onsubmit={(e) => {

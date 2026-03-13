@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
@@ -47,6 +48,7 @@ function createTestFile(name = 'receipt.pdf', type = 'application/pdf', sizeMB =
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	clearAllToasts();
 });
 
 afterEach(() => {
@@ -156,8 +158,11 @@ describe('Expenses import page', () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText('Nepodporovaný formát souboru. Povolené: PDF, JPG, PNG, WebP.')
-			).toBeInTheDocument();
+				toasts.some(
+					(t) =>
+						t.message === 'Nepodporovaný formát souboru. Povolené: PDF, JPG, PNG, WebP.'
+				)
+			).toBe(true);
 		});
 
 		// Should NOT call fetch
@@ -173,7 +178,9 @@ describe('Expenses import page', () => {
 		await fireEvent.change(fileInput, { target: { files: [file] } });
 
 		await waitFor(() => {
-			expect(screen.getByText('Soubor je příliš velký. Maximum je 20 MB.')).toBeInTheDocument();
+			expect(
+				toasts.some((t) => t.message === 'Soubor je příliš velký. Maximum je 20 MB.')
+			).toBe(true);
 		});
 
 		expect(mockFetch).not.toHaveBeenCalled();

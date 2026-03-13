@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 import Page from './+page.svelte';
 
 const mockFetch = vi.fn();
@@ -39,6 +40,7 @@ const sampleCategories = [
 beforeEach(() => {
 	mockFetch.mockReset();
 	mockFetch.mockResolvedValue(jsonResponse(sampleCategories));
+	clearAllToasts();
 });
 
 afterEach(() => {
@@ -107,7 +109,9 @@ describe('Categories Settings Page', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			expect(screen.getByText('Klíč, český a anglický název jsou povinné')).toBeInTheDocument();
+			expect(toasts.some((t) => t.message === 'Klíč, český a anglický název jsou povinné')).toBe(
+				true
+			);
 		});
 	});
 

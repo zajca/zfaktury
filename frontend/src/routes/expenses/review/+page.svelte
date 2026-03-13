@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { SvelteURLSearchParams, SvelteSet } from 'svelte/reactivity';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import { formatDate } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
@@ -119,7 +119,6 @@
 	async function markReviewed() {
 		if (selectedIds.size === 0) return;
 		bulkLoading = true;
-		error = null;
 		const count = selectedIds.size;
 		try {
 			const res = await fetch('/api/v1/expenses/review', {
@@ -134,7 +133,7 @@
 			toastSuccess(`${count} nákladů označeno`);
 			await loadExpenses();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se označit výdaje';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se označit výdaje');
 		} finally {
 			bulkLoading = false;
 		}
@@ -143,7 +142,6 @@
 	async function unmarkReviewed() {
 		if (selectedIds.size === 0) return;
 		bulkLoading = true;
-		error = null;
 		const count = selectedIds.size;
 		try {
 			const res = await fetch('/api/v1/expenses/unreview', {
@@ -158,7 +156,7 @@
 			toastSuccess(`${count} nákladů odznačeno`);
 			await loadExpenses();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se odznačit výdaje';
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se odznačit výdaje');
 		} finally {
 			bulkLoading = false;
 		}

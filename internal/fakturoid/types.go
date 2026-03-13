@@ -89,6 +89,7 @@ type Invoice struct {
 	ExchangeRate          FlexFloat64   `json:"exchange_rate"`
 	Subtotal              FlexFloat64   `json:"subtotal"`
 	Total                 FlexFloat64   `json:"total"`
+	PaymentMethod         string        `json:"payment_method"` // "bank", "cash", "card", "cod", "paypal", "custom"
 	Note                  string        `json:"note"`
 	Lines                 []InvoiceLine `json:"lines"`
 	Payments              []Payment     `json:"payments"`

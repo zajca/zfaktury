@@ -453,23 +453,48 @@ type markPaidRequest struct {
 
 // --- Expense DTOs ---
 
+// expenseItemRequest is the JSON request body for an expense line item.
+type expenseItemRequest struct {
+	Description    string `json:"description"`
+	Quantity       int64  `json:"quantity"` // in smallest unit (cents), e.g. 250 = 2.50
+	Unit           string `json:"unit"`
+	UnitPrice      int64  `json:"unit_price"` // in halere
+	VATRatePercent int    `json:"vat_rate_percent"`
+	SortOrder      int    `json:"sort_order"`
+}
+
+// expenseItemResponse is the JSON response for an expense line item.
+type expenseItemResponse struct {
+	ID             int64  `json:"id"`
+	ExpenseID      int64  `json:"expense_id"`
+	Description    string `json:"description"`
+	Quantity       int64  `json:"quantity"`
+	Unit           string `json:"unit"`
+	UnitPrice      int64  `json:"unit_price"`
+	VATRatePercent int    `json:"vat_rate_percent"`
+	VATAmount      int64  `json:"vat_amount"`
+	TotalAmount    int64  `json:"total_amount"`
+	SortOrder      int    `json:"sort_order"`
+}
+
 // expenseRequest is the JSON request body for creating/updating an expense.
 type expenseRequest struct {
-	VendorID        *int64 `json:"vendor_id"`
-	ExpenseNumber   string `json:"expense_number"`
-	Category        string `json:"category"`
-	Description     string `json:"description"`
-	IssueDate       string `json:"issue_date"`
-	Amount          int64  `json:"amount"`
-	CurrencyCode    string `json:"currency_code"`
-	ExchangeRate    int64  `json:"exchange_rate"`
-	VATRatePercent  int    `json:"vat_rate_percent"`
-	VATAmount       int64  `json:"vat_amount"`
-	IsTaxDeductible bool   `json:"is_tax_deductible"`
-	BusinessPercent int    `json:"business_percent"`
-	PaymentMethod   string `json:"payment_method"`
-	DocumentPath    string `json:"document_path"`
-	Notes           string `json:"notes"`
+	VendorID        *int64               `json:"vendor_id"`
+	ExpenseNumber   string               `json:"expense_number"`
+	Category        string               `json:"category"`
+	Description     string               `json:"description"`
+	IssueDate       string               `json:"issue_date"`
+	Amount          int64                `json:"amount"`
+	CurrencyCode    string               `json:"currency_code"`
+	ExchangeRate    int64                `json:"exchange_rate"`
+	VATRatePercent  int                  `json:"vat_rate_percent"`
+	VATAmount       int64                `json:"vat_amount"`
+	IsTaxDeductible bool                 `json:"is_tax_deductible"`
+	BusinessPercent int                  `json:"business_percent"`
+	PaymentMethod   string               `json:"payment_method"`
+	DocumentPath    string               `json:"document_path"`
+	Notes           string               `json:"notes"`
+	Items           []expenseItemRequest `json:"items"`
 }
 
 // toDomain converts an expenseRequest to a domain.Expense.
@@ -501,31 +526,43 @@ func (r *expenseRequest) toDomain() (*domain.Expense, error) {
 	}
 	exp.IssueDate = issueDate
 
+	for _, item := range r.Items {
+		exp.Items = append(exp.Items, domain.ExpenseItem{
+			Description:    item.Description,
+			Quantity:       domain.Amount(item.Quantity),
+			Unit:           item.Unit,
+			UnitPrice:      domain.Amount(item.UnitPrice),
+			VATRatePercent: item.VATRatePercent,
+			SortOrder:      item.SortOrder,
+		})
+	}
+
 	return exp, nil
 }
 
 // expenseResponse is the JSON response for an expense.
 type expenseResponse struct {
-	ID              int64            `json:"id"`
-	VendorID        *int64           `json:"vendor_id,omitempty"`
-	Vendor          *contactResponse `json:"vendor,omitempty"`
-	ExpenseNumber   string           `json:"expense_number"`
-	Category        string           `json:"category"`
-	Description     string           `json:"description"`
-	IssueDate       string           `json:"issue_date"`
-	Amount          int64            `json:"amount"`
-	CurrencyCode    string           `json:"currency_code"`
-	ExchangeRate    int64            `json:"exchange_rate"`
-	VATRatePercent  int              `json:"vat_rate_percent"`
-	VATAmount       int64            `json:"vat_amount"`
-	IsTaxDeductible bool             `json:"is_tax_deductible"`
-	BusinessPercent int              `json:"business_percent"`
-	PaymentMethod   string           `json:"payment_method"`
-	DocumentPath    string           `json:"document_path,omitempty"`
-	Notes           string           `json:"notes"`
-	TaxReviewedAt   *string          `json:"tax_reviewed_at,omitempty"`
-	CreatedAt       string           `json:"created_at"`
-	UpdatedAt       string           `json:"updated_at"`
+	ID              int64                 `json:"id"`
+	VendorID        *int64                `json:"vendor_id,omitempty"`
+	Vendor          *contactResponse      `json:"vendor,omitempty"`
+	ExpenseNumber   string                `json:"expense_number"`
+	Category        string                `json:"category"`
+	Description     string                `json:"description"`
+	IssueDate       string                `json:"issue_date"`
+	Amount          int64                 `json:"amount"`
+	CurrencyCode    string                `json:"currency_code"`
+	ExchangeRate    int64                 `json:"exchange_rate"`
+	VATRatePercent  int                   `json:"vat_rate_percent"`
+	VATAmount       int64                 `json:"vat_amount"`
+	IsTaxDeductible bool                  `json:"is_tax_deductible"`
+	BusinessPercent int                   `json:"business_percent"`
+	PaymentMethod   string                `json:"payment_method"`
+	DocumentPath    string                `json:"document_path,omitempty"`
+	Notes           string                `json:"notes"`
+	TaxReviewedAt   *string               `json:"tax_reviewed_at,omitempty"`
+	Items           []expenseItemResponse `json:"items"`
+	CreatedAt       string                `json:"created_at"`
+	UpdatedAt       string                `json:"updated_at"`
 }
 
 // expenseFromDomain converts a domain.Expense to an expenseResponse.
@@ -554,6 +591,20 @@ func expenseFromDomain(e *domain.Expense) expenseResponse {
 	if e.Vendor != nil {
 		v := contactFromDomain(e.Vendor)
 		resp.Vendor = &v
+	}
+	for _, item := range e.Items {
+		resp.Items = append(resp.Items, expenseItemResponse{
+			ID:             item.ID,
+			ExpenseID:      item.ExpenseID,
+			Description:    item.Description,
+			Quantity:       int64(item.Quantity),
+			Unit:           item.Unit,
+			UnitPrice:      int64(item.UnitPrice),
+			VATRatePercent: item.VATRatePercent,
+			VATAmount:      int64(item.VATAmount),
+			TotalAmount:    int64(item.TotalAmount),
+			SortOrder:      item.SortOrder,
+		})
 	}
 	return resp
 }

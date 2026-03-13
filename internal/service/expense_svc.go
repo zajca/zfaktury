@@ -25,7 +25,7 @@ func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) er
 	if expense.Description == "" {
 		return errors.New("expense description is required")
 	}
-	if expense.Amount == 0 {
+	if expense.Amount == 0 && len(expense.Items) == 0 {
 		return errors.New("expense amount is required")
 	}
 	if expense.IssueDate.IsZero() {
@@ -41,8 +41,11 @@ func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) er
 		return errors.New("business share must be between 0 and 100")
 	}
 
-	// Calculate VAT amount from rate if not set.
-	if expense.VATAmount == 0 && expense.VATRatePercent > 0 {
+	// When items are present, recalculate totals from them.
+	if len(expense.Items) > 0 {
+		expense.CalculateTotals()
+	} else if expense.VATAmount == 0 && expense.VATRatePercent > 0 {
+		// Calculate VAT amount from rate if not set (flat-amount path).
 		expense.VATAmount = expense.Amount.Multiply(float64(expense.VATRatePercent) / (100.0 + float64(expense.VATRatePercent)))
 	}
 
@@ -63,15 +66,18 @@ func (s *ExpenseService) Update(ctx context.Context, expense *domain.Expense) er
 	if expense.Description == "" {
 		return errors.New("expense description is required")
 	}
-	if expense.Amount == 0 {
+	if expense.Amount == 0 && len(expense.Items) == 0 {
 		return errors.New("expense amount is required")
 	}
 	if expense.BusinessPercent < 0 || expense.BusinessPercent > 100 {
 		return errors.New("business share must be between 0 and 100")
 	}
 
-	// Recalculate VAT amount from rate if not set.
-	if expense.VATAmount == 0 && expense.VATRatePercent > 0 {
+	// When items are present, recalculate totals from them.
+	if len(expense.Items) > 0 {
+		expense.CalculateTotals()
+	} else if expense.VATAmount == 0 && expense.VATRatePercent > 0 {
+		// Recalculate VAT amount from rate if not set (flat-amount path).
 		expense.VATAmount = expense.Amount.Multiply(float64(expense.VATRatePercent) / (100.0 + float64(expense.VATRatePercent)))
 	}
 

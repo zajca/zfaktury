@@ -6,6 +6,9 @@
 	import { toISODate } from '$lib/utils/date';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import InvoiceItemsEditor, {
+		type FormItem
+	} from '$lib/components/InvoiceItemsEditor.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
@@ -16,6 +19,7 @@
 
 	let contacts = $state<Contact[]>([]);
 	let saving = $state(false);
+	let useItems = $state(false);
 
 	let form = $state({
 		vendor_id: null as number | null,
@@ -31,6 +35,10 @@
 		payment_method: 'bank_transfer',
 		notes: ''
 	});
+
+	let items = $state<FormItem[]>([
+		{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
+	]);
 
 	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
@@ -52,30 +60,51 @@
 			toastError('Popis je povinný');
 			return;
 		}
-		if (form.amount <= 0) {
+		if (!useItems && form.amount <= 0) {
 			toastError('Částka musí být větší než 0');
+			return;
+		}
+		if (useItems && items.length === 0) {
+			toastError('Přidejte alespoň jednu položku');
 			return;
 		}
 
 		saving = true;
 
 		try {
-			await expensesApi.create({
+			const payload: Record<string, unknown> = {
 				vendor_id: form.vendor_id || undefined,
 				expense_number: form.expense_number,
 				category: form.category,
 				description: form.description,
 				issue_date: form.issue_date,
-				amount: toHalere(form.amount),
 				currency_code: form.currency_code,
 				exchange_rate: 100,
-				vat_rate_percent: form.vat_rate_percent,
-				vat_amount: toHalere(vatAmount),
 				is_tax_deductible: form.is_tax_deductible,
 				business_percent: form.business_percent,
 				payment_method: form.payment_method,
 				notes: form.notes
-			});
+			};
+
+			if (useItems) {
+				payload.items = items.map((item, i) => ({
+					description: item.description,
+					quantity: toHalere(item.quantity),
+					unit: item.unit,
+					unit_price: toHalere(item.unit_price),
+					vat_rate_percent: item.vat_rate_percent,
+					sort_order: i + 1
+				}));
+				payload.amount = 0;
+				payload.vat_rate_percent = 0;
+				payload.vat_amount = 0;
+			} else {
+				payload.amount = toHalere(form.amount);
+				payload.vat_rate_percent = form.vat_rate_percent;
+				payload.vat_amount = toHalere(vatAmount);
+			}
+
+			await expensesApi.create(payload);
 			toastSuccess('Náklad vytvořen');
 			goto('/expenses');
 		} catch (e) {
@@ -161,48 +190,68 @@
 			</div>
 		</Card>
 
-		<!-- Amount & VAT -->
+		<!-- Toggle: flat amount vs items -->
 		<Card>
-			<h2 class="text-base font-semibold text-primary">Částka a DPH</h2>
-			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-				<div>
-					<label for="amount" class="block text-sm font-medium text-secondary"
-						>Částka s DPH (CZK) *</label
-					>
-					<input
-						id="amount"
-						type="number"
-						step="0.01"
-						min="0"
-						bind:value={form.amount}
-						required
-						class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary font-mono tabular-nums focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-					/>
-				</div>
-				<div>
-					<label for="vat_rate" class="block text-sm font-medium text-secondary"
-						>Sazba DPH <HelpTip topic="sazba-dph" /></label
-					>
-					<select
-						id="vat_rate"
-						bind:value={form.vat_rate_percent}
-						class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-					>
-						<option value={21}>21%</option>
-						<option value={12}>12%</option>
-						<option value={0}>0% (bez DPH)</option>
-					</select>
-				</div>
-				<div>
-					<span class="block text-sm font-medium text-secondary">DPH</span>
-					<div
-						class="mt-1 bg-elevated border-border text-secondary rounded-lg px-3 py-2 text-sm font-mono tabular-nums"
-					>
-						{formatCZK(toHalere(vatAmount))}
-					</div>
-				</div>
+			<div class="flex items-center gap-3">
+				<input
+					id="use_items"
+					type="checkbox"
+					bind:checked={useItems}
+					class="h-4 w-4 rounded border-border accent-accent"
+				/>
+				<label for="use_items" class="text-sm font-medium text-secondary"
+					>Zadat jednotlivé položky</label
+				>
 			</div>
 		</Card>
+
+		{#if useItems}
+			<!-- Items editor -->
+			<InvoiceItemsEditor bind:items idPrefix="new-exp-" />
+		{:else}
+			<!-- Amount & VAT (flat) -->
+			<Card>
+				<h2 class="text-base font-semibold text-primary">Částka a DPH</h2>
+				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+					<div>
+						<label for="amount" class="block text-sm font-medium text-secondary"
+							>Částka s DPH (CZK) *</label
+						>
+						<input
+							id="amount"
+							type="number"
+							step="0.01"
+							min="0"
+							bind:value={form.amount}
+							required
+							class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary font-mono tabular-nums focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
+					</div>
+					<div>
+						<label for="vat_rate" class="block text-sm font-medium text-secondary"
+							>Sazba DPH <HelpTip topic="sazba-dph" /></label
+						>
+						<select
+							id="vat_rate"
+							bind:value={form.vat_rate_percent}
+							class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						>
+							<option value={21}>21%</option>
+							<option value={12}>12%</option>
+							<option value={0}>0% (bez DPH)</option>
+						</select>
+					</div>
+					<div>
+						<span class="block text-sm font-medium text-secondary">DPH</span>
+						<div
+							class="mt-1 bg-elevated border-border text-secondary rounded-lg px-3 py-2 text-sm font-mono tabular-nums"
+						>
+							{formatCZK(toHalere(vatAmount))}
+						</div>
+					</div>
+				</div>
+			</Card>
+		{/if}
 
 		<!-- Tax settings -->
 		<Card>

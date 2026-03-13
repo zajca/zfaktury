@@ -328,6 +328,162 @@ func TestExpenseService_Delete_NotFound(t *testing.T) {
 	}
 }
 
+func TestExpenseService_Create_WithItems(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	e := &domain.Expense{
+		Description:     "Itemized expense",
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
+		BusinessPercent: 100,
+		PaymentMethod:   "bank_transfer",
+		Items: []domain.ExpenseItem{
+			{
+				Description:    "Item A",
+				Quantity:       100,   // 1.00
+				UnitPrice:      10000, // 100.00 CZK
+				VATRatePercent: 21,
+				SortOrder:      1,
+			},
+			{
+				Description:    "Item B",
+				Quantity:       200,  // 2.00
+				UnitPrice:      5000, // 50.00 CZK
+				VATRatePercent: 21,
+				SortOrder:      2,
+			},
+		},
+	}
+
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if e.ID == 0 {
+		t.Error("expected non-zero ID")
+	}
+	// Amount should be calculated from items
+	if e.Amount == 0 {
+		t.Error("Amount should be calculated from items, got 0")
+	}
+	if e.VATAmount == 0 {
+		t.Error("VATAmount should be calculated from items, got 0")
+	}
+	if e.VATRatePercent != 21 {
+		t.Errorf("VATRatePercent = %d, want 21 (dominant)", e.VATRatePercent)
+	}
+
+	// Verify items are persisted
+	got, err := svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(got.Items) != 2 {
+		t.Fatalf("len(Items) = %d, want 2", len(got.Items))
+	}
+	if got.Items[0].Description != "Item A" {
+		t.Errorf("Items[0].Description = %q, want %q", got.Items[0].Description, "Item A")
+	}
+	if got.Items[1].Description != "Item B" {
+		t.Errorf("Items[1].Description = %q, want %q", got.Items[1].Description, "Item B")
+	}
+}
+
+func TestExpenseService_Update_WithItems(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	// Create a flat expense first
+	e := makeExpense()
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Update with items
+	e.Items = []domain.ExpenseItem{
+		{
+			Description:    "New item",
+			Quantity:       100,
+			UnitPrice:      20000,
+			VATRatePercent: 21,
+			SortOrder:      1,
+		},
+	}
+	if err := svc.Update(ctx, e); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(got.Items) != 1 {
+		t.Fatalf("len(Items) = %d, want 1", len(got.Items))
+	}
+	if got.Items[0].Description != "New item" {
+		t.Errorf("Items[0].Description = %q, want %q", got.Items[0].Description, "New item")
+	}
+}
+
+func TestExpenseService_Update_RemoveItems(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	// Create with items
+	e := &domain.Expense{
+		Description:     "Will remove items",
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
+		BusinessPercent: 100,
+		PaymentMethod:   "bank_transfer",
+		Items: []domain.ExpenseItem{
+			{Description: "Temp", Quantity: 100, UnitPrice: 10000, VATRatePercent: 0, SortOrder: 1},
+		},
+	}
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Update without items (back to flat)
+	e.Items = nil
+	e.Amount = domain.NewAmount(500, 0)
+	if err := svc.Update(ctx, e); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(got.Items) != 0 {
+		t.Errorf("len(Items) = %d, want 0 (items removed)", len(got.Items))
+	}
+}
+
+func TestExpenseService_Create_ZeroAmountWithItems(t *testing.T) {
+	svc := newExpenseTestStack(t)
+	ctx := context.Background()
+
+	// Amount=0 should be allowed when items are present
+	e := &domain.Expense{
+		Description:     "Items only",
+		Amount:          0,
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
+		BusinessPercent: 100,
+		PaymentMethod:   "bank_transfer",
+		Items: []domain.ExpenseItem{
+			{Description: "Item", Quantity: 100, UnitPrice: 10000, VATRatePercent: 0, SortOrder: 1},
+		},
+	}
+	if err := svc.Create(ctx, e); err != nil {
+		t.Fatalf("Create() should not error when Amount=0 but items exist: %v", err)
+	}
+	if e.Amount == 0 {
+		t.Error("Amount should have been calculated from items")
+	}
+}
+
 func TestExpenseService_MarkTaxReviewed_Valid(t *testing.T) {
 	svc := newExpenseTestStack(t)
 	ctx := context.Background()

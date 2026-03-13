@@ -84,6 +84,19 @@ export interface RelatedInvoice {
 	relation_type: string;
 }
 
+export interface ExpenseItem {
+	id: number;
+	expense_id: number;
+	description: string;
+	quantity: number;
+	unit: string;
+	unit_price: number;
+	vat_rate_percent: number;
+	vat_amount: number;
+	total_amount: number;
+	sort_order: number;
+}
+
 export interface Expense {
 	id: number;
 	vendor_id?: number;
@@ -103,6 +116,7 @@ export interface Expense {
 	document_path?: string;
 	notes: string;
 	tax_reviewed_at?: string;
+	items?: ExpenseItem[];
 	created_at: string;
 	updated_at: string;
 }

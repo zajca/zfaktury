@@ -391,6 +391,116 @@ func TestExpenseRepository_List_TaxReviewedFilter(t *testing.T) {
 	}
 }
 
+func TestExpenseRepository_Create_WithItems(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	e := &domain.Expense{
+		Description:     "Itemized expense",
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
+		BusinessPercent: 100,
+		PaymentMethod:   "bank_transfer",
+		Items: []domain.ExpenseItem{
+			{
+				Description:    "Item A",
+				Quantity:       100,
+				Unit:           "ks",
+				UnitPrice:      10000,
+				VATRatePercent: 21,
+				VATAmount:      2100,
+				TotalAmount:    12100,
+				SortOrder:      1,
+			},
+			{
+				Description:    "Item B",
+				Quantity:       200,
+				Unit:           "ks",
+				UnitPrice:      5000,
+				VATRatePercent: 21,
+				VATAmount:      2100,
+				TotalAmount:    12100,
+				SortOrder:      2,
+			},
+		},
+		Amount:    24200,
+		VATAmount: 4200,
+	}
+
+	if err := repo.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if e.ID == 0 {
+		t.Error("expected non-zero ID")
+	}
+
+	got, err := repo.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(got.Items) != 2 {
+		t.Fatalf("Items count = %d, want 2", len(got.Items))
+	}
+	if got.Items[0].Description != "Item A" {
+		t.Errorf("Items[0].Description = %q, want %q", got.Items[0].Description, "Item A")
+	}
+	if got.Items[0].VATAmount != 2100 {
+		t.Errorf("Items[0].VATAmount = %d, want 2100", got.Items[0].VATAmount)
+	}
+	if got.Items[1].SortOrder != 2 {
+		t.Errorf("Items[1].SortOrder = %d, want 2", got.Items[1].SortOrder)
+	}
+}
+
+func TestExpenseRepository_Update_WithItems(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewExpenseRepository(db)
+	ctx := context.Background()
+
+	e := &domain.Expense{
+		Description:     "Flat expense",
+		Amount:          50000,
+		IssueDate:       time.Now(),
+		CurrencyCode:    domain.CurrencyCZK,
+		BusinessPercent: 100,
+		PaymentMethod:   "bank_transfer",
+	}
+	if err := repo.Create(ctx, e); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	e.Items = []domain.ExpenseItem{
+		{
+			Description:    "New item",
+			Quantity:       100,
+			Unit:           "ks",
+			UnitPrice:      20000,
+			VATRatePercent: 21,
+			VATAmount:      4200,
+			TotalAmount:    24200,
+			SortOrder:      1,
+		},
+	}
+	e.Amount = 24200
+	e.VATAmount = 4200
+
+	if err := repo.Update(ctx, e); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, e.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if len(got.Items) != 1 {
+		t.Fatalf("Items count = %d, want 1", len(got.Items))
+	}
+	if got.Items[0].Description != "New item" {
+		t.Errorf("Items[0].Description = %q, want %q", got.Items[0].Description, "New item")
+	}
+}
+
 func TestExpenseRepository_List_ExcludesSoftDeleted(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewExpenseRepository(db)

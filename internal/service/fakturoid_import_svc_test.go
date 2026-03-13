@@ -329,8 +329,9 @@ func TestMapFakturoidExpense(t *testing.T) {
 	if expense.Description != "Office supplies" {
 		t.Errorf("Description = %q, want %q", expense.Description, "Office supplies")
 	}
-	if expense.Amount != domain.FromFloat(1210.0) {
-		t.Errorf("Amount = %d, want %d", expense.Amount, domain.FromFloat(1210.0))
+	// Amount is now calculated from items via CalculateTotals, not from exp.Total
+	if expense.Amount == 0 {
+		t.Error("Amount should be non-zero (calculated from items)")
 	}
 	if expense.CurrencyCode != "CZK" {
 		t.Errorf("CurrencyCode = %q, want %q", expense.CurrencyCode, "CZK")
@@ -364,12 +365,43 @@ func TestMapFakturoidExpense(t *testing.T) {
 		t.Errorf("VendorID = %d, want 10 (resolved from subjectMap)", *expense.VendorID)
 	}
 
-	// VAT calculation from lines
+	// VAT calculation from items (via CalculateTotals)
 	if expense.VATRatePercent != 21 {
 		t.Errorf("VATRatePercent = %d, want 21", expense.VATRatePercent)
 	}
 	if expense.VATAmount == 0 {
 		t.Error("VATAmount should be non-zero for lines with VAT")
+	}
+
+	// Items should be mapped from Lines
+	if len(expense.Items) != 1 {
+		t.Fatalf("len(Items) = %d, want 1", len(expense.Items))
+	}
+	item := expense.Items[0]
+	if item.Description != "Paper" {
+		t.Errorf("Items[0].Description = %q, want %q", item.Description, "Paper")
+	}
+	if item.Unit != "ks" {
+		t.Errorf("Items[0].Unit = %q, want %q", item.Unit, "ks")
+	}
+	if item.VATRatePercent != 21 {
+		t.Errorf("Items[0].VATRatePercent = %d, want 21", item.VATRatePercent)
+	}
+	if item.SortOrder != 1 {
+		t.Errorf("Items[0].SortOrder = %d, want 1", item.SortOrder)
+	}
+	if item.Quantity != domain.FromFloat(10.0) {
+		t.Errorf("Items[0].Quantity = %d, want %d", item.Quantity, domain.FromFloat(10.0))
+	}
+	if item.UnitPrice != domain.FromFloat(100.0) {
+		t.Errorf("Items[0].UnitPrice = %d, want %d", item.UnitPrice, domain.FromFloat(100.0))
+	}
+	// CalculateTotals should have set item-level amounts
+	if item.VATAmount == 0 {
+		t.Error("Items[0].VATAmount should be non-zero")
+	}
+	if item.TotalAmount == 0 {
+		t.Error("Items[0].TotalAmount should be non-zero")
 	}
 }
 
@@ -441,12 +473,23 @@ func TestMapFakturoidExpense_VATFromMultipleLines(t *testing.T) {
 
 	expense := mapFakturoidExpense(exp, map[int64]int64{})
 
-	// Dominant rate should be 21 (larger amount: 1000 > 500)
+	// Dominant rate should be 21 (larger subtotal: 1000 > 500)
 	if expense.VATRatePercent != 21 {
 		t.Errorf("VATRatePercent = %d, want 21 (dominant rate)", expense.VATRatePercent)
 	}
 	if expense.VATAmount == 0 {
 		t.Error("VATAmount should be non-zero for lines with VAT")
+	}
+
+	// Should have 2 items
+	if len(expense.Items) != 2 {
+		t.Fatalf("len(Items) = %d, want 2", len(expense.Items))
+	}
+	if expense.Items[0].Description != "Item A" {
+		t.Errorf("Items[0].Description = %q, want %q", expense.Items[0].Description, "Item A")
+	}
+	if expense.Items[1].Description != "Item B" {
+		t.Errorf("Items[1].Description = %q, want %q", expense.Items[1].Description, "Item B")
 	}
 }
 

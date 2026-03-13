@@ -517,6 +517,18 @@ func mapFakturoidInvoice(inv fakturoid.Invoice, subjectMap map[int64]int64) *dom
 		invoice.Status = domain.InvoiceStatusSent
 	}
 
+	// Map payment method
+	switch inv.PaymentMethod {
+	case "cash":
+		invoice.PaymentMethod = "cash"
+	case "card":
+		invoice.PaymentMethod = "card"
+	case "cod", "paypal", "custom":
+		invoice.PaymentMethod = "other"
+	default:
+		invoice.PaymentMethod = "bank_transfer"
+	}
+
 	// Parse dates
 	if t, err := time.Parse("2006-01-02", inv.IssuedOn); err == nil {
 		invoice.IssueDate = t
@@ -596,29 +608,21 @@ func mapFakturoidExpense(exp fakturoid.Expense, subjectMap map[int64]int64) *dom
 		expense.PaymentMethod = "bank_transfer"
 	}
 
-	// Calculate dominant VAT rate and VAT amount from lines
-	if len(exp.Lines) > 0 {
-		vatRateCounts := make(map[int]float64)
-		var totalVAT float64
-		for _, line := range exp.Lines {
-			rate := int(float64(line.VatRate))
-			lineTotal := float64(line.Quantity) * float64(line.UnitPrice)
-			vatRateCounts[rate] += lineTotal
-			if rate > 0 {
-				vatRate := float64(line.VatRate)
-				totalVAT += lineTotal * vatRate / (100 + vatRate)
-			}
-		}
-		// Find dominant rate
-		var maxAmount float64
-		for rate, amount := range vatRateCounts {
-			if amount > maxAmount {
-				maxAmount = amount
-				expense.VATRatePercent = rate
-			}
-		}
-		expense.VATAmount = domain.FromFloat(totalVAT)
+	// Map line items
+	for i, line := range exp.Lines {
+		unitName := "ks"
+		expense.Items = append(expense.Items, domain.ExpenseItem{
+			Description:    line.Name,
+			Quantity:       domain.FromFloat(float64(line.Quantity)),
+			Unit:           unitName,
+			UnitPrice:      domain.FromFloat(float64(line.UnitPrice)),
+			VATRatePercent: int(float64(line.VatRate)),
+			SortOrder:      i + 1,
+		})
 	}
+
+	// Calculate totals from items (sets Amount, VATAmount, VATRatePercent)
+	expense.CalculateTotals()
 
 	// Resolve vendor
 	if exp.SubjectID > 0 {

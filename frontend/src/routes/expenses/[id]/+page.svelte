@@ -17,6 +17,9 @@
 	import { paymentMethodLabels } from '$lib/utils/invoice';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import InvoiceItemsEditor, {
+		type FormItem
+	} from '$lib/components/InvoiceItemsEditor.svelte';
 	import DocumentUpload from '$lib/components/DocumentUpload.svelte';
 	import DocumentList from '$lib/components/DocumentList.svelte';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
@@ -41,6 +44,7 @@
 	let ocrResult = $state<OCRResult | null>(null);
 	let ocrProcessing = $state(false);
 	let showDeleteConfirm = $state(false);
+	let useItems = $state(false);
 
 	let expenseId = $derived(Number(page.params.id));
 
@@ -58,6 +62,10 @@
 		payment_method: 'bank_transfer',
 		notes: ''
 	});
+
+	let items = $state<FormItem[]>([
+		{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
+	]);
 
 	let vatAmount = $derived((form.amount * form.vat_rate_percent) / (100 + form.vat_rate_percent));
 
@@ -103,6 +111,23 @@
 			payment_method: expense.payment_method,
 			notes: expense.notes
 		};
+
+		// Populate items if they exist
+		if (expense.items && expense.items.length > 0) {
+			useItems = true;
+			items = expense.items.map((item) => ({
+				description: item.description,
+				quantity: fromHalere(item.quantity),
+				unit: item.unit,
+				unit_price: fromHalere(item.unit_price),
+				vat_rate_percent: item.vat_rate_percent
+			}));
+		} else {
+			useItems = false;
+			items = [
+				{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
+			];
+		}
 	}
 
 	async function startEditing() {
@@ -125,7 +150,7 @@
 			toastError('Popis je povinný');
 			return;
 		}
-		if (form.amount <= 0) {
+		if (!useItems && form.amount <= 0) {
 			toastError('Částka musí být větší než 0');
 			return;
 		}
@@ -133,22 +158,40 @@
 		saving = true;
 
 		try {
-			await expensesApi.update(expenseId, {
+			const payload: Record<string, unknown> = {
 				vendor_id: form.vendor_id || undefined,
 				expense_number: form.expense_number,
 				category: form.category,
 				description: form.description,
 				issue_date: form.issue_date,
-				amount: toHalere(form.amount),
 				currency_code: form.currency_code,
 				exchange_rate: 100,
-				vat_rate_percent: form.vat_rate_percent,
-				vat_amount: toHalere(vatAmount),
 				is_tax_deductible: form.is_tax_deductible,
 				business_percent: form.business_percent,
 				payment_method: form.payment_method,
 				notes: form.notes
-			});
+			};
+
+			if (useItems) {
+				payload.items = items.map((item, i) => ({
+					description: item.description,
+					quantity: toHalere(item.quantity),
+					unit: item.unit,
+					unit_price: toHalere(item.unit_price),
+					vat_rate_percent: item.vat_rate_percent,
+					sort_order: i + 1
+				}));
+				payload.amount = 0;
+				payload.vat_rate_percent = 0;
+				payload.vat_amount = 0;
+			} else {
+				payload.amount = toHalere(form.amount);
+				payload.vat_rate_percent = form.vat_rate_percent;
+				payload.vat_amount = toHalere(vatAmount);
+				payload.items = [];
+			}
+
+			await expensesApi.update(expenseId, payload);
 			toastSuccess('Náklad uložen');
 			editing = false;
 			await loadExpense();
@@ -196,6 +239,8 @@
 		form.currency_code = data.currency_code || form.currency_code;
 		if (data.issue_date) form.issue_date = data.issue_date;
 	}
+
+	let hasItems = $derived(expense?.items && expense.items.length > 0);
 </script>
 
 <svelte:head>
@@ -299,46 +344,65 @@
 					</div>
 				</Card>
 
+				<!-- Toggle: flat amount vs items -->
 				<Card>
-					<h2 class="text-base font-semibold text-primary">Částka a DPH</h2>
-					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div>
-							<label for="edit-amount" class="block text-sm font-medium text-secondary"
-								>Částka s DPH (CZK)</label
-							>
-							<input
-								id="edit-amount"
-								type="number"
-								step="0.01"
-								min="0"
-								bind:value={form.amount}
-								class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary font-mono tabular-nums focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="edit-vat" class="block text-sm font-medium text-secondary"
-								>Sazba DPH <HelpTip topic="sazba-dph" /></label
-							>
-							<select
-								id="edit-vat"
-								bind:value={form.vat_rate_percent}
-								class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							>
-								<option value={21}>21%</option>
-								<option value={12}>12%</option>
-								<option value={0}>0%</option>
-							</select>
-						</div>
-						<div>
-							<span class="block text-sm font-medium text-secondary">DPH</span>
-							<div
-								class="mt-1 bg-elevated border-border text-secondary rounded-lg px-3 py-2 text-sm font-mono tabular-nums"
-							>
-								{formatCZK(toHalere(vatAmount))}
-							</div>
-						</div>
+					<div class="flex items-center gap-3">
+						<input
+							id="edit-use-items"
+							type="checkbox"
+							bind:checked={useItems}
+							class="h-4 w-4 rounded border-border accent-accent"
+						/>
+						<label for="edit-use-items" class="text-sm font-medium text-secondary"
+							>Zadat jednotlivé položky</label
+						>
 					</div>
 				</Card>
+
+				{#if useItems}
+					<InvoiceItemsEditor bind:items idPrefix="edit-exp-" />
+				{:else}
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Částka a DPH</h2>
+						<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+							<div>
+								<label for="edit-amount" class="block text-sm font-medium text-secondary"
+									>Částka s DPH (CZK)</label
+								>
+								<input
+									id="edit-amount"
+									type="number"
+									step="0.01"
+									min="0"
+									bind:value={form.amount}
+									class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary font-mono tabular-nums focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+								/>
+							</div>
+							<div>
+								<label for="edit-vat" class="block text-sm font-medium text-secondary"
+									>Sazba DPH <HelpTip topic="sazba-dph" /></label
+								>
+								<select
+									id="edit-vat"
+									bind:value={form.vat_rate_percent}
+									class="mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+								>
+									<option value={21}>21%</option>
+									<option value={12}>12%</option>
+									<option value={0}>0%</option>
+								</select>
+							</div>
+							<div>
+								<span class="block text-sm font-medium text-secondary">DPH</span>
+								<div
+									class="mt-1 bg-elevated border-border text-secondary rounded-lg px-3 py-2 text-sm font-mono tabular-nums"
+								>
+									{formatCZK(toHalere(vatAmount))}
+								</div>
+							</div>
+						</div>
+					</Card>
+				{/if}
 
 				<Card>
 					<h2 class="text-base font-semibold text-primary">Daňové nastavení</h2>
@@ -422,29 +486,97 @@
 					</dl>
 				</Card>
 
-				<Card>
-					<h2 class="text-base font-semibold text-primary">Částka</h2>
-					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Částka s DPH</dt>
-							<dd class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
-								{formatCZK(expense.amount)}
-							</dd>
+				{#if hasItems}
+					<!-- Items table -->
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Položky</h2>
+						<div class="mt-4 overflow-x-auto">
+							<table class="w-full text-sm">
+								<thead>
+									<tr class="border-b border-border text-left text-xs text-tertiary">
+										<th class="pb-2 pr-4">Popis</th>
+										<th class="pb-2 pr-4 text-right">Množství</th>
+										<th class="pb-2 pr-4">Jedn.</th>
+										<th class="pb-2 pr-4 text-right">Cena/ks</th>
+										<th class="pb-2 pr-4 text-right">DPH %</th>
+										<th class="pb-2 pr-4 text-right">DPH</th>
+										<th class="pb-2 text-right">Celkem</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each expense.items! as item (item.id)}
+										<tr class="border-b border-border/50">
+											<td class="py-2 pr-4 text-primary">{item.description}</td>
+											<td class="py-2 pr-4 text-right font-mono tabular-nums text-primary"
+												>{fromHalere(item.quantity)}</td
+											>
+											<td class="py-2 pr-4 text-secondary">{item.unit}</td>
+											<td class="py-2 pr-4 text-right font-mono tabular-nums text-primary"
+												>{formatCZK(item.unit_price)}</td
+											>
+											<td class="py-2 pr-4 text-right text-secondary">{item.vat_rate_percent}%</td
+											>
+											<td class="py-2 pr-4 text-right font-mono tabular-nums text-secondary"
+												>{formatCZK(item.vat_amount)}</td
+											>
+											<td class="py-2 text-right font-mono tabular-nums text-primary"
+												>{formatCZK(item.total_amount)}</td
+											>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
 						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">DPH ({expense.vat_rate_percent}%)</dt>
-							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
-								{formatCZK(expense.vat_amount)}
-							</dd>
+						<!-- Totals -->
+						<div class="mt-4 border-t border-border pt-3">
+							<div class="flex flex-col items-end gap-1 text-sm">
+								<div class="flex gap-8">
+									<span class="text-tertiary">Základ:</span>
+									<span class="font-medium text-primary font-mono tabular-nums"
+										>{formatCZK(expense.amount - expense.vat_amount)}</span
+									>
+								</div>
+								<div class="flex gap-8">
+									<span class="text-tertiary">DPH:</span>
+									<span class="font-medium text-primary font-mono tabular-nums"
+										>{formatCZK(expense.vat_amount)}</span
+									>
+								</div>
+								<div class="flex gap-8 border-t border-border pt-1 text-base">
+									<span class="font-semibold text-primary">Celkem:</span>
+									<span class="font-semibold text-primary font-mono tabular-nums"
+										>{formatCZK(expense.amount)}</span
+									>
+								</div>
+							</div>
 						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Základ</dt>
-							<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
-								{formatCZK(expense.amount - expense.vat_amount)}
-							</dd>
-						</div>
-					</dl>
-				</Card>
+					</Card>
+				{:else}
+					<!-- Flat amount display for legacy expenses -->
+					<Card>
+						<h2 class="text-base font-semibold text-primary">Částka</h2>
+						<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+							<div>
+								<dt class="text-sm font-medium text-tertiary">Částka s DPH</dt>
+								<dd class="mt-1 text-lg font-semibold text-primary font-mono tabular-nums">
+									{formatCZK(expense.amount)}
+								</dd>
+							</div>
+							<div>
+								<dt class="text-sm font-medium text-tertiary">DPH ({expense.vat_rate_percent}%)</dt>
+								<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
+									{formatCZK(expense.vat_amount)}
+								</dd>
+							</div>
+							<div>
+								<dt class="text-sm font-medium text-tertiary">Základ</dt>
+								<dd class="mt-1 text-sm text-primary font-mono tabular-nums">
+									{formatCZK(expense.amount - expense.vat_amount)}
+								</dd>
+							</div>
+						</dl>
+					</Card>
+				{/if}
 
 				<Card>
 					<h2 class="text-base font-semibold text-primary">Daňové údaje</h2>

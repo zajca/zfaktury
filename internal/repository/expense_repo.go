@@ -21,13 +21,59 @@ func NewExpenseRepository(db *sql.DB) *ExpenseRepository {
 	return &ExpenseRepository{db: db}
 }
 
-// Create inserts a new expense into the database.
+// scanExpenseItem scans a single expense item row.
+// Column order must match: id, expense_id, description, quantity, unit, unit_price,
+// vat_rate_percent, vat_amount, total_amount, sort_order
+func scanExpenseItem(s scanner) (domain.ExpenseItem, error) {
+	var item domain.ExpenseItem
+	err := s.Scan(
+		&item.ID, &item.ExpenseID, &item.Description, &item.Quantity, &item.Unit, &item.UnitPrice,
+		&item.VATRatePercent, &item.VATAmount, &item.TotalAmount, &item.SortOrder,
+	)
+	return item, err
+}
+
+// insertExpenseItems inserts expense items using the given execer (tx or db).
+func insertExpenseItems(ctx context.Context, execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}, expenseID int64, items []domain.ExpenseItem) error {
+	for i := range items {
+		item := &items[i]
+		item.ExpenseID = expenseID
+
+		result, err := execer.ExecContext(ctx, `
+			INSERT INTO expense_items (
+				expense_id, description, quantity, unit, unit_price,
+				vat_rate_percent, vat_amount, total_amount, sort_order
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			item.ExpenseID, item.Description, item.Quantity, item.Unit, item.UnitPrice,
+			item.VATRatePercent, item.VATAmount, item.TotalAmount, item.SortOrder,
+		)
+		if err != nil {
+			return fmt.Errorf("inserting expense item %d: %w", i, err)
+		}
+		itemID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("getting last insert id for expense item %d: %w", i, err)
+		}
+		item.ID = itemID
+	}
+	return nil
+}
+
+// Create inserts a new expense with its items into the database.
 func (r *ExpenseRepository) Create(ctx context.Context, e *domain.Expense) error {
 	now := time.Now()
 	e.CreatedAt = now
 	e.UpdatedAt = now
 
-	result, err := r.db.ExecContext(ctx, `
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning transaction for expense create: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `
 		INSERT INTO expenses (
 			vendor_id, expense_number, category, description,
 			issue_date, amount, currency_code, exchange_rate,
@@ -54,10 +100,18 @@ func (r *ExpenseRepository) Create(ctx context.Context, e *domain.Expense) error
 		return fmt.Errorf("getting last insert id for expense: %w", err)
 	}
 	e.ID = id
+
+	if err := insertExpenseItems(ctx, tx, e.ID, e.Items); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing expense transaction: %w", err)
+	}
 	return nil
 }
 
-// Update modifies an existing expense.
+// Update modifies an existing expense and replaces its items.
 func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error {
 	e.UpdatedAt = time.Now()
 
@@ -66,7 +120,13 @@ func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error
 		taxReviewedAt = e.TaxReviewedAt.Format(time.RFC3339)
 	}
 
-	_, err := r.db.ExecContext(ctx, `
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning transaction for expense update: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = tx.ExecContext(ctx, `
 		UPDATE expenses SET
 			vendor_id = ?, expense_number = ?, category = ?, description = ?,
 			issue_date = ?, amount = ?, currency_code = ?, exchange_rate = ?,
@@ -86,6 +146,20 @@ func (r *ExpenseRepository) Update(ctx context.Context, e *domain.Expense) error
 	)
 	if err != nil {
 		return fmt.Errorf("updating expense %d: %w", e.ID, err)
+	}
+
+	// Delete existing items and re-insert.
+	_, err = tx.ExecContext(ctx, `DELETE FROM expense_items WHERE expense_id = ?`, e.ID)
+	if err != nil {
+		return fmt.Errorf("deleting old expense items for expense %d: %w", e.ID, err)
+	}
+
+	if err := insertExpenseItems(ctx, tx, e.ID, e.Items); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing expense update transaction: %w", err)
 	}
 	return nil
 }
@@ -186,6 +260,30 @@ func (r *ExpenseRepository) GetByID(ctx context.Context, id int64) (*domain.Expe
 				ICO:  vendorICO.String,
 			}
 		}
+	}
+
+	// Fetch items.
+	itemRows, err := r.db.QueryContext(ctx, `
+		SELECT id, expense_id, description, quantity, unit, unit_price,
+			vat_rate_percent, vat_amount, total_amount, sort_order
+		FROM expense_items
+		WHERE expense_id = ?
+		ORDER BY sort_order ASC`, id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying items for expense %d: %w", id, err)
+	}
+	defer func() { _ = itemRows.Close() }()
+
+	for itemRows.Next() {
+		item, err := scanExpenseItem(itemRows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning expense item row: %w", err)
+		}
+		e.Items = append(e.Items, item)
+	}
+	if err := itemRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating expense item rows: %w", err)
 	}
 
 	return e, nil

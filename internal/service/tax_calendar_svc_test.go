@@ -107,17 +107,17 @@ func TestCzechPublicHolidays(t *testing.T) {
 
 	// Verify some specific fixed holidays exist.
 	expectedDates := []time.Time{
-		time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC),   // Restoration Day
-		time.Date(2026, time.May, 1, 0, 0, 0, 0, time.UTC),       // Labour Day
-		time.Date(2026, time.May, 8, 0, 0, 0, 0, time.UTC),       // Liberation Day
-		time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC),      // SS. Cyril and Methodius
-		time.Date(2026, time.July, 6, 0, 0, 0, 0, time.UTC),      // Jan Hus Day
+		time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC),    // Restoration Day
+		time.Date(2026, time.May, 1, 0, 0, 0, 0, time.UTC),        // Labour Day
+		time.Date(2026, time.May, 8, 0, 0, 0, 0, time.UTC),        // Liberation Day
+		time.Date(2026, time.July, 5, 0, 0, 0, 0, time.UTC),       // SS. Cyril and Methodius
+		time.Date(2026, time.July, 6, 0, 0, 0, 0, time.UTC),       // Jan Hus Day
 		time.Date(2026, time.September, 28, 0, 0, 0, 0, time.UTC), // Czech Statehood Day
-		time.Date(2026, time.October, 28, 0, 0, 0, 0, time.UTC),  // Independent Czechoslovak State Day
-		time.Date(2026, time.November, 17, 0, 0, 0, 0, time.UTC), // Struggle for Freedom and Democracy Day
-		time.Date(2026, time.December, 24, 0, 0, 0, 0, time.UTC), // Christmas Eve
-		time.Date(2026, time.December, 25, 0, 0, 0, 0, time.UTC), // Christmas Day
-		time.Date(2026, time.December, 26, 0, 0, 0, 0, time.UTC), // St. Stephen's Day
+		time.Date(2026, time.October, 28, 0, 0, 0, 0, time.UTC),   // Independent Czechoslovak State Day
+		time.Date(2026, time.November, 17, 0, 0, 0, 0, time.UTC),  // Struggle for Freedom and Democracy Day
+		time.Date(2026, time.December, 24, 0, 0, 0, 0, time.UTC),  // Christmas Eve
+		time.Date(2026, time.December, 25, 0, 0, 0, 0, time.UTC),  // Christmas Day
+		time.Date(2026, time.December, 26, 0, 0, 0, 0, time.UTC),  // St. Stephen's Day
 	}
 
 	for _, d := range expectedDates {

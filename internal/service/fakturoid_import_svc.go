@@ -25,14 +25,14 @@ type FakturoidClient interface {
 
 // FakturoidImportService handles importing data from Fakturoid.
 type FakturoidImportService struct {
-	importRepo    repository.FakturoidImportLogRepo
-	contactRepo   repository.ContactRepo
-	invoiceRepo   repository.InvoiceRepo
-	expenseRepo   repository.ExpenseRepo
-	contactSvc    *ContactService
-	invoiceSvc    *InvoiceService
-	expenseSvc    *ExpenseService
-	documentSvc   *DocumentService
+	importRepo     repository.FakturoidImportLogRepo
+	contactRepo    repository.ContactRepo
+	invoiceRepo    repository.InvoiceRepo
+	expenseRepo    repository.ExpenseRepo
+	contactSvc     *ContactService
+	invoiceSvc     *InvoiceService
+	expenseSvc     *ExpenseService
+	documentSvc    *DocumentService
 	invDocumentSvc *InvoiceDocumentService
 }
 

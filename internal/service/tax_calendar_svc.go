@@ -121,19 +121,19 @@ func czechPublicHolidays(year int) map[time.Time]bool {
 	easterMonday := easter.AddDate(0, 0, 1)
 
 	holidays := map[time.Time]bool{
-		time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC):   true, // Restoration Day
-		goodFriday:  true,                                                // Good Friday
-		easterMonday: true,                                               // Easter Monday
-		time.Date(year, time.May, 1, 0, 0, 0, 0, time.UTC):       true, // Labour Day
-		time.Date(year, time.May, 8, 0, 0, 0, 0, time.UTC):       true, // Liberation Day
-		time.Date(year, time.July, 5, 0, 0, 0, 0, time.UTC):      true, // SS. Cyril and Methodius
-		time.Date(year, time.July, 6, 0, 0, 0, 0, time.UTC):      true, // Jan Hus Day
+		time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC): true, // Restoration Day
+		goodFriday:   true, // Good Friday
+		easterMonday: true, // Easter Monday
+		time.Date(year, time.May, 1, 0, 0, 0, 0, time.UTC):        true, // Labour Day
+		time.Date(year, time.May, 8, 0, 0, 0, 0, time.UTC):        true, // Liberation Day
+		time.Date(year, time.July, 5, 0, 0, 0, 0, time.UTC):       true, // SS. Cyril and Methodius
+		time.Date(year, time.July, 6, 0, 0, 0, 0, time.UTC):       true, // Jan Hus Day
 		time.Date(year, time.September, 28, 0, 0, 0, 0, time.UTC): true, // Czech Statehood Day
-		time.Date(year, time.October, 28, 0, 0, 0, 0, time.UTC):  true, // Independent Czechoslovak State Day
-		time.Date(year, time.November, 17, 0, 0, 0, 0, time.UTC): true, // Struggle for Freedom and Democracy Day
-		time.Date(year, time.December, 24, 0, 0, 0, 0, time.UTC): true, // Christmas Eve
-		time.Date(year, time.December, 25, 0, 0, 0, 0, time.UTC): true, // Christmas Day
-		time.Date(year, time.December, 26, 0, 0, 0, 0, time.UTC): true, // St. Stephen's Day
+		time.Date(year, time.October, 28, 0, 0, 0, 0, time.UTC):   true, // Independent Czechoslovak State Day
+		time.Date(year, time.November, 17, 0, 0, 0, 0, time.UTC):  true, // Struggle for Freedom and Democracy Day
+		time.Date(year, time.December, 24, 0, 0, 0, 0, time.UTC):  true, // Christmas Eve
+		time.Date(year, time.December, 25, 0, 0, 0, 0, time.UTC):  true, // Christmas Day
+		time.Date(year, time.December, 26, 0, 0, 0, 0, time.UTC):  true, // St. Stephen's Day
 	}
 	return holidays
 }

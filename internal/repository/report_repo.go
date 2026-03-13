@@ -57,7 +57,7 @@ func (r *ReportRepository) MonthlyRevenue(ctx context.Context, year int) ([]Mont
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly revenue: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []MonthlyAmount
 	for rows.Next() {
@@ -87,7 +87,7 @@ func (r *ReportRepository) QuarterlyRevenue(ctx context.Context, year int) ([]Qu
 	if err != nil {
 		return nil, fmt.Errorf("querying quarterly revenue: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []QuarterlyAmount
 	for rows.Next() {
@@ -127,7 +127,7 @@ func (r *ReportRepository) MonthlyExpenses(ctx context.Context, year int) ([]Mon
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []MonthlyAmount
 	for rows.Next() {
@@ -157,7 +157,7 @@ func (r *ReportRepository) QuarterlyExpenses(ctx context.Context, year int) ([]Q
 	if err != nil {
 		return nil, fmt.Errorf("querying quarterly expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []QuarterlyAmount
 	for rows.Next() {
@@ -180,7 +180,7 @@ func (r *ReportRepository) CategoryExpenses(ctx context.Context, year int) ([]Ca
 	if err != nil {
 		return nil, fmt.Errorf("querying category expenses: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []CategoryAmount
 	for rows.Next() {
@@ -204,7 +204,7 @@ func (r *ReportRepository) TopCustomers(ctx context.Context, year int, limit int
 	if err != nil {
 		return nil, fmt.Errorf("querying top customers: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []CustomerRevenue
 	for rows.Next() {

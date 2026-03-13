@@ -73,6 +73,7 @@ func (c *Client) Authenticate(ctx context.Context) error {
 	}
 	req.SetBasicAuth(c.clientID, c.clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", fmt.Sprintf("ZFaktury (%s)", c.email))
 
 	resp, err := c.httpClient.Do(req)

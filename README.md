@@ -50,6 +50,20 @@ make build
 # Open http://localhost:8080
 ```
 
+## Demo Data
+
+Populate the database with realistic demo data (Czech freelance web developer scenario -- 10 contacts, 18 invoices, 18 expenses, recurring templates):
+
+```bash
+./zfaktury seed --config config.dev.toml
+```
+
+Re-seed (clears all data first):
+
+```bash
+./zfaktury seed --force --config config.dev.toml
+```
+
 ## Development
 
 Two processes run in parallel -- Vite HMR for frontend and Go API server:

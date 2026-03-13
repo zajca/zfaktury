@@ -49,6 +49,8 @@ func mapVATReturnError(w http.ResponseWriter, err error) {
 		respondError(w, http.StatusConflict, "vat return already filed")
 	case errors.Is(err, domain.ErrInvalidInput):
 		respondError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, domain.ErrMissingSetting):
+		respondError(w, http.StatusUnprocessableEntity, err.Error())
 	default:
 		respondError(w, http.StatusInternalServerError, "internal server error")
 	}

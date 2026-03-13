@@ -12,4 +12,7 @@ var (
 	// VAT filing errors
 	ErrFilingAlreadyExists = errors.New("filing already exists for this period")
 	ErrFilingAlreadyFiled  = errors.New("filing already filed, cannot modify")
+
+	// Settings errors
+	ErrMissingSetting = errors.New("required setting not configured")
 )

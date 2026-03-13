@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -297,6 +298,9 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 	// Get DIC from settings.
 	dic, err := s.settingsRepo.Get(ctx, "dic")
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
+		}
 		return nil, fmt.Errorf("fetching DIC setting for XML generation: %w", err)
 	}
 

@@ -376,6 +376,29 @@ func TestVATReturn_GenerateXML_NotFound(t *testing.T) {
 	}
 }
 
+func TestVATReturn_GenerateXML_MissingSetting(t *testing.T) {
+	r, _ := setupVATReturnRouter(t)
+
+	// Create a VAT return without inserting the "dic" setting.
+	id := createVATReturn(t, r)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/vat-returns/%d/generate-xml", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if resp["error"] == "" {
+		t.Error("expected non-empty error message")
+	}
+}
+
 func TestVATReturn_DownloadXML(t *testing.T) {
 	r, db := setupVATReturnRouter(t)
 

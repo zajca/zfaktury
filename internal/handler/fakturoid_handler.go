@@ -73,6 +73,10 @@ func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errors := result.Errors
+	if errors == nil {
+		errors = []string{}
+	}
 	respondJSON(w, http.StatusOK, fakturoidImportResponse{
 		ContactsCreated:       result.ContactsCreated,
 		ContactsSkipped:       result.ContactsSkipped,
@@ -82,6 +86,6 @@ func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
 		ExpensesSkipped:       result.ExpensesSkipped,
 		AttachmentsDownloaded: result.AttachmentsDownloaded,
 		AttachmentsSkipped:    result.AttachmentsSkipped,
-		Errors:                result.Errors,
+		Errors:                errors,
 	})
 }

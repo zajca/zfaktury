@@ -13,9 +13,9 @@ func TestDownloadAttachment_Success(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify auth and headers.
-		user, pass, ok := r.BasicAuth()
-		if !ok || user != "test@example.com" || pass != "token123" {
-			t.Errorf("unexpected auth: user=%q pass=%q ok=%v", user, pass, ok)
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer test-access-token" {
+			t.Errorf("unexpected Authorization header: %q", auth)
 		}
 		ua := r.Header.Get("User-Agent")
 		if !strings.Contains(ua, "ZFaktury") {
@@ -28,7 +28,7 @@ func TestDownloadAttachment_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("test-slug", "test@example.com", "token123", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	data, contentType, err := client.DownloadAttachment(context.Background(), srv.URL+"/attachments/123/download")
 	if err != nil {
@@ -54,7 +54,7 @@ func TestDownloadAttachment_DefaultContentType(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, contentType, err := client.DownloadAttachment(context.Background(), srv.URL+"/file")
 	if err != nil {
@@ -75,7 +75,7 @@ func TestDownloadAttachment_NotFound(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, _, err := client.DownloadAttachment(context.Background(), srv.URL+"/missing")
 	if err == nil {
@@ -92,7 +92,7 @@ func TestDownloadAttachment_NoContent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, _, err := client.DownloadAttachment(context.Background(), srv.URL+"/empty")
 	if err == nil {
@@ -110,7 +110,7 @@ func TestDownloadAttachment_ServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, _, err := client.DownloadAttachment(context.Background(), srv.URL+"/error")
 	if err == nil {
@@ -131,7 +131,7 @@ func TestDownloadAttachment_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately.
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, _, err := client.DownloadAttachment(ctx, srv.URL+"/file")
 	if err == nil {

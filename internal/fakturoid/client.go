@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -14,12 +15,16 @@ const (
 	pageDelay      = 700 * time.Millisecond // ~85 req/min, under 100 limit
 )
 
+const tokenURL = "https://app.fakturoid.cz/api/v3/oauth/token"
+
 // Client is an HTTP client for the Fakturoid API v3.
 type Client struct {
-	baseURL    string
-	email      string
-	apiToken   string
-	httpClient *http.Client
+	baseURL      string
+	email        string
+	clientID     string
+	clientSecret string
+	accessToken  string
+	httpClient   *http.Client
 }
 
 // Option configures the Fakturoid Client.
@@ -39,13 +44,15 @@ func WithTimeout(d time.Duration) Option {
 	}
 }
 
-// NewClient creates a new Fakturoid API client.
-// slug is the Fakturoid account slug, email is the user's email, apiToken is the API token.
-func NewClient(slug, email, apiToken string, opts ...Option) *Client {
+// NewClient creates a new Fakturoid API client using OAuth2 Client Credentials.
+// slug is the Fakturoid account slug, email is the user's email (for User-Agent header),
+// clientID and clientSecret are OAuth2 credentials from Fakturoid settings.
+func NewClient(slug, email, clientID, clientSecret string, opts ...Option) *Client {
 	c := &Client{
-		baseURL:  fmt.Sprintf("https://app.fakturoid.cz/api/v3/accounts/%s", slug),
-		email:    email,
-		apiToken: apiToken,
+		baseURL:      fmt.Sprintf("https://app.fakturoid.cz/api/v3/accounts/%s", slug),
+		email:        email,
+		clientID:     clientID,
+		clientSecret: clientSecret,
 		httpClient: &http.Client{
 			Timeout: defaultTimeout,
 		},
@@ -54,6 +61,49 @@ func NewClient(slug, email, apiToken string, opts ...Option) *Client {
 		opt(c)
 	}
 	return c
+}
+
+// Authenticate obtains an OAuth2 access token using the Client Credentials flow.
+// Must be called before making API requests.
+func (c *Client) Authenticate(ctx context.Context) error {
+	body := strings.NewReader("grant_type=client_credentials")
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, body)
+	if err != nil {
+		return fmt.Errorf("creating token request: %w", err)
+	}
+	req.SetBasicAuth(c.clientID, c.clientSecret)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", fmt.Sprintf("ZFaktury (%s)", c.email))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("requesting OAuth token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("reading token response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("OAuth token error: HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		ExpiresIn   int    `json:"expires_in"`
+	}
+	if err := json.Unmarshal(respBody, &tokenResp); err != nil {
+		return fmt.Errorf("parsing token response: %w", err)
+	}
+	if tokenResp.AccessToken == "" {
+		return fmt.Errorf("OAuth token response missing access_token")
+	}
+
+	c.accessToken = tokenResp.AccessToken
+	return nil
 }
 
 // listPaginated fetches all pages of a paginated Fakturoid API endpoint.
@@ -67,7 +117,7 @@ func (c *Client) listPaginated(ctx context.Context, path string) ([]json.RawMess
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
-		req.SetBasicAuth(c.email, c.apiToken)
+		req.Header.Set("Authorization", "Bearer "+c.accessToken)
 		req.Header.Set("User-Agent", fmt.Sprintf("ZFaktury (%s)", c.email))
 		req.Header.Set("Accept", "application/json")
 
@@ -114,7 +164,7 @@ func (c *Client) DownloadAttachment(ctx context.Context, downloadURL string) ([]
 	if err != nil {
 		return nil, "", fmt.Errorf("creating attachment request: %w", err)
 	}
-	req.SetBasicAuth(c.email, c.apiToken)
+	req.Header.Set("Authorization", "Bearer "+c.accessToken)
 	req.Header.Set("User-Agent", fmt.Sprintf("ZFaktury (%s)", c.email))
 
 	resp, err := c.httpClient.Do(req)

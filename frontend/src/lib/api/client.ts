@@ -1697,7 +1697,8 @@ export const fakturoidApi = {
 	import(data: {
 		slug: string;
 		email: string;
-		api_token: string;
+		client_id: string;
+		client_secret: string;
 		download_attachments?: boolean;
 	}) {
 		return post<FakturoidImportResult>('/import/fakturoid/import', data);

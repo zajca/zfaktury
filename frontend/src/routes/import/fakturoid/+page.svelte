@@ -9,7 +9,8 @@
 
 	let slug = $state('');
 	let email = $state('');
-	let apiToken = $state('');
+	let clientId = $state('');
+	let clientSecret = $state('');
 	let downloadAttachments = $state(false);
 
 	let submitting = $state(false);
@@ -21,7 +22,8 @@
 			result = await fakturoidApi.import({
 				slug,
 				email,
-				api_token: apiToken,
+				client_id: clientId,
+				client_secret: clientSecret,
 				download_attachments: downloadAttachments
 			});
 			step = 'done';
@@ -87,17 +89,32 @@
 			</div>
 
 			<div>
-				<label for="api-token" class="block text-sm font-medium text-primary">API Token</label>
+				<label for="client-id" class="block text-sm font-medium text-primary">Client ID</label>
 				<input
-					id="api-token"
-					type="password"
-					bind:value={apiToken}
+					id="client-id"
+					type="text"
+					bind:value={clientId}
 					required
-					placeholder="vas-api-token"
+					placeholder="vase-client-id"
 					disabled={submitting}
 					class="mt-1 block w-full rounded-md border border-border bg-hover px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
 				/>
-				<p class="mt-1 text-xs text-muted">API token najdete v nastavení vašeho Fakturoid účtu.</p>
+			</div>
+
+			<div>
+				<label for="client-secret" class="block text-sm font-medium text-primary">Client Secret</label>
+				<input
+					id="client-secret"
+					type="password"
+					bind:value={clientSecret}
+					required
+					placeholder="vase-client-secret"
+					disabled={submitting}
+					class="mt-1 block w-full rounded-md border border-border bg-hover px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
+				/>
+				<p class="mt-1 text-xs text-muted">
+					Client ID a Client Secret najdete v nastaveni vaseho Fakturoid uctu (Nastaveni &rarr; Uzivatelsky ucet).
+				</p>
 			</div>
 
 			<div class="flex items-center gap-2">
@@ -190,7 +207,8 @@
 						result = null;
 						slug = '';
 						email = '';
-						apiToken = '';
+						clientId = '';
+						clientSecret = '';
 						downloadAttachments = false;
 					}}
 					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-hover transition-colors"

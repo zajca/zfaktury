@@ -10,6 +10,13 @@ import (
 	"testing"
 )
 
+// newTestClient creates a Client with a pre-set access token for testing.
+func newTestClient(baseURL string) *Client {
+	c := NewClient("slug", "user@test.cz", "cid", "csecret", WithBaseURL(baseURL))
+	c.accessToken = "test-access-token"
+	return c
+}
+
 func TestListSubjects_Paginated(t *testing.T) {
 	var requestCount atomic.Int32
 
@@ -17,9 +24,9 @@ func TestListSubjects_Paginated(t *testing.T) {
 		requestCount.Add(1)
 
 		// Verify auth and headers.
-		user, pass, ok := r.BasicAuth()
-		if !ok || user != "test@example.com" || pass != "token123" {
-			t.Errorf("unexpected auth: user=%q pass=%q ok=%v", user, pass, ok)
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer test-access-token" {
+			t.Errorf("unexpected Authorization header: %q", auth)
 		}
 		ua := r.Header.Get("User-Agent")
 		if !strings.Contains(ua, "ZFaktury") {
@@ -51,10 +58,11 @@ func TestListSubjects_Paginated(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("test-slug", "test@example.com", "token123",
+	client := NewClient("test-slug", "test@example.com", "cid", "csecret",
 		WithBaseURL(srv.URL),
 		WithTimeout(0), // use default for test server
 	)
+	client.accessToken = "test-access-token"
 
 	subjects, err := client.ListSubjects(context.Background())
 	if err != nil {
@@ -109,7 +117,7 @@ func TestListInvoices_SinglePage(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "api-key", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	invoices, err := client.ListInvoices(context.Background())
 	if err != nil {
@@ -166,7 +174,7 @@ func TestListExpenses_SinglePage(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "api-key", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	expenses, err := client.ListExpenses(context.Background())
 	if err != nil {
@@ -195,7 +203,7 @@ func TestListSubjects_Unauthorized(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "bad@email.cz", "wrong-token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, err := client.ListSubjects(context.Background())
 	if err == nil {
@@ -213,7 +221,7 @@ func TestListInvoices_ServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, err := client.ListInvoices(context.Background())
 	if err == nil {
@@ -224,17 +232,11 @@ func TestListInvoices_ServerError(t *testing.T) {
 	}
 }
 
-func TestBasicAuthAndUserAgent(t *testing.T) {
+func TestBearerAuthAndUserAgent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, pass, ok := r.BasicAuth()
-		if !ok {
-			t.Error("Basic Auth not set")
-		}
-		if user != "info@firma.cz" {
-			t.Errorf("expected user 'info@firma.cz', got %q", user)
-		}
-		if pass != "my-api-token" {
-			t.Errorf("expected pass 'my-api-token', got %q", pass)
+		auth := r.Header.Get("Authorization")
+		if auth != "Bearer my-access-token" {
+			t.Errorf("expected Bearer auth, got %q", auth)
 		}
 
 		ua := r.Header.Get("User-Agent")
@@ -247,7 +249,8 @@ func TestBasicAuthAndUserAgent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClient("my-slug", "info@firma.cz", "my-api-token", WithBaseURL(srv.URL))
+	client := NewClient("my-slug", "info@firma.cz", "cid", "csecret", WithBaseURL(srv.URL))
+	client.accessToken = "my-access-token"
 
 	_, err := client.ListSubjects(context.Background())
 	if err != nil {
@@ -265,7 +268,7 @@ func TestContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately.
 
-	client := NewClient("slug", "user@test.cz", "token", WithBaseURL(srv.URL))
+	client := newTestClient(srv.URL)
 
 	_, err := client.ListSubjects(ctx)
 	if err == nil {

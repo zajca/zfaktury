@@ -17,7 +17,7 @@ func TestFakturoidImport_MissingCredentials(t *testing.T) {
 	r := chi.NewRouter()
 	r.Mount("/api/v1/import/fakturoid", h.Routes())
 
-	body := `{"slug":"","email":"","api_token":""}`
+	body := `{"slug":"","email":"","client_id":"","client_secret":""}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/import/fakturoid/import", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -62,9 +62,10 @@ func TestFakturoidImport_PartialCredentials(t *testing.T) {
 		name string
 		body string
 	}{
-		{"missing slug", `{"slug":"","email":"test@test.cz","api_token":"token"}`},
-		{"missing email", `{"slug":"test","email":"","api_token":"token"}`},
-		{"missing api_token", `{"slug":"test","email":"test@test.cz","api_token":""}`},
+		{"missing slug", `{"slug":"","email":"test@test.cz","client_id":"cid","client_secret":"csecret"}`},
+		{"missing email", `{"slug":"test","email":"","client_id":"cid","client_secret":"csecret"}`},
+		{"missing client_id", `{"slug":"test","email":"test@test.cz","client_id":"","client_secret":"csecret"}`},
+		{"missing client_secret", `{"slug":"test","email":"test@test.cz","client_id":"cid","client_secret":""}`},
 	}
 
 	for _, tt := range tests {

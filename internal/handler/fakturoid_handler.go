@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -31,7 +32,8 @@ func (h *FakturoidHandler) Routes() chi.Router {
 type fakturoidImportRequest struct {
 	Slug                string `json:"slug"`
 	Email               string `json:"email"`
-	APIToken            string `json:"api_token"`
+	ClientID            string `json:"client_id"`
+	ClientSecret        string `json:"client_secret"`
 	DownloadAttachments bool   `json:"download_attachments"`
 }
 
@@ -55,12 +57,16 @@ func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Slug == "" || req.Email == "" || req.APIToken == "" {
-		respondError(w, http.StatusBadRequest, "slug, email, and api_token are required")
+	if req.Slug == "" || req.Email == "" || req.ClientID == "" || req.ClientSecret == "" {
+		respondError(w, http.StatusBadRequest, "slug, email, client_id, and client_secret are required")
 		return
 	}
 
-	client := fakturoid.NewClient(req.Slug, req.Email, req.APIToken)
+	client := fakturoid.NewClient(req.Slug, req.Email, req.ClientID, req.ClientSecret)
+	if err := client.Authenticate(r.Context()); err != nil {
+		respondError(w, http.StatusUnauthorized, fmt.Sprintf("Fakturoid authentication failed: %v", err))
+		return
+	}
 	result, err := h.svc.ImportAll(r.Context(), client, req.DownloadAttachments)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())

@@ -128,17 +128,17 @@ func TestMapFakturoidInvoice(t *testing.T) {
 		VariableSymbol:        "2024001",
 		SubjectID:             100,
 		Currency:              "CZK",
-		ExchangeRate:          1.0,
-		Subtotal:              10000.0,
-		Total:                 12100.0,
+		ExchangeRate:          fakturoid.FlexFloat64(1.0),
+		Subtotal:              fakturoid.FlexFloat64(10000.0),
+		Total:                 fakturoid.FlexFloat64(12100.0),
 		Note:                  "Test invoice",
 		Lines: []fakturoid.InvoiceLine{
 			{
 				Name:      "Consulting",
-				Quantity:  2.0,
+				Quantity:  fakturoid.FlexFloat64(2.0),
 				UnitName:  "hours",
-				UnitPrice: 5000.0,
-				VatRate:   21.0,
+				UnitPrice: fakturoid.FlexFloat64(5000.0),
+				VatRate:   fakturoid.FlexFloat64(21.0),
 			},
 		},
 		Payments: []fakturoid.Payment{
@@ -244,7 +244,7 @@ func TestMapFakturoidInvoice_DocumentTypes(t *testing.T) {
 	}{
 		{"invoice", domain.InvoiceTypeRegular},
 		{"proforma", domain.InvoiceTypeProforma},
-		{"credit_note", domain.InvoiceTypeCreditNote},
+		{"correction", domain.InvoiceTypeCreditNote},
 		{"unknown", domain.InvoiceTypeRegular},
 	}
 
@@ -269,6 +269,7 @@ func TestMapFakturoidInvoice_StatusMapping(t *testing.T) {
 		{"paid", domain.InvoiceStatusPaid},
 		{"overdue", domain.InvoiceStatusOverdue},
 		{"cancelled", domain.InvoiceStatusCancelled},
+		{"uncollectible", domain.InvoiceStatusCancelled},
 		{"sent", domain.InvoiceStatusSent},
 		{"open", domain.InvoiceStatusSent},
 	}
@@ -305,17 +306,17 @@ func TestMapFakturoidExpense(t *testing.T) {
 		IssuedOn:       "2024-06-01",
 		SubjectID:      200,
 		Description:    "Office supplies",
-		Total:          1210.0,
+		Total:          fakturoid.FlexFloat64(1210.0),
 		Currency:       "CZK",
-		ExchangeRate:   1.0,
+		ExchangeRate:   fakturoid.FlexFloat64(1.0),
 		PaymentMethod:  "cash",
 		PrivateNote:    "Internal note",
 		Lines: []fakturoid.ExpenseLine{
 			{
 				Name:      "Paper",
-				Quantity:  10.0,
-				UnitPrice: 100.0,
-				VatRate:   21.0,
+				Quantity:  fakturoid.FlexFloat64(10.0),
+				UnitPrice: fakturoid.FlexFloat64(100.0),
+				VatRate:   fakturoid.FlexFloat64(21.0),
 			},
 		},
 	}
@@ -377,7 +378,7 @@ func TestMapFakturoidExpense_DescriptionFallbackToLineName(t *testing.T) {
 		ID:          1,
 		Description: "", // empty description
 		Lines: []fakturoid.ExpenseLine{
-			{Name: "First line item", Quantity: 1, UnitPrice: 100, VatRate: 0},
+			{Name: "First line item", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(100), VatRate: fakturoid.FlexFloat64(0)},
 		},
 	}
 
@@ -431,10 +432,10 @@ func TestMapFakturoidExpense_NoVendor(t *testing.T) {
 func TestMapFakturoidExpense_VATFromMultipleLines(t *testing.T) {
 	exp := fakturoid.Expense{
 		ID:    1,
-		Total: 1500.0,
+		Total: fakturoid.FlexFloat64(1500.0),
 		Lines: []fakturoid.ExpenseLine{
-			{Name: "Item A", Quantity: 1, UnitPrice: 1000, VatRate: 21},
-			{Name: "Item B", Quantity: 1, UnitPrice: 500, VatRate: 12},
+			{Name: "Item A", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(1000), VatRate: fakturoid.FlexFloat64(21)},
+			{Name: "Item B", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(500), VatRate: fakturoid.FlexFloat64(12)},
 		},
 	}
 
@@ -457,10 +458,10 @@ func TestImportAll_ImportsNewSkipsDuplicates(t *testing.T) {
 		},
 		invoices: []fakturoid.Invoice{
 			{ID: 10, Number: "INV-001", SubjectID: 1, DocumentType: "invoice", Status: "sent", IssuedOn: "2024-01-01", DueOn: "2024-02-01",
-				Lines: []fakturoid.InvoiceLine{{Name: "Service", Quantity: 1, UnitPrice: 1000, VatRate: 21}}},
+				Lines: []fakturoid.InvoiceLine{{Name: "Service", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(1000), VatRate: fakturoid.FlexFloat64(21)}}},
 		},
 		expenses: []fakturoid.Expense{
-			{ID: 20, OriginalNumber: "EXP-001", Description: "Office", Total: 500, IssuedOn: "2024-01-15"},
+			{ID: 20, OriginalNumber: "EXP-001", Description: "Office", Total: fakturoid.FlexFloat64(500), IssuedOn: "2024-01-15"},
 		},
 	}
 
@@ -685,7 +686,7 @@ func TestImportAll_DownloadsAttachments(t *testing.T) {
 				Number:   "INV-ATT-001",
 				IssuedOn: "2024-01-15",
 				DueOn:    "2024-02-15",
-				Lines:    []fakturoid.InvoiceLine{{Name: "Test", Quantity: 1, UnitPrice: 1000}},
+				Lines:    []fakturoid.InvoiceLine{{Name: "Test", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(1000)}},
 				Attachments: []fakturoid.Attachment{
 					{ID: 100, Filename: "receipt.pdf", ContentType: "application/pdf", DownloadURL: "https://example.com/att/100"},
 				},
@@ -697,8 +698,8 @@ func TestImportAll_DownloadsAttachments(t *testing.T) {
 				ID:          20,
 				IssuedOn:    "2024-01-20",
 				Description: "Office supplies",
-				Total:       500,
-				Lines:       []fakturoid.ExpenseLine{{Name: "Pens", Quantity: 1, UnitPrice: 500}},
+				Total:       fakturoid.FlexFloat64(500),
+				Lines:       []fakturoid.ExpenseLine{{Name: "Pens", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(500)}},
 				Attachments: []fakturoid.Attachment{
 					{ID: 200, Filename: "receipt.pdf", ContentType: "application/pdf", DownloadURL: "https://example.com/att/200"},
 					{ID: 201, Filename: "contract.pdf", ContentType: "application/pdf", DownloadURL: "https://example.com/att/201"},
@@ -754,7 +755,7 @@ func TestImportAll_AttachmentDownloadError(t *testing.T) {
 				IssuedOn:  "2024-01-15",
 				DueOn:     "2024-02-15",
 				SubjectID: 1,
-				Lines:     []fakturoid.InvoiceLine{{Name: "Test", Quantity: 1, UnitPrice: 1000}},
+				Lines:     []fakturoid.InvoiceLine{{Name: "Test", Quantity: fakturoid.FlexFloat64(1), UnitPrice: fakturoid.FlexFloat64(1000)}},
 				Attachments: []fakturoid.Attachment{
 					{ID: 100, Filename: "receipt.pdf", DownloadURL: "https://example.com/att/100"},
 				},

@@ -487,9 +487,9 @@ func mapFakturoidInvoice(inv fakturoid.Invoice, subjectMap map[int64]int64) *dom
 		InvoiceNumber:  inv.Number,
 		VariableSymbol: inv.VariableSymbol,
 		CurrencyCode:   inv.Currency,
-		ExchangeRate:   domain.FromFloat(inv.ExchangeRate),
-		SubtotalAmount: domain.FromFloat(inv.Subtotal),
-		TotalAmount:    domain.FromFloat(inv.Total),
+		ExchangeRate:   domain.FromFloat(float64(inv.ExchangeRate)),
+		SubtotalAmount: domain.FromFloat(float64(inv.Subtotal)),
+		TotalAmount:    domain.FromFloat(float64(inv.Total)),
 		Notes:          inv.Note,
 	}
 
@@ -497,7 +497,7 @@ func mapFakturoidInvoice(inv fakturoid.Invoice, subjectMap map[int64]int64) *dom
 	switch inv.DocumentType {
 	case "proforma":
 		invoice.Type = domain.InvoiceTypeProforma
-	case "credit_note":
+	case "correction":
 		invoice.Type = domain.InvoiceTypeCreditNote
 	default:
 		invoice.Type = domain.InvoiceTypeRegular
@@ -510,6 +510,8 @@ func mapFakturoidInvoice(inv fakturoid.Invoice, subjectMap map[int64]int64) *dom
 	case "overdue":
 		invoice.Status = domain.InvoiceStatusOverdue
 	case "cancelled":
+		invoice.Status = domain.InvoiceStatusCancelled
+	case "uncollectible":
 		invoice.Status = domain.InvoiceStatusCancelled
 	default:
 		invoice.Status = domain.InvoiceStatusSent
@@ -546,10 +548,10 @@ func mapFakturoidInvoice(inv fakturoid.Invoice, subjectMap map[int64]int64) *dom
 	for i, line := range inv.Lines {
 		invoice.Items = append(invoice.Items, domain.InvoiceItem{
 			Description:    line.Name,
-			Quantity:       domain.FromFloat(line.Quantity),
+			Quantity:       domain.FromFloat(float64(line.Quantity)),
 			Unit:           line.UnitName,
-			UnitPrice:      domain.FromFloat(line.UnitPrice),
-			VATRatePercent: int(line.VatRate),
+			UnitPrice:      domain.FromFloat(float64(line.UnitPrice)),
+			VATRatePercent: int(float64(line.VatRate)),
 			SortOrder:      i + 1,
 		})
 	}
@@ -564,9 +566,9 @@ func mapFakturoidInvoice(inv fakturoid.Invoice, subjectMap map[int64]int64) *dom
 func mapFakturoidExpense(exp fakturoid.Expense, subjectMap map[int64]int64) *domain.Expense {
 	expense := &domain.Expense{
 		ExpenseNumber:   exp.OriginalNumber,
-		Amount:          domain.FromFloat(exp.Total),
+		Amount:          domain.FromFloat(float64(exp.Total)),
 		CurrencyCode:    exp.Currency,
-		ExchangeRate:    domain.FromFloat(exp.ExchangeRate),
+		ExchangeRate:    domain.FromFloat(float64(exp.ExchangeRate)),
 		IsTaxDeductible: true,
 		BusinessPercent: 100,
 		Notes:           exp.PrivateNote,
@@ -599,11 +601,12 @@ func mapFakturoidExpense(exp fakturoid.Expense, subjectMap map[int64]int64) *dom
 		vatRateCounts := make(map[int]float64)
 		var totalVAT float64
 		for _, line := range exp.Lines {
-			rate := int(line.VatRate)
-			lineTotal := line.Quantity * line.UnitPrice
+			rate := int(float64(line.VatRate))
+			lineTotal := float64(line.Quantity) * float64(line.UnitPrice)
 			vatRateCounts[rate] += lineTotal
 			if rate > 0 {
-				totalVAT += lineTotal * line.VatRate / (100 + line.VatRate)
+				vatRate := float64(line.VatRate)
+				totalVAT += lineTotal * vatRate / (100 + vatRate)
 			}
 		}
 		// Find dominant rate

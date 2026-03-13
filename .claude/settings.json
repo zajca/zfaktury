@@ -10,6 +10,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /home/zajca/Code/Me/ZFaktury/.claude/hooks/post-edit-format.sh"
+          }
+        ]
+      }
     ]
   }
 }

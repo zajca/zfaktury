@@ -17,9 +17,7 @@
 	import { paymentMethodLabels } from '$lib/utils/invoice';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import InvoiceItemsEditor, {
-		type FormItem
-	} from '$lib/components/InvoiceItemsEditor.svelte';
+	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
 	import DocumentUpload from '$lib/components/DocumentUpload.svelte';
 	import DocumentList from '$lib/components/DocumentList.svelte';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
@@ -124,9 +122,7 @@
 			}));
 		} else {
 			useItems = false;
-			items = [
-				{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }
-			];
+			items = [{ description: '', quantity: 1, unit: 'ks', unit_price: 0, vat_rate_percent: 21 }];
 		}
 	}
 
@@ -514,8 +510,7 @@
 											<td class="py-2 pr-4 text-right font-mono tabular-nums text-primary"
 												>{formatCZK(item.unit_price)}</td
 											>
-											<td class="py-2 pr-4 text-right text-secondary">{item.vat_rate_percent}%</td
-											>
+											<td class="py-2 pr-4 text-right text-secondary">{item.vat_rate_percent}%</td>
 											<td class="py-2 pr-4 text-right font-mono tabular-nums text-secondary"
 												>{formatCZK(item.vat_amount)}</td
 											>

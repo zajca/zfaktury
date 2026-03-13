@@ -1,9 +1,31 @@
 #!/usr/bin/env bash
-# Pre-commit hook: runs Go tests with coverage check (minimum 80%)
+# Pre-commit hook: auto-format staged files, then run Go tests with coverage check
 # Excludes infrastructure packages (cli, config, database, cmd, testutil)
 # that require full application context and are not unit-testable.
 
 set -e
+
+# --- Auto-format staged files ---
+
+# Format staged Go files with gofmt
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.go')
+if [ -n "$STAGED_GO_FILES" ]; then
+    echo "Formatting Go files..."
+    echo "$STAGED_GO_FILES" | xargs gofmt -w
+    echo "$STAGED_GO_FILES" | xargs git add
+fi
+
+# Format staged frontend files with prettier
+STAGED_FRONTEND_FILES=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/src/*.svelte' 'frontend/src/*.ts' 'frontend/src/*.js')
+if [ -n "$STAGED_FRONTEND_FILES" ]; then
+    echo "Formatting frontend files..."
+    cd frontend
+    echo "$STAGED_FRONTEND_FILES" | sed 's|^frontend/||' | xargs npx prettier --write
+    cd ..
+    echo "$STAGED_FRONTEND_FILES" | xargs git add
+fi
+
+# --- Tests ---
 
 MIN_COVERAGE=80
 

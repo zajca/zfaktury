@@ -61,11 +61,10 @@ clean:
 	rm -f coverage.out coverage.html
 	rm -rf frontend/coverage/
 
-# Install git hooks
+# Install git hooks (points git to scripts/ directory)
 install-hooks:
-	cp scripts/pre-commit .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
-	@echo "Git hooks installed."
+	git config core.hooksPath scripts
+	@echo "Git hooks installed (core.hooksPath = scripts)."
 
 # Run database migrations only
 migrate:

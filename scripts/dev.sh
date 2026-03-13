@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Ensure git hooks are set up
+git config core.hooksPath scripts
+
 # Ensure placeholder exists for embed directive
 mkdir -p "$PROJECT_DIR/web/frontend/build"
 if [ ! -f "$PROJECT_DIR/web/frontend/build/index.html" ]; then

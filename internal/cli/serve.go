@@ -35,8 +35,8 @@ import (
 )
 
 var (
-	servePort      int
-	serveDev       bool
+	servePort       int
+	serveDev        bool
 	serveInitConfig bool
 )
 

@@ -6,9 +6,7 @@
 	import { toISODate } from '$lib/utils/date';
 	import CategoryPicker from '$lib/components/CategoryPicker.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
-	import InvoiceItemsEditor, {
-		type FormItem
-	} from '$lib/components/InvoiceItemsEditor.svelte';
+	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';

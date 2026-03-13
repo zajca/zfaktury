@@ -19,6 +19,14 @@ type Subject struct {
 	Due            int    `json:"due"`  // payment terms days
 }
 
+// Attachment represents a file attachment on a Fakturoid entity.
+type Attachment struct {
+	ID          int64  `json:"id"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	DownloadURL string `json:"download_url"`
+}
+
 // InvoiceLine represents a line item on a Fakturoid invoice.
 type InvoiceLine struct {
 	Name      string  `json:"name"`
@@ -51,6 +59,7 @@ type Invoice struct {
 	Note                  string        `json:"note"`
 	Lines                 []InvoiceLine `json:"lines"`
 	Payments              []Payment     `json:"payments"`
+	Attachments           []Attachment  `json:"attachments"`
 }
 
 // ExpenseLine represents a line item on a Fakturoid expense.
@@ -74,4 +83,5 @@ type Expense struct {
 	PaymentMethod  string        `json:"payment_method"` // "bank", "cash", "card", etc.
 	PrivateNote    string        `json:"private_note"`
 	Lines          []ExpenseLine `json:"lines"`
+	Attachments    []Attachment  `json:"attachments"`
 }

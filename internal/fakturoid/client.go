@@ -107,6 +107,42 @@ func (c *Client) listPaginated(ctx context.Context, path string) ([]json.RawMess
 	return all, nil
 }
 
+// DownloadAttachment downloads a file attachment from the given absolute URL.
+// Returns the file bytes, the content type from the response header, and any error.
+func (c *Client) DownloadAttachment(ctx context.Context, downloadURL string) ([]byte, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("creating attachment request: %w", err)
+	}
+	req.SetBasicAuth(c.email, c.apiToken)
+	req.Header.Set("User-Agent", fmt.Sprintf("ZFaktury (%s)", c.email))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("downloading attachment: %w", err)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 50<<20)) // 50 MB limit
+	_ = resp.Body.Close()
+	if err != nil {
+		return nil, "", fmt.Errorf("reading attachment response: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusNoContent {
+		return nil, "", fmt.Errorf("attachment has no content (HTTP 204)")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("attachment download error: HTTP %d", resp.StatusCode)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	return body, contentType, nil
+}
+
 // ListSubjects returns all subjects (contacts) from the Fakturoid account.
 func (c *Client) ListSubjects(ctx context.Context) ([]Subject, error) {
 	raw, err := c.listPaginated(ctx, "subjects.json")

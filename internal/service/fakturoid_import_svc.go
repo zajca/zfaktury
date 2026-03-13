@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -12,22 +13,27 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
+const attachmentDelay = 700 * time.Millisecond // rate limiting between attachment downloads
+
 // FakturoidClient defines the interface for fetching data from Fakturoid.
 type FakturoidClient interface {
 	ListSubjects(ctx context.Context) ([]fakturoid.Subject, error)
 	ListInvoices(ctx context.Context) ([]fakturoid.Invoice, error)
 	ListExpenses(ctx context.Context) ([]fakturoid.Expense, error)
+	DownloadAttachment(ctx context.Context, downloadURL string) ([]byte, string, error)
 }
 
 // FakturoidImportService handles importing data from Fakturoid.
 type FakturoidImportService struct {
-	importRepo  repository.FakturoidImportLogRepo
-	contactRepo repository.ContactRepo
-	invoiceRepo repository.InvoiceRepo
-	expenseRepo repository.ExpenseRepo
-	contactSvc  *ContactService
-	invoiceSvc  *InvoiceService
-	expenseSvc  *ExpenseService
+	importRepo    repository.FakturoidImportLogRepo
+	contactRepo   repository.ContactRepo
+	invoiceRepo   repository.InvoiceRepo
+	expenseRepo   repository.ExpenseRepo
+	contactSvc    *ContactService
+	invoiceSvc    *InvoiceService
+	expenseSvc    *ExpenseService
+	documentSvc   *DocumentService
+	invDocumentSvc *InvoiceDocumentService
 }
 
 // NewFakturoidImportService creates a new FakturoidImportService.
@@ -39,20 +45,25 @@ func NewFakturoidImportService(
 	contactSvc *ContactService,
 	invoiceSvc *InvoiceService,
 	expenseSvc *ExpenseService,
+	documentSvc *DocumentService,
+	invDocumentSvc *InvoiceDocumentService,
 ) *FakturoidImportService {
 	return &FakturoidImportService{
-		importRepo:  importRepo,
-		contactRepo: contactRepo,
-		invoiceRepo: invoiceRepo,
-		expenseRepo: expenseRepo,
-		contactSvc:  contactSvc,
-		invoiceSvc:  invoiceSvc,
-		expenseSvc:  expenseSvc,
+		importRepo:     importRepo,
+		contactRepo:    contactRepo,
+		invoiceRepo:    invoiceRepo,
+		expenseRepo:    expenseRepo,
+		contactSvc:     contactSvc,
+		invoiceSvc:     invoiceSvc,
+		expenseSvc:     expenseSvc,
+		documentSvc:    documentSvc,
+		invDocumentSvc: invDocumentSvc,
 	}
 }
 
 // ImportAll fetches all data from Fakturoid and imports new entities, skipping duplicates.
-func (s *FakturoidImportService) ImportAll(ctx context.Context, client FakturoidClient) (*domain.FakturoidImportResult, error) {
+// When downloadAttachments is true, it also downloads file attachments for newly imported entities.
+func (s *FakturoidImportService) ImportAll(ctx context.Context, client FakturoidClient, downloadAttachments bool) (*domain.FakturoidImportResult, error) {
 	subjects, err := client.ListSubjects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fetching Fakturoid subjects: %w", err)
@@ -66,6 +77,16 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 	expenses, err := client.ListExpenses(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fetching Fakturoid expenses: %w", err)
+	}
+
+	// Build maps for attachment lookup by fakturoid ID.
+	invoiceByFakturoidID := make(map[int64]fakturoid.Invoice, len(invoices))
+	for _, inv := range invoices {
+		invoiceByFakturoidID[inv.ID] = inv
+	}
+	expenseByFakturoidID := make(map[int64]fakturoid.Expense, len(expenses))
+	for _, exp := range expenses {
+		expenseByFakturoidID[exp.ID] = exp
 	}
 
 	preview := s.buildPreview(ctx, subjects, invoices, expenses)
@@ -138,6 +159,12 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 			slog.Warn("failed to log import", "entity", "invoice", "fakturoid_id", item.FakturoidID, "error", err)
 		}
 		result.InvoicesCreated++
+
+		// Download attachments for newly imported invoice.
+		if downloadAttachments && s.invDocumentSvc != nil {
+			fakInv := invoiceByFakturoidID[item.FakturoidID]
+			s.downloadInvoiceAttachments(ctx, client, invoice.ID, fakInv.Attachments, result)
+		}
 	}
 
 	// Import expenses
@@ -169,9 +196,85 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 			slog.Warn("failed to log import", "entity", "expense", "fakturoid_id", item.FakturoidID, "error", err)
 		}
 		result.ExpensesCreated++
+
+		// Download attachments for newly imported expense.
+		if downloadAttachments && s.documentSvc != nil {
+			fakExp := expenseByFakturoidID[item.FakturoidID]
+			s.downloadExpenseAttachments(ctx, client, expense.ID, fakExp.Attachments, result)
+		}
 	}
 
 	return result, nil
+}
+
+// downloadInvoiceAttachments downloads and stores attachments for an invoice.
+func (s *FakturoidImportService) downloadInvoiceAttachments(ctx context.Context, client FakturoidClient, invoiceID int64, attachments []fakturoid.Attachment, result *domain.FakturoidImportResult) {
+	for _, att := range attachments {
+		data, contentType, err := client.DownloadAttachment(ctx, att.DownloadURL)
+		if err != nil {
+			slog.Warn("failed to download invoice attachment", "invoice_id", invoiceID, "attachment_id", att.ID, "error", err)
+			result.AttachmentsSkipped++
+			continue
+		}
+
+		filename := att.Filename
+		if filename == "" {
+			filename = fmt.Sprintf("attachment_%d", att.ID)
+		}
+		if contentType == "" || contentType == "application/octet-stream" {
+			contentType = att.ContentType
+		}
+
+		_, err = s.invDocumentSvc.Upload(ctx, invoiceID, filename, contentType, data)
+		if err != nil {
+			slog.Warn("failed to store invoice attachment", "invoice_id", invoiceID, "filename", filename, "error", err)
+			result.AttachmentsSkipped++
+			continue
+		}
+		result.AttachmentsDownloaded++
+
+		// Rate limiting delay between attachment downloads.
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(attachmentDelay):
+		}
+	}
+}
+
+// downloadExpenseAttachments downloads and stores attachments for an expense.
+func (s *FakturoidImportService) downloadExpenseAttachments(ctx context.Context, client FakturoidClient, expenseID int64, attachments []fakturoid.Attachment, result *domain.FakturoidImportResult) {
+	for _, att := range attachments {
+		data, contentType, err := client.DownloadAttachment(ctx, att.DownloadURL)
+		if err != nil {
+			slog.Warn("failed to download expense attachment", "expense_id", expenseID, "attachment_id", att.ID, "error", err)
+			result.AttachmentsSkipped++
+			continue
+		}
+
+		filename := att.Filename
+		if filename == "" {
+			filename = fmt.Sprintf("attachment_%d", att.ID)
+		}
+		if contentType == "" || contentType == "application/octet-stream" {
+			contentType = att.ContentType
+		}
+
+		_, err = s.documentSvc.Upload(ctx, expenseID, filename, contentType, bytes.NewReader(data))
+		if err != nil {
+			slog.Warn("failed to store expense attachment", "expense_id", expenseID, "filename", filename, "error", err)
+			result.AttachmentsSkipped++
+			continue
+		}
+		result.AttachmentsDownloaded++
+
+		// Rate limiting delay between attachment downloads.
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(attachmentDelay):
+		}
+	}
 }
 
 // buildPreview constructs a preview from already-fetched Fakturoid data.

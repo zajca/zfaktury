@@ -29,19 +29,22 @@ func (h *FakturoidHandler) Routes() chi.Router {
 // --- DTOs ---
 
 type fakturoidImportRequest struct {
-	Slug     string `json:"slug"`
-	Email    string `json:"email"`
-	APIToken string `json:"api_token"`
+	Slug                string `json:"slug"`
+	Email               string `json:"email"`
+	APIToken            string `json:"api_token"`
+	DownloadAttachments bool   `json:"download_attachments"`
 }
 
 type fakturoidImportResponse struct {
-	ContactsCreated int      `json:"contacts_created"`
-	ContactsSkipped int      `json:"contacts_skipped"`
-	InvoicesCreated int      `json:"invoices_created"`
-	InvoicesSkipped int      `json:"invoices_skipped"`
-	ExpensesCreated int      `json:"expenses_created"`
-	ExpensesSkipped int      `json:"expenses_skipped"`
-	Errors          []string `json:"errors"`
+	ContactsCreated      int      `json:"contacts_created"`
+	ContactsSkipped      int      `json:"contacts_skipped"`
+	InvoicesCreated      int      `json:"invoices_created"`
+	InvoicesSkipped      int      `json:"invoices_skipped"`
+	ExpensesCreated      int      `json:"expenses_created"`
+	ExpensesSkipped      int      `json:"expenses_skipped"`
+	AttachmentsDownloaded int     `json:"attachments_downloaded"`
+	AttachmentsSkipped   int      `json:"attachments_skipped"`
+	Errors               []string `json:"errors"`
 }
 
 // Import performs a full import from Fakturoid using credentials from the request body.
@@ -58,19 +61,21 @@ func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := fakturoid.NewClient(req.Slug, req.Email, req.APIToken)
-	result, err := h.svc.ImportAll(r.Context(), client)
+	result, err := h.svc.ImportAll(r.Context(), client, req.DownloadAttachments)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	respondJSON(w, http.StatusOK, fakturoidImportResponse{
-		ContactsCreated: result.ContactsCreated,
-		ContactsSkipped: result.ContactsSkipped,
-		InvoicesCreated: result.InvoicesCreated,
-		InvoicesSkipped: result.InvoicesSkipped,
-		ExpensesCreated: result.ExpensesCreated,
-		ExpensesSkipped: result.ExpensesSkipped,
-		Errors:          result.Errors,
+		ContactsCreated:      result.ContactsCreated,
+		ContactsSkipped:      result.ContactsSkipped,
+		InvoicesCreated:      result.InvoicesCreated,
+		InvoicesSkipped:      result.InvoicesSkipped,
+		ExpensesCreated:      result.ExpensesCreated,
+		ExpensesSkipped:      result.ExpensesSkipped,
+		AttachmentsDownloaded: result.AttachmentsDownloaded,
+		AttachmentsSkipped:   result.AttachmentsSkipped,
+		Errors:               result.Errors,
 	})
 }

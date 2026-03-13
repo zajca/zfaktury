@@ -10,6 +10,7 @@
 	let slug = $state('');
 	let email = $state('');
 	let apiToken = $state('');
+	let downloadAttachments = $state(false);
 
 	let submitting = $state(false);
 
@@ -20,7 +21,8 @@
 			result = await fakturoidApi.import({
 				slug,
 				email,
-				api_token: apiToken
+				api_token: apiToken,
+				download_attachments: downloadAttachments
 			});
 			step = 'done';
 			const total = result.contacts_created + result.invoices_created + result.expenses_created;
@@ -98,6 +100,22 @@
 				<p class="mt-1 text-xs text-muted">API token najdete v nastavení vašeho Fakturoid účtu.</p>
 			</div>
 
+			<div class="flex items-center gap-2">
+				<input
+					id="download-attachments"
+					type="checkbox"
+					bind:checked={downloadAttachments}
+					disabled={submitting}
+					class="h-4 w-4 rounded border-border text-accent focus:ring-accent"
+				/>
+				<label for="download-attachments" class="text-sm text-primary">
+					Stáhnout přílohy
+				</label>
+			</div>
+			<p class="text-xs text-muted -mt-2">
+				Stáhne přílohy (účtenky, smlouvy) u nově importovaných faktur a nákladů. Zvyšuje počet API požadavků.
+			</p>
+
 			<button
 				type="submit"
 				disabled={submitting}
@@ -148,6 +166,13 @@
 					<p class="text-xs text-muted">vytvořeno, {result.expenses_skipped} přeskočeno</p>
 				</div>
 			</div>
+			{#if result.attachments_downloaded > 0 || result.attachments_skipped > 0}
+				<div class="rounded-md bg-hover p-3 col-span-3">
+					<p class="text-xs text-muted uppercase">Přílohy</p>
+					<p class="text-lg font-semibold text-primary">{result.attachments_downloaded}</p>
+					<p class="text-xs text-muted">staženo, {result.attachments_skipped} přeskočeno</p>
+				</div>
+			{/if}
 			{#if result.errors.length > 0}
 				<div class="rounded-md bg-red-500/10 p-3" role="alert">
 					<p class="text-sm font-medium text-red-400 mb-1">Chyby ({result.errors.length}):</p>
@@ -166,6 +191,7 @@
 						slug = '';
 						email = '';
 						apiToken = '';
+						downloadAttachments = false;
 					}}
 					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-hover transition-colors"
 				>

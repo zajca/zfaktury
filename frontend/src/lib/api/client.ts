@@ -1686,14 +1686,52 @@ export interface FakturoidImportResult {
 	invoices_skipped: number;
 	expenses_created: number;
 	expenses_skipped: number;
+	attachments_downloaded: number;
+	attachments_skipped: number;
 	errors: string[];
 }
 
 // --- Fakturoid Import API ---
 
 export const fakturoidApi = {
-	import(data: { slug: string; email: string; api_token: string }) {
+	import(data: {
+		slug: string;
+		email: string;
+		api_token: string;
+		download_attachments?: boolean;
+	}) {
 		return post<FakturoidImportResult>('/import/fakturoid/import', data);
+	}
+};
+
+// --- Invoice Document Types ---
+
+export interface InvoiceDocument {
+	id: number;
+	invoice_id: number;
+	filename: string;
+	content_type: string;
+	size: number;
+	created_at: string;
+}
+
+// --- Invoice Documents API ---
+
+export const invoiceDocumentsApi = {
+	listByInvoice(invoiceId: number) {
+		return get<InvoiceDocument[]>(`/invoices/${invoiceId}/documents`);
+	},
+
+	getById(id: number) {
+		return get<InvoiceDocument>(`/invoice-documents/${id}`);
+	},
+
+	getDownloadUrl(id: number): string {
+		return `${API_BASE}/invoice-documents/${id}/download`;
+	},
+
+	delete(id: number) {
+		return del<void>(`/invoice-documents/${id}`);
 	}
 };
 

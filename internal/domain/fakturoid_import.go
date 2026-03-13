@@ -20,13 +20,15 @@ type FakturoidImportPreview struct {
 
 // FakturoidImportResult contains the results of an import operation.
 type FakturoidImportResult struct {
-	ContactsCreated int
-	ContactsSkipped int
-	InvoicesCreated int
-	InvoicesSkipped int
-	ExpensesCreated int
-	ExpensesSkipped int
-	Errors          []string
+	ContactsCreated      int
+	ContactsSkipped      int
+	InvoicesCreated      int
+	InvoicesSkipped      int
+	ExpensesCreated      int
+	ExpensesSkipped      int
+	AttachmentsDownloaded int
+	AttachmentsSkipped   int
+	Errors               []string
 }
 
 // FakturoidImportLog represents a record of an imported entity.

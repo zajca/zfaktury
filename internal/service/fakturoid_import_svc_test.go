@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -479,10 +480,10 @@ func TestImportAll_ImportsNewSkipsDuplicates(t *testing.T) {
 
 	svc := NewFakturoidImportService(
 		importRepo, contactRepo, invoiceRepo, expenseRepo,
-		contactSvc, invoiceSvc, expenseSvc,
+		contactSvc, invoiceSvc, expenseSvc, nil, nil,
 	)
 
-	result, err := svc.ImportAll(context.Background(), client)
+	result, err := svc.ImportAll(context.Background(), client, false)
 	if err != nil {
 		t.Fatalf("ImportAll failed: %v", err)
 	}
@@ -509,10 +510,12 @@ func TestImportAll_ImportsNewSkipsDuplicates(t *testing.T) {
 // Mock types for Fakturoid import tests
 
 type fakturoidMockClient struct {
-	subjects  []fakturoid.Subject
-	invoices  []fakturoid.Invoice
-	expenses  []fakturoid.Expense
-	callCount int
+	subjects       []fakturoid.Subject
+	invoices       []fakturoid.Invoice
+	expenses       []fakturoid.Expense
+	callCount      int
+	attachmentData []byte
+	attachmentErr  error
 }
 
 func (m *fakturoidMockClient) ListSubjects(_ context.Context) ([]fakturoid.Subject, error) {
@@ -528,6 +531,16 @@ func (m *fakturoidMockClient) ListInvoices(_ context.Context) ([]fakturoid.Invoi
 func (m *fakturoidMockClient) ListExpenses(_ context.Context) ([]fakturoid.Expense, error) {
 	m.callCount++
 	return m.expenses, nil
+}
+
+func (m *fakturoidMockClient) DownloadAttachment(_ context.Context, _ string) ([]byte, string, error) {
+	if m.attachmentErr != nil {
+		return nil, "", m.attachmentErr
+	}
+	if m.attachmentData != nil {
+		return m.attachmentData, "application/pdf", nil
+	}
+	return nil, "", fmt.Errorf("not implemented in test")
 }
 
 type fakturoidMockImportRepo struct{}
@@ -613,4 +626,171 @@ func (m *fakturoidMockExpenseRepo) MarkTaxReviewed(_ context.Context, _ []int64)
 }
 func (m *fakturoidMockExpenseRepo) UnmarkTaxReviewed(_ context.Context, _ []int64) error {
 	return nil
+}
+
+// Mock document repos for attachment download tests
+
+type fakturoidMockDocumentRepo struct {
+	docs  []domain.ExpenseDocument
+	count int
+}
+
+func (m *fakturoidMockDocumentRepo) Create(_ context.Context, doc *domain.ExpenseDocument) error {
+	doc.ID = int64(len(m.docs)) + 1
+	m.docs = append(m.docs, *doc)
+	return nil
+}
+func (m *fakturoidMockDocumentRepo) GetByID(_ context.Context, _ int64) (*domain.ExpenseDocument, error) {
+	return nil, nil
+}
+func (m *fakturoidMockDocumentRepo) ListByExpenseID(_ context.Context, _ int64) ([]domain.ExpenseDocument, error) {
+	return nil, nil
+}
+func (m *fakturoidMockDocumentRepo) Delete(_ context.Context, _ int64) error { return nil }
+func (m *fakturoidMockDocumentRepo) CountByExpenseID(_ context.Context, _ int64) (int, error) {
+	return m.count, nil
+}
+
+type fakturoidMockInvDocumentRepo struct {
+	docs  []domain.InvoiceDocument
+	count int
+}
+
+func (m *fakturoidMockInvDocumentRepo) Create(_ context.Context, doc *domain.InvoiceDocument) error {
+	doc.ID = int64(len(m.docs)) + 1
+	m.docs = append(m.docs, *doc)
+	return nil
+}
+func (m *fakturoidMockInvDocumentRepo) GetByID(_ context.Context, _ int64) (*domain.InvoiceDocument, error) {
+	return nil, nil
+}
+func (m *fakturoidMockInvDocumentRepo) ListByInvoiceID(_ context.Context, _ int64) ([]domain.InvoiceDocument, error) {
+	return nil, nil
+}
+func (m *fakturoidMockInvDocumentRepo) Delete(_ context.Context, _ int64) error { return nil }
+func (m *fakturoidMockInvDocumentRepo) CountByInvoiceID(_ context.Context, _ int64) (int, error) {
+	return m.count, nil
+}
+
+func TestImportAll_DownloadsAttachments(t *testing.T) {
+	pdfData := []byte("%PDF-1.4 test content")
+
+	client := &fakturoidMockClient{
+		subjects: []fakturoid.Subject{
+			{ID: 1, Name: "Test Co", RegistrationNo: "99999999"},
+		},
+		invoices: []fakturoid.Invoice{
+			{
+				ID:       10,
+				Number:   "INV-ATT-001",
+				IssuedOn: "2024-01-15",
+				DueOn:    "2024-02-15",
+				Lines:    []fakturoid.InvoiceLine{{Name: "Test", Quantity: 1, UnitPrice: 1000}},
+				Attachments: []fakturoid.Attachment{
+					{ID: 100, Filename: "receipt.pdf", ContentType: "application/pdf", DownloadURL: "https://example.com/att/100"},
+				},
+				SubjectID: 1,
+			},
+		},
+		expenses: []fakturoid.Expense{
+			{
+				ID:          20,
+				IssuedOn:    "2024-01-20",
+				Description: "Office supplies",
+				Total:       500,
+				Lines:       []fakturoid.ExpenseLine{{Name: "Pens", Quantity: 1, UnitPrice: 500}},
+				Attachments: []fakturoid.Attachment{
+					{ID: 200, Filename: "receipt.pdf", ContentType: "application/pdf", DownloadURL: "https://example.com/att/200"},
+					{ID: 201, Filename: "contract.pdf", ContentType: "application/pdf", DownloadURL: "https://example.com/att/201"},
+				},
+			},
+		},
+		attachmentData: pdfData,
+	}
+
+	contactRepo := &fakturoidMockContactRepo{}
+	importRepo := &fakturoidMockImportRepo{}
+	invoiceRepo := &fakturoidMockInvoiceRepo{}
+	expenseRepo := &fakturoidMockExpenseRepo{}
+	docRepo := &fakturoidMockDocumentRepo{}
+	invDocRepo := &fakturoidMockInvDocumentRepo{}
+
+	dataDir := t.TempDir()
+
+	contactSvc := &ContactService{repo: contactRepo}
+	invoiceSvc := &InvoiceService{repo: invoiceRepo, contacts: contactSvc}
+	expenseSvc := &ExpenseService{repo: expenseRepo}
+	documentSvc := NewDocumentService(docRepo, dataDir, nil)
+	invDocumentSvc := NewInvoiceDocumentService(invDocRepo, dataDir, nil)
+
+	svc := NewFakturoidImportService(
+		importRepo, contactRepo, invoiceRepo, expenseRepo,
+		contactSvc, invoiceSvc, expenseSvc, documentSvc, invDocumentSvc,
+	)
+
+	result, err := svc.ImportAll(context.Background(), client, true)
+	if err != nil {
+		t.Fatalf("ImportAll with attachments failed: %v", err)
+	}
+
+	// 1 invoice attachment + 2 expense attachments = 3 total
+	if result.AttachmentsDownloaded != 3 {
+		t.Errorf("AttachmentsDownloaded = %d, want 3", result.AttachmentsDownloaded)
+	}
+	if result.AttachmentsSkipped != 0 {
+		t.Errorf("AttachmentsSkipped = %d, want 0", result.AttachmentsSkipped)
+	}
+}
+
+func TestImportAll_AttachmentDownloadError(t *testing.T) {
+	client := &fakturoidMockClient{
+		subjects: []fakturoid.Subject{
+			{ID: 1, Name: "Error Test Co", RegistrationNo: "88888888"},
+		},
+		invoices: []fakturoid.Invoice{
+			{
+				ID:        10,
+				Number:    "INV-ERR-001",
+				IssuedOn:  "2024-01-15",
+				DueOn:     "2024-02-15",
+				SubjectID: 1,
+				Lines:     []fakturoid.InvoiceLine{{Name: "Test", Quantity: 1, UnitPrice: 1000}},
+				Attachments: []fakturoid.Attachment{
+					{ID: 100, Filename: "receipt.pdf", DownloadURL: "https://example.com/att/100"},
+				},
+			},
+		},
+		expenses:      []fakturoid.Expense{},
+		attachmentErr: fmt.Errorf("network error"),
+	}
+
+	contactRepo := &fakturoidMockContactRepo{}
+	importRepo := &fakturoidMockImportRepo{}
+	invoiceRepo := &fakturoidMockInvoiceRepo{}
+	expenseRepo := &fakturoidMockExpenseRepo{}
+
+	dataDir := t.TempDir()
+	invDocRepo := &fakturoidMockInvDocumentRepo{}
+	invDocumentSvc := NewInvoiceDocumentService(invDocRepo, dataDir, nil)
+
+	contactSvc := &ContactService{repo: contactRepo}
+	invoiceSvc := &InvoiceService{repo: invoiceRepo, contacts: contactSvc}
+	expenseSvc := &ExpenseService{repo: expenseRepo}
+
+	svc := NewFakturoidImportService(
+		importRepo, contactRepo, invoiceRepo, expenseRepo,
+		contactSvc, invoiceSvc, expenseSvc, nil, invDocumentSvc,
+	)
+
+	result, err := svc.ImportAll(context.Background(), client, true)
+	if err != nil {
+		t.Fatalf("ImportAll failed: %v", err)
+	}
+
+	if result.AttachmentsDownloaded != 0 {
+		t.Errorf("AttachmentsDownloaded = %d, want 0", result.AttachmentsDownloaded)
+	}
+	if result.AttachmentsSkipped != 1 {
+		t.Errorf("AttachmentsSkipped = %d, want 1", result.AttachmentsSkipped)
+	}
 }

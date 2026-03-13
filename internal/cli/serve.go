@@ -172,11 +172,15 @@ var serveCmd = &cobra.Command{
 		// Wire import service (for upload-first expense creation).
 		importSvc := service.NewImportService(expenseSvc, documentSvc, ocrSvc)
 
+		// Wire invoice document repo and service.
+		invDocumentRepo := repository.NewInvoiceDocumentRepository(db)
+		invDocumentSvc := service.NewInvoiceDocumentService(invDocumentRepo, cfg.DataDir, auditSvc)
+
 		// Wire Fakturoid import (credentials provided per-request via UI).
 		fakturoidImportRepo := repository.NewFakturoidImportLogRepository(db)
 		fakturoidImportSvc := service.NewFakturoidImportService(
 			fakturoidImportRepo, contactRepo, invoiceRepo, expenseRepo,
-			contactSvc, invoiceSvc, expenseSvc,
+			contactSvc, invoiceSvc, expenseSvc, documentSvc, invDocumentSvc,
 		)
 
 		// Wire dashboard and report repos/services.
@@ -197,7 +201,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

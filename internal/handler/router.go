@@ -51,6 +51,7 @@ func NewRouter(
 	investmentIncomeSvc *service.InvestmentIncomeService,
 	investmentDocSvc *service.InvestmentDocumentService,
 	investmentExtractionSvc *service.InvestmentExtractionService,
+	invDocumentSvc *service.InvoiceDocumentService,
 	fakturoidImportSvc *service.FakturoidImportService,
 	dashboardSvc *service.DashboardService,
 	reportSvc *service.ReportService,
@@ -91,6 +92,11 @@ func NewRouter(
 		api.Mount("/contacts", contactHandler.Routes())
 		// Use Route (not Mount) for /invoices so additional sub-routes can be
 		// registered in the same group without being swallowed by Mount's wildcard.
+		var invDocHandler *InvoiceDocumentHandler
+		if invDocumentSvc != nil {
+			invDocHandler = NewInvoiceDocumentHandler(invDocumentSvc)
+		}
+
 		api.Route("/invoices", func(inv chi.Router) {
 			// Core invoice CRUD + actions
 			inv.Post("/", invoiceHandler.Create)
@@ -107,6 +113,11 @@ func NewRouter(
 			inv.Get("/{id}/qr", invoiceHandler.QRPayment)
 			inv.Get("/{id}/isdoc", invoiceHandler.ExportISDOC)
 			inv.Post("/export/isdoc", invoiceHandler.ExportISDOCBatch)
+
+			// Invoice document routes
+			if invDocHandler != nil {
+				inv.Get("/{id}/documents", invDocHandler.ListByInvoice)
+			}
 
 			// Status history & overdue (conditional)
 			if overdueSvc != nil {
@@ -155,6 +166,11 @@ func NewRouter(
 		api.Mount("/settings", settingsHandler.Routes())
 		api.Mount("/invoice-sequences", sequenceHandler.Routes())
 		api.Mount("/", documentHandler.Routes())
+		if invDocHandler != nil {
+			api.Get("/invoice-documents/{id}", invDocHandler.GetByID)
+			api.Get("/invoice-documents/{id}/download", invDocHandler.Download)
+			api.Delete("/invoice-documents/{id}", invDocHandler.Delete)
+		}
 		api.Mount("/recurring-invoices", recurringInvoiceHandler.Routes())
 		api.Mount("/recurring-expenses", recurringExpenseHandler.Routes())
 

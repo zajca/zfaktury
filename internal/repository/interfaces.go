@@ -72,6 +72,15 @@ type DocumentRepo interface {
 	CountByExpenseID(ctx context.Context, expenseID int64) (int, error)
 }
 
+// InvoiceDocumentRepo defines the persistence interface for invoice documents.
+type InvoiceDocumentRepo interface {
+	Create(ctx context.Context, doc *domain.InvoiceDocument) error
+	GetByID(ctx context.Context, id int64) (*domain.InvoiceDocument, error)
+	ListByInvoiceID(ctx context.Context, invoiceID int64) ([]domain.InvoiceDocument, error)
+	Delete(ctx context.Context, id int64) error
+	CountByInvoiceID(ctx context.Context, invoiceID int64) (int, error)
+}
+
 // RecurringInvoiceRepo defines the persistence interface for recurring invoices.
 type RecurringInvoiceRepo interface {
 	Create(ctx context.Context, ri *domain.RecurringInvoice) error

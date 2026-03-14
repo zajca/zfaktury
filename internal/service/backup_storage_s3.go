@@ -61,7 +61,7 @@ func (s *S3Storage) Download(ctx context.Context, filename string) (io.ReadClose
 
 	info, err := obj.Stat()
 	if err != nil {
-		obj.Close()
+		_ = obj.Close()
 		return nil, 0, fmt.Errorf("stat S3 object: %w", err)
 	}
 

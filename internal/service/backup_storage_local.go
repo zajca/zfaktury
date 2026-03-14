@@ -33,7 +33,7 @@ func (s *LocalStorage) Download(_ context.Context, filename string) (io.ReadClos
 	}
 	info, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, 0, fmt.Errorf("stat local backup file: %w", err)
 	}
 	return f, info.Size(), nil

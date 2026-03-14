@@ -159,7 +159,7 @@ func (s *BackupService) performBackup(ctx context.Context, record *domain.Backup
 
 	// VACUUM INTO a temp database file.
 	tempDBPath := filepath.Join(destDir, "backup-temp.db")
-	defer os.Remove(tempDBPath)
+	defer func() { _ = os.Remove(tempDBPath) }()
 
 	escapedPath := strings.ReplaceAll(tempDBPath, "'", "''")
 	if _, err := s.db.ExecContext(ctx, fmt.Sprintf("VACUUM INTO '%s'", escapedPath)); err != nil {
@@ -179,7 +179,7 @@ func (s *BackupService) performBackup(ctx context.Context, record *domain.Backup
 	if err != nil {
 		return fmt.Errorf("creating archive file: %w", err)
 	}
-	defer archiveFile.Close()
+	defer func() { _ = archiveFile.Close() }()
 
 	gzWriter := gzip.NewWriter(archiveFile)
 	tarWriter := tar.NewWriter(gzWriter)
@@ -256,7 +256,7 @@ func (s *BackupService) performBackup(ctx context.Context, record *domain.Backup
 
 	// For S3 storage, remove the local temp archive after successful upload.
 	if s.isS3 {
-		os.Remove(archivePath)
+		_ = os.Remove(archivePath)
 	}
 
 	return nil
@@ -394,7 +394,7 @@ func addFileToTar(tw *tar.Writer, filePath, archiveName string) error {
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", filePath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	info, err := f.Stat()
 	if err != nil {

@@ -51,42 +51,15 @@ func NewTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("getting migrations sub-fs: %v", err)
 	}
 
-	// List embedded migration files for debugging.
-	entries, readErr := fs.ReadDir(migrationsFS, ".")
-	if readErr != nil {
-		t.Logf("WARNING: failed to list migration files: %v", readErr)
-	} else {
-		names := make([]string, 0, len(entries))
-		for _, e := range entries {
-			names = append(names, e.Name())
-		}
-		t.Logf("embedded migration files (%d): %v", len(names), names)
-	}
-
 	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migrationsFS)
 	if err != nil {
 		_ = db.Close()
 		t.Fatalf("creating goose provider: %v", err)
 	}
 
-	// Log available migrations from the provider.
-	sources := provider.ListSources()
-	t.Logf("goose provider sources (%d):", len(sources))
-	for _, s := range sources {
-		t.Logf("  version=%d path=%s type=%s", s.Version, s.Path, s.Type)
-	}
-
-	results, upErr := provider.Up(context.Background())
-	if upErr != nil {
+	if _, err := provider.Up(context.Background()); err != nil {
 		_ = db.Close()
-		t.Fatalf("running migrations: %v", upErr)
-	}
-	t.Logf("applied %d migrations successfully", len(results))
-
-	// Verify backup_history exists.
-	var exists int
-	if err := db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='backup_history'").Scan(&exists); err != nil || exists == 0 {
-		t.Fatalf("backup_history table not found after migrations (exists=%d, err=%v)", exists, err)
+		t.Fatalf("running migrations: %v", err)
 	}
 
 	// Re-enable FK checks after migrations.

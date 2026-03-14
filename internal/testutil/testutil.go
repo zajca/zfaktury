@@ -57,9 +57,44 @@ func NewTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("creating goose provider: %v", err)
 	}
 
-	if _, err := provider.Up(context.Background()); err != nil {
+	results, err := provider.Up(context.Background())
+	if err != nil {
 		_ = db.Close()
 		t.Fatalf("running migrations: %v", err)
+	}
+
+	// Log applied migrations for debugging CI issues.
+	t.Logf("applied %d migrations", len(results))
+	for _, r := range results {
+		t.Logf("  migration: %s (duration: %v)", r.Source.Path, r.Duration)
+	}
+
+	// Verify critical tables exist.
+	var tableCount int
+	if err := db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='backup_history'").Scan(&tableCount); err != nil {
+		t.Logf("WARNING: failed to check backup_history table: %v", err)
+	} else if tableCount == 0 {
+		// List all tables for debugging.
+		rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+		if rows != nil {
+			var tables []string
+			for rows.Next() {
+				var name string
+				if err := rows.Scan(&name); err == nil {
+					tables = append(tables, name)
+				}
+			}
+			_ = rows.Close()
+			t.Logf("WARNING: backup_history table not found. Tables: %v", tables)
+		}
+		// List migration files.
+		entries, _ := fs.ReadDir(migrationsFS, ".")
+		var names []string
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Logf("Migration files in FS: %v", names)
+		t.Fatalf("backup_history table was not created by migrations")
 	}
 
 	// Re-enable FK checks after migrations.

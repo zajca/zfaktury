@@ -240,8 +240,8 @@ func TestToWholeCZK(t *testing.T) {
 		expected int64
 	}{
 		{domain.NewAmount(100, 0), 100},
-		{domain.NewAmount(100, 50), 100},
-		{domain.NewAmount(0, 99), 0},
+		{domain.NewAmount(100, 50), 101}, // rounds up (banker's rounding: .50 -> up)
+		{domain.NewAmount(0, 99), 1},     // rounds up
 		{domain.Amount(-15000), -150},
 	}
 

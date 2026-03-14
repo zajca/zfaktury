@@ -35,7 +35,7 @@ func TestVIESSummaryGenerator_Generate(t *testing.T) {
 			VIESSummaryID: 1,
 			PartnerDIC:    "DE987654321",
 			CountryCode:   "DE",
-			TotalAmount:   domain.NewAmount(25000, 50), // 25000.50 CZK -> 25000 whole (truncated)
+			TotalAmount:   domain.NewAmount(25000, 50), // 25000.50 CZK -> 25001 whole (rounded)
 			ServiceCode:   "3",
 		},
 	}
@@ -95,8 +95,8 @@ func TestVIESSummaryGenerator_Generate(t *testing.T) {
 	if !strings.Contains(xmlStr, `dic_odbe="987654321"`) {
 		t.Error("XML should contain DE partner DIC without prefix")
 	}
-	if !strings.Contains(xmlStr, `obrat="25000"`) {
-		t.Error("XML should truncate 25000.50 to 25000 whole CZK")
+	if !strings.Contains(xmlStr, `obrat="25001"`) {
+		t.Error("XML should round 25000.50 to 25001 whole CZK")
 	}
 }
 
@@ -195,10 +195,10 @@ func TestVIESAmountToWholeCZK(t *testing.T) {
 	}{
 		{domain.NewAmount(100, 0), 100},  // 100.00 -> 100
 		{domain.NewAmount(100, 49), 100}, // 100.49 -> 100
-		{domain.NewAmount(100, 50), 100}, // 100.50 -> 100 (truncated)
-		{domain.NewAmount(100, 99), 100}, // 100.99 -> 100 (truncated)
+		{domain.NewAmount(100, 50), 101}, // 100.50 -> 101 (rounded up)
+		{domain.NewAmount(100, 99), 101}, // 100.99 -> 101 (rounded up)
 		{domain.NewAmount(0, 0), 0},      // 0.00 -> 0
-		{domain.Amount(-10050), -100},    // -100.50 -> -100 (truncated toward zero)
+		{domain.Amount(-10050), -101},    // -100.50 -> -101 (rounded)
 	}
 
 	for _, tt := range tests {

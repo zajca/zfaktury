@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -193,6 +193,11 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 			return nil, fmt.Errorf("fetching invoice %d items for vat_return: %w", inv.ID, err)
 		}
 
+		// Skip proforma invoices -- they are not tax documents.
+		if fullInv.Type == domain.InvoiceTypeProforma {
+			continue
+		}
+
 		// Credit notes have negative amounts -- they naturally reduce totals.
 		sign := domain.Amount(1)
 		if fullInv.Type == domain.InvoiceTypeCreditNote {
@@ -295,17 +300,13 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("fetching vat_return for XML generation: %w", err)
 	}
 
-	// Get DIC from settings.
-	dic, err := s.settingsRepo.Get(ctx, "dic")
+	info, err := s.buildTaxpayerInfo(ctx)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
-		}
-		return nil, fmt.Errorf("fetching DIC setting for XML generation: %w", err)
+		return nil, fmt.Errorf("building taxpayer info for XML generation: %w", err)
 	}
 
 	gen := &vatxml.VATReturnGenerator{}
-	xmlData, err := gen.Generate(vr, dic)
+	xmlData, err := gen.Generate(vr, info)
 	if err != nil {
 		return nil, fmt.Errorf("generating XML for vat_return: %w", err)
 	}
@@ -319,6 +320,40 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 		s.audit.Log(ctx, "vat_return", id, "generate_xml", nil, nil)
 	}
 	return vr, nil
+}
+
+// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo.
+func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.TaxpayerInfo, error) {
+	getSetting := func(key string) string {
+		val, err := s.settingsRepo.Get(ctx, key)
+		if err != nil {
+			return ""
+		}
+		return val
+	}
+
+	dic := getSetting("dic")
+	if dic == "" {
+		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
+	}
+
+	// Strip CZ prefix for DPHDP3 format.
+	dicNum := strings.TrimPrefix(dic, "CZ")
+
+	return vatxml.TaxpayerInfo{
+		DIC:       dicNum,
+		FirstName: getSetting("first_name"),
+		LastName:  getSetting("last_name"),
+		Street:    getSetting("street"),
+		HouseNum:  getSetting("house_number"),
+		ZIP:       getSetting("zip"),
+		City:      getSetting("city"),
+		Phone:     getSetting("phone"),
+		Email:     getSetting("email"),
+		UFOCode:   getSetting("c_ufo"),
+		PracUFO:   getSetting("c_pracufo"),
+		OKEC:      getSetting("c_okec"),
+	}, nil
 }
 
 // GetXMLData retrieves the stored XML data for a VAT return.

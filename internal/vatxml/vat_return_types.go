@@ -2,76 +2,124 @@ package vatxml
 
 import "encoding/xml"
 
-// EPO VAT return XML types for Czech tax authority (Financni sprava).
-// Based on the EPO submission format for "Priznani k dani z pridane hodnoty".
+// Official DPHDP3 EPO format for Czech VAT return (Priznani k DPH).
+// Based on XSD: adisspr.mfcr.cz/adis/jepo/schema/dphdp3_epo2.xsd
 
 // DPHPisemnost is the root element of the EPO VAT return XML document.
 type DPHPisemnost struct {
 	XMLName xml.Name `xml:"Pisemnost"`
-	Xmlns   string   `xml:"xmlns,attr,omitempty"`
-	DPHDAP3 *DPHDAP3 `xml:"DPHDAP3,omitempty"`
+	NazevSW string   `xml:"nazevSW,attr,omitempty"`
+	DPHDP3  *DPHDP3  `xml:"DPHDP3,omitempty"`
 }
 
-// DPHDAP3 represents the VAT return form (Priznani k DPH).
-type DPHDAP3 struct {
-	VetaD DPHVetaD `xml:"VetaD"`
-	VetaP DPHVetaP `xml:"VetaP"`
-	Veta1 *Veta1   `xml:"Veta1,omitempty"`
-	Veta2 *Veta2   `xml:"Veta2,omitempty"`
-	Veta3 *Veta3   `xml:"Veta3,omitempty"`
-	Veta4 *Veta4   `xml:"Veta4,omitempty"`
-	Veta5 *Veta5   `xml:"Veta5,omitempty"`
-	Veta6 *Veta6   `xml:"Veta6,omitempty"`
+// DPHDP3 represents the VAT return form (Priznani k DPH).
+type DPHDP3 struct {
+	VerzePis string `xml:"verzePis,attr"`
+	VetaD    VetaD  `xml:"VetaD"`
+	VetaP    VetaP  `xml:"VetaP"`
+	Veta1    *Veta1 `xml:"Veta1,omitempty"`
+	Veta2    *Veta2 `xml:"Veta2,omitempty"`
+	Veta4    *Veta4 `xml:"Veta4,omitempty"`
+	Veta6    *Veta6 `xml:"Veta6,omitempty"`
 }
 
-// DPHVetaD contains filing metadata for VAT return.
-type DPHVetaD struct {
-	DTyp    string `xml:"d_typ,attr"`
-	Rok     int    `xml:"rok,attr"`
-	Mesic   int    `xml:"mesic,attr"`
-	Ctvrt   int    `xml:"ctvrt,attr"`
-	DPocetL int    `xml:"d_pocetl,attr"`
-	DPocetP int    `xml:"d_pocetp,attr"`
+// VetaD contains filing metadata for VAT return.
+type VetaD struct {
+	Dokument    string `xml:"dokument,attr"`
+	KUladis     string `xml:"k_uladis,attr"`
+	DapdphForma string `xml:"dapdph_forma,attr"`
+	TypPlatce   string `xml:"typ_platce,attr"`
+	Trans       string `xml:"trans,attr"`
+	COkec       string `xml:"c_okec,attr,omitempty"`
+	DPoddp      string `xml:"d_poddp,attr"`
+	Rok         int    `xml:"rok,attr"`
+	Mesic       int    `xml:"mesic,attr,omitempty"`
+	Ctvrt       int    `xml:"ctvrt,attr,omitempty"`
 }
 
-// DPHVetaP contains taxpayer identification for VAT return.
-type DPHVetaP struct {
-	Zast int    `xml:"zast,attr"`
-	DIC  string `xml:"dic,attr"`
-	Typ  string `xml:"typ,attr"`
+// VetaP contains taxpayer identification for VAT return.
+type VetaP struct {
+	CPracufo string `xml:"c_pracufo,attr,omitempty"`
+	CUfo     string `xml:"c_ufo,attr,omitempty"`
+	DIC      string `xml:"dic,attr"`
+	Email    string `xml:"email,attr,omitempty"`
+	CTelef   string `xml:"c_telef,attr,omitempty"`
+	Ulice    string `xml:"ulice,attr,omitempty"`
+	NazObce  string `xml:"naz_obce,attr,omitempty"`
+	PSC      string `xml:"psc,attr,omitempty"`
+	Stat     string `xml:"stat,attr,omitempty"`
+	CPop     string `xml:"c_pop,attr,omitempty"`
+	COrient  string `xml:"c_orient,attr,omitempty"`
+	Jmeno    string `xml:"jmeno,attr,omitempty"`
+	Prijmeni string `xml:"prijmeni,attr,omitempty"`
+	Titul    string `xml:"titul,attr,omitempty"`
+	TypDS    string `xml:"typ_ds,attr"`
 }
 
-// Veta1 contains output VAT at standard rate (21%).
+// Veta1 contains output VAT (dan na vystupu) - section I.
 type Veta1 struct {
-	Obrat21 int64 `xml:"obrat21,attr"`
-	Dan21   int64 `xml:"dan21,attr"`
+	Obrat23    float64 `xml:"obrat23,attr"`
+	Dan23      float64 `xml:"dan23,attr"`
+	Obrat5     float64 `xml:"obrat5,attr"`
+	Dan5       float64 `xml:"dan5,attr"`
+	PSl23E     float64 `xml:"p_sl23_e,attr"`
+	DanPsl23E  float64 `xml:"dan_psl23_e,attr"`
+	PSl5E      float64 `xml:"p_sl5_e,attr"`
+	DanPsl5E   float64 `xml:"dan_psl5_e,attr"`
+	PSl23Z     float64 `xml:"p_sl23_z,attr"`
+	DanPsl23Z  float64 `xml:"dan_psl23_z,attr"`
+	PSl5Z      float64 `xml:"p_sl5_z,attr"`
+	DanPsl5Z   float64 `xml:"dan_psl5_z,attr"`
+	RezPren23  float64 `xml:"rez_pren23,attr"`
+	DanRpren23 float64 `xml:"dan_rpren23,attr"`
+	RezPren5   float64 `xml:"rez_pren5,attr"`
+	DanRpren5  float64 `xml:"dan_rpren5,attr"`
 }
 
-// Veta2 contains output VAT at reduced rate (12%).
+// Veta2 contains EU acquisitions and services - section II.
 type Veta2 struct {
-	Obrat12 int64 `xml:"obrat12,attr"`
-	Dan12   int64 `xml:"dan12,attr"`
+	DodZb      float64 `xml:"dod_zb,attr"`
+	PlnSluzby  float64 `xml:"pln_sluzby,attr"`
+	PlnRezPren float64 `xml:"pln_rez_pren,attr"`
+	PlnZaslani float64 `xml:"pln_zaslani,attr"`
+	PlnOst     float64 `xml:"pln_ost,attr"`
 }
 
-// Veta3 contains total output VAT summary.
-type Veta3 struct {
-	DanOdpOdpSazba int64 `xml:"dan_odp_odp_sazba,attr"`
-}
-
-// Veta4 contains input VAT at standard rate (21%).
+// Veta4 contains input VAT (dan na vstupu) - section IV.
 type Veta4 struct {
-	ZdPlnOdp21  int64 `xml:"zd_pln_odp21,attr"`
-	OdpTuz21Nar int64 `xml:"odp_tuz21_nar,attr"`
+	Pln23       float64 `xml:"pln23,attr"`
+	OdpTuz23Nar float64 `xml:"odp_tuz23_nar,attr"`
+	Pln5        float64 `xml:"pln5,attr"`
+	OdpTuz5Nar  float64 `xml:"odp_tuz5_nar,attr"`
+	NarZdp23    float64 `xml:"nar_zdp23,attr"`
+	OdZdp23     float64 `xml:"od_zdp23,attr"`
+	NarZdp5     float64 `xml:"nar_zdp5,attr"`
+	OdZdp5      float64 `xml:"od_zdp5,attr"`
+	OdpSumKr    string  `xml:"odp_sum_kr,attr"`
+	OdpSumNar   float64 `xml:"odp_sum_nar,attr"`
 }
 
-// Veta5 contains input VAT at reduced rate (12%).
-type Veta5 struct {
-	ZdPlnOdp12  int64 `xml:"zd_pln_odp12,attr"`
-	OdpTuz12Nar int64 `xml:"odp_tuz12_nar,attr"`
-}
-
-// Veta6 contains the final VAT calculation summary.
+// Veta6 contains final VAT calculation summary - section VI.
 type Veta6 struct {
-	DanOdpOdpSazba int64 `xml:"dan_odp_odp_sazba,attr"`
-	DanDalOdp      int64 `xml:"dan_dal_odp,attr"`
+	Dano      string  `xml:"dano,attr"`
+	DanoNo    string  `xml:"dano_no,attr"`
+	DanoDa    float64 `xml:"dano_da,attr"`
+	DanZocelk float64 `xml:"dan_zocelk,attr"`
+	OdpZocelk float64 `xml:"odp_zocelk,attr"`
+}
+
+// TaxpayerInfo contains taxpayer details needed for DPHDP3 XML generation.
+type TaxpayerInfo struct {
+	DIC       string // without CZ prefix
+	FirstName string
+	LastName  string
+	Street    string
+	HouseNum  string
+	ZIP       string
+	City      string
+	Phone     string
+	Email     string
+	UFOCode   string // c_ufo (3-digit)
+	PracUFO   string // c_pracufo (4-digit)
+	OKEC      string // NACE code
 }

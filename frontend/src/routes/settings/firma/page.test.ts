@@ -15,10 +15,13 @@ function jsonResponse(data: unknown, status = 200) {
 
 const sampleSettings = {
 	company_name: 'Test OSVC',
+	first_name: 'Jan',
+	last_name: 'Novak',
 	ico: '12345678',
 	dic: 'CZ12345678',
 	vat_registered: 'true',
-	street: 'Hlavni 1',
+	street: 'Hlavni',
+	house_number: '1',
 	city: 'Praha',
 	zip: '10000',
 	email: 'test@example.com',
@@ -26,7 +29,10 @@ const sampleSettings = {
 	bank_account: '123456789',
 	bank_code: '0100',
 	iban: 'CZ1234567890',
-	swift: 'KOMBCZPP'
+	swift: 'KOMBCZPP',
+	c_ufo: '464',
+	c_pracufo: '3305',
+	c_okec: '582900'
 };
 
 beforeEach(() => {
@@ -56,10 +62,13 @@ describe('Settings Firma Page', () => {
 		await waitFor(() => {
 			expect(document.querySelector('#company_name')).toBeInTheDocument();
 		});
+		expect(document.querySelector('#first_name')).toBeInTheDocument();
+		expect(document.querySelector('#last_name')).toBeInTheDocument();
 		expect(document.querySelector('#ico')).toBeInTheDocument();
 		expect(document.querySelector('#dic')).toBeInTheDocument();
 		expect(document.querySelector('#vat_registered')).toBeInTheDocument();
 		expect(document.querySelector('#street')).toBeInTheDocument();
+		expect(document.querySelector('#house_number')).toBeInTheDocument();
 		expect(document.querySelector('#city')).toBeInTheDocument();
 		expect(document.querySelector('#zip')).toBeInTheDocument();
 		expect(document.querySelector('#email')).toBeInTheDocument();
@@ -68,6 +77,9 @@ describe('Settings Firma Page', () => {
 		expect(document.querySelector('#bank_code')).toBeInTheDocument();
 		expect(document.querySelector('#iban')).toBeInTheDocument();
 		expect(document.querySelector('#swift')).toBeInTheDocument();
+		expect(document.querySelector('#c_ufo')).toBeInTheDocument();
+		expect(document.querySelector('#c_pracufo')).toBeInTheDocument();
+		expect(document.querySelector('#c_okec')).toBeInTheDocument();
 	});
 
 	it('shows settings values in inputs', async () => {

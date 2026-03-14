@@ -8,31 +8,87 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
+func testTaxpayerInfo() TaxpayerInfo {
+	return TaxpayerInfo{
+		DIC:       "8905244997",
+		FirstName: "Martin",
+		LastName:  "Zajic",
+		Street:    "Ludkovice",
+		HouseNum:  "189",
+		ZIP:       "76341",
+		City:      "Ludkovice",
+		Phone:     "776598983",
+		Email:     "ja@mzajic.cz",
+		UFOCode:   "464",
+		PracUFO:   "3305",
+		OKEC:      "582900",
+	}
+}
+
+func TestToWholeCZK_Rounding(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  domain.Amount
+		expect int64
+	}{
+		{"rounds up 2637558 haleru", 2637558, 26376},
+		{"rounds up 161086 haleru", 161086, 1611},
+		{"exact division", 100000, 1000},
+		{"rounds down 149", 149, 1},
+		{"rounds up 150", 150, 2},
+		{"negative rounds", -2637558, -26376},
+		{"zero", 0, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ToWholeCZK(tt.input)
+			if got != tt.expect {
+				t.Errorf("ToWholeCZK(%d) = %d, want %d", tt.input, got, tt.expect)
+			}
+		})
+	}
+}
+
+func TestDPHFilingTypeCode(t *testing.T) {
+	tests := []struct {
+		input  string
+		expect string
+	}{
+		{domain.FilingTypeRegular, "B"},
+		{domain.FilingTypeCorrective, "O"},
+		{domain.FilingTypeSupplementary, "D"},
+		{"", "B"},
+	}
+	for _, tt := range tests {
+		got := DPHFilingTypeCode(tt.input)
+		if got != tt.expect {
+			t.Errorf("DPHFilingTypeCode(%q) = %q, want %q", tt.input, got, tt.expect)
+		}
+	}
+}
+
 func TestVATReturnGenerator_Generate(t *testing.T) {
 	gen := &VATReturnGenerator{}
 
 	vr := &domain.VATReturn{
 		ID: 1,
 		Period: domain.TaxPeriod{
-			Year:  2025,
-			Month: 3,
+			Year:  2026,
+			Month: 2,
 		},
 		FilingType:        domain.FilingTypeRegular,
-		OutputVATBase21:   1000000, // 10000.00 CZK
-		OutputVATAmount21: 210000,  // 2100.00 CZK
-		OutputVATBase12:   500000,  // 5000.00 CZK
-		OutputVATAmount12: 60000,   // 600.00 CZK
-		InputVATBase21:    300000,  // 3000.00 CZK
-		InputVATAmount21:  63000,   // 630.00 CZK
-		InputVATBase12:    100000,  // 1000.00 CZK
-		InputVATAmount12:  12000,   // 120.00 CZK
-		TotalOutputVAT:    270000,  // 2700.00 CZK
-		TotalInputVAT:     75000,   // 750.00 CZK
-		NetVAT:            195000,  // 1950.00 CZK
+		OutputVATBase21:   12559800, // 125598.00 CZK
+		OutputVATAmount21: 2637558,  // 26375.58 CZK -> rounds to 26376
+		InputVATBase21:    767100,   // 7671.00 CZK
+		InputVATAmount21:  161086,   // 1610.86 CZK -> rounds to 1611
+		TotalOutputVAT:    2637558,
+		TotalInputVAT:     161086,
+		NetVAT:            2476472,
 		Status:            "draft",
 	}
 
-	xmlData, err := gen.Generate(vr, "CZ12345678")
+	xmlData, err := gen.Generate(vr, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -50,68 +106,122 @@ func TestVATReturnGenerator_Generate(t *testing.T) {
 		t.Fatalf("failed to unmarshal generated XML: %v", err)
 	}
 
-	if doc.DPHDAP3 == nil {
-		t.Fatal("expected DPHDAP3 element")
+	if doc.DPHDP3 == nil {
+		t.Fatal("expected DPHDP3 element")
 	}
 
-	// Verify header.
-	if doc.DPHDAP3.VetaD.DTyp != "R" {
-		t.Errorf("VetaD.DTyp = %q, want %q", doc.DPHDAP3.VetaD.DTyp, "R")
-	}
-	if doc.DPHDAP3.VetaD.Rok != 2025 {
-		t.Errorf("VetaD.Rok = %d, want 2025", doc.DPHDAP3.VetaD.Rok)
-	}
-	if doc.DPHDAP3.VetaD.Mesic != 3 {
-		t.Errorf("VetaD.Mesic = %d, want 3", doc.DPHDAP3.VetaD.Mesic)
+	// Verify DPHDP3 attributes.
+	if doc.DPHDP3.VerzePis != "01.02.16" {
+		t.Errorf("DPHDP3.VerzePis = %q, want %q", doc.DPHDP3.VerzePis, "01.02.16")
 	}
 
-	// Verify taxpayer.
-	if doc.DPHDAP3.VetaP.DIC != "CZ12345678" {
-		t.Errorf("VetaP.DIC = %q, want %q", doc.DPHDAP3.VetaP.DIC, "CZ12345678")
+	// Verify root attributes.
+	if doc.NazevSW != "ZFaktury" {
+		t.Errorf("Pisemnost.nazevSW = %q, want %q", doc.NazevSW, "ZFaktury")
 	}
 
-	// Verify output VAT at 21% (amounts in whole CZK).
-	if doc.DPHDAP3.Veta1 == nil {
+	// Verify VetaD.
+	d := doc.DPHDP3.VetaD
+	if d.Dokument != "DP3" {
+		t.Errorf("VetaD.dokument = %q, want %q", d.Dokument, "DP3")
+	}
+	if d.KUladis != "DPH" {
+		t.Errorf("VetaD.k_uladis = %q, want %q", d.KUladis, "DPH")
+	}
+	if d.DapdphForma != "B" {
+		t.Errorf("VetaD.dapdph_forma = %q, want %q", d.DapdphForma, "B")
+	}
+	if d.TypPlatce != "P" {
+		t.Errorf("VetaD.typ_platce = %q, want %q", d.TypPlatce, "P")
+	}
+	if d.Trans != "A" {
+		t.Errorf("VetaD.trans = %q, want %q", d.Trans, "A")
+	}
+	if d.COkec != "582900" {
+		t.Errorf("VetaD.c_okec = %q, want %q", d.COkec, "582900")
+	}
+	if d.Rok != 2026 {
+		t.Errorf("VetaD.rok = %d, want 2026", d.Rok)
+	}
+	if d.Mesic != 2 {
+		t.Errorf("VetaD.mesic = %d, want 2", d.Mesic)
+	}
+
+	// Verify VetaP.
+	p := doc.DPHDP3.VetaP
+	if p.DIC != "8905244997" {
+		t.Errorf("VetaP.dic = %q, want %q", p.DIC, "8905244997")
+	}
+	if p.TypDS != "F" {
+		t.Errorf("VetaP.typ_ds = %q, want %q", p.TypDS, "F")
+	}
+	if p.CUfo != "464" {
+		t.Errorf("VetaP.c_ufo = %q, want %q", p.CUfo, "464")
+	}
+	if p.CPracufo != "3305" {
+		t.Errorf("VetaP.c_pracufo = %q, want %q", p.CPracufo, "3305")
+	}
+	if p.Jmeno != "Martin" {
+		t.Errorf("VetaP.jmeno = %q, want %q", p.Jmeno, "Martin")
+	}
+	if p.Prijmeni != "Zajic" {
+		t.Errorf("VetaP.prijmeni = %q, want %q", p.Prijmeni, "Zajic")
+	}
+	if p.Stat != "CESKA REPUBLIKA" {
+		t.Errorf("VetaP.stat = %q, want %q", p.Stat, "CESKA REPUBLIKA")
+	}
+
+	// Verify Veta1 - output VAT with correct rounding.
+	if doc.DPHDP3.Veta1 == nil {
 		t.Fatal("expected Veta1 element")
 	}
-	if doc.DPHDAP3.Veta1.Obrat21 != 10000 {
-		t.Errorf("Veta1.Obrat21 = %d, want 10000", doc.DPHDAP3.Veta1.Obrat21)
+	if doc.DPHDP3.Veta1.Obrat23 != 125598 {
+		t.Errorf("Veta1.obrat23 = %v, want 125598", doc.DPHDP3.Veta1.Obrat23)
 	}
-	if doc.DPHDAP3.Veta1.Dan21 != 2100 {
-		t.Errorf("Veta1.Dan21 = %d, want 2100", doc.DPHDAP3.Veta1.Dan21)
-	}
-
-	// Verify output VAT at 12%.
-	if doc.DPHDAP3.Veta2 == nil {
-		t.Fatal("expected Veta2 element")
-	}
-	if doc.DPHDAP3.Veta2.Obrat12 != 5000 {
-		t.Errorf("Veta2.Obrat12 = %d, want 5000", doc.DPHDAP3.Veta2.Obrat12)
+	if doc.DPHDP3.Veta1.Dan23 != 26376 {
+		t.Errorf("Veta1.dan23 = %v, want 26376", doc.DPHDP3.Veta1.Dan23)
 	}
 
-	// Verify input VAT at 21%.
-	if doc.DPHDAP3.Veta4 == nil {
+	// Verify Veta4 - input VAT with correct rounding.
+	if doc.DPHDP3.Veta4 == nil {
 		t.Fatal("expected Veta4 element")
 	}
-	if doc.DPHDAP3.Veta4.ZdPlnOdp21 != 3000 {
-		t.Errorf("Veta4.ZdPlnOdp21 = %d, want 3000", doc.DPHDAP3.Veta4.ZdPlnOdp21)
+	if doc.DPHDP3.Veta4.Pln23 != 7671 {
+		t.Errorf("Veta4.pln23 = %v, want 7671", doc.DPHDP3.Veta4.Pln23)
 	}
-	if doc.DPHDAP3.Veta4.OdpTuz21Nar != 630 {
-		t.Errorf("Veta4.OdpTuz21Nar = %d, want 630", doc.DPHDAP3.Veta4.OdpTuz21Nar)
+	if doc.DPHDP3.Veta4.OdpTuz23Nar != 1611 {
+		t.Errorf("Veta4.odp_tuz23_nar = %v, want 1611", doc.DPHDP3.Veta4.OdpTuz23Nar)
+	}
+	if doc.DPHDP3.Veta4.OdpSumNar != 1611 {
+		t.Errorf("Veta4.odp_sum_nar = %v, want 1611", doc.DPHDP3.Veta4.OdpSumNar)
 	}
 
-	// Verify summary.
-	if doc.DPHDAP3.Veta6 == nil {
+	// Verify Veta6 - summary.
+	if doc.DPHDP3.Veta6 == nil {
 		t.Fatal("expected Veta6 element")
 	}
-	if doc.DPHDAP3.Veta6.DanDalOdp != 1950 {
-		t.Errorf("Veta6.DanDalOdp = %d, want 1950", doc.DPHDAP3.Veta6.DanDalOdp)
+	if doc.DPHDP3.Veta6.DanZocelk != 26376 {
+		t.Errorf("Veta6.dan_zocelk = %v, want 26376", doc.DPHDP3.Veta6.DanZocelk)
+	}
+	if doc.DPHDP3.Veta6.OdpZocelk != 1611 {
+		t.Errorf("Veta6.odp_zocelk = %v, want 1611", doc.DPHDP3.Veta6.OdpZocelk)
+	}
+	if doc.DPHDP3.Veta6.DanoDa != 24765 {
+		t.Errorf("Veta6.dano_da = %v, want 24765", doc.DPHDP3.Veta6.DanoDa)
+	}
+
+	// Verify DPHDP3 element name in raw XML.
+	if !strings.Contains(xmlStr, "<DPHDP3") {
+		t.Error("expected DPHDP3 element in XML output")
+	}
+	if strings.Contains(xmlStr, "DPHDAP3") {
+		t.Error("should not contain old DPHDAP3 element name")
 	}
 }
 
 func TestVATReturnGenerator_Generate_NilReturn(t *testing.T) {
 	gen := &VATReturnGenerator{}
-	_, err := gen.Generate(nil, "CZ12345678")
+	_, err := gen.Generate(nil, testTaxpayerInfo())
 	if err == nil {
 		t.Error("expected error for nil vat return")
 	}
@@ -122,7 +232,7 @@ func TestVATReturnGenerator_Generate_EmptyDIC(t *testing.T) {
 	vr := &domain.VATReturn{
 		Period: domain.TaxPeriod{Year: 2025, Month: 1},
 	}
-	_, err := gen.Generate(vr, "")
+	_, err := gen.Generate(vr, TaxpayerInfo{})
 	if err == nil {
 		t.Error("expected error for empty DIC")
 	}
@@ -135,7 +245,8 @@ func TestVATReturnGenerator_Generate_CorrectiveType(t *testing.T) {
 		FilingType: domain.FilingTypeCorrective,
 	}
 
-	xmlData, err := gen.Generate(vr, "CZ12345678")
+	info := testTaxpayerInfo()
+	xmlData, err := gen.Generate(vr, info)
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -145,11 +256,11 @@ func TestVATReturnGenerator_Generate_CorrectiveType(t *testing.T) {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if doc.DPHDAP3 == nil {
-		t.Fatal("expected DPHDAP3 element")
+	if doc.DPHDP3 == nil {
+		t.Fatal("expected DPHDP3 element")
 	}
-	if doc.DPHDAP3.VetaD.DTyp != "N" {
-		t.Errorf("VetaD.DTyp = %q, want %q for corrective", doc.DPHDAP3.VetaD.DTyp, "N")
+	if doc.DPHDP3.VetaD.DapdphForma != "O" {
+		t.Errorf("VetaD.dapdph_forma = %q, want %q for corrective", doc.DPHDP3.VetaD.DapdphForma, "O")
 	}
 }
 
@@ -160,7 +271,8 @@ func TestVATReturnGenerator_Generate_SupplementaryType(t *testing.T) {
 		FilingType: domain.FilingTypeSupplementary,
 	}
 
-	xmlData, err := gen.Generate(vr, "CZ12345678")
+	info := testTaxpayerInfo()
+	xmlData, err := gen.Generate(vr, info)
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -170,11 +282,11 @@ func TestVATReturnGenerator_Generate_SupplementaryType(t *testing.T) {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if doc.DPHDAP3 == nil {
-		t.Fatal("expected DPHDAP3 element")
+	if doc.DPHDP3 == nil {
+		t.Fatal("expected DPHDP3 element")
 	}
-	if doc.DPHDAP3.VetaD.DTyp != "O" {
-		t.Errorf("VetaD.DTyp = %q, want %q for supplementary", doc.DPHDAP3.VetaD.DTyp, "O")
+	if doc.DPHDP3.VetaD.DapdphForma != "D" {
+		t.Errorf("VetaD.dapdph_forma = %q, want %q for supplementary", doc.DPHDP3.VetaD.DapdphForma, "D")
 	}
 }
 
@@ -185,7 +297,8 @@ func TestVATReturnGenerator_Generate_ZeroAmounts(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	xmlData, err := gen.Generate(vr, "CZ12345678")
+	info := testTaxpayerInfo()
+	xmlData, err := gen.Generate(vr, info)
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -195,11 +308,47 @@ func TestVATReturnGenerator_Generate_ZeroAmounts(t *testing.T) {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	// With zero amounts, optional sections should be nil.
-	if doc.DPHDAP3.Veta1 != nil {
-		t.Error("expected Veta1 to be nil for zero output VAT 21%")
+	// Zero amounts: trans should be "N".
+	if doc.DPHDP3.VetaD.Trans != "N" {
+		t.Errorf("VetaD.trans = %q, want %q for zero amounts", doc.DPHDP3.VetaD.Trans, "N")
 	}
-	if doc.DPHDAP3.Veta2 != nil {
-		t.Error("expected Veta2 to be nil for zero output VAT 12%")
+
+	// Veta1 should still exist (DPHDP3 always includes all sections).
+	if doc.DPHDP3.Veta1 == nil {
+		t.Error("expected Veta1 even with zero amounts")
+	}
+	if doc.DPHDP3.Veta1.Obrat23 != 0 {
+		t.Errorf("Veta1.obrat23 = %v, want 0", doc.DPHDP3.Veta1.Obrat23)
+	}
+}
+
+func TestVATReturnGenerator_Generate_NegativeNetVAT(t *testing.T) {
+	gen := &VATReturnGenerator{}
+	vr := &domain.VATReturn{
+		Period:           domain.TaxPeriod{Year: 2025, Month: 3},
+		FilingType:       domain.FilingTypeRegular,
+		InputVATBase21:   500000,
+		InputVATAmount21: 105000,
+		TotalInputVAT:    105000,
+		NetVAT:           -105000,
+	}
+
+	info := testTaxpayerInfo()
+	xmlData, err := gen.Generate(vr, info)
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	var doc DPHPisemnost
+	if err := xml.Unmarshal(xmlData, &doc); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if doc.DPHDP3.Veta6.DanoDa != 0 {
+		t.Errorf("Veta6.dano_da = %v, want 0 for negative net VAT", doc.DPHDP3.Veta6.DanoDa)
+	}
+	// dano_no should be positive abs value as string.
+	if doc.DPHDP3.Veta6.DanoNo != "1050.0" {
+		t.Errorf("Veta6.dano_no = %q, want %q", doc.DPHDP3.Veta6.DanoNo, "1050.0")
 	}
 }

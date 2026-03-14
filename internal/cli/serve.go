@@ -23,6 +23,7 @@ import (
 	"github.com/zajca/zfaktury/internal/ares"
 	"github.com/zajca/zfaktury/internal/config"
 	"github.com/zajca/zfaktury/internal/database"
+	"github.com/zajca/zfaktury/internal/flock"
 	"github.com/zajca/zfaktury/internal/handler"
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
@@ -72,6 +73,14 @@ var serveCmd = &cobra.Command{
 
 		cfg.Server.Port = servePort
 		cfg.Server.Dev = serveDev
+
+		// Acquire instance lock to prevent concurrent access.
+		lockPath := filepath.Join(cfg.DataDir, ".zfaktury.lock")
+		lock, err := flock.Acquire(lockPath)
+		if err != nil {
+			return fmt.Errorf("acquiring instance lock: %w", err)
+		}
+		defer func() { _ = lock.Release() }()
 
 		db, err := database.New(cfg)
 		if err != nil {
@@ -190,6 +199,22 @@ var serveCmd = &cobra.Command{
 			contactSvc, invoiceSvc, expenseSvc, documentSvc, invDocumentSvc,
 		)
 
+		// Wire backup service.
+		backupHistoryRepo := repository.NewBackupHistoryRepository(db)
+		var backupStorage service.BackupStorage
+		if cfg.Backup.S3.IsConfigured() {
+			s3Storage, err := service.NewS3Storage(cfg.Backup.S3)
+			if err != nil {
+				return fmt.Errorf("initializing S3 backup storage: %w", err)
+			}
+			backupStorage = s3Storage
+			slog.Info("backup storage configured", "type", "s3", "endpoint", cfg.Backup.S3.Endpoint, "bucket", cfg.Backup.S3.Bucket)
+		} else {
+			backupStorage = service.NewLocalStorage(cfg.BackupDestination())
+			slog.Info("backup storage configured", "type", "local", "path", cfg.BackupDestination())
+		}
+		backupSvc := service.NewBackupService(backupHistoryRepo, db, cfg.Backup, cfg.DataDir, backupStorage)
+
 		// Wire dashboard and report repos/services.
 		dashboardRepo := repository.NewDashboardRepository(db)
 		dashboardSvc := service.NewDashboardService(dashboardRepo)
@@ -208,7 +233,7 @@ var serveCmd = &cobra.Command{
 		reminderRepo := repository.NewReminderRepository(db)
 		reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, handler.RouterConfig{
+		router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
 			DevMode: cfg.Server.Dev,
 		})
 

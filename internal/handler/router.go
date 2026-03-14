@@ -59,6 +59,7 @@ func NewRouter(
 	taxCalendarSvc *service.TaxCalendarService,
 	emailSender *email.EmailSender,
 	auditSvc *service.AuditService,
+	backupSvc *service.BackupService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -246,6 +247,12 @@ func NewRouter(
 		// Audit log
 		auditLogHandler := NewAuditLogHandler(auditSvc)
 		api.Mount("/audit-log", auditLogHandler.Routes())
+
+		// Backups
+		if backupSvc != nil {
+			backupHandler := NewBackupHandler(backupSvc)
+			api.Mount("/backups", backupHandler.Routes())
+		}
 	})
 
 	// Health check endpoint.

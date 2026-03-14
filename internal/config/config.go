@@ -34,6 +34,18 @@ const configTemplate = `# ZFaktury configuration
 # [fio]
 # api_token = ""
 
+# [backup]
+# destination = ""              # Backup directory (default: <data_dir>/backups)
+# schedule = ""                 # Cron expression, e.g. "0 2 * * *"
+# retention_count = 10          # Keep last N backups, 0 = keep all
+# [backup.s3]                   # S3-compatible storage (AWS S3, MinIO, Backblaze B2, Cloudflare R2)
+# endpoint = ""                 # e.g. "s3.amazonaws.com" or "minio.example.com:9000"
+# region = ""                   # e.g. "eu-central-1"
+# bucket = ""                   # Bucket name
+# access_key = ""
+# secret_key = ""
+# use_ssl = true
+
 # [ocr]
 # provider = ""
 # api_key = ""
@@ -47,6 +59,7 @@ type Config struct {
 	Database DatabaseConfig `toml:"database"`
 	Log      LogConfig      `toml:"log"`
 	Server   ServerConfig   `toml:"server"`
+	Backup   BackupConfig   `toml:"backup"`
 	SMTP     SMTPConfig     `toml:"smtp"`
 	FIO      FIOConfig      `toml:"fio"`
 	OCR      OCRConfig      `toml:"ocr"`
@@ -54,7 +67,31 @@ type Config struct {
 
 // DatabaseConfig holds database settings.
 type DatabaseConfig struct {
-	Path string `toml:"path"`
+	Path        string `toml:"path"`
+	JournalMode string `toml:"journal_mode"` // wal (default) or delete
+}
+
+// BackupConfig holds backup settings.
+type BackupConfig struct {
+	Destination    string   `toml:"destination"`     // Backup directory (default: DataDir/backups)
+	Schedule       string   `toml:"schedule"`        // Cron expression, e.g. "0 2 * * *"
+	RetentionCount int      `toml:"retention_count"` // Keep last N backups, 0 = keep all
+	S3             S3Config `toml:"s3"`
+}
+
+// S3Config holds S3-compatible storage settings.
+type S3Config struct {
+	Endpoint  string `toml:"endpoint"`
+	Region    string `toml:"region"`
+	Bucket    string `toml:"bucket"`
+	AccessKey string `toml:"access_key"`
+	SecretKey string `toml:"secret_key"`
+	UseSSL    bool   `toml:"use_ssl"`
+}
+
+// IsConfigured returns true when both Endpoint and Bucket are non-empty.
+func (c *S3Config) IsConfigured() bool {
+	return c.Endpoint != "" && c.Bucket != ""
 }
 
 // LogConfig holds logging settings.
@@ -183,6 +220,11 @@ func Load(configPath string) (*Config, error) {
 		Server: ServerConfig{
 			Port: 8080,
 		},
+		Backup: BackupConfig{
+			S3: S3Config{
+				UseSSL: true,
+			},
+		},
 	}
 
 	// Allow overriding data dir via environment variable
@@ -204,9 +246,20 @@ func Load(configPath string) (*Config, error) {
 	cfg.DataDir = ExpandHome(cfg.DataDir)
 	cfg.Database.Path = ExpandHome(cfg.Database.Path)
 	cfg.Log.Path = ExpandHome(cfg.Log.Path)
+	cfg.Backup.Destination = ExpandHome(cfg.Backup.Destination)
 
 	slog.Info("config loaded", "path", configPath, "data_dir", cfg.DataDir)
 	return cfg, nil
+}
+
+// BackupDestination returns the backup directory path.
+// If Backup.Destination is set, it is used directly.
+// Otherwise defaults to DataDir/backups.
+func (c *Config) BackupDestination() string {
+	if c.Backup.Destination != "" {
+		return c.Backup.Destination
+	}
+	return filepath.Join(c.DataDir, "backups")
 }
 
 // DatabasePath returns the path to the SQLite database file.

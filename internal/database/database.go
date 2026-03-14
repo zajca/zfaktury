@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -20,12 +21,24 @@ func New(cfg *config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("opening database at %s: %w", dbPath, err)
 	}
 
+	// Determine journal mode from config.
+	journalMode := "WAL"
+	if cfg.Database.JournalMode != "" {
+		jm := strings.ToUpper(cfg.Database.JournalMode)
+		if jm == "WAL" || jm == "DELETE" {
+			journalMode = jm
+		} else {
+			_ = db.Close()
+			return nil, fmt.Errorf("unsupported journal_mode %q (use wal or delete)", cfg.Database.JournalMode)
+		}
+	}
+
 	// Set SQLite pragmas for optimal performance and safety
 	pragmas := []struct {
 		name  string
 		query string
 	}{
-		{"journal_mode", "PRAGMA journal_mode=WAL"},
+		{"journal_mode", fmt.Sprintf("PRAGMA journal_mode=%s", journalMode)},
 		{"foreign_keys", "PRAGMA foreign_keys=ON"},
 		{"busy_timeout", "PRAGMA busy_timeout=5000"},
 	}

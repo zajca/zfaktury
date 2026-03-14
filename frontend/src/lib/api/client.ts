@@ -1921,3 +1921,44 @@ export const exportApi = {
 		return `${API_BASE}/export/expenses?year=${year}`;
 	}
 };
+
+// --- Backup API ---
+
+export interface BackupRecord {
+	id: number;
+	filename: string;
+	status: 'running' | 'completed' | 'failed';
+	trigger: 'manual' | 'scheduled' | 'cli';
+	destination: 'local' | 's3';
+	size_bytes: number;
+	file_count: number;
+	db_migration_version: number;
+	duration_ms: number;
+	error_message?: string;
+	created_at: string;
+	completed_at?: string;
+}
+
+export interface BackupStatus {
+	is_running: boolean;
+	last_backup: BackupRecord | null;
+	next_scheduled: string;
+}
+
+export const backupApi = {
+	list() {
+		return get<BackupRecord[]>('/backups');
+	},
+	getStatus() {
+		return get<BackupStatus>('/backups/status');
+	},
+	create() {
+		return post<BackupRecord>('/backups', {});
+	},
+	delete(id: number) {
+		return del(`/backups/${id}`);
+	},
+	downloadUrl(id: number): string {
+		return `${API_BASE}/backups/${id}/download`;
+	}
+};

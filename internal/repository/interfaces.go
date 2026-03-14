@@ -292,6 +292,15 @@ type FakturoidImportLogRepo interface {
 	ListByEntityType(ctx context.Context, entityType string) ([]domain.FakturoidImportLog, error)
 }
 
+// BackupHistoryRepo defines the persistence interface for backup history records.
+type BackupHistoryRepo interface {
+	Create(ctx context.Context, record *domain.BackupRecord) error
+	Update(ctx context.Context, record *domain.BackupRecord) error
+	GetByID(ctx context.Context, id int64) (*domain.BackupRecord, error)
+	List(ctx context.Context) ([]domain.BackupRecord, error)
+	Delete(ctx context.Context, id int64) error
+}
+
 // DashboardRepo defines the persistence interface for dashboard aggregations.
 type DashboardRepo interface {
 	RevenueCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error)

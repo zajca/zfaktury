@@ -554,24 +554,462 @@ Automated scan via `govulncheck ./...` remains blocked by missing GCC in the bui
 
 ---
 
-## Cumulative Open Findings (All Commits)
+---
+
+# Security Review - Backup & Sync Feature
+
+**Date:** 2026-03-13
+**Scope:** Backup & sync feature — `backup_repo.go`, `backup_svc.go`, `backup_handler.go`, `restore.go`, `flock/flock.go`, `database/database.go`
+**Model:** claude-sonnet-4-6
+
+---
+
+## Security Review Checklist
+
+- [x] Injection risks reviewed
+- [x] Authentication/Authorization verified (inherits SEC-002 — no auth on any route)
+- [x] Secrets handling reviewed
+- [x] Dependency audit completed (no new dependencies)
+- [x] Transport security verified
+- [x] Logging practices checked
+- [x] Concurrency issues reviewed
+- [x] Archive extraction safety (tar slip / zip slip) reviewed
+- [x] File upload/download safety reviewed
+- [x] flock implementation reviewed
+
+---
+
+## Findings Summary
+
+| ID | Severity | File | Line(s) | Title |
+|----|----------|------|---------|-------|
+| SEC-018 | HIGH | `internal/service/backup_svc.go` | 146 | SQL injection via VACUUM INTO with fmt.Sprintf path |
+| SEC-019 | MEDIUM | `internal/cli/restore.go` | 238 | No size limit on extracted file content (decompression bomb) |
+| SEC-020 | MEDIUM | `internal/handler/backup_handler.go` | 136 | Content-Disposition filename not sanitized (extends SEC-012) |
+| SEC-021 | MEDIUM | `internal/handler/backup_handler.go` | 163-175 | Server filesystem paths exposed in API response |
+| SEC-022 | MEDIUM | `internal/service/backup_svc.go` | 286-288 | OS error details leaked in GetBackupFilePath response chain |
+| SEC-023 | LOW | `internal/cli/restore.go` | 109 | Tar slip check insufficient for non-root traversal paths |
+| SEC-024 | LOW | `internal/repository/backup_repo.go` | 150-156 | GetByID does not wrap sql.ErrNoRows as domain.ErrNotFound — handler 404 branch unreachable |
+| SEC-025 | LOW | `internal/database/database.go` | 41 | PRAGMA interpolated via fmt.Sprintf despite allowlist guard |
+| SEC-026 | INFO | `internal/cli/restore.go` | 67-69 | Lock file liveness check uses os.Stat (TOCTOU — informational) |
+
+---
+
+## Detailed Findings
+
+### SEC-018 — HIGH: SQL Injection via VACUUM INTO with fmt.Sprintf Path
+
+**File:** `internal/service/backup_svc.go:146`
+**CWE:** CWE-89 (Improper Neutralization of Special Elements in SQL Command)
+
+```go
+tempDBPath := filepath.Join(destDir, "backup-temp.db")
+defer os.Remove(tempDBPath)
+
+if _, err := s.db.ExecContext(ctx, fmt.Sprintf("VACUUM INTO '%s'", tempDBPath)); err != nil {
+```
+
+`VACUUM INTO` is a SQLite-specific statement that does not support parameterized arguments — the path must be embedded in the SQL string. The path used is `tempDBPath`, which is derived from `destDir`:
+
+```
+destDir = s.cfg.Destination  (from config.BackupConfig)
+         || filepath.Join(s.dataDir, "backups")
+```
+
+`s.cfg.Destination` comes directly from `config.toml` (`[backup] destination`). If an attacker can write to the config file, they can set `destination` to a value containing a single-quote, injecting arbitrary SQL after the VACUUM statement.
+
+**Example attack vector** (requires config file write access):
+```
+destination = "/tmp/x' ; ATTACH DATABASE '/tmp/evil.db' AS evil ; --"
+```
+This would produce:
+```sql
+VACUUM INTO '/tmp/x' ; ATTACH DATABASE '/tmp/evil.db' AS evil ; --'
+```
+
+SQLite's `database/sql` driver in Go executes only the first statement in a multi-statement `Exec` call (the driver's default behavior), which limits the exploitability to the VACUUM itself. However, a crafted path with an embedded quote would at minimum cause the backup to fail silently after creating a partial file at a wrong path. If the driver ever relaxes multi-statement enforcement, or the behavior differs under `modernc.org/sqlite`, the injection could become destructive.
+
+**Additional concern:** `ExecContext` is used with `fmt.Sprintf` and no placeholder. Even though `VACUUM INTO` has no parameter syntax, the correct mitigation is to sanitize the path before embedding it.
+
+**Fix:** Validate that `destDir` (and therefore `tempDBPath`) contains no single-quote characters before using it. Reject invalid destinations at `NewBackupService` startup or at the top of `CreateBackup`:
+
+```go
+// In performBackup, before constructing tempDBPath:
+if strings.ContainsAny(destDir, "'\"") {
+    return fmt.Errorf("backup destination path must not contain quote characters: %s", destDir)
+}
+```
+
+Additionally, document in config loading that `[backup] destination` must be a plain filesystem path with no special characters, and validate it on config load.
+
+---
+
+### SEC-019 — MEDIUM: No Size Limit on Extracted File Content (Decompression Bomb)
+
+**File:** `internal/cli/restore.go:238`
+**CWE:** CWE-409 (Improper Handling of Highly Compressed Data)
+
+```go
+func extractFile(r io.Reader, destPath string, mode int64) error {
+    ...
+    if _, err := io.Copy(out, r); err != nil {
+        return fmt.Errorf("writing file: %w", err)
+    }
+}
+```
+
+`io.Copy` reads from the tar reader without any size limit. A maliciously crafted or corrupted `.tar.gz` can contain:
+
+1. A **decompression bomb**: a highly compressed entry that expands to gigabytes on disk, filling the disk partition.
+2. An entry whose `header.Size` is 0 or wrong, causing `io.Copy` to read until the underlying gzip stream ends — potentially consuming both disk and CPU.
+
+Note that `backup-meta.json` is correctly protected with `io.LimitReader(tr, 1<<20)` at line 114. The same protection is absent for all other entries (database, documents).
+
+**Fix:** Apply per-file limits appropriate to expected content. A reasonable cap for the database file is, say, 1 GB; for documents, 100 MB per file:
+
+```go
+const (
+    maxDBFileBytes  = 1 << 30  // 1 GB
+    maxDocFileBytes = 100 << 20 // 100 MB
+)
+
+// In extractFile, add a size parameter:
+func extractFile(r io.Reader, destPath string, mode int64, maxBytes int64) error {
+    ...
+    if _, err := io.Copy(out, io.LimitReader(r, maxBytes)); err != nil {
+        return fmt.Errorf("writing file: %w", err)
+    }
+}
+```
+
+Alternatively, enforce a global archive size limit using `header.Size` accumulated across all entries before beginning extraction.
+
+---
+
+### SEC-020 — MEDIUM: Content-Disposition Filename Not Sanitized (extends SEC-012)
+
+**File:** `internal/handler/backup_handler.go:134-136`
+**CWE:** CWE-113 (Improper Neutralization of CRLF Sequences in HTTP Headers)
+
+```go
+filename := filepath.Base(filePath)
+w.Header().Set("Content-Type", "application/gzip")
+w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+```
+
+`filePath` is returned from `GetBackupFilePath`, which constructs it as:
+```go
+archivePath := filepath.Join(record.Destination, record.Filename)
+```
+
+`record.Filename` is generated server-side as `zfaktury-backup-YYYY-MM-DDThh-mm-ss.tar.gz` (safe characters only). `record.Destination` is the config-provided path. However, the `Destination` value is stored in the database (as written at backup creation time) and then used to construct the filename via `filepath.Base(filePath)`.
+
+The practical risk today is low because the filename format is controlled. However, the pattern is identical to SEC-012 (raw `%s` interpolation into a `Content-Disposition` quoted-string), which was already flagged as a finding. For consistency and defense-in-depth:
+
+**Fix:** Use `%q` as is already done on the PDF download endpoint:
+
+```go
+w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+```
+
+---
+
+### SEC-021 — MEDIUM: Server Filesystem Paths Exposed in API Response
+
+**File:** `internal/handler/backup_handler.go:163-175`
+**CWE:** CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor)
+
+```go
+type backupResponse struct {
+    ...
+    Destination string `json:"destination"`
+    ...
+}
+```
+
+`Destination` is the absolute server-side directory path where the backup archive is stored (e.g. `/home/user/.zfaktury/backups`). This value is persisted from the DB record and returned to every API caller via `GET /api/v1/backups` and `GET /api/v1/backups/{id}`.
+
+Exposing absolute filesystem paths leaks:
+1. The operating system home directory path (useful for social engineering and targeted attacks).
+2. Confirmation that the user's data directory location is non-default (if `destination` was customized in config).
+
+For a local-only single-user app this is low-stakes, but the application has no authentication (SEC-002), so any browser tab on the machine can retrieve this information.
+
+**Fix:** Either omit `destination` from the API response entirely, or replace it with a boolean `is_custom_destination` field. The frontend does not need the absolute path.
+
+```go
+type backupResponse struct {
+    ID                 int64  `json:"id"`
+    Filename           string `json:"filename"`
+    Status             string `json:"status"`
+    Trigger            string `json:"trigger"`
+    // Remove Destination — internal server path, not needed by frontend
+    SizeBytes          int64  `json:"size_bytes"`
+    ...
+}
+```
+
+---
+
+### SEC-022 — MEDIUM: OS Error Details Leaked via GetBackupFilePath
+
+**File:** `internal/service/backup_svc.go:286-288`
+**CWE:** CWE-209 (Generation of Error Message Containing Sensitive Information)
+
+```go
+if _, err := os.Stat(archivePath); err != nil {
+    return "", fmt.Errorf("backup archive file not found: %w", err)
+}
+```
+
+The wrapped `os.Stat` error contains the full absolute path in the OS-level message, e.g.:
+```
+backup archive file not found: stat /home/user/.zfaktury/backups/zfaktury-backup-2026-01-01T10-00-00.tar.gz: no such file or directory
+```
+
+This error is currently caught by the handler and logged server-side (not forwarded to the client):
+
+```go
+// backup_handler.go:129-130
+slog.Error("failed to get backup file path", "error", err, "id", id)
+respondError(w, http.StatusInternalServerError, "failed to get backup file")
+```
+
+The error is handled correctly at the handler level for the `os.Stat` failure case. However, the service currently does not check `os.IsNotExist(err)` and return `domain.ErrNotFound` for the "file missing from disk" case, nor does the handler detect this as a 404. The client always receives 500 when the archive file is missing, even if the DB record exists but the file was deleted manually.
+
+**Fix (two parts):**
+
+1. Return `domain.ErrNotFound` when the file is absent so the handler responds 404 rather than 500:
+```go
+if _, err := os.Stat(archivePath); err != nil {
+    if os.IsNotExist(err) {
+        return "", fmt.Errorf("backup archive not on disk: %w", domain.ErrNotFound)
+    }
+    return "", fmt.Errorf("checking backup archive: %w", err)
+}
+```
+
+2. In `backup_handler.go`, the existing `errors.Is(err, domain.ErrNotFound)` check at line 125 will then correctly return 404 rather than 500 for missing-file scenarios.
+
+---
+
+### SEC-023 — LOW: Tar Slip Check Insufficient for Non-Root Traversal
+
+**File:** `internal/cli/restore.go:108-111` (first pass) and `185-188` (second pass)
+**CWE:** CWE-22 (Path Traversal)
+
+```go
+cleanName := filepath.Clean(header.Name)
+if strings.HasPrefix(cleanName, "..") || strings.HasPrefix(cleanName, "/") {
+    return fmt.Errorf("archive contains suspicious path: %s", header.Name)
+}
+```
+
+`filepath.Clean` on `"documents/../../../etc/passwd"` produces `"../../etc/passwd"` — which is caught by the `..` prefix check. However, `filepath.Clean` on `"documents/subdir/../../.."` produces `".."` on Unix — also caught.
+
+The check correctly rejects absolute paths and paths whose cleaned form starts with `..`. The remaining gap is:
+
+1. The `destPath` is constructed as `filepath.Join(targetDir, cleanName)` without verifying the joined result stays within `targetDir`. On systems where `targetDir` itself is a relative path, a crafted entry name could escape. The `targetDir` is sourced from config (`cfg.DataDir`) which typically is an absolute path like `~/.zfaktury`, but `config.ExpandHome` returns an absolute path only when `~` is present — if `DataDir` is set to a relative path in config, `targetDir` could be relative.
+
+2. On Windows (not the current target platform per Linux environment), `filepath.Clean` uses `\` separators, which may allow bypass via forward-slash sequences in certain edge cases.
+
+**Fix:** After constructing `destPath`, verify it is actually within `targetDir`:
+
+```go
+destPath = filepath.Join(targetDir, cleanName)
+// Verify the resolved path is still within targetDir (defense-in-depth)
+absTarget, _ := filepath.Abs(targetDir)
+absDest, _ := filepath.Abs(destPath)
+if !strings.HasPrefix(absDest, absTarget+string(os.PathSeparator)) {
+    return fmt.Errorf("archive entry %q would escape target directory", cleanName)
+}
+```
+
+This is the canonical "zip slip" mitigation and handles edge cases that the prefix check alone does not.
+
+---
+
+### SEC-024 — LOW: GetByID Does Not Wrap sql.ErrNoRows as domain.ErrNotFound — Handler 404 Branch Unreachable
+
+**File:** `internal/repository/backup_repo.go:150-156`
+**CWE:** CWE-703 (Improper Check or Handling of Exceptional Conditions)
+
+```go
+rec, err := scanBackupRecord(row)
+if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+        return nil, fmt.Errorf("backup record %d not found: %w", id, err)
+    }
+    return nil, fmt.Errorf("querying backup record %d: %w", id, err)
+}
+```
+
+When a record is not found, the function returns an error wrapping `sql.ErrNoRows` but does NOT wrap `domain.ErrNotFound`. In the handler:
+
+```go
+// backup_handler.go:82-84
+record, err := h.svc.GetBackup(r.Context(), id)
+if err != nil {
+    if errors.Is(err, domain.ErrNotFound) {
+        respondError(w, http.StatusNotFound, "backup not found")
+        return
+    }
+    ...
+    respondError(w, http.StatusInternalServerError, "failed to get backup")
+```
+
+`errors.Is(err, domain.ErrNotFound)` will always be `false` because the repository wraps `sql.ErrNoRows`, not `domain.ErrNotFound`. The handler always falls through to the 500 branch for missing records. This is a correctness defect that leaks internal error context (see SEC-010/SEC-016 pattern) by returning 500 instead of 404.
+
+The same issue affects `DeleteBackup` (via `GetByID`) and `GetBackupFilePath` (via `GetByID`), so the 404 branches in the Delete and Download handlers are also unreachable.
+
+**Fix:** Return `domain.ErrNotFound` from `GetByID` when the record does not exist:
+
+```go
+if errors.Is(err, sql.ErrNoRows) {
+    return nil, fmt.Errorf("backup record %d: %w", id, domain.ErrNotFound)
+}
+```
+
+---
+
+### SEC-025 — LOW: PRAGMA Value Interpolated via fmt.Sprintf Despite Allowlist
+
+**File:** `internal/database/database.go:41`
+**CWE:** CWE-89 (Improper Neutralization — low risk due to allowlist)
+
+```go
+journalMode := "WAL"
+if cfg.Database.JournalMode != "" {
+    jm := strings.ToUpper(cfg.Database.JournalMode)
+    if jm == "WAL" || jm == "DELETE" {
+        journalMode = jm  // Only "WAL" or "DELETE" can reach here
+    } else {
+        _ = db.Close()
+        return nil, fmt.Errorf("unsupported journal_mode %q ...")
+    }
+}
+...
+{"journal_mode", fmt.Sprintf("PRAGMA journal_mode=%s", journalMode)},
+```
+
+The allowlist (`WAL` or `DELETE`) is enforced correctly before the value is used. The `fmt.Sprintf` interpolation cannot be exploited given the current code. However, the pattern establishes a precedent of building PRAGMA strings via `fmt.Sprintf` with a variable. If a future developer adds another pragma that accepts a user-supplied string and follows the same pattern without adding a proper allowlist, SQL injection into a PRAGMA statement would result.
+
+**Fix (low priority — pattern hardening):** Use the allowed values as a `const` block and document that PRAGMA values must never be user-supplied strings:
+
+```go
+const (
+    journalModeWAL    = "WAL"
+    journalModeDelete = "DELETE"
+)
+// pragmaJournalMode can only be journalModeWAL or journalModeDelete at this point.
+```
+
+No code change is strictly required, but the comment and constant naming make the intent explicit.
+
+---
+
+### SEC-026 — INFO: Lock File Liveness Check Uses os.Stat (TOCTOU)
+
+**File:** `internal/cli/restore.go:67-69`
+**CWE:** CWE-367 (TOCTOU Race Condition) — informational
+
+```go
+lockFile := filepath.Join(targetDir, ".zfaktury.lock")
+if _, err := os.Stat(lockFile); err == nil {
+    return fmt.Errorf("server appears to be running (lock file exists: %s)...", lockFile)
+}
+```
+
+The restore CLI checks for the lock file's existence with `os.Stat` before proceeding. This is a check-then-act pattern: between the `os.Stat` returning "no file" and the first file write during extraction, a server could start and acquire the flock. However:
+
+1. The restore command is a CLI tool run by the operator, not an automated or remote operation.
+2. `flock.go` uses `syscall.LOCK_EX|LOCK_NB` which would prevent the server from holding the advisory lock while restore writes the database.
+3. The check here is a user-experience safety net ("don't restore over a running server"), not a security boundary.
+
+The real protection is the OS-level advisory flock. The `os.Stat` check is sufficient for its purpose. This is informational only.
+
+**Recommendation:** Add a comment clarifying that the `os.Stat` check is a user-facing heuristic and that the kernel flock is the actual concurrency guard, to prevent a future developer from removing the flock and relying solely on `os.Stat`.
+
+---
+
+## What Was Reviewed and Found Clear
+
+### backup_repo.go — SQL Injection
+
+All five repository methods (`Create`, `Update`, `GetByID`, `List`, `Delete`) use exclusively parameterized `?` placeholders. No user-supplied string is concatenated into any query. No dynamic `WHERE` clause construction. **CLEAR.**
+
+### backup_svc.go — Archive Creation Path Traversal
+
+`addDirToTar` uses `filepath.WalkDir` starting from `s.dataDir/documents` and `s.dataDir/tax-documents` — both server-controlled paths. `filepath.Rel` is used to compute the relative path within the archive, and the result is prepended with a hardcoded prefix (`"documents"` or `"tax-documents"`). The archive name is therefore always `documents/<relative>` or `tax-documents/<relative>` with no user input entering the archive name. **CLEAR.**
+
+### backup_svc.go — Concurrent Backup Calls
+
+`s.running` is an `atomic.Bool` and `CompareAndSwap(false, true)` is used at the entry point of `CreateBackup`. This correctly prevents two concurrent backup operations from running simultaneously. `defer s.running.Store(false)` ensures the flag is always cleared. **CLEAR.**
+
+### flock.go — Implementation Correctness
+
+`syscall.Flock` with `LOCK_EX|LOCK_NB` is the correct approach for an exclusive non-blocking lock on Linux. The `Acquire` function opens the file, attempts the flock, and writes the PID. `Release` calls `LOCK_UN` before closing and removing the file. The `l.f == nil` guard in `Release` prevents double-release panics. The lock removal after unlock is a best-effort cleanup — the file being present without a lock holder is harmless. **CLEAR.**
+
+### restore.go — Metadata Injection
+
+`backup-meta.json` is read with `io.LimitReader(tr, 1<<20)` and parsed with `json.Unmarshal` into a typed struct. The parsed fields (AppVersion, DBMigrationVersion, CreatedAt, FileCount, DBSizeBytes) are printed to stdout only and not used in any security-sensitive way. **CLEAR.**
+
+### database.go — Journal Mode Injection
+
+The allowlist at lines 27-33 is enforced before the value is used. Only the literals `"WAL"` and `"DELETE"` can reach the `fmt.Sprintf` at line 41. **CLEAR** (see SEC-025 for pattern note).
+
+### Hardcoded Secrets
+
+No credentials, tokens, or API keys present in any of the reviewed files. **CLEAR.**
+
+---
+
+## Dependency Vulnerabilities
+
+No new dependencies were added in the backup/sync feature. All previously audited packages remain unchanged.
+
+---
+
+## Recommendations for Backup & Sync Feature
+
+1. **Before merge:** Fix SEC-018 — add a path character validation guard before the `VACUUM INTO` statement. This is a one-liner and eliminates the SQL injection vector entirely.
+2. **Before merge:** Fix SEC-024 — wrap `sql.ErrNoRows` as `domain.ErrNotFound` in `GetByID`. This makes 404 responses work correctly on all three handler endpoints.
+3. **Before merge:** Fix SEC-019 — add `io.LimitReader` in `extractFile` to cap decompression output per file.
+4. **This sprint:** Fix SEC-022 — distinguish "file not on disk" from other errors and return `domain.ErrNotFound` accordingly; remove path details from error wrapping.
+5. **This sprint:** Fix SEC-023 — add the `filepath.Abs` prefix check after constructing `destPath` to close the residual tar slip gap.
+6. **This sprint:** Fix SEC-020 — switch `Content-Disposition` to use `%q` for consistency with SEC-012 fix.
+7. **Backlog:** Fix SEC-021 — remove `destination` from the `backupResponse` DTO.
+8. **Backlog:** Address SEC-025 — add comments and constants to document the PRAGMA pattern.
+
+---
+
+## Cumulative Open Findings (All Reviews)
 
 | ID | Severity | Status | Title |
 |----|----------|--------|-------|
 | SEC-001 | HIGH | Open | Unbounded ARES response body |
 | SEC-002 | HIGH | Open | No authentication on API routes |
-| SEC-003 | MEDIUM | Open | LIMIT/OFFSET via fmt.Sprintf |
+| SEC-018 | HIGH | Open | SQL injection via VACUUM INTO path (backup) |
+| SEC-003 | MEDIUM | Open | LIMIT/OFFSET via fmt.Sprintf (invoices) |
 | SEC-004 | MEDIUM | Open | LIMIT/OFFSET via fmt.Sprintf (contacts) |
 | SEC-005 | MEDIUM | Open | LIMIT/OFFSET via fmt.Sprintf (expenses) |
 | SEC-006 | MEDIUM | Open | document_path path traversal risk |
 | SEC-007 | MEDIUM | Open | Settings key allowlist not enforced |
 | SEC-012 | MEDIUM | Open | ISDOC Content-Disposition header injection |
 | SEC-013 | MEDIUM | Open | Batch ISDOC export unbounded |
+| SEC-019 | MEDIUM | Open | No size limit on extracted file content (decompression bomb) |
+| SEC-020 | MEDIUM | Open | Backup download Content-Disposition not sanitized |
+| SEC-021 | MEDIUM | Open | Server filesystem paths exposed in API response |
+| SEC-022 | MEDIUM | Open | OS error details leaked in GetBackupFilePath |
 | SEC-008 | LOW | Open | CORS wildcard |
 | SEC-009 | LOW | Open | No security headers |
 | SEC-010 | LOW | Open | Verbatim error forwarding |
 | SEC-014 | LOW | Open | CSS color injection |
 | SEC-015 | LOW | Open | Zip entry path traversal |
 | SEC-016 | LOW | Open | Verbatim error forwarding (new handlers) |
+| SEC-023 | LOW | Open | Tar slip check insufficient |
+| SEC-024 | LOW | Open | GetByID does not wrap ErrNotFound — handler 404 unreachable |
+| SEC-025 | LOW | Open | PRAGMA interpolated via fmt.Sprintf |
 | SEC-011 | INFO | Open | Unbounded limit in contact/expense |
 | SEC-017 | INFO | Open | SPD attribute length not validated |
+| SEC-026 | INFO | Open | Lock file liveness check TOCTOU (informational) |

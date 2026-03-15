@@ -19,6 +19,8 @@ import (
 type RouterConfig struct {
 	// DevMode enables CORS for all origins (for Vite dev server).
 	DevMode bool
+	// DataDir is the application data directory for file storage.
+	DataDir string
 }
 
 // NewRouter creates a chi router with all API routes mounted.
@@ -165,7 +167,18 @@ func NewRouter(
 			}
 		})
 		api.Mount("/expense-categories", categoryHandler.Routes())
-		api.Mount("/settings", settingsHandler.Routes())
+		pdfSettingsHandler := NewPDFSettingsHandler(settingsSvc, invoiceSvc, pdfGen, cfg.DataDir)
+		api.Route("/settings", func(sr chi.Router) {
+			sr.Get("/", settingsHandler.GetAll)
+			sr.Put("/", settingsHandler.Update)
+			sr.Get("/pdf", pdfSettingsHandler.GetPDFSettings)
+			sr.Put("/pdf", pdfSettingsHandler.UpdatePDFSettings)
+			sr.Post("/logo", pdfSettingsHandler.UploadLogo)
+			sr.Get("/logo", pdfSettingsHandler.GetLogo)
+			sr.Delete("/logo", pdfSettingsHandler.DeleteLogo)
+			sr.Get("/pdf-preview", pdfSettingsHandler.PreviewPDF)
+		})
+
 		api.Mount("/invoice-sequences", sequenceHandler.Routes())
 		api.Mount("/", documentHandler.Routes())
 		if invDocHandler != nil {

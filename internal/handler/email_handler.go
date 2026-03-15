@@ -181,7 +181,22 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 			SWIFT:         settings[service.SettingSWIFT],
 		}
 
-		pdfBytes, err := h.pdfGen.Generate(r.Context(), invoice, supplier)
+		pdfSvcSettings, err := h.settingsSvc.GetPDFSettings(r.Context())
+		if err != nil {
+			slog.Error("failed to load PDF settings for email", "error", err)
+			respondError(w, http.StatusInternalServerError, "failed to load PDF settings")
+			return
+		}
+		pdfSettings := pdf.PDFSettings{
+			LogoPath:        pdfSvcSettings.LogoPath,
+			AccentColor:     pdfSvcSettings.AccentColor,
+			FooterText:      pdfSvcSettings.FooterText,
+			ShowQR:          pdfSvcSettings.ShowQR,
+			ShowBankDetails: pdfSvcSettings.ShowBankDetails,
+			FontSize:        pdfSvcSettings.FontSize,
+		}
+
+		pdfBytes, err := h.pdfGen.Generate(r.Context(), invoice, supplier, pdfSettings)
 		if err != nil {
 			slog.Error("failed to generate PDF for email", "error", err, "id", id)
 			respondError(w, http.StatusInternalServerError, "failed to generate PDF")

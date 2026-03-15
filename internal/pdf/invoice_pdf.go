@@ -3,6 +3,10 @@ package pdf
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	maroto "github.com/johnfercher/maroto/v2"
 	"github.com/johnfercher/maroto/v2/pkg/components/col"
@@ -22,6 +26,59 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
+// PDFSettings holds customization options for PDF generation.
+type PDFSettings struct {
+	LogoPath        string
+	AccentColor     string
+	FooterText      string
+	ShowQR          bool
+	ShowBankDetails bool
+	FontSize        string
+}
+
+// DefaultPDFSettings returns PDFSettings with sensible defaults.
+func DefaultPDFSettings() PDFSettings {
+	return PDFSettings{
+		AccentColor:     "#2563eb",
+		ShowQR:          true,
+		ShowBankDetails: true,
+		FontSize:        "normal",
+	}
+}
+
+// fontSizePoints maps font size names to point sizes.
+func fontSizePoints(size string) float64 {
+	switch size {
+	case "small":
+		return 9
+	case "large":
+		return 11
+	default:
+		return 10
+	}
+}
+
+// parseHexColor converts a hex color string like "#2563eb" to RGB values.
+func parseHexColor(hex string) (int, int, int) {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) != 6 {
+		return 37, 99, 235 // default blue
+	}
+	r, err := strconv.ParseInt(hex[0:2], 16, 32)
+	if err != nil {
+		return 37, 99, 235
+	}
+	g, err := strconv.ParseInt(hex[2:4], 16, 32)
+	if err != nil {
+		return 37, 99, 235
+	}
+	b, err := strconv.ParseInt(hex[4:6], 16, 32)
+	if err != nil {
+		return 37, 99, 235
+	}
+	return int(r), int(g), int(b)
+}
+
 // InvoicePDFGenerator generates PDF documents for invoices.
 type InvoicePDFGenerator struct{}
 
@@ -31,7 +88,14 @@ func NewInvoicePDFGenerator() *InvoicePDFGenerator {
 }
 
 // Generate creates a PDF document for the given invoice and supplier info.
-func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoice, supplier SupplierInfo) ([]byte, error) {
+func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoice, supplier SupplierInfo, pdfSettings ...PDFSettings) ([]byte, error) {
+	ps := DefaultPDFSettings()
+	if len(pdfSettings) > 0 {
+		ps = pdfSettings[0]
+	}
+
+	baseFontSize := fontSizePoints(ps.FontSize)
+
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
 		WithLeftMargin(15).
@@ -39,7 +103,7 @@ func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoic
 		WithTopMargin(15).
 		WithBottomMargin(15).
 		WithDefaultFont(&props.Font{
-			Size:   9,
+			Size:   baseFontSize - 1,
 			Family: "arial",
 			Style:  fontstyle.Normal,
 		}).
@@ -47,32 +111,35 @@ func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoic
 
 	m := maroto.New(cfg)
 
+	// Logo.
+	g.addLogo(m, ps)
+
 	// Header: Invoice number, type, dates.
-	g.addHeader(m, invoice)
+	g.addHeader(m, invoice, ps)
 
 	// Separator.
 	m.AddRows(line.NewRow(2))
 
 	// Two-column: supplier (left) | customer (right).
-	g.addParties(m, invoice, supplier)
+	g.addParties(m, invoice, supplier, ps)
 
 	// Separator.
 	m.AddRows(line.NewRow(2))
 
 	// Line items table.
-	g.addItemsTable(m, invoice)
+	g.addItemsTable(m, invoice, ps)
 
 	// VAT summary.
-	g.addVATSummary(m, invoice)
+	g.addVATSummary(m, invoice, ps)
 
 	// Totals.
-	g.addTotals(m, invoice)
+	g.addTotals(m, invoice, ps)
 
 	// Separator.
 	m.AddRows(line.NewRow(2))
 
 	// Payment info + QR code.
-	g.addPaymentSection(m, invoice, supplier)
+	g.addPaymentSection(m, invoice, supplier, ps)
 
 	// Footer: VAT note.
 	if !supplier.VATRegistered {
@@ -80,8 +147,22 @@ func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoic
 			row.New(8).Add(
 				col.New(12).Add(
 					text.New("Subjekt neni platce DPH.", props.Text{
-						Size:  8,
+						Size:  baseFontSize - 2,
 						Style: fontstyle.Italic,
+						Align: align.Center,
+					}),
+				),
+			),
+		)
+	}
+
+	// Custom footer text.
+	if ps.FooterText != "" {
+		m.AddRows(
+			row.New(8).Add(
+				col.New(12).Add(
+					text.New(ps.FooterText, props.Text{
+						Size:  baseFontSize - 2,
 						Align: align.Center,
 					}),
 				),
@@ -97,20 +178,58 @@ func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoic
 	return doc.GetBytes(), nil
 }
 
-func (g *InvoicePDFGenerator) addHeader(m core.Maroto, invoice *domain.Invoice) {
+// addLogo places a logo image in the header if configured and the file exists.
+func (g *InvoicePDFGenerator) addLogo(m core.Maroto, ps PDFSettings) {
+	if ps.LogoPath == "" {
+		return
+	}
+	logoBytes, err := os.ReadFile(ps.LogoPath)
+	if err != nil {
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(ps.LogoPath))
+	var imgExt extension.Type
+	switch ext {
+	case ".png":
+		imgExt = extension.Png
+	case ".jpg", ".jpeg":
+		imgExt = extension.Jpg
+	default:
+		return // SVG not supported by maroto as image bytes
+	}
+
+	m.AddRows(
+		row.New(20).Add(
+			col.New(4).Add(
+				image.NewFromBytes(logoBytes, imgExt, props.Rect{
+					Percent: 100,
+					Center:  false,
+				}),
+			),
+			col.New(8),
+		),
+	)
+}
+
+func (g *InvoicePDFGenerator) addHeader(m core.Maroto, invoice *domain.Invoice, ps PDFSettings) {
 	typeLabel := invoiceTypeLabel(invoice.Type)
+	baseFontSize := fontSizePoints(ps.FontSize)
+	r, gr, b := parseHexColor(ps.AccentColor)
+	accentColor := &props.Color{Red: r, Green: gr, Blue: b}
 
 	m.AddRows(
 		row.New(12).Add(
 			col.New(8).Add(
 				text.New(fmt.Sprintf("%s %s", typeLabel, invoice.InvoiceNumber), props.Text{
-					Size:  16,
+					Size:  baseFontSize + 6,
 					Style: fontstyle.Bold,
+					Color: accentColor,
 				}),
 			),
 			col.New(4).Add(
 				text.New(statusLabel(invoice.Status), props.Text{
-					Size:  10,
+					Size:  baseFontSize,
 					Align: align.Right,
 					Style: fontstyle.Bold,
 				}),
@@ -121,19 +240,19 @@ func (g *InvoicePDFGenerator) addHeader(m core.Maroto, invoice *domain.Invoice) 
 	m.AddRows(
 		row.New(6).Add(
 			col.New(4).Add(
-				text.New(fmt.Sprintf("Datum vystaveni: %s", invoice.IssueDate.Format("02.01.2006")), props.Text{Size: 8}),
+				text.New(fmt.Sprintf("Datum vystaveni: %s", invoice.IssueDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2}),
 			),
 			col.New(4).Add(
-				text.New(fmt.Sprintf("Datum splatnosti: %s", invoice.DueDate.Format("02.01.2006")), props.Text{Size: 8}),
+				text.New(fmt.Sprintf("Datum splatnosti: %s", invoice.DueDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2}),
 			),
 			col.New(4).Add(
-				text.New(fmt.Sprintf("DUZP: %s", invoice.DeliveryDate.Format("02.01.2006")), props.Text{Size: 8, Align: align.Right}),
+				text.New(fmt.Sprintf("DUZP: %s", invoice.DeliveryDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2, Align: align.Right}),
 			),
 		),
 	)
 }
 
-func (g *InvoicePDFGenerator) addParties(m core.Maroto, invoice *domain.Invoice, supplier SupplierInfo) {
+func (g *InvoicePDFGenerator) addParties(m core.Maroto, invoice *domain.Invoice, supplier SupplierInfo, ps PDFSettings) {
 	// Supplier column content.
 	supplierRows := []string{supplier.Name}
 	if supplier.Street != "" {
@@ -219,11 +338,14 @@ func (g *InvoicePDFGenerator) addParties(m core.Maroto, invoice *domain.Invoice,
 	}
 }
 
-func (g *InvoicePDFGenerator) addItemsTable(m core.Maroto, invoice *domain.Invoice) {
-	// Table header.
-	headerColor := &props.Color{Red: 240, Green: 240, Blue: 240}
-	headerStyle := props.Text{Size: 7, Style: fontstyle.Bold}
-	headerStyleRight := props.Text{Size: 7, Style: fontstyle.Bold, Align: align.Right}
+func (g *InvoicePDFGenerator) addItemsTable(m core.Maroto, invoice *domain.Invoice, ps PDFSettings) {
+	// Table header with accent color tint.
+	r, gr, b := parseHexColor(ps.AccentColor)
+	// Use a light tint of the accent color for the header background.
+	headerColor := &props.Color{Red: 220 + (r-220)/10, Green: 220 + (gr-220)/10, Blue: 220 + (b-220)/10}
+	baseFontSize := fontSizePoints(ps.FontSize)
+	headerStyle := props.Text{Size: baseFontSize - 3, Style: fontstyle.Bold}
+	headerStyleRight := props.Text{Size: baseFontSize - 3, Style: fontstyle.Bold, Align: align.Right}
 	cellStyle := &props.Cell{
 		BackgroundColor: headerColor,
 		BorderType:      border.Bottom,
@@ -270,7 +392,8 @@ func (g *InvoicePDFGenerator) addItemsTable(m core.Maroto, invoice *domain.Invoi
 	}
 }
 
-func (g *InvoicePDFGenerator) addVATSummary(m core.Maroto, invoice *domain.Invoice) {
+func (g *InvoicePDFGenerator) addVATSummary(m core.Maroto, invoice *domain.Invoice, ps PDFSettings) {
+	_ = ps // reserved for future font size customization
 	// Group items by VAT rate.
 	vatGroups := make(map[int]struct {
 		base domain.Amount
@@ -310,7 +433,8 @@ func (g *InvoicePDFGenerator) addVATSummary(m core.Maroto, invoice *domain.Invoi
 	}
 }
 
-func (g *InvoicePDFGenerator) addTotals(m core.Maroto, invoice *domain.Invoice) {
+func (g *InvoicePDFGenerator) addTotals(m core.Maroto, invoice *domain.Invoice, ps PDFSettings) {
+	_ = ps                // reserved for future customization
 	m.AddRows(row.New(4)) // Spacer.
 
 	rightStyle := props.Text{Size: 9, Align: align.Right}
@@ -335,7 +459,7 @@ func (g *InvoicePDFGenerator) addTotals(m core.Maroto, invoice *domain.Invoice) 
 	)
 }
 
-func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.Invoice, supplier SupplierInfo) {
+func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.Invoice, supplier SupplierInfo, ps PDFSettings) {
 	m.AddRows(
 		row.New(8).Add(
 			col.New(12).Add(
@@ -365,9 +489,9 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 		bankCode = supplier.BankCode
 	}
 
-	// Try to generate QR code.
+	// Try to generate QR code (only if enabled).
 	var qrBytes []byte
-	if iban != "" {
+	if ps.ShowQR && iban != "" {
 		qr, err := GenerateQRPayment(invoice, iban, swift)
 		if err == nil {
 			qrBytes = qr
@@ -380,28 +504,30 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 	labelStyle := props.Text{Size: 8, Style: fontstyle.Bold}
 	valueStyle := props.Text{Size: 8}
 
-	if bankAccount != "" {
-		accountStr := bankAccount
-		if bankCode != "" {
-			accountStr += "/" + bankCode
+	if ps.ShowBankDetails {
+		if bankAccount != "" {
+			accountStr := bankAccount
+			if bankCode != "" {
+				accountStr += "/" + bankCode
+			}
+			m.AddRows(
+				row.New(5).Add(
+					col.New(paymentInfoSize).Add(
+						text.New(fmt.Sprintf("Cislo uctu: %s", accountStr), valueStyle),
+					),
+				),
+			)
 		}
-		m.AddRows(
-			row.New(5).Add(
-				col.New(paymentInfoSize).Add(
-					text.New(fmt.Sprintf("Cislo uctu: %s", accountStr), valueStyle),
-				),
-			),
-		)
-	}
 
-	if iban != "" {
-		m.AddRows(
-			row.New(5).Add(
-				col.New(paymentInfoSize).Add(
-					text.New(fmt.Sprintf("IBAN: %s", iban), valueStyle),
+		if iban != "" {
+			m.AddRows(
+				row.New(5).Add(
+					col.New(paymentInfoSize).Add(
+						text.New(fmt.Sprintf("IBAN: %s", iban), valueStyle),
+					),
 				),
-			),
-		)
+			)
+		}
 	}
 
 	if invoice.VariableSymbol != "" {

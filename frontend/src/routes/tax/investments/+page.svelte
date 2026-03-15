@@ -7,15 +7,15 @@
 		type SecurityTransaction,
 		type InvestmentYearSummary
 	} from '$lib/api/client';
-	import { formatCZK, fromHalere, toHalere } from '$lib/utils/money';
+	import { fromHalere, toHalere } from '$lib/utils/money';
 	import { toastError } from '$lib/data/toast-state.svelte';
 	import Button from '$lib/ui/Button.svelte';
-	import Card from '$lib/ui/Card.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
-	import Input from '$lib/ui/Input.svelte';
-	import Select from '$lib/ui/Select.svelte';
-	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
+	import InvestmentDocumentsTab from '$lib/components/tax/InvestmentDocumentsTab.svelte';
+	import InvestmentCapitalIncomeTab from '$lib/components/tax/InvestmentCapitalIncomeTab.svelte';
+	import InvestmentSecurityTransactionsTab from '$lib/components/tax/InvestmentSecurityTransactionsTab.svelte';
+	import InvestmentSummaryCard from '$lib/components/tax/InvestmentSummaryCard.svelte';
 
 	let selectedYear = $state(new Date().getFullYear() - 1);
 	let loading = $state(true);
@@ -61,48 +61,6 @@
 	let txFees = $state(0);
 	let txCurrency = $state('CZK');
 	let txExchangeRate = $state(1);
-
-	const platformLabels: Record<string, string> = {
-		portu: 'Portu',
-		zonky: 'Zonky',
-		trading212: 'Trading 212',
-		revolut: 'Revolut',
-		other: 'Jiný'
-	};
-
-	const capitalCategoryLabels: Record<string, string> = {
-		dividend_cz: 'Dividenda (CZ)',
-		dividend_foreign: 'Dividenda (zahraniční)',
-		interest: 'Úrok',
-		coupon: 'Kupón',
-		fund_distribution: 'Výplata z fondu',
-		other: 'Ostatní'
-	};
-
-	const assetTypeLabels: Record<string, string> = {
-		stock: 'Akcie',
-		etf: 'ETF',
-		bond: 'Dluhopis',
-		fund: 'Fond',
-		crypto: 'Kryptoměna',
-		other: 'Jiný'
-	};
-
-	const statusLabels: Record<string, { text: string; class: string }> = {
-		pending: { text: 'Čeká na zpracování', class: 'bg-warning-bg text-warning' },
-		extracted: { text: 'Extrahováno', class: 'bg-success-bg text-success' },
-		failed: { text: 'Chyba', class: 'bg-danger-bg text-danger' }
-	};
-
-	function formatAmount(amountInHalere: number): string {
-		return formatCZK(amountInHalere);
-	}
-
-	function formatFileSize(bytes: number): string {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-	}
 
 	async function loadData() {
 		loading = true;
@@ -415,622 +373,90 @@
 		</div>
 
 		<div class="mt-6 space-y-6">
-			<!-- Tab: Documents -->
 			{#if activeTab === 'documents'}
-				<Card>
-					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">Nahrané dokumenty</h2>
-						<div class="flex items-center gap-2">
-							<Select
-								value={uploadPlatform}
-								onchange={(e: Event) => {
-									uploadPlatform = (e.currentTarget as HTMLSelectElement).value;
-								}}
-							>
-								{#each Object.entries(platformLabels) as [key, label]}
-									<option value={key}>{label}</option>
-								{/each}
-							</Select>
-							<Button variant="primary" size="sm" onclick={uploadDocument} disabled={uploading}>
-								{uploading ? 'Nahrává se...' : 'Nahrát dokument'}
-							</Button>
-						</div>
-					</div>
-
-					{#if documents.length > 0}
-						<div class="mt-4 overflow-x-auto">
-							<table class="w-full text-sm">
-								<thead>
-									<tr class="border-b border-border text-left text-xs text-tertiary">
-										<th class="pb-2 pr-4">Název souboru</th>
-										<th class="pb-2 pr-4">Platforma</th>
-										<th class="pb-2 pr-4">Stav</th>
-										<th class="pb-2 pr-4">Velikost</th>
-										<th class="pb-2 text-right">Akce</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each documents as doc (doc.id)}
-										<tr class="border-b border-border-subtle">
-											<td class="py-2 pr-4">
-												<a
-													href={investmentsApi.downloadDocumentUrl(doc.id)}
-													class="text-accent hover:underline"
-													target="_blank">{doc.filename}</a
-												>
-											</td>
-											<td class="py-2 pr-4 text-tertiary"
-												>{platformLabels[doc.platform] ?? doc.platform}</td
-											>
-											<td class="py-2 pr-4">
-												{#if statusLabels[doc.extraction_status]}
-													{@const status = statusLabels[doc.extraction_status]}
-													<span
-														class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {status.class}"
-													>
-														{status.text}
-													</span>
-												{:else}
-													<span
-														class="inline-flex rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-tertiary"
-													>
-														{doc.extraction_status}
-													</span>
-												{/if}
-												{#if doc.extraction_error}
-													<span class="ml-1 text-xs text-danger" title={doc.extraction_error}
-														>!</span
-													>
-												{/if}
-											</td>
-											<td class="py-2 pr-4 text-tertiary">{formatFileSize(doc.size)}</td>
-											<td class="py-2 text-right">
-												<div class="flex justify-end gap-1">
-													{#if doc.extraction_status !== 'extracted'}
-														<Button
-															variant="secondary"
-															size="sm"
-															onclick={() => extractDocument(doc.id)}
-															disabled={saving}>Extrahovat</Button
-														>
-													{/if}
-													<Button
-														variant="danger"
-														size="sm"
-														onclick={() => deleteDocument(doc.id)}
-														disabled={saving}>Smazat</Button
-													>
-												</div>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<p class="mt-4 text-sm text-tertiary">
-							Žádné nahrané dokumenty. Nahrajte výpisy z investičních platforem pro automatickou
-							extrakci dat.
-						</p>
-					{/if}
-				</Card>
-
-				<!-- Tab: Capital Income -->
+				<InvestmentDocumentsTab
+					{documents}
+					{uploadPlatform}
+					{uploading}
+					{saving}
+					onUploadPlatformChange={(v) => (uploadPlatform = v)}
+					onUpload={uploadDocument}
+					onExtract={extractDocument}
+					onDelete={deleteDocument}
+				/>
 			{:else if activeTab === 'capital'}
-				<Card>
-					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">
-							Kapitálové příjmy (§8) <HelpTip topic="kapitalove-prijmy-s8" />
-						</h2>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={() => {
-								resetCapitalForm();
-								showCapitalForm = true;
-							}}>Přidat ručně</Button
-						>
-					</div>
-
-					{#if capitalIncome.length > 0}
-						<div class="mt-4 overflow-x-auto">
-							<table class="w-full text-sm">
-								<thead>
-									<tr class="border-b border-border text-left text-xs text-tertiary">
-										<th class="pb-2 pr-4">Datum</th>
-										<th class="pb-2 pr-4">Kategorie</th>
-										<th class="pb-2 pr-4">Popis</th>
-										<th class="pb-2 pr-4 text-right">Hrubá částka</th>
-										<th class="pb-2 pr-4 text-right">Sražená daň <HelpTip topic="srazena-dan" /></th
-										>
-										<th class="pb-2 pr-4">K přiznání</th>
-										<th class="pb-2 text-right">Akce</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each capitalIncome as entry (entry.id)}
-										<tr class="border-b border-border-subtle">
-											<td class="py-2 pr-4 text-tertiary">{entry.income_date}</td>
-											<td class="py-2 pr-4">
-												<span class="text-xs font-medium uppercase text-accent"
-													>{capitalCategoryLabels[entry.category] ?? entry.category}</span
-												>
-											</td>
-											<td class="py-2 pr-4 text-primary">{entry.description}</td>
-											<td class="py-2 pr-4 text-right font-medium text-primary"
-												>{formatAmount(entry.gross_amount)}</td
-											>
-											<td class="py-2 pr-4 text-right text-tertiary">
-												{formatAmount(entry.withheld_tax_cz + entry.withheld_tax_foreign)}
-											</td>
-											<td class="py-2 pr-4">
-												{#if entry.needs_declaring}
-													<span
-														class="inline-flex rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning"
-														>Ano</span
-													>
-												{:else}
-													<span
-														class="inline-flex rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success"
-														>Ne</span
-													>
-												{/if}
-											</td>
-											<td class="py-2 text-right">
-												<div class="flex justify-end gap-1">
-													<Button variant="ghost" size="sm" onclick={() => editCapitalEntry(entry)}
-														>Upravit</Button
-													>
-													<Button
-														variant="danger"
-														size="sm"
-														onclick={() => deleteCapitalEntry(entry.id)}
-														disabled={saving}>Smazat</Button
-													>
-												</div>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-								<tfoot>
-									<tr class="border-t border-border font-medium">
-										<td colspan="3" class="py-2 pr-4 text-tertiary">Celkem</td>
-										<td class="py-2 pr-4 text-right text-primary">
-											{formatAmount(capitalIncome.reduce((sum, e) => sum + e.gross_amount, 0))}
-										</td>
-										<td class="py-2 pr-4 text-right text-tertiary">
-											{formatAmount(
-												capitalIncome.reduce(
-													(sum, e) => sum + e.withheld_tax_cz + e.withheld_tax_foreign,
-													0
-												)
-											)}
-										</td>
-										<td colspan="2"></td>
-									</tr>
-								</tfoot>
-							</table>
-						</div>
-					{:else}
-						<p class="mt-4 text-sm text-tertiary">
-							Žádné kapitálové příjmy. Přidejte ručně nebo nahrajte dokument k extrakci.
-						</p>
-					{/if}
-
-					{#if showCapitalForm}
-						<div class="mt-4 rounded-lg border border-border-subtle bg-elevated p-4">
-							<h3 class="text-sm font-medium text-primary">
-								{editingCapitalId ? 'Upravit záznam' : 'Přidat záznam'}
-							</h3>
-							<div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-								<div>
-									<span class="text-xs text-tertiary">Kategorie</span>
-									<Select
-										value={capitalCategory}
-										onchange={(e: Event) => {
-											capitalCategory = (e.currentTarget as HTMLSelectElement).value;
-										}}
-									>
-										{#each Object.entries(capitalCategoryLabels) as [key, label]}
-											<option value={key}>{label}</option>
-										{/each}
-									</Select>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Popis</span>
-									<Input
-										value={capitalDescription}
-										oninput={(e: Event) => {
-											capitalDescription = (e.currentTarget as HTMLInputElement).value;
-										}}
-										placeholder="Název akcie / fondu"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Datum</span>
-									<Input
-										type="date"
-										value={capitalDate}
-										oninput={(e: Event) => {
-											capitalDate = (e.currentTarget as HTMLInputElement).value;
-										}}
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Hrubá částka (CZK)</span>
-									<Input
-										type="number"
-										value={capitalGrossAmount}
-										oninput={(e: Event) => {
-											capitalGrossAmount = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.01"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Sražená daň ČR (CZK)</span>
-									<Input
-										type="number"
-										value={capitalWithheldCz}
-										oninput={(e: Event) => {
-											capitalWithheldCz = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.01"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Sražená daň v zahraničí (CZK)</span>
-									<Input
-										type="number"
-										value={capitalWithheldForeign}
-										oninput={(e: Event) => {
-											capitalWithheldForeign = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.01"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Země</span>
-									<Input
-										value={capitalCountry}
-										oninput={(e: Event) => {
-											capitalCountry = (e.currentTarget as HTMLInputElement).value;
-										}}
-										placeholder="CZ"
-										maxlength={2}
-									/>
-								</div>
-								<label class="flex items-center gap-2 text-sm text-primary">
-									<input
-										type="checkbox"
-										bind:checked={capitalNeedsDeclaring}
-										class="rounded border-border"
-									/>
-									Nutno přiznat v DP <HelpTip topic="nutno-priznat-dp" />
-								</label>
-							</div>
-							<div class="mt-3 flex gap-2">
-								<Button variant="primary" size="sm" onclick={saveCapitalEntry} disabled={saving}
-									>Uložit</Button
-								>
-								<Button variant="ghost" size="sm" onclick={resetCapitalForm}>Zrušit</Button>
-							</div>
-						</div>
-					{/if}
-				</Card>
-
-				<!-- Tab: Security Transactions -->
+				<InvestmentCapitalIncomeTab
+					{capitalIncome}
+					{saving}
+					{showCapitalForm}
+					{editingCapitalId}
+					{capitalCategory}
+					{capitalDescription}
+					{capitalDate}
+					{capitalGrossAmount}
+					{capitalWithheldCz}
+					{capitalWithheldForeign}
+					{capitalCountry}
+					{capitalNeedsDeclaring}
+					onShowForm={() => {
+						resetCapitalForm();
+						showCapitalForm = true;
+					}}
+					onEdit={editCapitalEntry}
+					onSave={saveCapitalEntry}
+					onDelete={deleteCapitalEntry}
+					onCancel={resetCapitalForm}
+					onCategoryChange={(v) => (capitalCategory = v)}
+					onDescriptionChange={(v) => (capitalDescription = v)}
+					onDateChange={(v) => (capitalDate = v)}
+					onGrossAmountChange={(v) => (capitalGrossAmount = v)}
+					onWithheldCzChange={(v) => (capitalWithheldCz = v)}
+					onWithheldForeignChange={(v) => (capitalWithheldForeign = v)}
+					onCountryChange={(v) => (capitalCountry = v)}
+					onNeedsDeclaringChange={(v) => (capitalNeedsDeclaring = v)}
+				/>
 			{:else if activeTab === 'securities'}
-				<Card>
-					<div class="flex items-center justify-between">
-						<h2 class="text-base font-semibold text-primary">
-							Obchody s CP a kryptem (§10) <HelpTip topic="obchody-cp-s10" />
-						</h2>
-						<div class="flex gap-2">
-							<Button variant="secondary" size="sm" onclick={recalculateFifo} disabled={saving}
-								>Přepočítat FIFO</Button
-							>
-							<HelpTip topic="fifo-prepocet" />
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={() => {
-									resetTransactionForm();
-									showTransactionForm = true;
-								}}>Přidat ručně</Button
-							>
-						</div>
-					</div>
-
-					{#if transactions.length > 0}
-						<div class="mt-4 overflow-x-auto">
-							<table class="w-full text-sm">
-								<thead>
-									<tr class="border-b border-border text-left text-xs text-tertiary">
-										<th class="pb-2 pr-3">Datum</th>
-										<th class="pb-2 pr-3">Typ</th>
-										<th class="pb-2 pr-3">Název</th>
-										<th class="pb-2 pr-3">ISIN</th>
-										<th class="pb-2 pr-3 text-right">Počet</th>
-										<th class="pb-2 pr-3 text-right">Cena</th>
-										<th class="pb-2 pr-3 text-right">Poplatky</th>
-										<th class="pb-2 pr-3 text-right">Nabývací cena</th>
-										<th class="pb-2 pr-3 text-right">Zisk/ztráta</th>
-										<th class="pb-2 pr-3">Časový test <HelpTip topic="casovy-test" /></th>
-										<th class="pb-2 text-right">Akce</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each transactions as tx (tx.id)}
-										<tr class="border-b border-border-subtle">
-											<td class="py-2 pr-3 text-tertiary">{tx.transaction_date}</td>
-											<td class="py-2 pr-3">
-												<span
-													class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {tx.transaction_type ===
-													'buy'
-														? 'bg-accent-muted text-accent-text'
-														: 'bg-warning-bg text-warning'}"
-												>
-													{tx.transaction_type === 'buy' ? 'Nákup' : 'Prodej'}
-												</span>
-											</td>
-											<td class="py-2 pr-3 text-primary">
-												<span class="text-xs uppercase text-tertiary"
-													>{assetTypeLabels[tx.asset_type] ?? tx.asset_type}</span
-												>
-												{tx.asset_name}
-											</td>
-											<td class="py-2 pr-3 font-mono text-xs text-tertiary">{tx.isin || '-'}</td>
-											<td class="py-2 pr-3 text-right tabular-nums">{tx.quantity}</td>
-											<td class="py-2 pr-3 text-right tabular-nums"
-												>{formatAmount(tx.total_amount)}</td
-											>
-											<td class="py-2 pr-3 text-right tabular-nums text-tertiary"
-												>{formatAmount(tx.fees)}</td
-											>
-											<td class="py-2 pr-3 text-right tabular-nums"
-												>{formatAmount(tx.cost_basis)}</td
-											>
-											<td
-												class="py-2 pr-3 text-right tabular-nums {tx.computed_gain >= 0
-													? 'text-success'
-													: 'text-danger'}"
-											>
-												{#if tx.transaction_type === 'sell'}
-													{formatAmount(tx.computed_gain)}
-												{:else}
-													<span class="text-tertiary">-</span>
-												{/if}
-											</td>
-											<td class="py-2 pr-3">
-												{#if tx.time_test_exempt}
-													<span
-														class="inline-flex rounded-full bg-success-bg px-2 py-0.5 text-xs font-medium text-success"
-														>Osv.</span
-													>
-												{:else if tx.transaction_type === 'sell'}
-													<span
-														class="inline-flex rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger"
-														>Ne</span
-													>
-												{:else}
-													<span class="text-tertiary">-</span>
-												{/if}
-											</td>
-											<td class="py-2 text-right">
-												<div class="flex justify-end gap-1">
-													<Button variant="ghost" size="sm" onclick={() => editTransaction(tx)}
-														>Upravit</Button
-													>
-													<Button
-														variant="danger"
-														size="sm"
-														onclick={() => deleteTransaction(tx.id)}
-														disabled={saving}>Smazat</Button
-													>
-												</div>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<p class="mt-4 text-sm text-tertiary">
-							Žádné obchody s cennými papíry. Přidejte ručně nebo nahrajte dokument k extrakci.
-						</p>
-					{/if}
-
-					{#if showTransactionForm}
-						<div class="mt-4 rounded-lg border border-border-subtle bg-elevated p-4">
-							<h3 class="text-sm font-medium text-primary">
-								{editingTransactionId ? 'Upravit obchod' : 'Přidat obchod'}
-							</h3>
-							<div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
-								<div>
-									<span class="text-xs text-tertiary">Typ aktiva</span>
-									<Select
-										value={txAssetType}
-										onchange={(e: Event) => {
-											txAssetType = (e.currentTarget as HTMLSelectElement).value;
-										}}
-									>
-										{#each Object.entries(assetTypeLabels) as [key, label]}
-											<option value={key}>{label}</option>
-										{/each}
-									</Select>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Název</span>
-									<Input
-										value={txAssetName}
-										oninput={(e: Event) => {
-											txAssetName = (e.currentTarget as HTMLInputElement).value;
-										}}
-										placeholder="Apple Inc."
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">ISIN</span>
-									<Input
-										value={txIsin}
-										oninput={(e: Event) => {
-											txIsin = (e.currentTarget as HTMLInputElement).value;
-										}}
-										placeholder="US0378331005"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Typ obchodu</span>
-									<Select
-										value={txType}
-										onchange={(e: Event) => {
-											txType = (e.currentTarget as HTMLSelectElement).value;
-										}}
-									>
-										<option value="buy">Nákup</option>
-										<option value="sell">Prodej</option>
-									</Select>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Datum</span>
-									<Input
-										type="date"
-										value={txDate}
-										oninput={(e: Event) => {
-											txDate = (e.currentTarget as HTMLInputElement).value;
-										}}
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Počet</span>
-									<Input
-										type="number"
-										value={txQuantity}
-										oninput={(e: Event) => {
-											txQuantity = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.0001"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Cena za kus</span>
-									<Input
-										type="number"
-										value={txUnitPrice}
-										oninput={(e: Event) => {
-											txUnitPrice = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.01"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Celková částka</span>
-									<Input
-										type="number"
-										value={txTotalAmount}
-										oninput={(e: Event) => {
-											txTotalAmount = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.01"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Poplatky</span>
-									<Input
-										type="number"
-										value={txFees}
-										oninput={(e: Event) => {
-											txFees = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.01"
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Měna</span>
-									<Input
-										value={txCurrency}
-										oninput={(e: Event) => {
-											txCurrency = (e.currentTarget as HTMLInputElement).value;
-										}}
-										placeholder="CZK"
-										maxlength={3}
-									/>
-								</div>
-								<div>
-									<span class="text-xs text-tertiary">Kurz ČNB <HelpTip topic="kurz-cnb" /></span>
-									<Input
-										type="number"
-										value={txExchangeRate}
-										oninput={(e: Event) => {
-											txExchangeRate = Number((e.currentTarget as HTMLInputElement).value);
-										}}
-										step="0.001"
-									/>
-								</div>
-							</div>
-							<div class="mt-3 flex gap-2">
-								<Button variant="primary" size="sm" onclick={saveTransaction} disabled={saving}
-									>Uložit</Button
-								>
-								<Button variant="ghost" size="sm" onclick={resetTransactionForm}>Zrušit</Button>
-							</div>
-						</div>
-					{/if}
-				</Card>
+				<InvestmentSecurityTransactionsTab
+					{transactions}
+					{saving}
+					{showTransactionForm}
+					{editingTransactionId}
+					{txAssetType}
+					{txAssetName}
+					{txIsin}
+					{txType}
+					{txDate}
+					{txQuantity}
+					{txUnitPrice}
+					{txTotalAmount}
+					{txFees}
+					{txCurrency}
+					{txExchangeRate}
+					onShowForm={() => {
+						resetTransactionForm();
+						showTransactionForm = true;
+					}}
+					onRecalculateFifo={recalculateFifo}
+					onEdit={editTransaction}
+					onSave={saveTransaction}
+					onDelete={deleteTransaction}
+					onCancel={resetTransactionForm}
+					onAssetTypeChange={(v) => (txAssetType = v)}
+					onAssetNameChange={(v) => (txAssetName = v)}
+					onIsinChange={(v) => (txIsin = v)}
+					onTypeChange={(v) => (txType = v)}
+					onDateChange={(v) => (txDate = v)}
+					onQuantityChange={(v) => (txQuantity = v)}
+					onUnitPriceChange={(v) => (txUnitPrice = v)}
+					onTotalAmountChange={(v) => (txTotalAmount = v)}
+					onFeesChange={(v) => (txFees = v)}
+					onCurrencyChange={(v) => (txCurrency = v)}
+					onExchangeRateChange={(v) => (txExchangeRate = v)}
+				/>
 			{/if}
 
-			<!-- Summary -->
 			{#if summary}
-				<Card>
-					<h2 class="text-base font-semibold text-primary">
-						Souhrn investičních příjmů {selectedYear}
-					</h2>
-					<div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
-						<!-- §8 Capital income -->
-						<div>
-							<h3 class="text-sm font-medium text-tertiary">Kapitálové příjmy (§8)</h3>
-							<div class="mt-2 space-y-1 text-sm">
-								<div class="flex justify-between">
-									<span class="text-tertiary">Hrubé příjmy</span>
-									<strong class="text-primary">{formatAmount(summary.capital_income_gross)}</strong>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-tertiary">Sražená daň</span>
-									<strong class="text-primary">{formatAmount(summary.capital_income_tax)}</strong>
-								</div>
-								<div class="flex justify-between border-t border-border-subtle pt-1">
-									<span class="text-tertiary">Čisté příjmy</span>
-									<strong class="text-primary">{formatAmount(summary.capital_income_net)}</strong>
-								</div>
-							</div>
-						</div>
-
-						<!-- §10 Other income -->
-						<div>
-							<h3 class="text-sm font-medium text-tertiary">Ostatní příjmy - CP (§10)</h3>
-							<div class="mt-2 space-y-1 text-sm">
-								<div class="flex justify-between">
-									<span class="text-tertiary">Hrubé příjmy</span>
-									<strong class="text-primary">{formatAmount(summary.other_income_gross)}</strong>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-tertiary">Výdaje (FIFO)</span>
-									<strong class="text-primary">{formatAmount(summary.other_income_expenses)}</strong
-									>
-								</div>
-								<div class="flex justify-between">
-									<span class="text-tertiary">Osvobozeno (časový test)</span>
-									<strong class="text-primary">{formatAmount(summary.other_income_exempt)}</strong>
-								</div>
-								<div class="flex justify-between border-t border-border-subtle pt-1">
-									<span class="text-tertiary">Zdanitelný příjem</span>
-									<strong class="text-primary">{formatAmount(summary.other_income_net)}</strong>
-								</div>
-							</div>
-						</div>
-					</div>
-				</Card>
+				<InvestmentSummaryCard {summary} {selectedYear} />
 			{/if}
 		</div>
 	{/if}

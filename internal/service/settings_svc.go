@@ -34,7 +34,25 @@ const (
 	SettingHealthInsCode    = "health_insurance_code"
 	SettingFinancniUradCode = "financni_urad_code"
 	SettingCSSZCode         = "cssz_code"
+
+	// PDF template settings.
+	SettingPDFLogoPath        = "pdf.logo_path"
+	SettingPDFAccentColor     = "pdf.accent_color"
+	SettingPDFFooterText      = "pdf.footer_text"
+	SettingPDFShowQR          = "pdf.show_qr"
+	SettingPDFShowBankDetails = "pdf.show_bank_details"
+	SettingPDFFontSize        = "pdf.font_size"
 )
+
+// PDFSettings holds PDF template customization options.
+type PDFSettings struct {
+	LogoPath        string `json:"logo_path"`
+	AccentColor     string `json:"accent_color"`
+	FooterText      string `json:"footer_text"`
+	ShowQR          bool   `json:"show_qr"`
+	ShowBankDetails bool   `json:"show_bank_details"`
+	FontSize        string `json:"font_size"`
+}
 
 // SettingsService provides business logic for application settings.
 type SettingsService struct {
@@ -110,6 +128,72 @@ func (s *SettingsService) SetBulk(ctx context.Context, settings map[string]strin
 	return nil
 }
 
+// GetPDFSettings retrieves the PDF template settings with defaults.
+func (s *SettingsService) GetPDFSettings(ctx context.Context) (PDFSettings, error) {
+	all, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return PDFSettings{}, fmt.Errorf("fetching PDF settings: %w", err)
+	}
+
+	ps := PDFSettings{
+		LogoPath:    all[SettingPDFLogoPath],
+		AccentColor: all[SettingPDFAccentColor],
+		FooterText:  all[SettingPDFFooterText],
+		FontSize:    all[SettingPDFFontSize],
+	}
+
+	// Apply defaults.
+	if ps.AccentColor == "" {
+		ps.AccentColor = "#2563eb"
+	}
+	if ps.FontSize == "" {
+		ps.FontSize = "normal"
+	}
+
+	// ShowQR defaults to true.
+	if v, ok := all[SettingPDFShowQR]; ok {
+		ps.ShowQR = v == "true"
+	} else {
+		ps.ShowQR = true
+	}
+
+	// ShowBankDetails defaults to true.
+	if v, ok := all[SettingPDFShowBankDetails]; ok {
+		ps.ShowBankDetails = v == "true"
+	} else {
+		ps.ShowBankDetails = true
+	}
+
+	return ps, nil
+}
+
+// SavePDFSettings persists PDF template settings.
+func (s *SettingsService) SavePDFSettings(ctx context.Context, ps PDFSettings) error {
+	settings := map[string]string{
+		SettingPDFLogoPath:        ps.LogoPath,
+		SettingPDFAccentColor:     ps.AccentColor,
+		SettingPDFFooterText:      ps.FooterText,
+		SettingPDFShowQR:          fmt.Sprintf("%t", ps.ShowQR),
+		SettingPDFShowBankDetails: fmt.Sprintf("%t", ps.ShowBankDetails),
+		SettingPDFFontSize:        ps.FontSize,
+	}
+
+	for key := range settings {
+		if err := validateKey(key); err != nil {
+			return err
+		}
+	}
+
+	if err := s.repo.SetBulk(ctx, settings); err != nil {
+		return fmt.Errorf("saving PDF settings: %w", err)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "settings", 0, "set_pdf_settings", nil, settings)
+	}
+	return nil
+}
+
 // knownKeys contains all valid setting keys.
 var knownKeys = map[string]bool{
 	SettingCompanyName:      true,
@@ -132,6 +216,13 @@ var knownKeys = map[string]bool{
 	SettingHealthInsCode:    true,
 	SettingFinancniUradCode: true,
 	SettingCSSZCode:         true,
+
+	SettingPDFLogoPath:        true,
+	SettingPDFAccentColor:     true,
+	SettingPDFFooterText:      true,
+	SettingPDFShowQR:          true,
+	SettingPDFShowBankDetails: true,
+	SettingPDFFontSize:        true,
 }
 
 // validateKey checks that a setting key is valid and known.

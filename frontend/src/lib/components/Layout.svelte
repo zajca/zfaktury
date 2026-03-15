@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -600,4 +601,6 @@
 			{@render children()}
 		</main>
 	</div>
+
+	<ToastContainer />
 </div>

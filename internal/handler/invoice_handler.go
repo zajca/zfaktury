@@ -393,7 +393,14 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pdfBytes, err := h.pdfGen.Generate(r.Context(), invoice, supplier)
+	pdfSettings, err := h.loadPDFSettings(r)
+	if err != nil {
+		slog.Error("failed to load PDF settings", "error", err)
+		respondError(w, http.StatusInternalServerError, "failed to load PDF settings")
+		return
+	}
+
+	pdfBytes, err := h.pdfGen.Generate(r.Context(), invoice, supplier, pdfSettings)
 	if err != nil {
 		slog.Error("failed to generate PDF", "error", err, "id", id)
 		respondError(w, http.StatusInternalServerError, "failed to generate PDF")
@@ -476,6 +483,22 @@ func (h *InvoiceHandler) loadPDFSupplierInfo(r *http.Request) (pdf.SupplierInfo,
 		BankCode:      settings[service.SettingBankCode],
 		IBAN:          settings[service.SettingIBAN],
 		SWIFT:         settings[service.SettingSWIFT],
+	}, nil
+}
+
+// loadPDFSettings reads PDF template settings from the settings service.
+func (h *InvoiceHandler) loadPDFSettings(r *http.Request) (pdf.PDFSettings, error) {
+	svcSettings, err := h.settingsSvc.GetPDFSettings(r.Context())
+	if err != nil {
+		return pdf.PDFSettings{}, fmt.Errorf("loading PDF settings: %w", err)
+	}
+	return pdf.PDFSettings{
+		LogoPath:        svcSettings.LogoPath,
+		AccentColor:     svcSettings.AccentColor,
+		FooterText:      svcSettings.FooterText,
+		ShowQR:          svcSettings.ShowQR,
+		ShowBankDetails: svcSettings.ShowBankDetails,
+		FontSize:        svcSettings.FontSize,
 	}, nil
 }
 

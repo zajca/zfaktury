@@ -12,27 +12,26 @@
 		type InvoiceStatusChange,
 		type InvoiceDocument
 	} from '$lib/api/client';
-	import { formatCZK, toHalere, fromHalere } from '$lib/utils/money';
-	import { formatDate, toISODate, addDays } from '$lib/utils/date';
-	import DateInput from '$lib/components/DateInput.svelte';
-	import { statusLabels, statusVariant, invoiceTypeLabels } from '$lib/utils/invoice';
-	import InvoiceItemsEditor, { type FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
+	import { toHalere, fromHalere } from '$lib/utils/money';
+	import { formatDate, toISODate } from '$lib/utils/date';
+	import type { FormItem } from '$lib/components/InvoiceItemsEditor.svelte';
 	import StatusTimeline from '$lib/components/StatusTimeline.svelte';
 	import CreditNoteDialog from '$lib/components/CreditNoteDialog.svelte';
 	import SendEmailDialog from '$lib/components/SendEmailDialog.svelte';
 	import ReminderCard from '$lib/components/ReminderCard.svelte';
-	import Badge from '$lib/ui/Badge.svelte';
-	import Button from '$lib/ui/Button.svelte';
-	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
-	import HelpTip from '$lib/ui/HelpTip.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import ErrorAlert from '$lib/ui/ErrorAlert.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import FormActions from '$lib/ui/FormActions.svelte';
-	import Textarea from '$lib/ui/Textarea.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import AuditLogPanel from '$lib/components/AuditLogPanel.svelte';
+	import { invoiceTypeLabels } from '$lib/utils/invoice';
+	import InvoiceHeaderActions from '$lib/components/invoice/InvoiceHeaderActions.svelte';
+	import InvoiceEditForm from '$lib/components/invoice/InvoiceEditForm.svelte';
+	import InvoiceDetailsCard from '$lib/components/invoice/InvoiceDetailsCard.svelte';
+	import InvoiceItemsDisplay from '$lib/components/invoice/InvoiceItemsDisplay.svelte';
+	import InvoicePaymentInfoCard from '$lib/components/invoice/InvoicePaymentInfoCard.svelte';
 
 	let invoice = $state<Invoice | null>(null);
 	let contacts = $state<Contact[]>([]);
@@ -64,6 +63,7 @@
 	});
 
 	let items = $state<FormItem[]>([]);
+	let dueDateOffset = $state(14);
 
 	let mounted = false;
 	onMount(() => {
@@ -146,21 +146,6 @@
 	function cancelEditing() {
 		editing = false;
 		populateForm();
-	}
-
-	let dueDateOffset = $state(14);
-
-	function handleIssueDateChange(newValue: string) {
-		form.issue_date = newValue;
-		if (newValue) form.due_date = addDays(newValue, dueDateOffset);
-	}
-
-	function handleDueDateChange(newValue: string) {
-		form.due_date = newValue;
-		if (form.issue_date && newValue) {
-			const diff = (new Date(newValue).getTime() - new Date(form.issue_date).getTime()) / 86400000;
-			dueDateOffset = Math.round(diff);
-		}
 	}
 
 	async function handleSave() {
@@ -268,480 +253,41 @@
 	{#if loading}
 		<LoadingSpinner class="mt-8" />
 	{:else if invoice}
-		<!-- Header -->
-		<div class="mt-4">
-			<div class="flex items-center justify-end gap-3">
-				{#if invoice.type !== 'regular'}
-					<Badge variant="default">
-						{invoiceTypeLabels[invoice.type] ?? invoice.type}
-					</Badge>
-				{/if}
-				<Badge variant={statusVariant[invoice.status] ?? 'default'}>
-					{statusLabels[invoice.status] ?? invoice.status}
-				</Badge>
-				{#if invoice.customer}
-					<span class="text-sm text-secondary">{invoice.customer.name}</span>
-				{/if}
-			</div>
-
-			{#if invoice.related_invoice_id}
-				<div class="mt-2 text-sm text-secondary">
-					{#if invoice.type === 'credit_note'}
-						Dobropis k faktuře:
-					{:else if invoice.type === 'proforma' && invoice.relation_type === 'settlement'}
-						Vyrovnávací faktura:
-					{:else if invoice.relation_type === 'settlement'}
-						Zálohová faktura:
-					{:else}
-						Související faktura:
-					{/if}
-					<a
-						href="/invoices/{invoice.related_invoice_id}"
-						class="text-accent-text hover:text-accent font-medium"
-					>
-						#{invoice.related_invoice_id}
-					</a>
-				</div>
-			{/if}
-			{#if invoice.related_invoices?.length}
-				{#each invoice.related_invoices as rel (rel.id)}
-					<div class="mt-1 text-sm text-secondary">
-						{#if rel.type === 'credit_note'}
-							Dobropis:
-						{:else if rel.relation_type === 'settlement'}
-							Vyrovnávací faktura:
-						{:else}
-							Související faktura:
-						{/if}
-						<a href="/invoices/{rel.id}" class="text-accent-text hover:text-accent font-medium">
-							{rel.invoice_number}
-						</a>
-					</div>
-				{/each}
-			{/if}
-
-			{#if !editing}
-				<div class="mt-3 flex flex-wrap gap-2">
-					{#if invoice.status === 'draft'}
-						<Button variant="secondary" onclick={startEditing}>Upravit</Button>
-						<Button
-							variant="primary"
-							onclick={handleSend}
-							title="Změní stav faktury na 'Odeslaná'. Pro odeslání emailem použijte 'Odeslat emailem'"
-						>
-							Odeslat
-						</Button>
-					{/if}
-					{#if invoice.status === 'sent' || invoice.status === 'overdue'}
-						<Button
-							variant="success"
-							onclick={handleMarkPaid}
-							title="Označí fakturu jako uhrazenou k dnešnímu datu"
-						>
-							Uhrazená
-						</Button>
-					{/if}
-					{#if invoice.type === 'proforma' && invoice.status === 'paid' && !invoice.related_invoice_id}
-						<Button
-							variant="primary"
-							onclick={handleSettle}
-							disabled={settling}
-							title="Vytvoří řádnou fakturu s odečtenou zálohou"
-						>
-							{settling ? 'Vyrovnávám...' : 'Vyrovnat zálohu'}
-							<HelpTip topic="vyrovnani-zalohy" />
-						</Button>
-					{/if}
-					<Button variant="secondary" href={invoicesApi.getPdfUrl(invoiceId)}>
-						<svg
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-							/>
-						</svg>
-						Stáhnout PDF
-					</Button>
-					<Button
-						variant="secondary"
-						onclick={() => {
-							showSendEmailDialog = true;
-						}}
-					>
-						Odeslat emailem
-					</Button>
-					<Button
-						variant="secondary"
-						href={invoicesApi.getIsdocUrl(invoiceId)}
-						title="Stáhne fakturu ve formátu ISDOC (český standard elektronické fakturace)"
-					>
-						Export ISDOC <HelpTip topic="isdoc-export" />
-					</Button>
-					<Button
-						variant="secondary"
-						onclick={handleDuplicate}
-						title="Vytvoří novou fakturu jako kopii -- zkopíruje zákazníka, položky a nastavení, přiřadí nové číslo"
-					>
-						Duplikovat
-					</Button>
-					{#if invoice.type === 'regular' && (invoice.status === 'sent' || invoice.status === 'paid')}
-						<Button
-							variant="secondary"
-							onclick={() => {
-								showCreditNoteDialog = true;
-							}}
-							title="Vytvoří opravný daňový doklad, který stornuje tuto fakturu"
-						>
-							Vytvořit dobropis <HelpTip topic="dobropis" />
-						</Button>
-					{/if}
-					{#if invoice.status !== 'paid'}
-						<Button variant="danger" onclick={handleDelete}>Smazat</Button>
-					{/if}
-				</div>
-			{/if}
-		</div>
+		<InvoiceHeaderActions
+			{invoice}
+			{invoiceId}
+			{editing}
+			{settling}
+			onstartedit={startEditing}
+			onsend={handleSend}
+			onmarkpaid={handleMarkPaid}
+			onsettle={handleSettle}
+			onduplicate={handleDuplicate}
+			ondelete={handleDelete}
+			onshowcreditnote={() => {
+				showCreditNoteDialog = true;
+			}}
+			onshowsendemail={() => {
+				showSendEmailDialog = true;
+			}}
+		/>
 
 		{#if editing}
-			<!-- Edit mode -->
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleSave();
-				}}
-				class="mt-6 space-y-6"
-			>
-				<!-- Customer -->
-				<Card>
-					<h2 class="text-base font-semibold text-primary">Zákazník</h2>
-					<div class="mt-4">
-						<select
-							bind:value={form.customer_id}
-							class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-						>
-							<option value={0}>-- Vyberte --</option>
-							{#each contacts as contact (contact.id)}
-								<option value={contact.id}
-									>{contact.name} {contact.ico ? `(${contact.ico})` : ''}</option
-								>
-							{/each}
-						</select>
-					</div>
-				</Card>
-
-				<!-- Dates -->
-				<Card>
-					<h2 class="text-base font-semibold text-primary">Údaje faktury</h2>
-					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div>
-							<label for="edit-issue" class="block text-sm font-medium text-secondary"
-								>Datum vystavení</label
-							>
-							<DateInput
-								id="edit-issue"
-								bind:value={form.issue_date}
-								required
-								onchange={handleIssueDateChange}
-							/>
-						</div>
-						<div>
-							<label for="edit-due" class="block text-sm font-medium text-secondary"
-								>Datum splatnosti <HelpTip topic="datum-splatnosti" /></label
-							>
-							<DateInput
-								id="edit-due"
-								bind:value={form.due_date}
-								required
-								onchange={handleDueDateChange}
-								presets={[
-									{ label: '+7 dní', days: 7 },
-									{ label: '+14 dní', days: 14 },
-									{ label: '+30 dní', days: 30 },
-									{ label: '+60 dní', days: 60 }
-								]}
-								relativeToValue={form.issue_date}
-							/>
-						</div>
-						<div>
-							<label for="edit-delivery" class="block text-sm font-medium text-secondary"
-								>DUZP <HelpTip topic="duzp" /></label
-							>
-							<DateInput id="edit-delivery" bind:value={form.delivery_date} />
-						</div>
-					</div>
-					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="edit-vs" class="block text-sm font-medium text-secondary"
-								>Variabilní symbol <HelpTip topic="variabilni-symbol" /></label
-							>
-							<input
-								id="edit-vs"
-								type="text"
-								bind:value={form.variable_symbol}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="edit-payment" class="block text-sm font-medium text-secondary"
-								>Způsob platby <HelpTip topic="zpusob-platby" /></label
-							>
-							<select
-								id="edit-payment"
-								bind:value={form.payment_method}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							>
-								<option value="bank_transfer">Bankovní převod</option>
-								<option value="cash">Hotovost</option>
-								<option value="card">Karta</option>
-							</select>
-						</div>
-					</div>
-				</Card>
-
-				<!-- Items -->
-				<InvoiceItemsEditor bind:items idPrefix="edit-" />
-
-				<!-- Notes -->
-				<Card>
-					<h2 class="text-base font-semibold text-primary">Poznámky</h2>
-					<div class="mt-4 space-y-4">
-						<div>
-							<label for="edit-notes" class="block text-sm font-medium text-secondary"
-								>Poznámka na faktuře <HelpTip topic="poznamka-faktura" /></label
-							>
-							<Textarea id="edit-notes" bind:value={form.notes} rows={2} class="mt-1" />
-						</div>
-						<div>
-							<label for="edit-internal" class="block text-sm font-medium text-secondary"
-								>Interní poznámka <HelpTip topic="poznamka-interni" /></label
-							>
-							<Textarea id="edit-internal" bind:value={form.internal_notes} rows={2} class="mt-1" />
-						</div>
-					</div>
-				</Card>
-
-				<!-- Actions -->
-				<FormActions {saving} saveLabel="Uložit změny" oncancel={cancelEditing} />
-			</form>
+			<InvoiceEditForm
+				bind:form
+				bind:items
+				{contacts}
+				{saving}
+				bind:dueDateOffset
+				onsave={handleSave}
+				oncancel={cancelEditing}
+			/>
 		{:else}
 			<!-- View mode -->
 			<div class="mt-6 space-y-6">
-				<!-- Invoice details -->
-				<Card>
-					<h2 class="text-base font-semibold text-primary">Údaje faktury</h2>
-					<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Datum vystavení</dt>
-							<dd class="mt-1 text-sm text-primary">{formatDate(invoice.issue_date)}</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Datum splatnosti</dt>
-							<dd class="mt-1 text-sm text-primary">{formatDate(invoice.due_date)}</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">DUZP</dt>
-							<dd class="mt-1 text-sm text-primary">{formatDate(invoice.delivery_date)}</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Variabilní symbol</dt>
-							<dd class="mt-1 text-sm text-primary">{invoice.variable_symbol || '-'}</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Konstantní symbol</dt>
-							<dd class="mt-1 text-sm text-primary">{invoice.constant_symbol || '-'}</dd>
-						</div>
-						<div>
-							<dt class="text-sm font-medium text-tertiary">Způsob platby</dt>
-							<dd class="mt-1 text-sm text-primary">
-								{#if invoice.payment_method === 'bank_transfer'}Bankovní převod
-								{:else if invoice.payment_method === 'cash'}Hotovost
-								{:else if invoice.payment_method === 'card'}Karta
-								{:else}{invoice.payment_method}
-								{/if}
-							</dd>
-						</div>
-					</dl>
-				</Card>
-
-				<!-- Customer -->
-				{#if invoice.customer}
-					<Card>
-						<h2 class="text-base font-semibold text-primary">Zákazník</h2>
-						<dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-							<div>
-								<dt class="text-sm font-medium text-tertiary">Název</dt>
-								<dd class="mt-1 text-sm text-primary">
-									<a
-										href="/contacts/{invoice.customer.id}"
-										class="text-accent-text hover:text-accent">{invoice.customer.name}</a
-									>
-								</dd>
-							</div>
-							{#if invoice.customer.ico}
-								<div>
-									<dt class="text-sm font-medium text-tertiary">IČO</dt>
-									<dd class="mt-1 text-sm text-primary">{invoice.customer.ico}</dd>
-								</div>
-							{/if}
-							{#if invoice.customer.dic}
-								<div>
-									<dt class="text-sm font-medium text-tertiary">DIČ</dt>
-									<dd class="mt-1 text-sm text-primary">{invoice.customer.dic}</dd>
-								</div>
-							{/if}
-						</dl>
-					</Card>
-				{/if}
-
-				<!-- Items -->
-				<Card>
-					<h2 class="text-base font-semibold text-primary">Položky</h2>
-					<div class="mt-4 overflow-x-auto">
-						<table class="w-full text-left text-sm">
-							<thead class="border-b border-border">
-								<tr>
-									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted">Popis</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
-										>Množství</th
-									>
-									<th class="pb-2 text-xs font-medium uppercase tracking-wider text-muted"
-										>Jednotka</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
-										>Cena/ks</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
-										>DPH %</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
-										>DPH</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-medium uppercase tracking-wider text-muted"
-										>Celkem</th
-									>
-								</tr>
-							</thead>
-							<tbody class="divide-y divide-border-subtle">
-								{#each invoice.items ?? [] as item (item.id)}
-									<tr>
-										<td class="py-2.5 text-primary">{item.description}</td>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
-											>{fromHalere(item.quantity)}</td
-										>
-										<td class="py-2.5 text-secondary">{item.unit}</td>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
-											>{formatCZK(item.unit_price)}</td
-										>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
-											>{item.vat_rate_percent}%</td
-										>
-										<td class="py-2.5 text-right font-mono tabular-nums text-secondary"
-											>{formatCZK(item.vat_amount)}</td
-										>
-										<td class="py-2.5 text-right font-mono tabular-nums font-medium text-primary"
-											>{formatCZK(item.total_amount)}</td
-										>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-
-					<div class="mt-4 border-t border-border pt-4">
-						<div class="flex flex-col items-end gap-1 text-sm">
-							<div class="flex gap-8">
-								<span class="text-secondary">Základ:</span>
-								<span class="font-medium font-mono tabular-nums text-primary"
-									>{formatCZK(invoice.subtotal_amount)}</span
-								>
-							</div>
-							<div class="flex gap-8">
-								<span class="text-secondary">DPH:</span>
-								<span class="font-medium font-mono tabular-nums text-primary"
-									>{formatCZK(invoice.vat_amount)}</span
-								>
-							</div>
-							<div class="flex gap-8 border-t border-border pt-1 text-base">
-								<span class="font-semibold text-primary">Celkem:</span>
-								<span class="font-bold font-mono tabular-nums text-primary"
-									>{formatCZK(invoice.total_amount)}</span
-								>
-							</div>
-							{#if invoice.paid_amount > 0}
-								<div class="flex gap-8 text-success">
-									<span>Uhrazeno:</span>
-									<span class="font-medium font-mono tabular-nums"
-										>{formatCZK(invoice.paid_amount)}</span
-									>
-								</div>
-							{/if}
-						</div>
-					</div>
-				</Card>
-
-				<!-- Payment info with QR code -->
-				{#if invoice.bank_account || invoice.iban}
-					<Card>
-						<h2 class="text-base font-semibold text-primary">Platební údaje</h2>
-						<div class="mt-4 flex flex-col gap-6 sm:flex-row">
-							<dl class="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
-								{#if invoice.bank_account}
-									<div>
-										<dt class="text-sm font-medium text-tertiary">Číslo účtu</dt>
-										<dd class="mt-1 text-sm text-primary">
-											{invoice.bank_account}{invoice.bank_code ? `/${invoice.bank_code}` : ''}
-										</dd>
-									</div>
-								{/if}
-								{#if invoice.iban}
-									<div>
-										<dt class="text-sm font-medium text-tertiary">IBAN</dt>
-										<dd class="mt-1 text-sm text-primary">{invoice.iban}</dd>
-									</div>
-								{/if}
-								{#if invoice.variable_symbol}
-									<div>
-										<dt class="text-sm font-medium text-tertiary">Variabilní symbol</dt>
-										<dd class="mt-1 text-sm text-primary">{invoice.variable_symbol}</dd>
-									</div>
-								{/if}
-							</dl>
-							{#if invoice.iban && invoice.status !== 'paid'}
-								<div class="flex flex-col items-center gap-2">
-									<span class="text-sm font-medium text-tertiary">QR platba</span>
-									{#if qrError}
-										<div
-											class="flex h-32 w-32 items-center justify-center rounded border border-border bg-elevated text-xs text-muted"
-										>
-											QR kód není dostupný
-										</div>
-									{:else}
-										<img
-											src={invoicesApi.getQrUrl(invoiceId)}
-											alt="QR kód pro platbu"
-											class="h-32 w-32 rounded border border-border"
-											onerror={() => {
-												qrError = true;
-											}}
-										/>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					</Card>
-				{/if}
+				<InvoiceDetailsCard {invoice} />
+				<InvoiceItemsDisplay {invoice} />
+				<InvoicePaymentInfoCard {invoice} {invoiceId} bind:qrError />
 
 				<!-- Notes -->
 				{#if invoice.notes || invoice.internal_notes}

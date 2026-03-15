@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -62,7 +62,7 @@ type recurringExpenseRequest struct {
 // toDomain converts a recurringExpenseRequest to a domain.RecurringExpense.
 func (r *recurringExpenseRequest) toDomain() (*domain.RecurringExpense, error) {
 	if r.NextIssueDate == "" {
-		return nil, errors.New("next_issue_date is required")
+		return nil, fmt.Errorf("next_issue_date is required: %w", domain.ErrInvalidInput)
 	}
 
 	re := &domain.RecurringExpense{
@@ -85,7 +85,7 @@ func (r *recurringExpenseRequest) toDomain() (*domain.RecurringExpense, error) {
 
 	nextIssueDate, err := time.Parse("2006-01-02", r.NextIssueDate)
 	if err != nil {
-		return nil, errors.New("invalid next_issue_date format, expected YYYY-MM-DD")
+		return nil, fmt.Errorf("invalid next_issue_date format, expected YYYY-MM-DD: %w", domain.ErrInvalidInput)
 	}
 	re.NextIssueDate = nextIssueDate
 

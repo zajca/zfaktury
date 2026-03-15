@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"mime"
@@ -38,24 +37,6 @@ func (h *VATReturnHandler) Routes() chi.Router {
 	return r
 }
 
-// mapVATReturnError maps domain errors to HTTP status codes.
-func mapVATReturnError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "vat return not found")
-	case errors.Is(err, domain.ErrFilingAlreadyExists):
-		respondError(w, http.StatusConflict, "vat return already exists for this period")
-	case errors.Is(err, domain.ErrFilingAlreadyFiled):
-		respondError(w, http.StatusConflict, "vat return already filed")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, domain.ErrMissingSetting):
-		respondError(w, http.StatusUnprocessableEntity, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // Create handles POST /api/v1/vat-returns.
 func (h *VATReturnHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req vatReturnRequest
@@ -75,7 +56,7 @@ func (h *VATReturnHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.Create(r.Context(), vr); err != nil {
 		slog.Error("failed to create vat return", "error", err)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -120,7 +101,7 @@ func (h *VATReturnHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	vr, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get vat return", "error", err, "id", id)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -137,7 +118,7 @@ func (h *VATReturnHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete vat return", "error", err, "id", id)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -155,7 +136,7 @@ func (h *VATReturnHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
 	vr, err := h.svc.Recalculate(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to recalculate vat return", "error", err, "id", id)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -173,7 +154,7 @@ func (h *VATReturnHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 	vr, err := h.svc.GenerateXML(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to generate vat return XML", "error", err, "id", id)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -191,7 +172,7 @@ func (h *VATReturnHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 	xmlData, err := h.svc.GetXMLData(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get vat return XML", "error", err, "id", id)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -219,7 +200,7 @@ func (h *VATReturnHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
 	vr, err := h.svc.MarkFiled(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to mark vat return as filed", "error", err, "id", id)
-		mapVATReturnError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

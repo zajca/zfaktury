@@ -74,6 +74,10 @@ var serveCmd = &cobra.Command{
 		cfg.Server.Port = servePort
 		cfg.Server.Dev = serveDev
 
+		if err := cfg.Validate(); err != nil {
+			return err
+		}
+
 		// Acquire instance lock to prevent concurrent access.
 		lockPath := filepath.Join(cfg.DataDir, ".zfaktury.lock")
 		lock, err := flock.Acquire(lockPath)

@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -34,6 +34,8 @@ func parseID(r *http.Request) (int64, error) {
 	return strconv.ParseInt(idStr, 10, 64)
 }
 
+const maxPaginationLimit = 500
+
 // parsePagination extracts limit and offset from query parameters with defaults.
 func parsePagination(r *http.Request) (limit, offset int) {
 	limit = 20
@@ -47,6 +49,15 @@ func parsePagination(r *http.Request) (limit, offset int) {
 		if parsed, err := strconv.Atoi(v); err == nil && parsed >= 0 {
 			offset = parsed
 		}
+	}
+	if limit > maxPaginationLimit {
+		limit = maxPaginationLimit
+	}
+	if limit < 1 {
+		limit = 1
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	return limit, offset
 }
@@ -261,10 +272,10 @@ type invoiceRequest struct {
 // toDomain converts an invoiceRequest to a domain.Invoice.
 func (r *invoiceRequest) toDomain() (*domain.Invoice, error) {
 	if r.IssueDate == "" {
-		return nil, errors.New("issue_date is required")
+		return nil, fmt.Errorf("issue_date is required: %w", domain.ErrInvalidInput)
 	}
 	if r.DueDate == "" {
-		return nil, errors.New("due_date is required")
+		return nil, fmt.Errorf("due_date is required: %w", domain.ErrInvalidInput)
 	}
 
 	inv := &domain.Invoice{
@@ -287,13 +298,13 @@ func (r *invoiceRequest) toDomain() (*domain.Invoice, error) {
 
 	issueDate, err := time.Parse("2006-01-02", r.IssueDate)
 	if err != nil {
-		return nil, errors.New("invalid issue_date format, expected YYYY-MM-DD")
+		return nil, fmt.Errorf("invalid issue_date format, expected YYYY-MM-DD: %w", domain.ErrInvalidInput)
 	}
 	inv.IssueDate = issueDate
 
 	dueDate, err := time.Parse("2006-01-02", r.DueDate)
 	if err != nil {
-		return nil, errors.New("invalid due_date format, expected YYYY-MM-DD")
+		return nil, fmt.Errorf("invalid due_date format, expected YYYY-MM-DD: %w", domain.ErrInvalidInput)
 	}
 	inv.DueDate = dueDate
 
@@ -500,7 +511,7 @@ type expenseRequest struct {
 // toDomain converts an expenseRequest to a domain.Expense.
 func (r *expenseRequest) toDomain() (*domain.Expense, error) {
 	if r.IssueDate == "" {
-		return nil, errors.New("issue_date is required")
+		return nil, fmt.Errorf("issue_date is required: %w", domain.ErrInvalidInput)
 	}
 
 	exp := &domain.Expense{
@@ -522,7 +533,7 @@ func (r *expenseRequest) toDomain() (*domain.Expense, error) {
 
 	issueDate, err := time.Parse("2006-01-02", r.IssueDate)
 	if err != nil {
-		return nil, errors.New("invalid issue_date format, expected YYYY-MM-DD")
+		return nil, fmt.Errorf("invalid issue_date format, expected YYYY-MM-DD: %w", domain.ErrInvalidInput)
 	}
 	exp.IssueDate = issueDate
 

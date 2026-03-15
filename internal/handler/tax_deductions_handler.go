@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -130,19 +129,6 @@ func taxDeductionDocFromDomain(doc *domain.TaxDeductionDocument) taxDeductionDoc
 	}
 }
 
-// --- Error mapping ---
-
-func mapTaxDeductionError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "not found")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // --- Handler methods ---
 
 // List handles GET /{year}.
@@ -156,7 +142,7 @@ func (h *TaxDeductionsHandler) List(w http.ResponseWriter, r *http.Request) {
 	deductions, err := h.creditsSvc.ListDeductions(r.Context(), year)
 	if err != nil {
 		slog.Error("failed to list tax deductions", "error", err, "year", year)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -165,7 +151,7 @@ func (h *TaxDeductionsHandler) List(w http.ResponseWriter, r *http.Request) {
 		docs, err := h.docSvc.ListByDeductionID(r.Context(), deductions[i].ID)
 		if err != nil {
 			slog.Error("failed to list documents for deduction", "error", err, "deduction_id", deductions[i].ID)
-			mapTaxDeductionError(w, err)
+			mapDomainError(w, err)
 			return
 		}
 		results = append(results, taxDeductionFromDomain(&deductions[i], docs))
@@ -197,7 +183,7 @@ func (h *TaxDeductionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.creditsSvc.CreateDeduction(r.Context(), ded); err != nil {
 		slog.Error("failed to create tax deduction", "error", err, "year", year)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -234,7 +220,7 @@ func (h *TaxDeductionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.creditsSvc.UpdateDeduction(r.Context(), ded); err != nil {
 		slog.Error("failed to update tax deduction", "error", err, "id", id, "year", year)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -251,7 +237,7 @@ func (h *TaxDeductionsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.creditsSvc.DeleteDeduction(r.Context(), id); err != nil {
 		slog.Error("failed to delete tax deduction", "error", err, "id", id)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -287,7 +273,7 @@ func (h *TaxDeductionsHandler) UploadDocument(w http.ResponseWriter, r *http.Req
 	doc, err := h.docSvc.Upload(r.Context(), deductionID, header.Filename, contentType, file)
 	if err != nil {
 		slog.Error("failed to upload tax deduction document", "error", err, "deduction_id", deductionID)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -305,7 +291,7 @@ func (h *TaxDeductionsHandler) ListDocuments(w http.ResponseWriter, r *http.Requ
 	docs, err := h.docSvc.ListByDeductionID(r.Context(), deductionID)
 	if err != nil {
 		slog.Error("failed to list tax deduction documents", "error", err, "deduction_id", deductionID)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -327,7 +313,7 @@ func (h *TaxDeductionsHandler) DeleteDocument(w http.ResponseWriter, r *http.Req
 
 	if err := h.docSvc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete tax deduction document", "error", err, "id", id)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -345,7 +331,7 @@ func (h *TaxDeductionsHandler) DownloadDocument(w http.ResponseWriter, r *http.R
 	filePath, contentType, err := h.docSvc.GetFilePath(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get tax deduction document file path", "error", err, "id", id)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -360,7 +346,7 @@ func (h *TaxDeductionsHandler) DownloadDocument(w http.ResponseWriter, r *http.R
 	doc, err := h.docSvc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get tax deduction document metadata", "error", err, "id", id)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -387,7 +373,7 @@ func (h *TaxDeductionsHandler) ExtractDocument(w http.ResponseWriter, r *http.Re
 	result, err := h.extractSvc.ExtractAmount(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to extract amount from tax deduction document", "error", err, "id", id)
-		mapTaxDeductionError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

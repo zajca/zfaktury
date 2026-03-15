@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -33,13 +32,13 @@ func NewContactService(repo repository.ContactRepo, ares ARESClient, audit *Audi
 // Create validates and persists a new contact.
 func (s *ContactService) Create(ctx context.Context, contact *domain.Contact) error {
 	if contact.Name == "" {
-		return errors.New("contact name is required")
+		return fmt.Errorf("contact name is required: %w", domain.ErrInvalidInput)
 	}
 	if contact.Type == "" {
 		contact.Type = domain.ContactTypeCompany
 	}
 	if contact.Type != domain.ContactTypeCompany && contact.Type != domain.ContactTypeIndividual {
-		return errors.New("contact type must be 'company' or 'individual'")
+		return fmt.Errorf("contact type must be 'company' or 'individual': %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Create(ctx, contact); err != nil {
 		return fmt.Errorf("creating contact: %w", err)
@@ -53,13 +52,13 @@ func (s *ContactService) Create(ctx context.Context, contact *domain.Contact) er
 // Update validates and updates an existing contact.
 func (s *ContactService) Update(ctx context.Context, contact *domain.Contact) error {
 	if contact.ID == 0 {
-		return errors.New("contact ID is required")
+		return fmt.Errorf("contact ID is required: %w", domain.ErrInvalidInput)
 	}
 	if contact.Name == "" {
-		return errors.New("contact name is required")
+		return fmt.Errorf("contact name is required: %w", domain.ErrInvalidInput)
 	}
 	if contact.Type != domain.ContactTypeCompany && contact.Type != domain.ContactTypeIndividual {
-		return errors.New("contact type must be 'company' or 'individual'")
+		return fmt.Errorf("contact type must be 'company' or 'individual': %w", domain.ErrInvalidInput)
 	}
 	existing, err := s.repo.GetByID(ctx, contact.ID)
 	if err != nil {
@@ -77,7 +76,7 @@ func (s *ContactService) Update(ctx context.Context, contact *domain.Contact) er
 // Delete removes a contact by ID (soft delete).
 func (s *ContactService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("contact ID is required")
+		return fmt.Errorf("contact ID is required: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting contact: %w", err)
@@ -91,7 +90,7 @@ func (s *ContactService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a contact by its ID.
 func (s *ContactService) GetByID(ctx context.Context, id int64) (*domain.Contact, error) {
 	if id == 0 {
-		return nil, errors.New("contact ID is required")
+		return nil, fmt.Errorf("contact ID is required: %w", domain.ErrInvalidInput)
 	}
 	contact, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -122,10 +121,10 @@ func (s *ContactService) List(ctx context.Context, filter domain.ContactFilter) 
 // LookupARES looks up a company by ICO using the ARES registry.
 func (s *ContactService) LookupARES(ctx context.Context, ico string) (*domain.Contact, error) {
 	if ico == "" {
-		return nil, errors.New("ICO is required")
+		return nil, fmt.Errorf("ICO is required: %w", domain.ErrInvalidInput)
 	}
 	if s.ares == nil {
-		return nil, errors.New("ARES client is not configured")
+		return nil, fmt.Errorf("ARES client is not configured: %w", domain.ErrInvalidInput)
 	}
 	contact, err := s.ares.LookupByICO(ctx, ico)
 	if err != nil {

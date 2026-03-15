@@ -3,7 +3,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,12 +30,12 @@ func NewInvoiceDocumentService(repo repository.InvoiceDocumentRepo, dataDir stri
 // Upload validates, stores, and registers a new document for an invoice.
 func (s *InvoiceDocumentService) Upload(ctx context.Context, invoiceID int64, filename string, contentType string, data []byte) (*domain.InvoiceDocument, error) {
 	if invoiceID == 0 {
-		return nil, errors.New("invoice ID is required")
+		return nil, fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	filename = sanitizeFilename(filename)
 	if filename == "" {
-		return nil, errors.New("filename is required")
+		return nil, fmt.Errorf("filename is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Check per-invoice document limit.
@@ -100,7 +99,7 @@ func (s *InvoiceDocumentService) Upload(ctx context.Context, invoiceID int64, fi
 // GetByID retrieves a document's metadata by its ID.
 func (s *InvoiceDocumentService) GetByID(ctx context.Context, id int64) (*domain.InvoiceDocument, error) {
 	if id == 0 {
-		return nil, errors.New("document ID is required")
+		return nil, fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -112,7 +111,7 @@ func (s *InvoiceDocumentService) GetByID(ctx context.Context, id int64) (*domain
 // ListByInvoiceID retrieves all active documents for an invoice.
 func (s *InvoiceDocumentService) ListByInvoiceID(ctx context.Context, invoiceID int64) ([]domain.InvoiceDocument, error) {
 	if invoiceID == 0 {
-		return nil, errors.New("invoice ID is required")
+		return nil, fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 	docs, err := s.repo.ListByInvoiceID(ctx, invoiceID)
 	if err != nil {
@@ -124,7 +123,7 @@ func (s *InvoiceDocumentService) ListByInvoiceID(ctx context.Context, invoiceID 
 // Delete soft-deletes the document record and removes the file from disk.
 func (s *InvoiceDocumentService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("document ID is required")
+		return fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	doc, err := s.repo.GetByID(ctx, id)
@@ -150,7 +149,7 @@ func (s *InvoiceDocumentService) Delete(ctx context.Context, id int64) error {
 // GetFilePath returns the filesystem path and content type for serving a document.
 func (s *InvoiceDocumentService) GetFilePath(ctx context.Context, id int64) (string, string, error) {
 	if id == 0 {
-		return "", "", errors.New("document ID is required")
+		return "", "", fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -163,7 +162,7 @@ func (s *InvoiceDocumentService) GetFilePath(ctx context.Context, id int64) (str
 		return "", "", fmt.Errorf("invalid storage path: %w", err)
 	}
 	if !strings.HasPrefix(absPath, expectedPrefix) {
-		return "", "", errors.New("document storage path is outside allowed directory")
+		return "", "", fmt.Errorf("document storage path is outside allowed directory: %w", domain.ErrInvalidInput)
 	}
 
 	return absPath, doc.ContentType, nil

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -37,7 +36,7 @@ func (s *CategoryService) Create(ctx context.Context, cat *domain.ExpenseCategor
 	// Check for duplicate key.
 	existing, err := s.repo.GetByKey(ctx, cat.Key)
 	if err == nil && existing != nil {
-		return errors.New("category with this key already exists")
+		return fmt.Errorf("category with this key already exists: %w", domain.ErrDuplicateNumber)
 	}
 
 	if cat.Color == "" {
@@ -56,7 +55,7 @@ func (s *CategoryService) Create(ctx context.Context, cat *domain.ExpenseCategor
 // Update validates and updates an existing expense category.
 func (s *CategoryService) Update(ctx context.Context, cat *domain.ExpenseCategory) error {
 	if cat.ID == 0 {
-		return errors.New("category ID is required")
+		return fmt.Errorf("category ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	if err := s.validateCategory(cat); err != nil {
@@ -66,7 +65,7 @@ func (s *CategoryService) Update(ctx context.Context, cat *domain.ExpenseCategor
 	// Check for duplicate key (excluding self).
 	existingByKey, err := s.repo.GetByKey(ctx, cat.Key)
 	if err == nil && existingByKey != nil && existingByKey.ID != cat.ID {
-		return errors.New("category with this key already exists")
+		return fmt.Errorf("category with this key already exists: %w", domain.ErrDuplicateNumber)
 	}
 
 	// Fetch existing state for audit logging.
@@ -88,7 +87,7 @@ func (s *CategoryService) Update(ctx context.Context, cat *domain.ExpenseCategor
 // Default categories (is_default=1) cannot be deleted.
 func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("category ID is required")
+		return fmt.Errorf("category ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	cat, err := s.repo.GetByID(ctx, id)
@@ -97,7 +96,7 @@ func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 	}
 
 	if cat.IsDefault {
-		return errors.New("default categories cannot be deleted")
+		return fmt.Errorf("default categories cannot be deleted: %w", domain.ErrInvalidInput)
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -112,7 +111,7 @@ func (s *CategoryService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves an expense category by its ID.
 func (s *CategoryService) GetByID(ctx context.Context, id int64) (*domain.ExpenseCategory, error) {
 	if id == 0 {
-		return nil, errors.New("category ID is required")
+		return nil, fmt.Errorf("category ID is required: %w", domain.ErrInvalidInput)
 	}
 	cat, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -137,19 +136,19 @@ func (s *CategoryService) validateCategory(cat *domain.ExpenseCategory) error {
 	cat.LabelEN = strings.TrimSpace(cat.LabelEN)
 
 	if cat.Key == "" {
-		return errors.New("category key is required")
+		return fmt.Errorf("category key is required: %w", domain.ErrInvalidInput)
 	}
 	if !keyPattern.MatchString(cat.Key) {
-		return errors.New("category key must be lowercase alphanumeric with underscores only")
+		return fmt.Errorf("category key must be lowercase alphanumeric with underscores only: %w", domain.ErrInvalidInput)
 	}
 	if cat.LabelCS == "" {
-		return errors.New("category Czech label is required")
+		return fmt.Errorf("category Czech label is required: %w", domain.ErrInvalidInput)
 	}
 	if cat.LabelEN == "" {
-		return errors.New("category English label is required")
+		return fmt.Errorf("category English label is required: %w", domain.ErrInvalidInput)
 	}
 	if cat.Color != "" && !hexColorPattern.MatchString(cat.Color) {
-		return errors.New("color must be a valid hex color (e.g. #FFF or #FF00FF)")
+		return fmt.Errorf("color must be a valid hex color (e.g. #FFF or #FF00FF): %w", domain.ErrInvalidInput)
 	}
 	return nil
 }

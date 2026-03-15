@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -33,19 +32,19 @@ var validFrequencies = map[string]bool{
 // Create validates and persists a new recurring expense.
 func (s *RecurringExpenseService) Create(ctx context.Context, re *domain.RecurringExpense) error {
 	if re.Name == "" {
-		return errors.New("recurring expense name is required")
+		return fmt.Errorf("recurring expense name is required: %w", domain.ErrInvalidInput)
 	}
 	if re.Description == "" {
-		return errors.New("recurring expense description is required")
+		return fmt.Errorf("recurring expense description is required: %w", domain.ErrInvalidInput)
 	}
 	if re.Amount == 0 {
-		return errors.New("recurring expense amount is required")
+		return fmt.Errorf("recurring expense amount is required: %w", domain.ErrInvalidInput)
 	}
 	if re.NextIssueDate.IsZero() {
-		return errors.New("recurring expense next issue date is required")
+		return fmt.Errorf("recurring expense next issue date is required: %w", domain.ErrInvalidInput)
 	}
 	if !validFrequencies[re.Frequency] {
-		return fmt.Errorf("invalid frequency %q, must be one of: weekly, monthly, quarterly, yearly", re.Frequency)
+		return fmt.Errorf("invalid frequency %q, must be one of: weekly, monthly, quarterly, yearly: %w", re.Frequency, domain.ErrInvalidInput)
 	}
 	if re.CurrencyCode == "" {
 		re.CurrencyCode = domain.CurrencyCZK
@@ -54,7 +53,7 @@ func (s *RecurringExpenseService) Create(ctx context.Context, re *domain.Recurri
 		re.BusinessPercent = 100
 	}
 	if re.BusinessPercent < 0 || re.BusinessPercent > 100 {
-		return errors.New("business share must be between 0 and 100")
+		return fmt.Errorf("business share must be between 0 and 100: %w", domain.ErrInvalidInput)
 	}
 	if re.PaymentMethod == "" {
 		re.PaymentMethod = "bank_transfer"
@@ -77,25 +76,25 @@ func (s *RecurringExpenseService) Create(ctx context.Context, re *domain.Recurri
 // Update validates and updates an existing recurring expense.
 func (s *RecurringExpenseService) Update(ctx context.Context, re *domain.RecurringExpense) error {
 	if re.ID == 0 {
-		return errors.New("recurring expense ID is required")
+		return fmt.Errorf("recurring expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	if re.Name == "" {
-		return errors.New("recurring expense name is required")
+		return fmt.Errorf("recurring expense name is required: %w", domain.ErrInvalidInput)
 	}
 	if re.Description == "" {
-		return errors.New("recurring expense description is required")
+		return fmt.Errorf("recurring expense description is required: %w", domain.ErrInvalidInput)
 	}
 	if re.Amount == 0 {
-		return errors.New("recurring expense amount is required")
+		return fmt.Errorf("recurring expense amount is required: %w", domain.ErrInvalidInput)
 	}
 	if re.NextIssueDate.IsZero() {
-		return errors.New("recurring expense next issue date is required")
+		return fmt.Errorf("recurring expense next issue date is required: %w", domain.ErrInvalidInput)
 	}
 	if !validFrequencies[re.Frequency] {
-		return fmt.Errorf("invalid frequency %q, must be one of: weekly, monthly, quarterly, yearly", re.Frequency)
+		return fmt.Errorf("invalid frequency %q, must be one of: weekly, monthly, quarterly, yearly: %w", re.Frequency, domain.ErrInvalidInput)
 	}
 	if re.BusinessPercent < 0 || re.BusinessPercent > 100 {
-		return errors.New("business share must be between 0 and 100")
+		return fmt.Errorf("business share must be between 0 and 100: %w", domain.ErrInvalidInput)
 	}
 
 	// Recalculate VAT amount from rate if not set.
@@ -120,7 +119,7 @@ func (s *RecurringExpenseService) Update(ctx context.Context, re *domain.Recurri
 // Delete removes a recurring expense by ID (soft delete).
 func (s *RecurringExpenseService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("recurring expense ID is required")
+		return fmt.Errorf("recurring expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting recurring expense: %w", err)
@@ -134,7 +133,7 @@ func (s *RecurringExpenseService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a recurring expense by its ID.
 func (s *RecurringExpenseService) GetByID(ctx context.Context, id int64) (*domain.RecurringExpense, error) {
 	if id == 0 {
-		return nil, errors.New("recurring expense ID is required")
+		return nil, fmt.Errorf("recurring expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	re, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -164,7 +163,7 @@ func (s *RecurringExpenseService) List(ctx context.Context, limit, offset int) (
 // Activate enables a recurring expense for generation.
 func (s *RecurringExpenseService) Activate(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("recurring expense ID is required")
+		return fmt.Errorf("recurring expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Activate(ctx, id); err != nil {
 		return fmt.Errorf("activating recurring expense: %w", err)
@@ -178,7 +177,7 @@ func (s *RecurringExpenseService) Activate(ctx context.Context, id int64) error 
 // Deactivate disables a recurring expense from generation.
 func (s *RecurringExpenseService) Deactivate(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("recurring expense ID is required")
+		return fmt.Errorf("recurring expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Deactivate(ctx, id); err != nil {
 		return fmt.Errorf("deactivating recurring expense: %w", err)

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -29,16 +28,16 @@ func NewRecurringInvoiceService(repo repository.RecurringInvoiceRepo, invoices *
 // Create validates and persists a new recurring invoice.
 func (s *RecurringInvoiceService) Create(ctx context.Context, ri *domain.RecurringInvoice) error {
 	if ri.Name == "" {
-		return errors.New("name is required")
+		return fmt.Errorf("name is required: %w", domain.ErrInvalidInput)
 	}
 	if ri.CustomerID == 0 {
-		return errors.New("customer is required")
+		return fmt.Errorf("customer is required: %w", domain.ErrInvalidInput)
 	}
 	if len(ri.Items) == 0 {
-		return errors.New("at least one line item is required")
+		return fmt.Errorf("at least one line item is required: %w", domain.ErrNoItems)
 	}
 	if ri.NextIssueDate.IsZero() {
-		return errors.New("next issue date is required")
+		return fmt.Errorf("next issue date is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Set defaults.
@@ -61,16 +60,16 @@ func (s *RecurringInvoiceService) Create(ctx context.Context, ri *domain.Recurri
 // Update validates and updates an existing recurring invoice.
 func (s *RecurringInvoiceService) Update(ctx context.Context, ri *domain.RecurringInvoice) error {
 	if ri.ID == 0 {
-		return errors.New("recurring invoice ID is required")
+		return fmt.Errorf("recurring invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 	if ri.Name == "" {
-		return errors.New("name is required")
+		return fmt.Errorf("name is required: %w", domain.ErrInvalidInput)
 	}
 	if ri.CustomerID == 0 {
-		return errors.New("customer is required")
+		return fmt.Errorf("customer is required: %w", domain.ErrInvalidInput)
 	}
 	if len(ri.Items) == 0 {
-		return errors.New("at least one line item is required")
+		return fmt.Errorf("at least one line item is required: %w", domain.ErrNoItems)
 	}
 
 	// Fetch existing for audit trail.
@@ -91,7 +90,7 @@ func (s *RecurringInvoiceService) Update(ctx context.Context, ri *domain.Recurri
 // Delete removes a recurring invoice by ID (soft delete).
 func (s *RecurringInvoiceService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("recurring invoice ID is required")
+		return fmt.Errorf("recurring invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting recurring invoice: %w", err)
@@ -105,7 +104,7 @@ func (s *RecurringInvoiceService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a recurring invoice by its ID.
 func (s *RecurringInvoiceService) GetByID(ctx context.Context, id int64) (*domain.RecurringInvoice, error) {
 	if id == 0 {
-		return nil, errors.New("recurring invoice ID is required")
+		return nil, fmt.Errorf("recurring invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 	ri, err := s.repo.GetByID(ctx, id)
 	if err != nil {

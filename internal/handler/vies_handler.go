@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -56,16 +55,8 @@ func (h *VIESHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Create(r.Context(), vs); err != nil {
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "invalid input")
-			return
-		}
-		if errors.Is(err, domain.ErrDuplicateNumber) {
-			respondError(w, http.StatusConflict, "VIES summary already exists for this period")
-			return
-		}
 		slog.Error("failed to create VIES summary", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to create VIES summary")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -110,11 +101,7 @@ func (h *VIESHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	vs, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get VIES summary", "error", err)
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "VIES summary not found")
-		} else {
-			respondError(w, http.StatusInternalServerError, "failed to get VIES summary")
-		}
+		mapDomainError(w, err)
 		return
 	}
 
@@ -137,16 +124,8 @@ func (h *VIESHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "VIES summary not found")
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "cannot delete a filed VIES summary")
-			return
-		}
 		slog.Error("failed to delete VIES summary", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to delete VIES summary")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -162,16 +141,8 @@ func (h *VIESHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Recalculate(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "VIES summary not found")
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "cannot recalculate a filed VIES summary")
-			return
-		}
 		slog.Error("failed to recalculate VIES summary", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to recalculate VIES summary")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -213,12 +184,8 @@ func (h *VIESHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.GenerateXML(r.Context(), id, dic); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "VIES summary not found")
-			return
-		}
 		slog.Error("failed to generate VIES XML", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to generate XML")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -243,11 +210,7 @@ func (h *VIESHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 	vs, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get VIES summary for XML download", "error", err)
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "VIES summary not found")
-		} else {
-			respondError(w, http.StatusInternalServerError, "failed to get VIES summary")
-		}
+		mapDomainError(w, err)
 		return
 	}
 
@@ -274,16 +237,8 @@ func (h *VIESHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.MarkFiled(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "VIES summary not found")
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "VIES summary already filed")
-			return
-		}
 		slog.Error("failed to mark VIES summary as filed", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to mark as filed")
+		mapDomainError(w, err)
 		return
 	}
 

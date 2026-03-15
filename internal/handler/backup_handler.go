@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -80,12 +79,8 @@ func (h *BackupHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	record, err := h.svc.GetBackup(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "backup not found")
-			return
-		}
 		slog.Error("failed to get backup", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to get backup")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -101,12 +96,8 @@ func (h *BackupHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.DeleteBackup(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "backup not found")
-			return
-		}
 		slog.Error("failed to delete backup", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to delete backup")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -123,12 +114,8 @@ func (h *BackupHandler) Download(w http.ResponseWriter, r *http.Request) {
 
 	reader, size, filename, err := h.svc.GetBackupReader(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "backup not found")
-			return
-		}
 		slog.Error("failed to get backup reader", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to get backup file")
+		mapDomainError(w, err)
 		return
 	}
 	defer func() { _ = reader.Close() }()

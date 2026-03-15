@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"mime"
@@ -95,22 +94,6 @@ func healthInsuranceFromDomain(hi *domain.HealthInsuranceOverview) healthInsuran
 	}
 }
 
-// mapHealthInsuranceError maps domain errors to HTTP status codes.
-func mapHealthInsuranceError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "health insurance overview not found")
-	case errors.Is(err, domain.ErrFilingAlreadyExists):
-		respondError(w, http.StatusConflict, "health insurance overview already exists for this year")
-	case errors.Is(err, domain.ErrFilingAlreadyFiled):
-		respondError(w, http.StatusConflict, "health insurance overview already filed")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // Create handles POST /api/v1/health-insurance.
 func (h *HealthInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req healthInsuranceRequest
@@ -126,7 +109,7 @@ func (h *HealthInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.Create(r.Context(), hi); err != nil {
 		slog.Error("failed to create health insurance overview", "error", err)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -171,7 +154,7 @@ func (h *HealthInsuranceHandler) GetByID(w http.ResponseWriter, r *http.Request)
 	hi, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get health insurance overview", "error", err, "id", id)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -188,7 +171,7 @@ func (h *HealthInsuranceHandler) Delete(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete health insurance overview", "error", err, "id", id)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -206,7 +189,7 @@ func (h *HealthInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Requ
 	hi, err := h.svc.Recalculate(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to recalculate health insurance overview", "error", err, "id", id)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -224,7 +207,7 @@ func (h *HealthInsuranceHandler) GenerateXML(w http.ResponseWriter, r *http.Requ
 	hi, err := h.svc.GenerateXML(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to generate health insurance overview XML", "error", err, "id", id)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -242,7 +225,7 @@ func (h *HealthInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Requ
 	xmlData, err := h.svc.GetXMLData(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get health insurance overview XML", "error", err, "id", id)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -270,7 +253,7 @@ func (h *HealthInsuranceHandler) MarkFiled(w http.ResponseWriter, r *http.Reques
 	hi, err := h.svc.MarkFiled(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to mark health insurance overview as filed", "error", err, "id", id)
-		mapHealthInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

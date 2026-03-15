@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -227,20 +226,6 @@ func securityTxFromDomain(tx *domain.SecurityTransaction) securityTransactionRes
 	}
 }
 
-// --- Error mapping ---
-
-// mapInvestmentError maps domain errors to HTTP status codes.
-func mapInvestmentError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "investment resource not found")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // --- Document handlers ---
 
 // UploadDocument handles POST /documents (multipart form).
@@ -285,7 +270,7 @@ func (h *InvestmentIncomeHandler) UploadDocument(w http.ResponseWriter, r *http.
 	doc, err := h.docSvc.Upload(r.Context(), year, platform, header.Filename, contentType, file)
 	if err != nil {
 		slog.Error("failed to upload investment document", "error", err)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -330,7 +315,7 @@ func (h *InvestmentIncomeHandler) DeleteDocument(w http.ResponseWriter, r *http.
 
 	if err := h.docSvc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete investment document", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -353,7 +338,7 @@ func (h *InvestmentIncomeHandler) ExtractDocument(w http.ResponseWriter, r *http
 	result, err := h.extractionSvc.ExtractFromDocument(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to extract investment document", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -392,7 +377,7 @@ func (h *InvestmentIncomeHandler) DownloadDocument(w http.ResponseWriter, r *htt
 	filePath, contentType, err := h.docSvc.GetFilePath(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get investment document file path", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -400,7 +385,7 @@ func (h *InvestmentIncomeHandler) DownloadDocument(w http.ResponseWriter, r *htt
 	doc, err := h.docSvc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get investment document metadata", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -467,7 +452,7 @@ func (h *InvestmentIncomeHandler) CreateCapitalIncome(w http.ResponseWriter, r *
 
 	if err := h.investmentSvc.CreateCapitalEntry(r.Context(), entry); err != nil {
 		slog.Error("failed to create capital income entry", "error", err)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -509,7 +494,7 @@ func (h *InvestmentIncomeHandler) UpdateCapitalIncome(w http.ResponseWriter, r *
 
 	if err := h.investmentSvc.UpdateCapitalEntry(r.Context(), entry); err != nil {
 		slog.Error("failed to update capital income entry", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -526,7 +511,7 @@ func (h *InvestmentIncomeHandler) DeleteCapitalIncome(w http.ResponseWriter, r *
 
 	if err := h.investmentSvc.DeleteCapitalEntry(r.Context(), id); err != nil {
 		slog.Error("failed to delete capital income entry", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -594,7 +579,7 @@ func (h *InvestmentIncomeHandler) CreateSecurityTransaction(w http.ResponseWrite
 
 	if err := h.investmentSvc.CreateSecurityTransaction(r.Context(), tx); err != nil {
 		slog.Error("failed to create security transaction", "error", err)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -639,7 +624,7 @@ func (h *InvestmentIncomeHandler) UpdateSecurityTransaction(w http.ResponseWrite
 
 	if err := h.investmentSvc.UpdateSecurityTransaction(r.Context(), tx); err != nil {
 		slog.Error("failed to update security transaction", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -656,7 +641,7 @@ func (h *InvestmentIncomeHandler) DeleteSecurityTransaction(w http.ResponseWrite
 
 	if err := h.investmentSvc.DeleteSecurityTransaction(r.Context(), id); err != nil {
 		slog.Error("failed to delete security transaction", "error", err, "id", id)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -704,7 +689,7 @@ func (h *InvestmentIncomeHandler) RecalculateFIFO(w http.ResponseWriter, r *http
 
 	if err := h.investmentSvc.RecalculateFIFO(r.Context(), year); err != nil {
 		slog.Error("failed to recalculate FIFO", "error", err, "year", year)
-		mapInvestmentError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

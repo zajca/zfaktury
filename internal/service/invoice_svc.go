@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -31,13 +30,13 @@ func NewInvoiceService(repo repository.InvoiceRepo, contacts *ContactService, se
 // Create validates, calculates totals, assigns a number, and persists a new invoice.
 func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) error {
 	if invoice.CustomerID == 0 {
-		return errors.New("customer is required")
+		return fmt.Errorf("customer is required: %w", domain.ErrInvalidInput)
 	}
 	if len(invoice.Items) == 0 {
-		return errors.New("at least one line item is required")
+		return fmt.Errorf("at least one line item is required: %w", domain.ErrNoItems)
 	}
 	if invoice.DueDate.IsZero() {
-		return errors.New("due date is required")
+		return fmt.Errorf("due date is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Verify customer exists.
@@ -109,16 +108,16 @@ func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) er
 // Update validates, recalculates totals, and updates an existing invoice.
 func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) error {
 	if invoice.ID == 0 {
-		return errors.New("invoice ID is required")
+		return fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 	if invoice.CustomerID == 0 {
-		return errors.New("customer is required")
+		return fmt.Errorf("customer is required: %w", domain.ErrInvalidInput)
 	}
 	if len(invoice.Items) == 0 {
-		return errors.New("at least one line item is required")
+		return fmt.Errorf("at least one line item is required: %w", domain.ErrNoItems)
 	}
 	if invoice.DueDate.IsZero() {
-		return errors.New("due date is required")
+		return fmt.Errorf("due date is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Verify the invoice exists and is editable.
@@ -127,7 +126,7 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 		return fmt.Errorf("fetching invoice for update: %w", err)
 	}
 	if existing.Status == domain.InvoiceStatusPaid {
-		return errors.New("cannot update a paid invoice")
+		return fmt.Errorf("cannot update a paid invoice: %w", domain.ErrPaidInvoice)
 	}
 
 	// Preserve existing status if not explicitly set in the update request.
@@ -164,7 +163,7 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 // Delete removes an invoice by ID (soft delete).
 func (s *InvoiceService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("invoice ID is required")
+		return fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	existing, err := s.repo.GetByID(ctx, id)
@@ -172,7 +171,7 @@ func (s *InvoiceService) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("fetching invoice for delete: %w", err)
 	}
 	if existing.Status == domain.InvoiceStatusPaid {
-		return errors.New("cannot delete a paid invoice")
+		return fmt.Errorf("cannot delete a paid invoice: %w", domain.ErrPaidInvoice)
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -187,7 +186,7 @@ func (s *InvoiceService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves an invoice by its ID.
 func (s *InvoiceService) GetByID(ctx context.Context, id int64) (*domain.Invoice, error) {
 	if id == 0 {
-		return nil, errors.New("invoice ID is required")
+		return nil, fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 	inv, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -227,7 +226,7 @@ func (s *InvoiceService) List(ctx context.Context, filter domain.InvoiceFilter) 
 // MarkAsSent updates the invoice status to sent and records the timestamp.
 func (s *InvoiceService) MarkAsSent(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("invoice ID is required")
+		return fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	invoice, err := s.repo.GetByID(ctx, id)
@@ -235,7 +234,7 @@ func (s *InvoiceService) MarkAsSent(ctx context.Context, id int64) error {
 		return fmt.Errorf("fetching invoice for mark as sent: %w", err)
 	}
 	if invoice.Status != domain.InvoiceStatusDraft {
-		return errors.New("only draft invoices can be marked as sent")
+		return fmt.Errorf("only draft invoices can be marked as sent: %w", domain.ErrInvalidInput)
 	}
 
 	now := time.Now()
@@ -251,7 +250,7 @@ func (s *InvoiceService) MarkAsSent(ctx context.Context, id int64) error {
 // MarkAsPaid updates the invoice status to paid and records the payment details.
 func (s *InvoiceService) MarkAsPaid(ctx context.Context, id int64, amount domain.Amount, paidAt time.Time) error {
 	if id == 0 {
-		return errors.New("invoice ID is required")
+		return fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	invoice, err := s.repo.GetByID(ctx, id)
@@ -259,10 +258,10 @@ func (s *InvoiceService) MarkAsPaid(ctx context.Context, id int64, amount domain
 		return fmt.Errorf("fetching invoice for mark as paid: %w", err)
 	}
 	if invoice.Status == domain.InvoiceStatusPaid {
-		return errors.New("invoice is already paid")
+		return fmt.Errorf("invoice is already paid: %w", domain.ErrPaidInvoice)
 	}
 	if invoice.Status == domain.InvoiceStatusCancelled {
-		return errors.New("cannot pay a cancelled invoice")
+		return fmt.Errorf("cannot pay a cancelled invoice: %w", domain.ErrInvalidInput)
 	}
 
 	invoice.PaidAmount = amount
@@ -279,7 +278,7 @@ func (s *InvoiceService) MarkAsPaid(ctx context.Context, id int64, amount domain
 // The proforma must have status=paid. The new invoice is a draft linked to the proforma.
 func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (*domain.Invoice, error) {
 	if proformaID == 0 {
-		return nil, errors.New("proforma ID is required")
+		return nil, fmt.Errorf("proforma ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	proforma, err := s.repo.GetByID(ctx, proformaID)
@@ -287,10 +286,10 @@ func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (
 		return nil, fmt.Errorf("fetching proforma: %w", err)
 	}
 	if proforma.Type != domain.InvoiceTypeProforma {
-		return nil, errors.New("invoice is not a proforma")
+		return nil, fmt.Errorf("invoice is not a proforma: %w", domain.ErrInvalidInput)
 	}
 	if proforma.Status != domain.InvoiceStatusPaid {
-		return nil, errors.New("only paid proformas can be settled")
+		return nil, fmt.Errorf("only paid proformas can be settled: %w", domain.ErrInvalidInput)
 	}
 
 	// Idempotency: return existing settlement if already created.
@@ -355,7 +354,7 @@ func (s *InvoiceService) SettleProforma(ctx context.Context, proformaID int64) (
 // If items are provided, a partial credit note is created with those items.
 func (s *InvoiceService) CreateCreditNote(ctx context.Context, originalID int64, items []domain.InvoiceItem, reason string) (*domain.Invoice, error) {
 	if originalID == 0 {
-		return nil, errors.New("original invoice ID is required")
+		return nil, fmt.Errorf("original invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	original, err := s.repo.GetByID(ctx, originalID)
@@ -364,10 +363,10 @@ func (s *InvoiceService) CreateCreditNote(ctx context.Context, originalID int64,
 	}
 
 	if original.Type != domain.InvoiceTypeRegular {
-		return nil, errors.New("credit notes can only be created for regular invoices")
+		return nil, fmt.Errorf("credit notes can only be created for regular invoices: %w", domain.ErrInvalidInput)
 	}
 	if original.Status != domain.InvoiceStatusSent && original.Status != domain.InvoiceStatusPaid {
-		return nil, errors.New("credit notes can only be created for sent or paid invoices")
+		return nil, fmt.Errorf("credit notes can only be created for sent or paid invoices: %w", domain.ErrInvalidInput)
 	}
 
 	today := time.Now()
@@ -427,7 +426,7 @@ func (s *InvoiceService) CreateCreditNote(ctx context.Context, originalID int64,
 // Duplicate creates a copy of an existing invoice as a new draft.
 func (s *InvoiceService) Duplicate(ctx context.Context, id int64) (*domain.Invoice, error) {
 	if id == 0 {
-		return nil, errors.New("invoice ID is required")
+		return nil, fmt.Errorf("invoice ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	original, err := s.repo.GetByID(ctx, id)

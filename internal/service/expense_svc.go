@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -23,13 +22,13 @@ func NewExpenseService(repo repository.ExpenseRepo, audit *AuditService) *Expens
 // Create validates and persists a new expense.
 func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) error {
 	if expense.Description == "" {
-		return errors.New("expense description is required")
+		return fmt.Errorf("expense description is required: %w", domain.ErrInvalidInput)
 	}
 	if expense.Amount == 0 && len(expense.Items) == 0 {
-		return errors.New("expense amount is required")
+		return fmt.Errorf("expense amount is required: %w", domain.ErrInvalidInput)
 	}
 	if expense.IssueDate.IsZero() {
-		return errors.New("expense issue date is required")
+		return fmt.Errorf("expense issue date is required: %w", domain.ErrInvalidInput)
 	}
 	if expense.CurrencyCode == "" {
 		expense.CurrencyCode = domain.CurrencyCZK
@@ -38,7 +37,7 @@ func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) er
 		expense.BusinessPercent = 100
 	}
 	if expense.BusinessPercent < 0 || expense.BusinessPercent > 100 {
-		return errors.New("business share must be between 0 and 100")
+		return fmt.Errorf("business share must be between 0 and 100: %w", domain.ErrInvalidInput)
 	}
 
 	// When items are present, recalculate totals from them.
@@ -61,16 +60,16 @@ func (s *ExpenseService) Create(ctx context.Context, expense *domain.Expense) er
 // Update validates and updates an existing expense.
 func (s *ExpenseService) Update(ctx context.Context, expense *domain.Expense) error {
 	if expense.ID == 0 {
-		return errors.New("expense ID is required")
+		return fmt.Errorf("expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	if expense.Description == "" {
-		return errors.New("expense description is required")
+		return fmt.Errorf("expense description is required: %w", domain.ErrInvalidInput)
 	}
 	if expense.Amount == 0 && len(expense.Items) == 0 {
-		return errors.New("expense amount is required")
+		return fmt.Errorf("expense amount is required: %w", domain.ErrInvalidInput)
 	}
 	if expense.BusinessPercent < 0 || expense.BusinessPercent > 100 {
-		return errors.New("business share must be between 0 and 100")
+		return fmt.Errorf("business share must be between 0 and 100: %w", domain.ErrInvalidInput)
 	}
 
 	// When items are present, recalculate totals from them.
@@ -97,7 +96,7 @@ func (s *ExpenseService) Update(ctx context.Context, expense *domain.Expense) er
 // Delete removes an expense by ID (soft delete).
 func (s *ExpenseService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("expense ID is required")
+		return fmt.Errorf("expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("deleting expense: %w", err)
@@ -111,7 +110,7 @@ func (s *ExpenseService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves an expense by its ID.
 func (s *ExpenseService) GetByID(ctx context.Context, id int64) (*domain.Expense, error) {
 	if id == 0 {
-		return nil, errors.New("expense ID is required")
+		return nil, fmt.Errorf("expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	exp, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -144,10 +143,10 @@ const maxBulkIDs = 500
 // MarkTaxReviewed marks the given expense IDs as tax-reviewed.
 func (s *ExpenseService) MarkTaxReviewed(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
-		return errors.New("no expense IDs provided")
+		return fmt.Errorf("no expense IDs provided: %w", domain.ErrInvalidInput)
 	}
 	if len(ids) > maxBulkIDs {
-		return errors.New("too many IDs, maximum is 500")
+		return fmt.Errorf("too many IDs, maximum is 500: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.MarkTaxReviewed(ctx, dedupIDs(ids)); err != nil {
 		return fmt.Errorf("marking expenses as tax reviewed: %w", err)
@@ -158,10 +157,10 @@ func (s *ExpenseService) MarkTaxReviewed(ctx context.Context, ids []int64) error
 // UnmarkTaxReviewed removes the tax review mark from the given expense IDs.
 func (s *ExpenseService) UnmarkTaxReviewed(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
-		return errors.New("no expense IDs provided")
+		return fmt.Errorf("no expense IDs provided: %w", domain.ErrInvalidInput)
 	}
 	if len(ids) > maxBulkIDs {
-		return errors.New("too many IDs, maximum is 500")
+		return fmt.Errorf("too many IDs, maximum is 500: %w", domain.ErrInvalidInput)
 	}
 	if err := s.repo.UnmarkTaxReviewed(ctx, dedupIDs(ids)); err != nil {
 		return fmt.Errorf("unmarking expenses tax review: %w", err)

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -190,8 +191,8 @@ func TestCategoryService_Delete_Default_Protected(t *testing.T) {
 	if err == nil {
 		t.Error("expected error when deleting default category")
 	}
-	if err.Error() != "default categories cannot be deleted" {
-		t.Errorf("error = %q, want %q", err.Error(), "default categories cannot be deleted")
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("error = %v, want %v", err, domain.ErrInvalidInput)
 	}
 }
 

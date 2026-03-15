@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"mime"
@@ -143,22 +142,6 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 	}
 }
 
-// mapIncomeTaxError maps domain errors to HTTP status codes.
-func mapIncomeTaxError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "income tax return not found")
-	case errors.Is(err, domain.ErrFilingAlreadyExists):
-		respondError(w, http.StatusConflict, "income tax return already exists for this year")
-	case errors.Is(err, domain.ErrFilingAlreadyFiled):
-		respondError(w, http.StatusConflict, "income tax return already filed")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // Create handles POST /api/v1/income-tax-returns.
 func (h *IncomeTaxHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req incomeTaxRequest
@@ -174,7 +157,7 @@ func (h *IncomeTaxHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.Create(r.Context(), itr); err != nil {
 		slog.Error("failed to create income tax return", "error", err)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -219,7 +202,7 @@ func (h *IncomeTaxHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	itr, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get income tax return", "error", err, "id", id)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -236,7 +219,7 @@ func (h *IncomeTaxHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete income tax return", "error", err, "id", id)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -254,7 +237,7 @@ func (h *IncomeTaxHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
 	itr, err := h.svc.Recalculate(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to recalculate income tax return", "error", err, "id", id)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -272,7 +255,7 @@ func (h *IncomeTaxHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 	itr, err := h.svc.GenerateXML(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to generate income tax return XML", "error", err, "id", id)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -290,7 +273,7 @@ func (h *IncomeTaxHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 	xmlData, err := h.svc.GetXMLData(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get income tax return XML", "error", err, "id", id)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -318,7 +301,7 @@ func (h *IncomeTaxHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
 	itr, err := h.svc.MarkFiled(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to mark income tax return as filed", "error", err, "id", id)
-		mapIncomeTaxError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

@@ -24,10 +24,10 @@ func NewSequenceService(repo repository.InvoiceSequenceRepo, audit *AuditService
 // Create validates uniqueness (prefix+year) and persists a new invoice sequence.
 func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequence) error {
 	if seq.Prefix == "" {
-		return errors.New("prefix is required")
+		return fmt.Errorf("prefix is required: %w", domain.ErrInvalidInput)
 	}
 	if seq.Year == 0 {
-		return errors.New("year is required")
+		return fmt.Errorf("year is required: %w", domain.ErrInvalidInput)
 	}
 	if seq.NextNumber <= 0 {
 		seq.NextNumber = 1
@@ -39,7 +39,7 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 	// Check uniqueness of prefix+year.
 	existing, err := s.repo.GetByPrefixAndYear(ctx, seq.Prefix, seq.Year)
 	if err == nil && existing != nil {
-		return fmt.Errorf("sequence with prefix %q and year %d already exists", seq.Prefix, seq.Year)
+		return fmt.Errorf("sequence with prefix %q and year %d already exists: %w", seq.Prefix, seq.Year, domain.ErrDuplicateNumber)
 	}
 	// Only proceed if the error indicates not found.
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -59,16 +59,16 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 // Prevents lowering next_number below already-used numbers.
 func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequence) error {
 	if seq.ID == 0 {
-		return errors.New("sequence ID is required")
+		return fmt.Errorf("sequence ID is required: %w", domain.ErrInvalidInput)
 	}
 	if seq.Prefix == "" {
-		return errors.New("prefix is required")
+		return fmt.Errorf("prefix is required: %w", domain.ErrInvalidInput)
 	}
 	if seq.Year == 0 {
-		return errors.New("year is required")
+		return fmt.Errorf("year is required: %w", domain.ErrInvalidInput)
 	}
 	if seq.NextNumber <= 0 {
-		return errors.New("next number must be positive")
+		return fmt.Errorf("next number must be positive: %w", domain.ErrInvalidInput)
 	}
 
 	// Fetch existing for audit logging.
@@ -83,13 +83,13 @@ func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequenc
 		return fmt.Errorf("checking max used number: %w", err)
 	}
 	if seq.NextNumber <= maxUsed {
-		return fmt.Errorf("cannot set next number to %d, numbers up to %d have already been assigned", seq.NextNumber, maxUsed)
+		return fmt.Errorf("cannot set next number to %d, numbers up to %d have already been assigned: %w", seq.NextNumber, maxUsed, domain.ErrInvalidInput)
 	}
 
 	// Check uniqueness of prefix+year if they changed.
 	duplicate, err := s.repo.GetByPrefixAndYear(ctx, seq.Prefix, seq.Year)
 	if err == nil && duplicate != nil && duplicate.ID != seq.ID {
-		return fmt.Errorf("sequence with prefix %q and year %d already exists", seq.Prefix, seq.Year)
+		return fmt.Errorf("sequence with prefix %q and year %d already exists: %w", seq.Prefix, seq.Year, domain.ErrDuplicateNumber)
 	}
 
 	if err := s.repo.Update(ctx, seq); err != nil {
@@ -105,7 +105,7 @@ func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequenc
 // Returns an error if invoices reference this sequence.
 func (s *SequenceService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("sequence ID is required")
+		return fmt.Errorf("sequence ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	count, err := s.repo.CountInvoicesBySequenceID(ctx, id)
@@ -113,7 +113,7 @@ func (s *SequenceService) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("checking invoice references: %w", err)
 	}
 	if count > 0 {
-		return fmt.Errorf("cannot delete sequence: %d invoices reference it", count)
+		return fmt.Errorf("cannot delete sequence: %d invoices reference it: %w", count, domain.ErrInvalidInput)
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -128,7 +128,7 @@ func (s *SequenceService) Delete(ctx context.Context, id int64) error {
 // GetByID retrieves a sequence by its ID.
 func (s *SequenceService) GetByID(ctx context.Context, id int64) (*domain.InvoiceSequence, error) {
 	if id == 0 {
-		return nil, errors.New("sequence ID is required")
+		return nil, fmt.Errorf("sequence ID is required: %w", domain.ErrInvalidInput)
 	}
 	seq, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -150,10 +150,10 @@ func (s *SequenceService) List(ctx context.Context) ([]domain.InvoiceSequence, e
 // or creates a new one if it doesn't exist.
 func (s *SequenceService) GetOrCreateForYear(ctx context.Context, prefix string, year int) (*domain.InvoiceSequence, error) {
 	if prefix == "" {
-		return nil, errors.New("prefix is required")
+		return nil, fmt.Errorf("prefix is required: %w", domain.ErrInvalidInput)
 	}
 	if year == 0 {
-		return nil, errors.New("year is required")
+		return nil, fmt.Errorf("year is required: %w", domain.ErrInvalidInput)
 	}
 
 	seq, err := s.repo.GetByPrefixAndYear(ctx, prefix, year)

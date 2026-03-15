@@ -73,9 +73,9 @@ func (h *ReminderHandler) SendReminder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("failed to send payment reminder", "invoice_id", invoiceID, "error", err)
 		switch {
-		case errors.Is(err, service.ErrInvoiceNotOverdue):
+		case errors.Is(err, domain.ErrInvoiceNotOverdue):
 			respondError(w, http.StatusUnprocessableEntity, "invoice is not overdue")
-		case errors.Is(err, service.ErrNoCustomerEmail):
+		case errors.Is(err, domain.ErrNoCustomerEmail):
 			respondError(w, http.StatusUnprocessableEntity, "customer has no email address")
 		default:
 			respondError(w, http.StatusInternalServerError, "failed to send reminder")

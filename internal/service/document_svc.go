@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,7 +45,7 @@ func NewDocumentService(repo repository.DocumentRepo, dataDir string, audit *Aud
 // data is read fully to enforce the size limit before writing to disk.
 func (s *DocumentService) Upload(ctx context.Context, expenseID int64, filename string, contentType string, data io.Reader) (*domain.ExpenseDocument, error) {
 	if expenseID == 0 {
-		return nil, errors.New("expense ID is required")
+		return nil, fmt.Errorf("expense ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Validate content type.
@@ -57,7 +56,7 @@ func (s *DocumentService) Upload(ctx context.Context, expenseID int64, filename 
 	// Sanitize filename: strip path separators, limit length.
 	filename = sanitizeFilename(filename)
 	if filename == "" {
-		return nil, errors.New("filename is required")
+		return nil, fmt.Errorf("filename is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Check per-expense document limit.
@@ -139,7 +138,7 @@ func (s *DocumentService) Upload(ctx context.Context, expenseID int64, filename 
 // GetByID retrieves a document's metadata by its ID.
 func (s *DocumentService) GetByID(ctx context.Context, id int64) (*domain.ExpenseDocument, error) {
 	if id == 0 {
-		return nil, errors.New("document ID is required")
+		return nil, fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -151,7 +150,7 @@ func (s *DocumentService) GetByID(ctx context.Context, id int64) (*domain.Expens
 // ListByExpenseID retrieves all active documents for an expense.
 func (s *DocumentService) ListByExpenseID(ctx context.Context, expenseID int64) ([]domain.ExpenseDocument, error) {
 	if expenseID == 0 {
-		return nil, errors.New("expense ID is required")
+		return nil, fmt.Errorf("expense ID is required: %w", domain.ErrInvalidInput)
 	}
 	docs, err := s.repo.ListByExpenseID(ctx, expenseID)
 	if err != nil {
@@ -163,7 +162,7 @@ func (s *DocumentService) ListByExpenseID(ctx context.Context, expenseID int64) 
 // Delete soft-deletes the document record and removes the file from disk.
 func (s *DocumentService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("document ID is required")
+		return fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	doc, err := s.repo.GetByID(ctx, id)
@@ -191,7 +190,7 @@ func (s *DocumentService) Delete(ctx context.Context, id int64) error {
 // It validates that the stored path is within the expected data directory.
 func (s *DocumentService) GetFilePath(ctx context.Context, id int64) (string, string, error) {
 	if id == 0 {
-		return "", "", errors.New("document ID is required")
+		return "", "", fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -205,7 +204,7 @@ func (s *DocumentService) GetFilePath(ctx context.Context, id int64) (string, st
 		return "", "", fmt.Errorf("invalid storage path: %w", err)
 	}
 	if !strings.HasPrefix(absPath, expectedPrefix) {
-		return "", "", errors.New("document storage path is outside allowed directory")
+		return "", "", fmt.Errorf("document storage path is outside allowed directory: %w", domain.ErrInvalidInput)
 	}
 
 	return absPath, doc.ContentType, nil

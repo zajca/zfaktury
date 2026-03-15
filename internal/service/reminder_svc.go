@@ -2,18 +2,11 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/service/email"
-)
-
-// Sentinel errors for reminder business logic validation.
-var (
-	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")
-	ErrNoCustomerEmail   = errors.New("customer has no email address")
 )
 
 // reminderRepository defines the persistence operations needed by the reminder service.
@@ -72,12 +65,12 @@ func (s *ReminderService) SendReminder(ctx context.Context, invoiceID int64) (*d
 
 	// Validate invoice is overdue.
 	if !isOverdue(inv) {
-		return nil, ErrInvoiceNotOverdue
+		return nil, domain.ErrInvoiceNotOverdue
 	}
 
 	// Get customer email.
 	if inv.Customer == nil || inv.Customer.Email == "" {
-		return nil, ErrNoCustomerEmail
+		return nil, domain.ErrNoCustomerEmail
 	}
 	customerEmail := inv.Customer.Email
 

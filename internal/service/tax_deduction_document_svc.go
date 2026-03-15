@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,7 +41,7 @@ func NewTaxDeductionDocumentService(
 // data is read fully to enforce the size limit before writing to disk.
 func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID int64, filename string, contentType string, data io.Reader) (*domain.TaxDeductionDocument, error) {
 	if deductionID == 0 {
-		return nil, errors.New("deduction ID is required")
+		return nil, fmt.Errorf("deduction ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Validate the deduction exists.
@@ -58,7 +57,7 @@ func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID in
 	// Sanitize filename: strip path separators, limit length.
 	filename = sanitizeFilename(filename)
 	if filename == "" {
-		return nil, errors.New("filename is required")
+		return nil, fmt.Errorf("filename is required: %w", domain.ErrInvalidInput)
 	}
 
 	// Read file data, enforcing the size limit (read one extra byte to detect overflow).
@@ -131,7 +130,7 @@ func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID in
 // GetByID retrieves a tax deduction document's metadata by its ID.
 func (s *TaxDeductionDocumentService) GetByID(ctx context.Context, id int64) (*domain.TaxDeductionDocument, error) {
 	if id == 0 {
-		return nil, errors.New("document ID is required")
+		return nil, fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -143,7 +142,7 @@ func (s *TaxDeductionDocumentService) GetByID(ctx context.Context, id int64) (*d
 // ListByDeductionID retrieves all active documents for a tax deduction.
 func (s *TaxDeductionDocumentService) ListByDeductionID(ctx context.Context, deductionID int64) ([]domain.TaxDeductionDocument, error) {
 	if deductionID == 0 {
-		return nil, errors.New("deduction ID is required")
+		return nil, fmt.Errorf("deduction ID is required: %w", domain.ErrInvalidInput)
 	}
 	docs, err := s.repo.ListByDeductionID(ctx, deductionID)
 	if err != nil {
@@ -155,7 +154,7 @@ func (s *TaxDeductionDocumentService) ListByDeductionID(ctx context.Context, ded
 // Delete soft-deletes the document record and removes the file from disk.
 func (s *TaxDeductionDocumentService) Delete(ctx context.Context, id int64) error {
 	if id == 0 {
-		return errors.New("document ID is required")
+		return fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 
 	doc, err := s.repo.GetByID(ctx, id)
@@ -183,7 +182,7 @@ func (s *TaxDeductionDocumentService) Delete(ctx context.Context, id int64) erro
 // It validates that the stored path is within the expected data directory.
 func (s *TaxDeductionDocumentService) GetFilePath(ctx context.Context, id int64) (string, string, error) {
 	if id == 0 {
-		return "", "", errors.New("document ID is required")
+		return "", "", fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 	doc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -197,7 +196,7 @@ func (s *TaxDeductionDocumentService) GetFilePath(ctx context.Context, id int64)
 		return "", "", fmt.Errorf("invalid storage path: %w", err)
 	}
 	if !strings.HasPrefix(absPath, expectedPrefix) {
-		return "", "", errors.New("document storage path is outside allowed directory")
+		return "", "", fmt.Errorf("document storage path is outside allowed directory: %w", domain.ErrInvalidInput)
 	}
 
 	return absPath, doc.ContentType, nil

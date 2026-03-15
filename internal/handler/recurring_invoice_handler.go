@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -44,7 +44,7 @@ type recurringInvoiceRequest struct {
 
 func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
 	if r.NextIssueDate == "" {
-		return nil, errors.New("next_issue_date is required")
+		return nil, fmt.Errorf("next_issue_date is required: %w", domain.ErrInvalidInput)
 	}
 
 	ri := &domain.RecurringInvoice{
@@ -65,7 +65,7 @@ func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
 
 	nextIssueDate, err := time.Parse("2006-01-02", r.NextIssueDate)
 	if err != nil {
-		return nil, errors.New("invalid next_issue_date format, expected YYYY-MM-DD")
+		return nil, fmt.Errorf("invalid next_issue_date format, expected YYYY-MM-DD: %w", domain.ErrInvalidInput)
 	}
 	ri.NextIssueDate = nextIssueDate
 

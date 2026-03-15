@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"mime"
@@ -95,22 +94,6 @@ func socialInsuranceFromDomain(sio *domain.SocialInsuranceOverview) socialInsura
 	}
 }
 
-// mapSocialInsuranceError maps domain errors to HTTP status codes.
-func mapSocialInsuranceError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "social insurance overview not found")
-	case errors.Is(err, domain.ErrFilingAlreadyExists):
-		respondError(w, http.StatusConflict, "social insurance overview already exists for this year")
-	case errors.Is(err, domain.ErrFilingAlreadyFiled):
-		respondError(w, http.StatusConflict, "social insurance overview already filed")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // Create handles POST /api/v1/social-insurance.
 func (h *SocialInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req socialInsuranceRequest
@@ -126,7 +109,7 @@ func (h *SocialInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.Create(r.Context(), sio); err != nil {
 		slog.Error("failed to create social insurance overview", "error", err)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -171,7 +154,7 @@ func (h *SocialInsuranceHandler) GetByID(w http.ResponseWriter, r *http.Request)
 	sio, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get social insurance overview", "error", err, "id", id)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -188,7 +171,7 @@ func (h *SocialInsuranceHandler) Delete(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
 		slog.Error("failed to delete social insurance overview", "error", err, "id", id)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -206,7 +189,7 @@ func (h *SocialInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Requ
 	sio, err := h.svc.Recalculate(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to recalculate social insurance overview", "error", err, "id", id)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -224,7 +207,7 @@ func (h *SocialInsuranceHandler) GenerateXML(w http.ResponseWriter, r *http.Requ
 	sio, err := h.svc.GenerateXML(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to generate social insurance XML", "error", err, "id", id)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -242,7 +225,7 @@ func (h *SocialInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Requ
 	xmlData, err := h.svc.GetXMLData(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get social insurance XML", "error", err, "id", id)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -270,7 +253,7 @@ func (h *SocialInsuranceHandler) MarkFiled(w http.ResponseWriter, r *http.Reques
 	sio, err := h.svc.MarkFiled(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to mark social insurance overview as filed", "error", err, "id", id)
-		mapSocialInsuranceError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

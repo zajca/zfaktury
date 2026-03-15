@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
@@ -137,7 +137,7 @@ var knownKeys = map[string]bool{
 // validateKey checks that a setting key is valid and known.
 func validateKey(key string) error {
 	if key == "" {
-		return errors.New("setting key is required")
+		return fmt.Errorf("setting key is required: %w", domain.ErrInvalidInput)
 	}
 	if !knownKeys[key] {
 		return fmt.Errorf("unknown setting key: %q", key)

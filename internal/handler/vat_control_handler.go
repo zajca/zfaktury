@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -56,16 +55,8 @@ func (h *VATControlStatementHandler) Create(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := h.svc.Create(r.Context(), cs); err != nil {
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "invalid input")
-			return
-		}
-		if errors.Is(err, domain.ErrDuplicateNumber) {
-			respondError(w, http.StatusConflict, "control statement already exists for this period")
-			return
-		}
 		slog.Error("failed to create control statement", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to create control statement")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -109,12 +100,8 @@ func (h *VATControlStatementHandler) GetByID(w http.ResponseWriter, r *http.Requ
 
 	cs, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "control statement not found")
-			return
-		}
 		slog.Error("failed to get control statement", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to get control statement")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -137,16 +124,8 @@ func (h *VATControlStatementHandler) Delete(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := h.svc.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "control statement not found")
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "cannot delete a filed control statement")
-			return
-		}
 		slog.Error("failed to delete control statement", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to delete control statement")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -162,16 +141,8 @@ func (h *VATControlStatementHandler) Recalculate(w http.ResponseWriter, r *http.
 	}
 
 	if err := h.svc.Recalculate(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "control statement not found")
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidInput) {
-			respondError(w, http.StatusBadRequest, "cannot recalculate a filed control statement")
-			return
-		}
 		slog.Error("failed to recalculate control statement", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to recalculate control statement")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -215,12 +186,8 @@ func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.
 
 	xmlData, err := h.svc.GenerateXML(r.Context(), id, dic)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "control statement not found")
-			return
-		}
 		slog.Error("failed to generate XML", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to generate XML")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -240,12 +207,8 @@ func (h *VATControlStatementHandler) DownloadXML(w http.ResponseWriter, r *http.
 
 	cs, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "control statement not found")
-			return
-		}
 		slog.Error("failed to get control statement for XML download", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to get control statement")
+		mapDomainError(w, err)
 		return
 	}
 
@@ -271,12 +234,8 @@ func (h *VATControlStatementHandler) MarkFiled(w http.ResponseWriter, r *http.Re
 	}
 
 	if err := h.svc.MarkFiled(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			respondError(w, http.StatusNotFound, "control statement not found")
-			return
-		}
 		slog.Error("failed to mark control statement as filed", "error", err, "id", id)
-		respondError(w, http.StatusInternalServerError, "failed to mark as filed")
+		mapDomainError(w, err)
 		return
 	}
 

@@ -15,4 +15,8 @@ var (
 
 	// Settings errors
 	ErrMissingSetting = errors.New("required setting not configured")
+
+	// Reminder errors
+	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")
+	ErrNoCustomerEmail   = errors.New("customer has no email address")
 )

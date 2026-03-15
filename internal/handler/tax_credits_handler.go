@@ -153,19 +153,6 @@ func personalCreditsFromDomain(pc *domain.TaxPersonalCredits) taxPersonalCredits
 	}
 }
 
-// --- Error mapping ---
-
-func mapTaxCreditsError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		respondError(w, http.StatusNotFound, "tax credit not found")
-	case errors.Is(err, domain.ErrInvalidInput):
-		respondError(w, http.StatusBadRequest, err.Error())
-	default:
-		respondError(w, http.StatusInternalServerError, "internal server error")
-	}
-}
-
 // --- Handler methods ---
 
 // GetSummary handles GET /{year}.
@@ -182,7 +169,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	spouse, err := h.svc.GetSpouse(ctx, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		slog.Error("failed to get spouse credit", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -190,7 +177,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	children, err := h.svc.ListChildren(ctx, year)
 	if err != nil {
 		slog.Error("failed to list child credits", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -198,7 +185,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	personal, err := h.svc.GetPersonal(ctx, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		slog.Error("failed to get personal credits", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -206,7 +193,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	spouseCredit, disabilityCredit, studentCredit, credErr := h.svc.ComputeCredits(ctx, year)
 	if credErr != nil {
 		slog.Error("failed to compute credits", "error", credErr, "year", year)
-		mapTaxCreditsError(w, credErr)
+		mapDomainError(w, credErr)
 		return
 	}
 	totalCredits := spouseCredit + disabilityCredit + studentCredit
@@ -214,7 +201,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	totalChildBenefit, err := h.svc.ComputeChildBenefit(ctx, year)
 	if err != nil {
 		slog.Error("failed to compute child benefit", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -268,7 +255,7 @@ func (h *TaxCreditsHandler) UpsertSpouse(w http.ResponseWriter, r *http.Request)
 
 	if err := h.svc.UpsertSpouse(r.Context(), sc); err != nil {
 		slog.Error("failed to upsert spouse credit", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -285,7 +272,7 @@ func (h *TaxCreditsHandler) DeleteSpouse(w http.ResponseWriter, r *http.Request)
 
 	if err := h.svc.DeleteSpouse(r.Context(), year); err != nil {
 		slog.Error("failed to delete spouse credit", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -303,7 +290,7 @@ func (h *TaxCreditsHandler) ListChildren(w http.ResponseWriter, r *http.Request)
 	children, err := h.svc.ListChildren(r.Context(), year)
 	if err != nil {
 		slog.Error("failed to list child credits", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -340,7 +327,7 @@ func (h *TaxCreditsHandler) CreateChild(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.CreateChild(r.Context(), cc); err != nil {
 		slog.Error("failed to create child credit", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -379,7 +366,7 @@ func (h *TaxCreditsHandler) UpdateChild(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.UpdateChild(r.Context(), cc); err != nil {
 		slog.Error("failed to update child credit", "error", err, "id", id, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -396,7 +383,7 @@ func (h *TaxCreditsHandler) DeleteChild(w http.ResponseWriter, r *http.Request) 
 
 	if err := h.svc.DeleteChild(r.Context(), id); err != nil {
 		slog.Error("failed to delete child credit", "error", err, "id", id)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -426,7 +413,7 @@ func (h *TaxCreditsHandler) UpsertPersonal(w http.ResponseWriter, r *http.Reques
 
 	if err := h.svc.UpsertPersonal(r.Context(), pc); err != nil {
 		slog.Error("failed to upsert personal credits", "error", err, "year", year)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 
@@ -449,7 +436,7 @@ func (h *TaxCreditsHandler) CopyFromYear(w http.ResponseWriter, r *http.Request)
 
 	if err := h.svc.CopyFromYear(r.Context(), sourceYear, targetYear); err != nil {
 		slog.Error("failed to copy tax credits", "error", err, "sourceYear", sourceYear, "targetYear", targetYear)
-		mapTaxCreditsError(w, err)
+		mapDomainError(w, err)
 		return
 	}
 

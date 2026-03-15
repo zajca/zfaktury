@@ -51,10 +51,10 @@ func ComputeChildBenefit(children []ChildCreditInput, constants TaxYearConstants
 	var total domain.Amount
 	for _, child := range children {
 		var base domain.Amount
-		switch {
-		case child.ChildOrder == 1:
+		switch child.ChildOrder {
+		case 1:
 			base = constants.ChildBenefit1
-		case child.ChildOrder == 2:
+		case 2:
 			base = constants.ChildBenefit2
 		default:
 			base = constants.ChildBenefit3Plus

@@ -115,13 +115,14 @@ func (g *VATReturnGenerator) Generate(vr *domain.VATReturn, info TaxpayerInfo) (
 	}
 
 	// Set dano_da or dano_no based on net VAT.
-	if netVAT > 0 {
+	switch {
+	case netVAT > 0:
 		doc.DPHDP3.Veta6.DanoDa = netVAT
 		doc.DPHDP3.Veta6.DanoNo = "0"
-	} else if netVAT < 0 {
+	case netVAT < 0:
 		doc.DPHDP3.Veta6.DanoNo = fmt.Sprintf("%.1f", -netVAT)
 		doc.DPHDP3.Veta6.DanoDa = 0
-	} else {
+	default:
 		doc.DPHDP3.Veta6.DanoNo = "0"
 		doc.DPHDP3.Veta6.DanoDa = 0
 	}

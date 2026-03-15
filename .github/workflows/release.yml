@@ -117,7 +117,7 @@ jobs:
             EXT=".exe"
           fi
 
-          go build -ldflags "${LDFLAGS}" -o "zfaktury${EXT}" ./cmd/zfaktury
+          go build -tags server -ldflags "${LDFLAGS}" -o "zfaktury${EXT}" ./cmd/zfaktury
 
       - name: Archive (tar.gz)
         if: matrix.goos != 'windows'

@@ -1962,3 +1962,43 @@ export const backupApi = {
 		return `${API_BASE}/backups/${id}/download`;
 	}
 };
+
+// --- PDF Settings API ---
+
+export interface PDFSettings {
+	logo_path: string;
+	accent_color: string;
+	footer_text: string;
+	show_qr: boolean;
+	show_bank_details: boolean;
+	font_size: 'small' | 'normal' | 'large';
+	has_logo: boolean;
+}
+
+export const pdfSettingsApi = {
+	get() {
+		return get<PDFSettings>('/settings/pdf');
+	},
+	update(data: Omit<PDFSettings, 'logo_path' | 'has_logo'>) {
+		return put<PDFSettings>('/settings/pdf', data);
+	},
+	async uploadLogo(file: File) {
+		const form = new FormData();
+		form.append('file', file);
+		const resp = await fetch(`${API_BASE}/settings/logo`, { method: 'POST', body: form });
+		if (!resp.ok) {
+			const err = await resp.json().catch(() => ({ error: 'Upload failed' }));
+			throw new Error(err.error || 'Upload failed');
+		}
+		return resp.json();
+	},
+	deleteLogo() {
+		return del('/settings/logo');
+	},
+	logoUrl(): string {
+		return `${API_BASE}/settings/logo`;
+	},
+	previewUrl(): string {
+		return `${API_BASE}/settings/pdf-preview`;
+	}
+};

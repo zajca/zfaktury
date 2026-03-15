@@ -1,4 +1,4 @@
-.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend coverage-critical install-hooks release release-retry
+.PHONY: build build-server dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend coverage-critical install-hooks release release-retry
 
 VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
@@ -8,13 +8,23 @@ LDFLAGS  = -s -w \
   -X github.com/zajca/zfaktury/internal/version.Commit=$(COMMIT) \
   -X github.com/zajca/zfaktury/internal/version.Date=$(DATE)
 
-# Build the complete application (frontend + Go binary)
+# Build desktop application (requires CGO + webkit2gtk)
 build:
 	@echo "Building frontend..."
 	cd frontend && npm ci && npm run build
-	@echo "Building Go binary..."
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o zfaktury ./cmd/zfaktury
+	rm -rf web/frontend/build && cp -r frontend/build web/frontend/build
+	@echo "Building desktop binary (CGO required)..."
+	go build -ldflags "$(LDFLAGS)" -o zfaktury ./cmd/zfaktury
 	@echo "Build complete: ./zfaktury"
+
+# Build server-only binary (no CGO, no native GUI deps)
+build-server:
+	@echo "Building frontend..."
+	cd frontend && npm ci && npm run build
+	rm -rf web/frontend/build && cp -r frontend/build web/frontend/build
+	@echo "Building server binary (no CGO)..."
+	CGO_ENABLED=0 go build -tags server -ldflags "$(LDFLAGS)" -o zfaktury-server ./cmd/zfaktury
+	@echo "Build complete: ./zfaktury-server"
 
 # Run in development mode with hot reloading
 dev:
@@ -22,7 +32,7 @@ dev:
 
 # Run all tests (backend + frontend)
 test:
-	CGO_ENABLED=0 go test ./... -v
+	CGO_ENABLED=0 go test -tags server ./... -v
 	cd frontend && npm run test
 
 # Lint all code

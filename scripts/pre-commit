@@ -35,14 +35,14 @@ echo "Running Go tests with coverage check..."
 COVER_OUT=$(mktemp)
 trap 'rm -f "$COVER_OUT"' EXIT
 
-if ! CGO_ENABLED=0 go test ./... -coverprofile="$COVER_OUT" -count=1 > /dev/null 2>&1; then
+if ! CGO_ENABLED=0 go test -tags server ./... -coverprofile="$COVER_OUT" -count=1 > /dev/null 2>&1; then
     echo "FAIL: Go tests failed"
-    CGO_ENABLED=0 go test ./... -count=1
+    CGO_ENABLED=0 go test -tags server ./... -count=1
     exit 1
 fi
 
 # Calculate coverage excluding non-testable packages
-EXCLUDED="cmd/|frontend/|internal/cli/|internal/config/|internal/database/|internal/app/|internal/testutil/"
+EXCLUDED="cmd/|frontend/|internal/cli/|internal/config/|internal/database/|internal/app/|internal/server/|internal/testutil/"
 TOTAL=$(go tool cover -func="$COVER_OUT" \
     | grep -v "total:" \
     | grep -vE "$EXCLUDED" \

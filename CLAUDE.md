@@ -101,19 +101,35 @@ These rules are non-negotiable. Every new or modified code MUST follow them.
 
 ## Build & Run
 
+Two build targets: desktop (native window via Wails v3) and server-only (headless HTTP).
+
 ```bash
 # Development (2 processes: Vite HMR + Go server)
 make dev
 
-# Production build (frontend + single Go binary)
+# Desktop build (requires CGO + GTK3 + WebKitGTK 4.1)
 make build
 
-# Tests
+# Server-only build (no CGO, no native deps)
+make build-server
+
+# Tests (always use server tag to avoid CGO requirement)
 make test
 
-# Build without CGO (required on systems without gcc)
-CGO_ENABLED=0 go build -o zfaktury ./cmd/zfaktury
+# Run modes
+./zfaktury              # Desktop window (default)
+./zfaktury serve        # Headless HTTP server
+./zfaktury-server       # Server-only binary (no desktop)
 ```
+
+### NixOS Desktop Build
+
+Dev dependencies (gtk3, webkitgtk_4_1, libsoup_3, pkg-config, gcc) are configured in `~/Code/Nix/home/packages/programming/go.nix`. After `nixos-rebuild switch`, desktop builds work out of the box.
+
+### Build Tags
+
+- No tag (default): compiles `desktop.go` with Wails v3 (CGO required)
+- `-tags server`: compiles `desktop_server.go` which falls back to `serve` command (no CGO)
 
 ## File Naming
 
@@ -132,6 +148,7 @@ CGO_ENABLED=0 go build -o zfaktury ./cmd/zfaktury
 | Config | `github.com/BurntSushi/toml` |
 | PDF | `github.com/johnfercher/maroto/v2` |
 | QR codes | `github.com/dundee/qrpay` |
+| Desktop window | `github.com/wailsapp/wails/v3` |
 | Logging | `log/slog` (stdlib) |
 | XML | `encoding/xml` (stdlib) |
 

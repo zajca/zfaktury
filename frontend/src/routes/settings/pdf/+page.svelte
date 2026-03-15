@@ -135,10 +135,11 @@
 						</div>
 					{/if}
 					<div>
-						<label class="block text-sm font-medium text-secondary mb-1">
+						<label for="logo-upload" class="block text-sm font-medium text-secondary mb-1">
 							{settings.has_logo ? 'Změnit logo' : 'Nahrát logo'}
 						</label>
 						<input
+							id="logo-upload"
 							type="file"
 							accept="image/png,image/jpeg,image/svg+xml"
 							onchange={handleLogoUpload}

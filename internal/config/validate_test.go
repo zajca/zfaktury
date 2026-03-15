@@ -18,15 +18,23 @@ func TestValidate_ValidConfig(t *testing.T) {
 	}
 }
 
+func TestValidate_PortZeroIsValid(t *testing.T) {
+	cfg := validConfig()
+	cfg.Server.Port = 0
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected port 0 to be valid (random port), got: %v", err)
+	}
+}
+
 func TestValidate_InvalidPort(t *testing.T) {
-	for _, port := range []int{0, -1, 65536, 100000} {
+	for _, port := range []int{-1, 65536, 100000} {
 		cfg := validConfig()
 		cfg.Server.Port = port
 		err := cfg.Validate()
 		if err == nil {
 			t.Fatalf("expected error for port %d, got nil", port)
 		}
-		if !strings.Contains(err.Error(), "server.port must be 1-65535") {
+		if !strings.Contains(err.Error(), "server.port must be 0-65535") {
 			t.Fatalf("unexpected error message: %v", err)
 		}
 	}
@@ -78,7 +86,7 @@ func TestValidate_OCRProviderWithAPIKey(t *testing.T) {
 
 func TestValidate_MultipleErrors(t *testing.T) {
 	cfg := &Config{
-		Server: ServerConfig{Port: 0},
+		Server: ServerConfig{Port: -1},
 		SMTP:   SMTPConfig{Host: "smtp.example.com", Port: 0},
 		OCR:    OCRConfig{Provider: "openai", APIKey: ""},
 	}
@@ -87,7 +95,7 @@ func TestValidate_MultipleErrors(t *testing.T) {
 		t.Fatal("expected error for multiple validation failures, got nil")
 	}
 	msg := err.Error()
-	if !strings.Contains(msg, "server.port must be 1-65535") {
+	if !strings.Contains(msg, "server.port must be 0-65535") {
 		t.Fatalf("missing port error in: %s", msg)
 	}
 	if !strings.Contains(msg, "smtp.port is required") {

@@ -17,6 +17,7 @@ It provides invoice creation, expense tracking, tax calculations,
 and integration with Czech financial services (ARES, FIO Bank, CNB).`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	RunE:          runDesktop,
 }
 
 func init() {

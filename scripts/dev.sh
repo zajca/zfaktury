@@ -51,6 +51,6 @@ fi
 
 # Start Go server in dev mode
 echo "==> Starting Go server in dev mode..."
-CGO_ENABLED=0 go run ./cmd/zfaktury --config "$PROJECT_DIR/config.dev.toml" serve --dev --port 8080
+CGO_ENABLED=0 go run -tags server ./cmd/zfaktury --config "$PROJECT_DIR/config.dev.toml" serve --dev --port 8080
 
 wait

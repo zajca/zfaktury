@@ -44,6 +44,14 @@ frontend/coverage/
 # Local config
 config.dev.toml
 
+# Nix
+.envrc
+.direnv/
+
+# Embedded frontend build output (placeholder index.html is tracked)
+web/frontend/build/_app/
+web/frontend/build/favicon.png
+
 # Claude
 docs/AGENT-REPORTS
 .claude/worktrees/

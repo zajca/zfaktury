@@ -96,15 +96,21 @@ func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoic
 
 	baseFontSize := fontSizePoints(ps.FontSize)
 
+	customFonts, err := loadCustomFonts()
+	if err != nil {
+		return nil, fmt.Errorf("loading fonts: %w", err)
+	}
+
 	cfg := config.NewBuilder().
 		WithPageSize(pagesize.A4).
+		WithCustomFonts(customFonts).
 		WithLeftMargin(15).
 		WithRightMargin(15).
 		WithTopMargin(15).
 		WithBottomMargin(15).
 		WithDefaultFont(&props.Font{
 			Size:   baseFontSize - 1,
-			Family: "arial",
+			Family: fontFamily,
 			Style:  fontstyle.Normal,
 		}).
 		Build()
@@ -146,7 +152,7 @@ func (g *InvoicePDFGenerator) Generate(_ context.Context, invoice *domain.Invoic
 		m.AddRows(
 			row.New(8).Add(
 				col.New(12).Add(
-					text.New("Subjekt neni platce DPH.", props.Text{
+					text.New("Subjekt není plátce DPH.", props.Text{
 						Size:  baseFontSize - 2,
 						Style: fontstyle.Italic,
 						Align: align.Center,
@@ -240,13 +246,13 @@ func (g *InvoicePDFGenerator) addHeader(m core.Maroto, invoice *domain.Invoice, 
 	m.AddRows(
 		row.New(6).Add(
 			col.New(4).Add(
-				text.New(fmt.Sprintf("Datum vystaveni: %s", invoice.IssueDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2}),
+				text.New(fmt.Sprintf("Datum vystavení: %s", invoice.IssueDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2}),
 			),
 			col.New(4).Add(
 				text.New(fmt.Sprintf("Datum splatnosti: %s", invoice.DueDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2}),
 			),
 			col.New(4).Add(
-				text.New(fmt.Sprintf("DUZP: %s", invoice.DeliveryDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2, Align: align.Right}),
+				text.New(fmt.Sprintf("DÚZP: %s", invoice.DeliveryDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2, Align: align.Right}),
 			),
 		),
 	)
@@ -262,10 +268,10 @@ func (g *InvoicePDFGenerator) addParties(m core.Maroto, invoice *domain.Invoice,
 		supplierRows = append(supplierRows, fmt.Sprintf("%s %s", supplier.ZIP, supplier.City))
 	}
 	if supplier.ICO != "" {
-		supplierRows = append(supplierRows, fmt.Sprintf("ICO: %s", supplier.ICO))
+		supplierRows = append(supplierRows, fmt.Sprintf("IČO: %s", supplier.ICO))
 	}
 	if supplier.DIC != "" {
-		supplierRows = append(supplierRows, fmt.Sprintf("DIC: %s", supplier.DIC))
+		supplierRows = append(supplierRows, fmt.Sprintf("DIČ: %s", supplier.DIC))
 	}
 
 	// Customer column content.
@@ -280,10 +286,10 @@ func (g *InvoicePDFGenerator) addParties(m core.Maroto, invoice *domain.Invoice,
 			customerRows = append(customerRows, fmt.Sprintf("%s %s", c.ZIP, c.City))
 		}
 		if c.ICO != "" {
-			customerRows = append(customerRows, fmt.Sprintf("ICO: %s", c.ICO))
+			customerRows = append(customerRows, fmt.Sprintf("IČO: %s", c.ICO))
 		}
 		if c.DIC != "" {
-			customerRows = append(customerRows, fmt.Sprintf("DIC: %s", c.DIC))
+			customerRows = append(customerRows, fmt.Sprintf("DIČ: %s", c.DIC))
 		}
 	}
 
@@ -297,7 +303,7 @@ func (g *InvoicePDFGenerator) addParties(m core.Maroto, invoice *domain.Invoice,
 				}),
 			),
 			col.New(6).Add(
-				text.New("Odberatel", props.Text{
+				text.New("Odběratel", props.Text{
 					Size:  10,
 					Style: fontstyle.Bold,
 				}),
@@ -415,7 +421,7 @@ func (g *InvoicePDFGenerator) addVATSummary(m core.Maroto, invoice *domain.Invoi
 			row.New(6).Add(
 				col.New(6), // Empty left side.
 				col.New(2).Add(text.New("Sazba DPH", props.Text{Size: 7, Style: fontstyle.Bold})),
-				col.New(2).Add(text.New("Zaklad", props.Text{Size: 7, Style: fontstyle.Bold, Align: align.Right})),
+				col.New(2).Add(text.New("Základ", props.Text{Size: 7, Style: fontstyle.Bold, Align: align.Right})),
 				col.New(2).Add(text.New("DPH", props.Text{Size: 7, Style: fontstyle.Bold, Align: align.Right})),
 			),
 		)
@@ -443,7 +449,7 @@ func (g *InvoicePDFGenerator) addTotals(m core.Maroto, invoice *domain.Invoice, 
 	m.AddRows(
 		row.New(6).Add(
 			col.New(6),
-			col.New(3).Add(text.New("Zaklad celkem:", rightStyle)),
+			col.New(3).Add(text.New("Základ celkem:", rightStyle)),
 			col.New(3).Add(text.New(formatAmountCZK(invoice.SubtotalAmount), rightStyle)),
 		),
 		row.New(6).Add(
@@ -453,7 +459,7 @@ func (g *InvoicePDFGenerator) addTotals(m core.Maroto, invoice *domain.Invoice, 
 		),
 		row.New(8).Add(
 			col.New(6),
-			col.New(3).Add(text.New("Celkem k uhrade:", rightBoldStyle)),
+			col.New(3).Add(text.New("Celkem k úhradě:", rightBoldStyle)),
 			col.New(3).Add(text.New(formatAmountCZK(invoice.TotalAmount), rightBoldStyle)),
 		),
 	)
@@ -463,7 +469,7 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 	m.AddRows(
 		row.New(8).Add(
 			col.New(12).Add(
-				text.New("Platebni udaje", props.Text{
+				text.New("Platební údaje", props.Text{
 					Size:  10,
 					Style: fontstyle.Bold,
 				}),
@@ -513,7 +519,7 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 			m.AddRows(
 				row.New(5).Add(
 					col.New(paymentInfoSize).Add(
-						text.New(fmt.Sprintf("Cislo uctu: %s", accountStr), valueStyle),
+						text.New(fmt.Sprintf("Číslo účtu: %s", accountStr), valueStyle),
 					),
 				),
 			)
@@ -534,7 +540,7 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 		m.AddRows(
 			row.New(5).Add(
 				col.New(paymentInfoSize).Add(
-					text.New(fmt.Sprintf("Variabilni symbol: %s", invoice.VariableSymbol), valueStyle),
+					text.New(fmt.Sprintf("Variabilní symbol: %s", invoice.VariableSymbol), valueStyle),
 				),
 			),
 		)
@@ -544,7 +550,7 @@ func (g *InvoicePDFGenerator) addPaymentSection(m core.Maroto, invoice *domain.I
 		m.AddRows(
 			row.New(5).Add(
 				col.New(paymentInfoSize).Add(
-					text.New(fmt.Sprintf("Konstantni symbol: %s", invoice.ConstantSymbol), valueStyle),
+					text.New(fmt.Sprintf("Konstantní symbol: %s", invoice.ConstantSymbol), valueStyle),
 				),
 			),
 		)
@@ -601,13 +607,13 @@ func statusLabel(s string) string {
 	case domain.InvoiceStatusDraft:
 		return "Koncept"
 	case domain.InvoiceStatusSent:
-		return "Odeslana"
+		return "Odeslaná"
 	case domain.InvoiceStatusPaid:
-		return "Uhrazena"
+		return "Uhrazená"
 	case domain.InvoiceStatusOverdue:
 		return "Po splatnosti"
 	case domain.InvoiceStatusCancelled:
-		return "Stornovana"
+		return "Stornovaná"
 	default:
 		return s
 	}

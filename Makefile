@@ -1,4 +1,4 @@
-.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend coverage-critical install-hooks
+.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend coverage-critical install-hooks release release-retry
 
 VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
@@ -81,3 +81,11 @@ install-hooks:
 # Run database migrations only
 migrate:
 	go run ./cmd/zfaktury serve --port 0 2>&1 | head -5
+
+# Create a release tag (usage: make release V=v1.0.0)
+release:
+	@bash scripts/release.sh $(V)
+
+# Retry a failed release (usage: make release-retry V=v1.0.0)
+release-retry:
+	@bash scripts/release.sh --retry $(V)

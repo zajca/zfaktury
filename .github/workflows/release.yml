@@ -9,7 +9,51 @@ permissions:
   contents: write
 
 jobs:
+  check-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify CI passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Checking CI status for ${{ github.sha }}..."
+          for i in $(seq 1 20); do
+            RUN=$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow ci.yml \
+              --commit "${{ github.sha }}" \
+              --json status,conclusion \
+              --limit 1 \
+              --jq '.[0] // empty')
+
+            if [ -z "$RUN" ]; then
+              echo "No CI run found for this commit (attempt $i/20), waiting 30s..."
+              sleep 30
+              continue
+            fi
+
+            STATUS=$(echo "$RUN" | jq -r '.status')
+            CONCLUSION=$(echo "$RUN" | jq -r '.conclusion // "pending"')
+
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "CI passed!"
+                exit 0
+              else
+                echo "::error::CI failed with conclusion: $CONCLUSION. Release blocked."
+                exit 1
+              fi
+            fi
+
+            echo "CI still running (status: $STATUS, attempt $i/20), waiting 30s..."
+            sleep 30
+          done
+
+          echo "::error::Timed out waiting for CI to complete (10 min). Release blocked."
+          exit 1
+
   build-frontend:
+    needs: check-ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

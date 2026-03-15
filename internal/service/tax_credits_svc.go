@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -288,7 +289,7 @@ func (s *TaxCreditsService) ListDeductions(ctx context.Context, year int) ([]dom
 // ComputeCredits computes the spouse, disability, and student credit amounts for the given year.
 // Returns zero amounts for credits that have no data (ErrNotFound).
 func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spouseCredit, disabilityCredit, studentCredit domain.Amount, err error) {
-	constants, err := GetTaxConstants(year)
+	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("getting tax constants for credits: %w", err)
 	}
@@ -298,11 +299,8 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return 0, 0, 0, fmt.Errorf("fetching spouse credit for compute: %w", err)
 	}
-	if spouse != nil && spouse.SpouseIncome < constants.SpouseIncomeLimit {
-		spouseCredit = constants.SpouseCredit.Multiply(float64(spouse.MonthsClaimed) / 12.0)
-		if spouse.SpouseZTP {
-			spouseCredit *= 2
-		}
+	if spouse != nil {
+		spouseCredit = calc.ComputeSpouseCredit(spouse.SpouseIncome, spouse.MonthsClaimed, spouse.SpouseZTP, constants)
 	}
 
 	// Personal credits (student + disability).
@@ -311,20 +309,7 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 		return 0, 0, 0, fmt.Errorf("fetching personal credits for compute: %w", err)
 	}
 	if personal != nil {
-		// Student credit: proportional by months.
-		if personal.IsStudent && personal.StudentMonths > 0 {
-			studentCredit = constants.StudentCredit.Multiply(float64(personal.StudentMonths) / 12.0)
-		}
-
-		// Disability credit by level.
-		switch personal.DisabilityLevel {
-		case 1:
-			disabilityCredit = constants.DisabilityCredit1
-		case 2:
-			disabilityCredit = constants.DisabilityCredit3
-		case 3:
-			disabilityCredit = constants.DisabilityZTPP
-		}
+		disabilityCredit, studentCredit = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.IsStudent, personal.StudentMonths, constants)
 	}
 
 	return spouseCredit, disabilityCredit, studentCredit, nil
@@ -332,7 +317,7 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 
 // ComputeChildBenefit computes the total child benefit amount for the given year.
 func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, year int) (domain.Amount, error) {
-	constants, err := GetTaxConstants(year)
+	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return 0, fmt.Errorf("getting tax constants for child benefit: %w", err)
 	}
@@ -342,33 +327,24 @@ func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, year int) (
 		return 0, fmt.Errorf("listing children for benefit compute: %w", err)
 	}
 
-	var total domain.Amount
-	for _, child := range children {
-		var base domain.Amount
-		switch child.ChildOrder {
-		case 1:
-			base = constants.ChildBenefit1
-		case 2:
-			base = constants.ChildBenefit2
-		default:
-			base = constants.ChildBenefit3Plus
+	// Map to calc inputs.
+	calcChildren := make([]calc.ChildCreditInput, len(children))
+	for i, child := range children {
+		calcChildren[i] = calc.ChildCreditInput{
+			ChildOrder:    child.ChildOrder,
+			MonthsClaimed: child.MonthsClaimed,
+			ZTP:           child.ZTP,
 		}
-
-		amount := base.Multiply(float64(child.MonthsClaimed) / 12.0)
-		if child.ZTP {
-			amount *= 2
-		}
-		total += amount
 	}
 
-	return total, nil
+	return calc.ComputeChildBenefit(calcChildren, constants), nil
 }
 
 // ComputeDeductions computes allowed deduction amounts for the given year,
 // applying statutory caps per category. Updates each deduction's MaxAmount and
 // AllowedAmount via the repository.
 func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, taxBase domain.Amount) (domain.Amount, error) {
-	constants, err := GetTaxConstants(year)
+	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return 0, fmt.Errorf("getting tax constants for deductions: %w", err)
 	}
@@ -378,7 +354,19 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 		return 0, fmt.Errorf("listing deductions for compute: %w", err)
 	}
 
-	// Calculate category caps.
+	// Map to calc inputs.
+	calcDeductions := make([]calc.DeductionInput, len(deductions))
+	for i, ded := range deductions {
+		calcDeductions[i] = calc.DeductionInput{
+			Category:      ded.Category,
+			ClaimedAmount: ded.ClaimedAmount,
+		}
+	}
+
+	// Pure calculation.
+	result := calc.ComputeDeductions(calcDeductions, taxBase, constants)
+
+	// Persist allowed amounts back to DB.
 	categoryCaps := map[string]domain.Amount{
 		domain.DeductionMortgage:      constants.DeductionCapMortgage,
 		domain.DeductionLifeInsurance: constants.DeductionCapLifeInsurance,
@@ -387,37 +375,17 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 		domain.DeductionDonation:      taxBase.Multiply(0.15),
 	}
 
-	// Track remaining cap per category.
-	remainingCap := make(map[string]domain.Amount)
-	for cat, cap := range categoryCaps {
-		remainingCap[cat] = cap
-	}
-
-	var totalAllowed domain.Amount
 	for i := range deductions {
 		ded := &deductions[i]
-		cap := categoryCaps[ded.Category]
-		remaining := remainingCap[ded.Category]
-
-		allowed := ded.ClaimedAmount
-		if allowed > remaining {
-			allowed = remaining
-		}
-		if allowed < 0 {
-			allowed = 0
-		}
-
-		ded.MaxAmount = cap
-		ded.AllowedAmount = allowed
-		remainingCap[ded.Category] = remaining - allowed
-		totalAllowed += allowed
+		ded.MaxAmount = categoryCaps[ded.Category]
+		ded.AllowedAmount = result.AllowedAmounts[i]
 
 		if err := s.deductionRepo.Update(ctx, ded); err != nil {
 			return 0, fmt.Errorf("updating deduction %d after compute: %w", ded.ID, err)
 		}
 	}
 
-	return totalAllowed, nil
+	return result.TotalAllowed, nil
 }
 
 // CopyFromYear copies credits and deductions from sourceYear to targetYear.

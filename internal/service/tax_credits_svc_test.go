@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/testutil"
@@ -233,7 +234,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseProportionalMonths(t *testing.T)
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expected := constants.SpouseCredit.Multiply(6.0 / 12.0)
 	if spouseCredit != expected {
 		t.Errorf("spouseCredit = %d, want %d (half of %d)", spouseCredit, expected, constants.SpouseCredit)
@@ -259,7 +260,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseFullYear(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if spouseCredit != constants.SpouseCredit {
 		t.Errorf("spouseCredit = %d, want %d", spouseCredit, constants.SpouseCredit)
 	}
@@ -310,7 +311,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPDoubling(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expected := constants.SpouseCredit * 2
 	if spouseCredit != expected {
 		t.Errorf("spouseCredit = %d, want %d (ZTP doubled)", spouseCredit, expected)
@@ -337,7 +338,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPPartialMonths(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	// Proportional then doubled.
 	expected := constants.SpouseCredit.Multiply(3.0/12.0) * 2
 	if spouseCredit != expected {
@@ -363,7 +364,7 @@ func TestTaxCreditsService_ComputeCredits_StudentProportional(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expected := constants.StudentCredit.Multiply(8.0 / 12.0)
 	if studentCredit != expected {
 		t.Errorf("studentCredit = %d, want %d", studentCredit, expected)
@@ -388,7 +389,7 @@ func TestTaxCreditsService_ComputeCredits_StudentFullYear(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if studentCredit != constants.StudentCredit {
 		t.Errorf("studentCredit = %d, want %d", studentCredit, constants.StudentCredit)
 	}
@@ -435,7 +436,7 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel1(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if disabilityCredit != constants.DisabilityCredit1 {
 		t.Errorf("disabilityCredit = %d, want %d (level 1)", disabilityCredit, constants.DisabilityCredit1)
 	}
@@ -458,7 +459,7 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel2(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if disabilityCredit != constants.DisabilityCredit3 {
 		t.Errorf("disabilityCredit = %d, want %d (level 2 -> DisabilityCredit3)", disabilityCredit, constants.DisabilityCredit3)
 	}
@@ -481,7 +482,7 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel3_ZTPP(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if disabilityCredit != constants.DisabilityZTPP {
 		t.Errorf("disabilityCredit = %d, want %d (level 3 -> ZTP/P)", disabilityCredit, constants.DisabilityZTPP)
 	}
@@ -533,7 +534,7 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 
 	expectedSpouse := constants.SpouseCredit.Multiply(6.0/12.0) * 2
 	expectedStudent := constants.StudentCredit.Multiply(10.0 / 12.0)
@@ -571,7 +572,7 @@ func TestTaxCreditsService_ComputeChildBenefit_SingleChild(t *testing.T) {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if total != constants.ChildBenefit1 {
 		t.Errorf("total = %d, want %d", total, constants.ChildBenefit1)
 	}
@@ -597,7 +598,7 @@ func TestTaxCreditsService_ComputeChildBenefit_MultipleChildren(t *testing.T) {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expected := constants.ChildBenefit1 + constants.ChildBenefit2 + constants.ChildBenefit3Plus
 	if total != expected {
 		t.Errorf("total = %d, want %d", total, expected)
@@ -623,7 +624,7 @@ func TestTaxCreditsService_ComputeChildBenefit_PartialMonths(t *testing.T) {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expected := constants.ChildBenefit1.Multiply(6.0 / 12.0)
 	if total != expected {
 		t.Errorf("total = %d, want %d", total, expected)
@@ -650,7 +651,7 @@ func TestTaxCreditsService_ComputeChildBenefit_ZTPDoubling(t *testing.T) {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expected := constants.ChildBenefit2 * 2
 	if total != expected {
 		t.Errorf("total = %d, want %d (ZTP doubled)", total, expected)

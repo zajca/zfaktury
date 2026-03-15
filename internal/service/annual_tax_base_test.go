@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/testutil"
@@ -338,9 +339,9 @@ func TestCalculateAnnualBase_ExpensePartialBusinessPercent(t *testing.T) {
 }
 
 func TestGetTaxConstants_KnownYear(t *testing.T) {
-	constants, err := GetTaxConstants(2025)
+	constants, err := calc.GetTaxConstants(2025)
 	if err != nil {
-		t.Fatalf("GetTaxConstants(2025) error: %v", err)
+		t.Fatalf("calc.GetTaxConstants(2025) error: %v", err)
 	}
 
 	if constants.BasicCredit != domain.NewAmount(30840, 0) {
@@ -355,7 +356,7 @@ func TestGetTaxConstants_KnownYear(t *testing.T) {
 }
 
 func TestGetTaxConstants_UnknownYear(t *testing.T) {
-	_, err := GetTaxConstants(1900)
+	_, err := calc.GetTaxConstants(1900)
 	if err == nil {
 		t.Error("expected error for unknown year")
 	}
@@ -366,9 +367,9 @@ func TestGetTaxConstants_UnknownYear(t *testing.T) {
 
 func TestGetTaxConstants_AllConfiguredYears(t *testing.T) {
 	for _, year := range []int{2024, 2025, 2026} {
-		constants, err := GetTaxConstants(year)
+		constants, err := calc.GetTaxConstants(year)
 		if err != nil {
-			t.Fatalf("GetTaxConstants(%d) error: %v", year, err)
+			t.Fatalf("calc.GetTaxConstants(%d) error: %v", year, err)
 		}
 		if constants.ProgressiveThreshold <= 0 {
 			t.Errorf("year %d: ProgressiveThreshold = %d, expected > 0", year, constants.ProgressiveThreshold)

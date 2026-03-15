@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -190,7 +191,7 @@ type assetGroupKey struct {
 
 // RecalculateFIFO recomputes FIFO cost basis, gains, and time test exemptions for all sells in a year.
 func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int) error {
-	constants, err := GetTaxConstants(year)
+	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return fmt.Errorf("getting tax constants for FIFO: %w", err)
 	}

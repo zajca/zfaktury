@@ -2,26 +2,33 @@ package vatxml
 
 import (
 	"encoding/xml"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/testutil"
 )
+
+var fixedSubmissionDate = time.Date(2025, 4, 25, 0, 0, 0, 0, time.UTC)
 
 func testTaxpayerInfo() TaxpayerInfo {
 	return TaxpayerInfo{
-		DIC:       "8905244997",
-		FirstName: "Martin",
-		LastName:  "Zajic",
-		Street:    "Ludkovice",
-		HouseNum:  "189",
-		ZIP:       "76341",
-		City:      "Ludkovice",
-		Phone:     "776598983",
-		Email:     "ja@mzajic.cz",
-		UFOCode:   "464",
-		PracUFO:   "3305",
-		OKEC:      "582900",
+		DIC:            "8905244997",
+		FirstName:      "Martin",
+		LastName:       "Zajic",
+		Street:         "Ludkovice",
+		HouseNum:       "189",
+		ZIP:            "76341",
+		City:           "Ludkovice",
+		Phone:          "776598983",
+		Email:          "ja@mzajic.cz",
+		UFOCode:        "464",
+		PracUFO:        "3305",
+		OKEC:           "582900",
+		SubmissionDate: fixedSubmissionDate,
 	}
 }
 
@@ -219,6 +226,59 @@ func TestVATReturnGenerator_Generate(t *testing.T) {
 	}
 }
 
+func TestSubmissionDate_ZeroFallback(t *testing.T) {
+	// When SubmissionDate is zero, submissionDate() should return approximately time.Now().
+	info := TaxpayerInfo{
+		DIC: "12345678",
+	}
+	before := time.Now()
+	got := submissionDate(info)
+	after := time.Now()
+
+	if got.Before(before) || got.After(after) {
+		t.Errorf("submissionDate() with zero SubmissionDate returned %v, expected between %v and %v", got, before, after)
+	}
+}
+
+func TestSubmissionDate_ExplicitDate(t *testing.T) {
+	explicit := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	info := TaxpayerInfo{
+		DIC:            "12345678",
+		SubmissionDate: explicit,
+	}
+	got := submissionDate(info)
+	if !got.Equal(explicit) {
+		t.Errorf("submissionDate() = %v, want %v", got, explicit)
+	}
+}
+
+func TestVATReturnGenerator_Generate_ZeroSubmissionDate(t *testing.T) {
+	gen := &VATReturnGenerator{}
+	vr := &domain.VATReturn{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 1},
+		FilingType: domain.FilingTypeRegular,
+	}
+
+	// Info with zero SubmissionDate should use time.Now() and not error.
+	info := TaxpayerInfo{
+		DIC:     "12345678",
+		PracUFO: "3305",
+		UFOCode: "464",
+	}
+
+	xmlData, err := gen.Generate(vr, info)
+	if err != nil {
+		t.Fatalf("Generate() with zero SubmissionDate returned error: %v", err)
+	}
+
+	// Verify the XML was generated with today's date.
+	xmlStr := string(xmlData)
+	todayFormatted := time.Now().Format("02.01.2006")
+	if !strings.Contains(xmlStr, fmt.Sprintf(`d_poddp="%s"`, todayFormatted)) {
+		t.Errorf("expected d_poddp to contain today's date %q in XML output", todayFormatted)
+	}
+}
+
 func TestVATReturnGenerator_Generate_NilReturn(t *testing.T) {
 	gen := &VATReturnGenerator{}
 	_, err := gen.Generate(nil, testTaxpayerInfo())
@@ -351,4 +411,109 @@ func TestVATReturnGenerator_Generate_NegativeNetVAT(t *testing.T) {
 	if doc.DPHDP3.Veta6.DanoNo != "1050.0" {
 		t.Errorf("Veta6.dano_no = %q, want %q", doc.DPHDP3.Veta6.DanoNo, "1050.0")
 	}
+}
+
+func TestVATReturnGenerator_Generate_Golden_Regular(t *testing.T) {
+	gen := &VATReturnGenerator{}
+	info := testTaxpayerInfo()
+
+	vr := &domain.VATReturn{
+		ID: 1,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 1,
+		},
+		FilingType:        domain.FilingTypeRegular,
+		OutputVATBase21:   domain.NewAmount(125598, 0), // 125598 CZK
+		OutputVATAmount21: domain.NewAmount(26375, 58), // 26375.58 CZK -> 26376
+		OutputVATBase12:   domain.NewAmount(45000, 0),  // 45000 CZK
+		OutputVATAmount12: domain.NewAmount(5400, 0),   // 5400 CZK
+		InputVATBase21:    domain.NewAmount(7671, 0),   // 7671 CZK
+		InputVATAmount21:  domain.NewAmount(1610, 86),  // 1610.86 CZK -> 1611
+		InputVATBase12:    domain.NewAmount(3200, 0),   // 3200 CZK
+		InputVATAmount12:  domain.NewAmount(384, 0),    // 384 CZK
+	}
+
+	xmlData, err := gen.Generate(vr, info)
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "vat_return_regular.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestVATReturnGenerator_Generate_Golden_Zero(t *testing.T) {
+	gen := &VATReturnGenerator{}
+	info := testTaxpayerInfo()
+
+	vr := &domain.VATReturn{
+		ID: 2,
+		Period: domain.TaxPeriod{
+			Year:    2025,
+			Quarter: 1,
+		},
+		FilingType: domain.FilingTypeRegular,
+	}
+
+	xmlData, err := gen.Generate(vr, info)
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "vat_return_zero.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestVATReturnGenerator_Generate_Golden_Negative(t *testing.T) {
+	gen := &VATReturnGenerator{}
+	info := testTaxpayerInfo()
+
+	// Refund scenario: large input VAT, no output VAT.
+	vr := &domain.VATReturn{
+		ID: 3,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 3,
+		},
+		FilingType:       domain.FilingTypeRegular,
+		InputVATBase21:   domain.NewAmount(80000, 0),
+		InputVATAmount21: domain.NewAmount(16800, 0),
+		InputVATBase12:   domain.NewAmount(20000, 0),
+		InputVATAmount12: domain.NewAmount(2400, 0),
+	}
+
+	xmlData, err := gen.Generate(vr, info)
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "vat_return_negative.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestVATReturnGenerator_Generate_Golden_Corrective(t *testing.T) {
+	gen := &VATReturnGenerator{}
+	info := testTaxpayerInfo()
+
+	vr := &domain.VATReturn{
+		ID: 4,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 2,
+		},
+		FilingType:        domain.FilingTypeCorrective,
+		OutputVATBase21:   domain.NewAmount(50000, 0),
+		OutputVATAmount21: domain.NewAmount(10500, 0),
+		InputVATBase21:    domain.NewAmount(10000, 0),
+		InputVATAmount21:  domain.NewAmount(2100, 0),
+	}
+
+	xmlData, err := gen.Generate(vr, info)
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "vat_return_corrective.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
 }

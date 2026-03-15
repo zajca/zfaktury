@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/testutil"
@@ -338,7 +339,7 @@ func TestSocialInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 	}
 
 	// Insurance rate should be set.
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if result.InsuranceRate != constants.SocialRate {
 		t.Errorf("InsuranceRate = %d, want %d", result.InsuranceRate, constants.SocialRate)
 	}
@@ -369,7 +370,7 @@ func TestSocialInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	expectedMinBase := domain.Amount(int64(constants.SocialMinMonthly) * 12)
 
 	if result.MinAssessmentBase != expectedMinBase {

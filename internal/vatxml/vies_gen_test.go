@@ -1,11 +1,13 @@
 package vatxml
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/testutil"
 )
 
 func TestVIESSummaryGenerator_Generate(t *testing.T) {
@@ -227,4 +229,67 @@ func TestVIESFilingTypeCode(t *testing.T) {
 			t.Errorf("viesFilingTypeCode(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
 	}
+}
+
+func TestVIESSummary_Golden_Regular(t *testing.T) {
+	gen := &VIESSummaryGenerator{}
+
+	vs := &domain.VIESSummary{
+		ID: 1,
+		Period: domain.TaxPeriod{
+			Year:    2025,
+			Quarter: 1,
+		},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	lines := []domain.VIESSummaryLine{
+		{
+			ID:            1,
+			VIESSummaryID: 1,
+			PartnerDIC:    "SK2023456789",
+			CountryCode:   "SK",
+			TotalAmount:   domain.NewAmount(150000, 0),
+			ServiceCode:   "3",
+		},
+		{
+			ID:            2,
+			VIESSummaryID: 1,
+			PartnerDIC:    "DE123456789",
+			CountryCode:   "DE",
+			TotalAmount:   domain.NewAmount(85500, 50),
+			ServiceCode:   "3",
+		},
+	}
+
+	xmlData, err := gen.Generate(vs, lines, "CZ89052449")
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "vies_summary_regular.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestVIESSummary_Golden_Empty(t *testing.T) {
+	gen := &VIESSummaryGenerator{}
+
+	vs := &domain.VIESSummary{
+		ID: 2,
+		Period: domain.TaxPeriod{
+			Year:    2025,
+			Quarter: 2,
+		},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	xmlData, err := gen.Generate(vs, nil, "CZ89052449")
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "vies_summary_empty.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
 }

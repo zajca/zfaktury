@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
-	"github.com/zajca/zfaktury/internal/service"
 )
 
 func TestToCZK(t *testing.T) {
@@ -30,7 +30,7 @@ func TestToCZK(t *testing.T) {
 }
 
 func TestTaxConstantsFromService(t *testing.T) {
-	c := service.TaxYearConstants{
+	c := calc.TaxYearConstants{
 		BasicCredit:   3083400,
 		SpouseCredit:  2477000,
 		FlatRateCaps:  map[int]domain.Amount{60: 200000000},

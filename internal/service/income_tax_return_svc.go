@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/zajca/zfaktury/internal/annualtaxxml"
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -170,23 +171,9 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	itr.FlatRatePercent = flatRatePercent
 
 	// Step 3: Get tax constants for the year.
-	constants, err := GetTaxConstants(itr.Year)
+	constants, err := calc.GetTaxConstants(itr.Year)
 	if err != nil {
 		return nil, fmt.Errorf("getting tax constants for income_tax_return: %w", err)
-	}
-
-	// Step 4: Determine used expenses (flat rate vs actual).
-	if flatRatePercent > 0 {
-		flatRateAmount := itr.TotalRevenue.Multiply(float64(flatRatePercent) / 100.0)
-		cap, hasCap := constants.FlatRateCaps[flatRatePercent]
-		if hasCap && flatRateAmount > cap {
-			flatRateAmount = cap
-		}
-		itr.FlatRateAmount = flatRateAmount
-		itr.UsedExpenses = flatRateAmount
-	} else {
-		itr.FlatRateAmount = 0
-		itr.UsedExpenses = itr.ActualExpenses
 	}
 
 	// Step 4b: §8 capital income and §10 other income (investments).
@@ -204,83 +191,70 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.OtherIncomeNet = summary.OtherIncomeNet
 	}
 
-	// Step 5: Tax base (§7 + §8 + §10).
-	taxBase := itr.TotalRevenue - itr.UsedExpenses + itr.CapitalIncomeNet + itr.OtherIncomeNet
-	if taxBase < 0 {
-		taxBase = 0
-	}
-	itr.TaxBase = taxBase
-
-	// Step 5b: Apply deductions (nezdanitelne casti) - reduce tax base before rounding.
-	var totalDeductions domain.Amount
+	// Compute credits and deductions from DB (needed as calc inputs).
+	var spouseCredit, disabilityCredit, studentCredit, childBenefit, totalDeductions domain.Amount
 	if s.taxCreditsSvc != nil {
-		deductions, deductErr := s.taxCreditsSvc.ComputeDeductions(ctx, itr.Year, taxBase)
-		if deductErr != nil {
-			return nil, fmt.Errorf("computing deductions for income_tax_return: %w", deductErr)
-		}
-		totalDeductions = deductions
-	}
-	itr.TotalDeductions = totalDeductions
-	taxBase -= totalDeductions
-	if taxBase < 0 {
-		taxBase = 0
-	}
-
-	// Step 6: Round down to 100 CZK (10000 halere).
-	itr.TaxBaseRounded = (taxBase / 10000) * 10000
-
-	// Step 7: Progressive tax calculation.
-	threshold := constants.ProgressiveThreshold
-	taxBaseRounded := itr.TaxBaseRounded
-
-	var tax15, tax23 domain.Amount
-	if taxBaseRounded <= threshold {
-		tax15 = taxBaseRounded.Multiply(0.15)
-		tax23 = 0
-	} else {
-		tax15 = threshold.Multiply(0.15)
-		tax23 = (taxBaseRounded - threshold).Multiply(0.23)
-	}
-	itr.TaxAt15 = tax15
-	itr.TaxAt23 = tax23
-	itr.TotalTax = tax15 + tax23
-
-	// Step 8: Tax credits - load from tax_credits tables.
-	itr.CreditBasic = constants.BasicCredit
-	if s.taxCreditsSvc != nil {
-		spouseCredit, disabilityCredit, studentCredit, credErr := s.taxCreditsSvc.ComputeCredits(ctx, itr.Year)
+		var credErr error
+		spouseCredit, disabilityCredit, studentCredit, credErr = s.taxCreditsSvc.ComputeCredits(ctx, itr.Year)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing credits for income_tax_return: %w", credErr)
 		}
-		itr.CreditSpouse = spouseCredit
-		itr.CreditDisability = disabilityCredit
-		itr.CreditStudent = studentCredit
-	}
-	itr.TotalCredits = itr.CreditBasic + itr.CreditSpouse + itr.CreditDisability + itr.CreditStudent
-
-	taxAfterCredits := itr.TotalTax - itr.TotalCredits
-	if taxAfterCredits < 0 {
-		taxAfterCredits = 0
-	}
-	itr.TaxAfterCredits = taxAfterCredits
-
-	// Step 9: Child benefit - load from tax_child_credits table.
-	if s.taxCreditsSvc != nil {
-		childBenefit, cbErr := s.taxCreditsSvc.ComputeChildBenefit(ctx, itr.Year)
-		if cbErr != nil {
-			return nil, fmt.Errorf("computing child benefit for income_tax_return: %w", cbErr)
+		childBenefit, credErr = s.taxCreditsSvc.ComputeChildBenefit(ctx, itr.Year)
+		if credErr != nil {
+			return nil, fmt.Errorf("computing child benefit for income_tax_return: %w", credErr)
 		}
-		itr.ChildBenefit = childBenefit
+		// Compute raw tax base for deduction cap calculation.
+		rawBase := itr.TotalRevenue - calc.ResolveUsedExpenses(itr.TotalRevenue, itr.ActualExpenses, flatRatePercent, constants.FlatRateCaps) + itr.CapitalIncomeNet + itr.OtherIncomeNet
+		if rawBase < 0 {
+			rawBase = 0
+		}
+		totalDeductions, credErr = s.taxCreditsSvc.ComputeDeductions(ctx, itr.Year, rawBase)
+		if credErr != nil {
+			return nil, fmt.Errorf("computing deductions for income_tax_return: %w", credErr)
+		}
 	}
-	itr.TaxAfterBenefit = itr.TaxAfterCredits - itr.ChildBenefit
 
-	// Step 10: Prepayments from tax prepayments table.
+	// Prepayments from tax prepayments table.
 	taxTotal, _, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, itr.Year)
 	if sumErr != nil {
 		return nil, fmt.Errorf("summing tax prepayments: %w", sumErr)
 	}
+
+	// Pure calculation.
+	taxResult := calc.CalculateIncomeTax(calc.IncomeTaxInput{
+		TotalRevenue:     itr.TotalRevenue,
+		ActualExpenses:   itr.ActualExpenses,
+		FlatRatePercent:  flatRatePercent,
+		Constants:        constants,
+		SpouseCredit:     spouseCredit,
+		DisabilityCredit: disabilityCredit,
+		StudentCredit:    studentCredit,
+		ChildBenefit:     childBenefit,
+		TotalDeductions:  totalDeductions,
+		Prepayments:      taxTotal,
+		CapitalIncomeNet: itr.CapitalIncomeNet,
+		OtherIncomeNet:   itr.OtherIncomeNet,
+	})
+
+	// Map result back to entity.
+	itr.FlatRateAmount = taxResult.FlatRateAmount
+	itr.UsedExpenses = taxResult.UsedExpenses
+	itr.TaxBase = taxResult.TaxBase
+	itr.TotalDeductions = totalDeductions
+	itr.TaxBaseRounded = taxResult.TaxBaseRounded
+	itr.TaxAt15 = taxResult.TaxAt15
+	itr.TaxAt23 = taxResult.TaxAt23
+	itr.TotalTax = taxResult.TotalTax
+	itr.CreditBasic = taxResult.CreditBasic
+	itr.CreditSpouse = spouseCredit
+	itr.CreditDisability = disabilityCredit
+	itr.CreditStudent = studentCredit
+	itr.TotalCredits = taxResult.TotalCredits
+	itr.TaxAfterCredits = taxResult.TaxAfterCredits
+	itr.ChildBenefit = childBenefit
+	itr.TaxAfterBenefit = taxResult.TaxAfterBenefit
 	itr.Prepayments = taxTotal
-	itr.TaxDue = itr.TaxAfterBenefit - itr.Prepayments
+	itr.TaxDue = taxResult.TaxDue
 
 	// Step 11: Persist updated values.
 	if err := s.repo.Update(ctx, itr); err != nil {

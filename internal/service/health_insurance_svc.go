@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -146,7 +147,7 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("calculating annual base for health_insurance_overview: %w", err)
 	}
 
-	constants, err := GetTaxConstants(hi.Year)
+	constants, err := calc.GetTaxConstants(hi.Year)
 	if err != nil {
 		return nil, fmt.Errorf("getting tax constants for health insurance: %w", err)
 	}
@@ -158,59 +159,34 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		flatRatePercent = tys.FlatRatePercent
 	}
 
-	revenue := base.Revenue
-	usedExpenses := base.Expenses
+	usedExpenses := calc.ResolveUsedExpenses(base.Revenue, base.Expenses, flatRatePercent, constants.FlatRateCaps)
 
-	if flatRatePercent > 0 {
-		flatRateAmount := revenue.Multiply(float64(flatRatePercent) / 100.0)
-		if cap, ok := constants.FlatRateCaps[flatRatePercent]; ok {
-			if flatRateAmount > cap {
-				flatRateAmount = cap
-			}
-		}
-		usedExpenses = flatRateAmount
-	}
-
-	hi.TotalRevenue = revenue
+	hi.TotalRevenue = base.Revenue
 	hi.TotalExpenses = usedExpenses
-
-	taxBase := int64(revenue) - int64(usedExpenses)
-	if taxBase < 0 {
-		taxBase = 0
-	}
-	hi.TaxBase = domain.Amount(taxBase)
-
-	assessmentBase := taxBase / 2
-	hi.AssessmentBase = domain.Amount(assessmentBase)
-
-	minBase := int64(constants.HealthMinMonthly) * 12
-	hi.MinAssessmentBase = domain.Amount(minBase)
-
-	finalBase := assessmentBase
-	if minBase > finalBase {
-		finalBase = minBase
-	}
-	hi.FinalAssessmentBase = domain.Amount(finalBase)
-
-	hi.InsuranceRate = constants.HealthRate
-	totalInsurance := finalBase * int64(constants.HealthRate) / 1000
-	hi.TotalInsurance = domain.Amount(totalInsurance)
 
 	_, _, healthTotal, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, hi.Year)
 	if sumErr != nil {
 		return nil, fmt.Errorf("summing health prepayments: %w", sumErr)
 	}
+
+	// Pure calculation.
+	insResult := calc.CalculateInsurance(calc.InsuranceInput{
+		Revenue:        base.Revenue,
+		UsedExpenses:   usedExpenses,
+		MinMonthlyBase: constants.HealthMinMonthly,
+		RatePermille:   constants.HealthRate,
+		Prepayments:    healthTotal,
+	})
+
+	hi.TaxBase = insResult.TaxBase
+	hi.AssessmentBase = insResult.AssessmentBase
+	hi.MinAssessmentBase = insResult.MinAssessmentBase
+	hi.FinalAssessmentBase = insResult.FinalAssessmentBase
+	hi.InsuranceRate = constants.HealthRate
+	hi.TotalInsurance = insResult.TotalInsurance
 	hi.Prepayments = healthTotal
-
-	hi.Difference = domain.Amount(totalInsurance - int64(healthTotal))
-
-	// New monthly prepayment = totalInsurance / 12, rounded up to whole CZK.
-	monthlyRaw := totalInsurance / 12
-	if totalInsurance%12 != 0 {
-		monthlyRaw++
-	}
-	newMonthly := ((monthlyRaw + 99) / 100) * 100
-	hi.NewMonthlyPrepay = domain.Amount(newMonthly)
+	hi.Difference = insResult.Difference
+	hi.NewMonthlyPrepay = insResult.NewMonthlyPrepay
 
 	if err := s.repo.Update(ctx, hi); err != nil {
 		return nil, fmt.Errorf("updating health_insurance_overview after recalculation: %w", err)

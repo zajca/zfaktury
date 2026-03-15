@@ -1,4 +1,4 @@
-.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend install-hooks
+.PHONY: build dev test clean migrate lint lint-go lint-frontend format coverage coverage-go coverage-frontend coverage-critical install-hooks
 
 VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
@@ -51,6 +51,18 @@ coverage-go:
 
 coverage-frontend:
 	cd frontend && npm run test:coverage
+
+# Coverage for critical financial/XML packages
+coverage-critical:
+	@echo "Checking critical package coverage..."
+	@CGO_ENABLED=0 go test ./internal/calc/ -coverprofile=/tmp/calc.cov -count=1 > /dev/null
+	@printf "calc:          " && go tool cover -func=/tmp/calc.cov | tail -1 | awk '{print $$NF}'
+	@CGO_ENABLED=0 go test ./internal/vatxml/ -coverprofile=/tmp/vatxml.cov -count=1 > /dev/null
+	@printf "vatxml:        " && go tool cover -func=/tmp/vatxml.cov | tail -1 | awk '{print $$NF}'
+	@CGO_ENABLED=0 go test ./internal/annualtaxxml/ -coverprofile=/tmp/annualtaxxml.cov -count=1 > /dev/null
+	@printf "annualtaxxml:  " && go tool cover -func=/tmp/annualtaxxml.cov | tail -1 | awk '{print $$NF}'
+	@CGO_ENABLED=0 go test ./internal/isdoc/ -coverprofile=/tmp/isdoc.cov -count=1 > /dev/null
+	@printf "isdoc:         " && go tool cover -func=/tmp/isdoc.cov | tail -1 | awk '{print $$NF}'
 
 # Clean build artifacts
 clean:

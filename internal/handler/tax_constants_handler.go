@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
-	"github.com/zajca/zfaktury/internal/service"
 )
 
 // taxConstantsResponse is the JSON response for tax year constants.
@@ -39,7 +39,7 @@ func toCZK(a domain.Amount) int64 {
 	return int64(a) / 100
 }
 
-func taxConstantsFromService(year int, c service.TaxYearConstants) taxConstantsResponse {
+func taxConstantsFromService(year int, c calc.TaxYearConstants) taxConstantsResponse {
 	flatRateCaps := make(map[string]int64, len(c.FlatRateCaps))
 	for pct, cap := range c.FlatRateCaps {
 		flatRateCaps[strconv.Itoa(pct)] = toCZK(cap)
@@ -78,7 +78,7 @@ func handleGetTaxConstants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	constants, err := service.GetTaxConstants(year)
+	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		respondError(w, http.StatusNotFound, err.Error())
 		return

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/vatxml"
@@ -164,20 +165,11 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("listing invoices for vat_return recalculation: %w", err)
 	}
 
-	// Reset all amounts.
-	vr.OutputVATBase21 = 0
-	vr.OutputVATAmount21 = 0
-	vr.OutputVATBase12 = 0
-	vr.OutputVATAmount12 = 0
-	vr.InputVATBase21 = 0
-	vr.InputVATAmount21 = 0
-	vr.InputVATBase12 = 0
-	vr.InputVATAmount12 = 0
-
+	// Build calc inputs from filtered invoices.
+	var calcInvoices []calc.VATInvoiceInput
 	var invoiceIDs []int64
 
 	for _, inv := range invoices {
-		// Only include invoices with delivery_date in range and appropriate status.
 		if inv.DeliveryDate.Before(dateFrom) || inv.DeliveryDate.After(dateTo) {
 			continue
 		}
@@ -187,38 +179,24 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 
 		invoiceIDs = append(invoiceIDs, inv.ID)
 
-		// Fetch items for this invoice to get per-rate breakdown.
 		fullInv, err := s.invoiceRepo.GetByID(ctx, inv.ID)
 		if err != nil {
 			return nil, fmt.Errorf("fetching invoice %d items for vat_return: %w", inv.ID, err)
 		}
 
-		// Skip proforma invoices -- they are not tax documents.
 		if fullInv.Type == domain.InvoiceTypeProforma {
 			continue
 		}
 
-		// Credit notes have negative amounts -- they naturally reduce totals.
-		sign := domain.Amount(1)
-		if fullInv.Type == domain.InvoiceTypeCreditNote {
-			sign = -1
-		}
-
+		ci := calc.VATInvoiceInput{Type: fullInv.Type}
 		for _, item := range fullInv.Items {
-			// itemBase = quantity * unit_price / 100 (quantity is in cents).
-			itemBase := domain.Amount(int64(item.Quantity) * int64(item.UnitPrice) / 100)
-			itemVAT := item.VATAmount
-
-			switch item.VATRatePercent {
-			case 21:
-				vr.OutputVATBase21 += itemBase * sign
-				vr.OutputVATAmount21 += itemVAT * sign
-			case 12:
-				vr.OutputVATBase12 += itemBase * sign
-				vr.OutputVATAmount12 += itemVAT * sign
-			}
-			// 0% rate: no VAT to report.
+			ci.Items = append(ci.Items, calc.VATItemInput{
+				Base:           domain.Amount(int64(item.Quantity) * int64(item.UnitPrice) / 100),
+				VATAmount:      item.VATAmount,
+				VATRatePercent: item.VATRatePercent,
+			})
 		}
+		calcInvoices = append(calcInvoices, ci)
 	}
 
 	// Query expenses in the period: tax deductible only.
@@ -232,6 +210,7 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("listing expenses for vat_return recalculation: %w", err)
 	}
 
+	var calcExpenses []calc.VATExpenseInput
 	var expenseIDs []int64
 
 	for _, exp := range expenses {
@@ -243,32 +222,28 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 		}
 
 		expenseIDs = append(expenseIDs, exp.ID)
-
-		// Input VAT = expense.VATAmount * business_percent / 100.
-		businessPct := exp.BusinessPercent
-		if businessPct == 0 {
-			businessPct = 100
-		}
-		inputVAT := exp.VATAmount.Multiply(float64(businessPct) / 100.0)
-
-		// Estimate the base from the expense amount minus VAT.
-		inputBase := exp.Amount - exp.VATAmount
-		inputBase = inputBase.Multiply(float64(businessPct) / 100.0)
-
-		switch exp.VATRatePercent {
-		case 21:
-			vr.InputVATBase21 += inputBase
-			vr.InputVATAmount21 += inputVAT
-		case 12:
-			vr.InputVATBase12 += inputBase
-			vr.InputVATAmount12 += inputVAT
-		}
+		calcExpenses = append(calcExpenses, calc.VATExpenseInput{
+			Amount:          exp.Amount,
+			VATAmount:       exp.VATAmount,
+			VATRatePercent:  exp.VATRatePercent,
+			BusinessPercent: exp.BusinessPercent,
+		})
 	}
 
-	// Calculate totals.
-	vr.TotalOutputVAT = vr.OutputVATAmount21 + vr.OutputVATAmount12
-	vr.TotalInputVAT = vr.InputVATAmount21 + vr.InputVATAmount12
-	vr.NetVAT = vr.TotalOutputVAT - vr.TotalInputVAT
+	// Pure calculation.
+	result := calc.CalculateVATReturn(calcInvoices, calcExpenses)
+
+	vr.OutputVATBase21 = result.OutputVATBase21
+	vr.OutputVATAmount21 = result.OutputVATAmount21
+	vr.OutputVATBase12 = result.OutputVATBase12
+	vr.OutputVATAmount12 = result.OutputVATAmount12
+	vr.InputVATBase21 = result.InputVATBase21
+	vr.InputVATAmount21 = result.InputVATAmount21
+	vr.InputVATBase12 = result.InputVATBase12
+	vr.InputVATAmount12 = result.InputVATAmount12
+	vr.TotalOutputVAT = result.TotalOutputVAT
+	vr.TotalInputVAT = result.TotalInputVAT
+	vr.NetVAT = result.NetVAT
 
 	// Persist updated values.
 	if err := s.repo.Update(ctx, vr); err != nil {

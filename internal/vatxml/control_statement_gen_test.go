@@ -1,10 +1,12 @@
 package vatxml
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/testutil"
 )
 
 func TestControlStatementGenerator_Generate_Basic(t *testing.T) {
@@ -234,6 +236,87 @@ func TestFormatDPPD(t *testing.T) {
 	}
 }
 
+func TestInt64Ptr(t *testing.T) {
+	// Non-zero value returns pointer to that value.
+	v := int64Ptr(42)
+	if v == nil {
+		t.Fatal("int64Ptr(42) returned nil, want non-nil")
+	}
+	if *v != 42 {
+		t.Errorf("int64Ptr(42) = %d, want 42", *v)
+	}
+
+	// Zero value returns nil (the uncovered branch).
+	if got := int64Ptr(0); got != nil {
+		t.Errorf("int64Ptr(0) = %v, want nil", got)
+	}
+}
+
+func TestControlStatementGenerator_Generate_ZeroAmountLine(t *testing.T) {
+	gen := NewControlStatementGenerator()
+
+	cs := &domain.VATControlStatement{
+		ID: 1,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 5,
+		},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	// Line with zero base and VAT exercises int64Ptr(0) -> nil branch.
+	lines := []domain.VATControlStatementLine{
+		{
+			Section:        "A4",
+			PartnerDIC:     "CZ12345678",
+			DocumentNumber: "FV20250099",
+			DPPD:           "2025-05-01",
+			Base:           0,
+			VAT:            0,
+			VATRatePercent: 21,
+		},
+	}
+
+	xmlData, err := gen.Generate(cs, lines, "CZ87654321")
+	if err != nil {
+		t.Fatalf("Generate() returned error: %v", err)
+	}
+
+	xmlStr := string(xmlData)
+	// With zero amounts, zakl_dane1 and dan1 should be omitted (nil pointers).
+	if strings.Contains(xmlStr, `zakl_dane1=`) {
+		t.Error("zero base should result in omitted zakl_dane1 attribute")
+	}
+	if strings.Contains(xmlStr, `dan1=`) {
+		t.Error("zero VAT should result in omitted dan1 attribute")
+	}
+}
+
+func TestControlStatementGenerator_Generate_SupplementaryFiling(t *testing.T) {
+	gen := NewControlStatementGenerator()
+
+	cs := &domain.VATControlStatement{
+		ID: 4,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 2,
+		},
+		FilingType: domain.FilingTypeSupplementary,
+		Status:     domain.FilingStatusReady,
+	}
+
+	xmlData, err := gen.Generate(cs, nil, "CZ12345678")
+	if err != nil {
+		t.Fatalf("Generate() returned error: %v", err)
+	}
+
+	xmlStr := string(xmlData)
+	if !strings.Contains(xmlStr, `d_typ="O"`) {
+		t.Error("XML should contain d_typ=O for supplementary filing")
+	}
+}
+
 func TestToWholeCZK(t *testing.T) {
 	tests := []struct {
 		input    domain.Amount
@@ -270,4 +353,174 @@ func TestSharedFilingTypeCode(t *testing.T) {
 			t.Errorf("FilingTypeCode(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
 	}
+}
+
+func TestControlStatement_Golden_A4A5(t *testing.T) {
+	gen := NewControlStatementGenerator()
+
+	cs := &domain.VATControlStatement{
+		ID: 1,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 3,
+		},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	invID1 := int64(10)
+	invID2 := int64(11)
+	lines := []domain.VATControlStatementLine{
+		{
+			ID:                 1,
+			ControlStatementID: 1,
+			Section:            "A4",
+			PartnerDIC:         "CZ12345678",
+			DocumentNumber:     "FV20250001",
+			DPPD:               "2025-03-05",
+			Base:               domain.NewAmount(25000, 0),
+			VAT:                domain.NewAmount(5250, 0),
+			VATRatePercent:     21,
+			InvoiceID:          &invID1,
+		},
+		{
+			ID:                 2,
+			ControlStatementID: 1,
+			Section:            "A4",
+			PartnerDIC:         "CZ87654321",
+			DocumentNumber:     "FV20250002",
+			DPPD:               "2025-03-18",
+			Base:               domain.NewAmount(18000, 0),
+			VAT:                domain.NewAmount(2160, 0),
+			VATRatePercent:     12,
+			InvoiceID:          &invID2,
+		},
+		{
+			ID:                 3,
+			ControlStatementID: 1,
+			Section:            "A5",
+			Base:               domain.NewAmount(8500, 50),
+			VAT:                domain.NewAmount(1785, 11),
+			VATRatePercent:     21,
+		},
+		{
+			ID:                 4,
+			ControlStatementID: 1,
+			Section:            "A5",
+			Base:               domain.NewAmount(4200, 0),
+			VAT:                domain.NewAmount(504, 0),
+			VATRatePercent:     12,
+		},
+	}
+
+	xmlData, err := gen.Generate(cs, lines, "CZ89052449")
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "control_statement_a4a5.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestControlStatement_Golden_B2B3(t *testing.T) {
+	gen := NewControlStatementGenerator()
+
+	cs := &domain.VATControlStatement{
+		ID: 2,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 6,
+		},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	expID := int64(20)
+	lines := []domain.VATControlStatementLine{
+		{
+			ID:                 5,
+			ControlStatementID: 2,
+			Section:            "B2",
+			PartnerDIC:         "CZ99887766",
+			DocumentNumber:     "VF2025001",
+			DPPD:               "2025-06-10",
+			Base:               domain.NewAmount(35000, 0),
+			VAT:                domain.NewAmount(7350, 0),
+			VATRatePercent:     21,
+			ExpenseID:          &expID,
+		},
+		{
+			ID:                 6,
+			ControlStatementID: 2,
+			Section:            "B2",
+			PartnerDIC:         "CZ11223344",
+			DocumentNumber:     "VF2025002",
+			DPPD:               "2025-06-22",
+			Base:               domain.NewAmount(15000, 0),
+			VAT:                domain.NewAmount(1800, 0),
+			VATRatePercent:     12,
+		},
+		{
+			ID:                 7,
+			ControlStatementID: 2,
+			Section:            "B3",
+			Base:               domain.NewAmount(6000, 0),
+			VAT:                domain.NewAmount(1260, 0),
+			VATRatePercent:     21,
+		},
+		{
+			ID:                 8,
+			ControlStatementID: 2,
+			Section:            "B3",
+			Base:               domain.NewAmount(2500, 0),
+			VAT:                domain.NewAmount(300, 0),
+			VATRatePercent:     12,
+		},
+	}
+
+	xmlData, err := gen.Generate(cs, lines, "CZ89052449")
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "control_statement_b2b3.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestControlStatement_Golden_Corrective(t *testing.T) {
+	gen := NewControlStatementGenerator()
+
+	cs := &domain.VATControlStatement{
+		ID: 3,
+		Period: domain.TaxPeriod{
+			Year:  2025,
+			Month: 1,
+		},
+		FilingType: domain.FilingTypeCorrective,
+		Status:     domain.FilingStatusReady,
+	}
+
+	invID := int64(30)
+	lines := []domain.VATControlStatementLine{
+		{
+			ID:                 9,
+			ControlStatementID: 3,
+			Section:            "A4",
+			PartnerDIC:         "CZ55667788",
+			DocumentNumber:     "FV20250010",
+			DPPD:               "2025-01-20",
+			Base:               domain.NewAmount(42000, 0),
+			VAT:                domain.NewAmount(8820, 0),
+			VATRatePercent:     21,
+			InvoiceID:          &invID,
+		},
+	}
+
+	xmlData, err := gen.Generate(cs, lines, "CZ89052449")
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "control_statement_corrective.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
 }

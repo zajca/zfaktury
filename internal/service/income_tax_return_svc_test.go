@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/testutil"
@@ -394,7 +395,7 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 	}
 
 	// CreditBasic should be set from constants.
-	constants, _ := GetTaxConstants(2025)
+	constants, _ := calc.GetTaxConstants(2025)
 	if result.CreditBasic != constants.BasicCredit {
 		t.Errorf("CreditBasic = %d, want %d", result.CreditBasic, constants.BasicCredit)
 	}

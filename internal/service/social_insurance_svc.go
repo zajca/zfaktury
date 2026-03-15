@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/zajca/zfaktury/internal/annualtaxxml"
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -159,74 +160,41 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	}
 
 	// Get tax constants for the year.
-	constants, err := GetTaxConstants(sio.Year)
+	constants, err := calc.GetTaxConstants(sio.Year)
 	if err != nil {
 		return nil, fmt.Errorf("getting tax constants for social insurance: %w", err)
 	}
 
-	// Compute used expenses (flat-rate or actual).
-	revenue := annualBase.Revenue
-	usedExpenses := annualBase.Expenses
+	// Resolve used expenses (flat-rate or actual).
+	usedExpenses := calc.ResolveUsedExpenses(annualBase.Revenue, annualBase.Expenses, flatRatePercent, constants.FlatRateCaps)
 
-	if flatRatePercent > 0 {
-		flatRateAmount := revenue.Multiply(float64(flatRatePercent) / 100.0)
-		// Apply flat-rate cap if defined.
-		if cap, ok := constants.FlatRateCaps[flatRatePercent]; ok {
-			if flatRateAmount > cap {
-				flatRateAmount = cap
-			}
-		}
-		usedExpenses = flatRateAmount
-	}
-
-	sio.TotalRevenue = revenue
+	sio.TotalRevenue = annualBase.Revenue
 	sio.TotalExpenses = usedExpenses
-
-	// taxBase = revenue - usedExpenses (clamp to 0).
-	taxBase := int64(revenue) - int64(usedExpenses)
-	if taxBase < 0 {
-		taxBase = 0
-	}
-	sio.TaxBase = domain.Amount(taxBase)
-
-	// assessmentBase = taxBase / 2 (integer division, in halere).
-	assessmentBase := taxBase / 2
-	sio.AssessmentBase = domain.Amount(assessmentBase)
-
-	// minBase = constants.SocialMinMonthly * 12.
-	minBase := int64(constants.SocialMinMonthly) * 12
-	sio.MinAssessmentBase = domain.Amount(minBase)
-
-	// finalBase = max(assessmentBase, minBase).
-	finalBase := assessmentBase
-	if minBase > finalBase {
-		finalBase = minBase
-	}
-	sio.FinalAssessmentBase = domain.Amount(finalBase)
-
-	// totalInsurance = finalBase * SocialRate / 1000.
-	sio.InsuranceRate = constants.SocialRate
-	totalInsurance := finalBase * int64(constants.SocialRate) / 1000
-	sio.TotalInsurance = domain.Amount(totalInsurance)
 
 	// Read prepayments from tax prepayments table.
 	_, socialTotal, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, sio.Year)
 	if sumErr != nil {
 		return nil, fmt.Errorf("summing social prepayments: %w", sumErr)
 	}
+
+	// Pure calculation.
+	insResult := calc.CalculateInsurance(calc.InsuranceInput{
+		Revenue:        annualBase.Revenue,
+		UsedExpenses:   usedExpenses,
+		MinMonthlyBase: constants.SocialMinMonthly,
+		RatePermille:   constants.SocialRate,
+		Prepayments:    socialTotal,
+	})
+
+	sio.TaxBase = insResult.TaxBase
+	sio.AssessmentBase = insResult.AssessmentBase
+	sio.MinAssessmentBase = insResult.MinAssessmentBase
+	sio.FinalAssessmentBase = insResult.FinalAssessmentBase
+	sio.InsuranceRate = constants.SocialRate
+	sio.TotalInsurance = insResult.TotalInsurance
 	sio.Prepayments = socialTotal
-
-	// difference = totalInsurance - prepayments.
-	sio.Difference = domain.Amount(totalInsurance - int64(socialTotal))
-
-	// newMonthlyPrepay = ceil(totalInsurance / 12), rounded up to whole CZK (100 halere).
-	monthlyHalere := totalInsurance / 12
-	if totalInsurance%12 != 0 {
-		monthlyHalere++
-	}
-	// Round up to nearest 100 halere (1 CZK).
-	roundedUpCZK := ((monthlyHalere + 99) / 100) * 100
-	sio.NewMonthlyPrepay = domain.Amount(roundedUpCZK)
+	sio.Difference = insResult.Difference
+	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
 
 	// Persist updated values.
 	if err := s.repo.Update(ctx, sio); err != nil {

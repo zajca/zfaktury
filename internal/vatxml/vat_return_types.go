@@ -1,6 +1,9 @@
 package vatxml
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"time"
+)
 
 // Official DPHDP3 EPO format for Czech VAT return (Priznani k DPH).
 // Based on XSD: adisspr.mfcr.cz/adis/jepo/schema/dphdp3_epo2.xsd
@@ -110,16 +113,17 @@ type Veta6 struct {
 
 // TaxpayerInfo contains taxpayer details needed for DPHDP3 XML generation.
 type TaxpayerInfo struct {
-	DIC       string // without CZ prefix
-	FirstName string
-	LastName  string
-	Street    string
-	HouseNum  string
-	ZIP       string
-	City      string
-	Phone     string
-	Email     string
-	UFOCode   string // c_ufo (3-digit)
-	PracUFO   string // c_pracufo (4-digit)
-	OKEC      string // NACE code
+	DIC            string // without CZ prefix
+	FirstName      string
+	LastName       string
+	Street         string
+	HouseNum       string
+	ZIP            string
+	City           string
+	Phone          string
+	Email          string
+	UFOCode        string    // c_ufo (3-digit)
+	PracUFO        string    // c_pracufo (4-digit)
+	OKEC           string    // NACE code
+	SubmissionDate time.Time // date of submission; zero value uses time.Now()
 }

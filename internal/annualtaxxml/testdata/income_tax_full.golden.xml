@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Pisemnost nazevSW="ZFaktury" verzeSW="1.0">
+  <DPFDP5 verzePis="05.01">
+    <VetaD dokument="DP5" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="451" pln_moc="A" audit="N" kc_zd7="800000" pr_zd7="2000000" vy_zd7="1200000" kc_zakldan23="800000" kc_zakldan="800000" kc_zdzaokr="800000" da_slezap="120000" sleva_rp="30840" uhrn_slevy35ba="62220" da_slevy35ba="57780" kc_dazvyhod="15204" da_slevy35c="42576" kc_zalpred="36000" kc_zbyvpred="6576"></VetaD>
+    <VetaP jmeno="Jan" prijmeni="Novak" rod_c="8001011234" dic="CZ8001011234" ulice="Hlavni" c_pop="42" naz_obce="Praha" psc="11000" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
+  </DPFDP5>
+</Pisemnost>

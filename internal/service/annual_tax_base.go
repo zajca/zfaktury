@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -40,37 +41,16 @@ func CalculateAnnualBase(
 		return nil, fmt.Errorf("listing invoices for annual base: %w", err)
 	}
 
-	result := &AnnualTaxBase{}
-
-	for _, inv := range invoices {
-		// Use DeliveryDate if set, otherwise IssueDate.
-		effectiveDate := inv.DeliveryDate
-		if effectiveDate.IsZero() {
-			effectiveDate = inv.IssueDate
-		}
-		if effectiveDate.Before(dateFrom) || effectiveDate.After(dateTo) {
-			continue
-		}
-
-		// Only include sent, paid, overdue invoices.
-		if inv.Status != domain.InvoiceStatusSent &&
-			inv.Status != domain.InvoiceStatusPaid &&
-			inv.Status != domain.InvoiceStatusOverdue {
-			continue
-		}
-
-		// Skip proformas.
-		if inv.Type == domain.InvoiceTypeProforma {
-			continue
-		}
-
-		result.InvoiceIDs = append(result.InvoiceIDs, inv.ID)
-
-		// Credit notes subtract from revenue.
-		if inv.Type == domain.InvoiceTypeCreditNote {
-			result.Revenue -= inv.SubtotalAmount
-		} else {
-			result.Revenue += inv.SubtotalAmount
+	// Map invoices to calc inputs.
+	calcInvoices := make([]calc.InvoiceForBase, len(invoices))
+	for i, inv := range invoices {
+		calcInvoices[i] = calc.InvoiceForBase{
+			ID:             inv.ID,
+			Type:           inv.Type,
+			Status:         inv.Status,
+			DeliveryDate:   inv.DeliveryDate,
+			IssueDate:      inv.IssueDate,
+			SubtotalAmount: inv.SubtotalAmount,
 		}
 	}
 
@@ -84,25 +64,26 @@ func CalculateAnnualBase(
 		return nil, fmt.Errorf("listing expenses for annual base: %w", err)
 	}
 
-	for _, exp := range expenses {
-		if exp.IssueDate.Before(dateFrom) || exp.IssueDate.After(dateTo) {
-			continue
+	// Map expenses to calc inputs.
+	calcExpenses := make([]calc.ExpenseForBase, len(expenses))
+	for i, exp := range expenses {
+		calcExpenses[i] = calc.ExpenseForBase{
+			ID:              exp.ID,
+			IssueDate:       exp.IssueDate,
+			Amount:          exp.Amount,
+			VATAmount:       exp.VATAmount,
+			BusinessPercent: exp.BusinessPercent,
+			TaxReviewed:     exp.TaxReviewedAt != nil,
 		}
-		// Only include tax-reviewed expenses.
-		if exp.TaxReviewedAt == nil {
-			continue
-		}
-
-		result.ExpenseIDs = append(result.ExpenseIDs, exp.ID)
-
-		// Expense base = (Amount - VATAmount) * BusinessPercent / 100
-		baseAmount := exp.Amount - exp.VATAmount
-		businessPct := exp.BusinessPercent
-		if businessPct == 0 {
-			businessPct = 100
-		}
-		result.Expenses += baseAmount.Multiply(float64(businessPct) / 100.0)
 	}
 
-	return result, nil
+	// Pure calculation.
+	calcResult := calc.CalculateAnnualTotals(calcInvoices, calcExpenses, year)
+
+	return &AnnualTaxBase{
+		Revenue:    calcResult.Revenue,
+		Expenses:   calcResult.Expenses,
+		InvoiceIDs: calcResult.InvoiceIDs,
+		ExpenseIDs: calcResult.ExpenseIDs,
+	}, nil
 }

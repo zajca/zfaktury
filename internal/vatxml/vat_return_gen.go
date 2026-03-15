@@ -8,6 +8,14 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
+// submissionDate returns info.SubmissionDate if set, otherwise time.Now().
+func submissionDate(info TaxpayerInfo) time.Time {
+	if !info.SubmissionDate.IsZero() {
+		return info.SubmissionDate
+	}
+	return time.Now()
+}
+
 // VATReturnGenerator generates EPO XML for Czech VAT returns in DPHDP3 format.
 type VATReturnGenerator struct{}
 
@@ -63,7 +71,7 @@ func (g *VATReturnGenerator) Generate(vr *domain.VATReturn, info TaxpayerInfo) (
 				TypPlatce:   "P",
 				Trans:       trans,
 				COkec:       info.OKEC,
-				DPoddp:      time.Now().Format("02.01.2006"),
+				DPoddp:      submissionDate(info).Format("02.01.2006"),
 				Rok:         vr.Period.Year,
 				Mesic:       vr.Period.Month,
 				Ctvrt:       vr.Period.Quarter,

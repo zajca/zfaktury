@@ -3,11 +3,13 @@ package isdoc
 import (
 	"context"
 	"encoding/xml"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/testutil"
 )
 
 func testInvoice() *domain.Invoice {
@@ -472,6 +474,327 @@ func TestGenerate_CustomerWithoutContact(t *testing.T) {
 	cp := doc.AccountingCustomerParty.Party
 	if cp.PartyIdentification.ID != "customer-10" {
 		t.Errorf("Customer ID = %q, want %q", cp.PartyIdentification.ID, "customer-10")
+	}
+}
+
+func goldenPath(name string) string {
+	return filepath.Join("testdata", name+".golden.xml")
+}
+
+func TestISDOC_Golden_Regular(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := &domain.Invoice{
+		ID:             1,
+		InvoiceNumber:  "FV20250001",
+		Type:           domain.InvoiceTypeRegular,
+		Status:         domain.InvoiceStatusSent,
+		IssueDate:      time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		DueDate:        time.Date(2025, 3, 29, 0, 0, 0, 0, time.UTC),
+		DeliveryDate:   time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		VariableSymbol: "20250001",
+		ConstantSymbol: "0308",
+		CustomerID:     10,
+		CurrencyCode:   "CZK",
+		PaymentMethod:  "bank_transfer",
+		BankAccount:    "1234567890",
+		BankCode:       "0100",
+		IBAN:           "CZ6508000000001234567890",
+		SWIFT:          "KOMBCZPP",
+		Notes:          "Fakturujeme Vam za provedene prace.",
+		Customer: &domain.Contact{
+			ID:      10,
+			Type:    domain.ContactTypeCompany,
+			Name:    "Acme s.r.o.",
+			ICO:     "12345678",
+			DIC:     "CZ12345678",
+			Street:  "Hlavni 100",
+			City:    "Praha",
+			ZIP:     "11000",
+			Country: "CZ",
+			Email:   "info@acme.cz",
+			Phone:   "+420111222333",
+		},
+		Items: []domain.InvoiceItem{
+			{
+				ID:             1,
+				InvoiceID:      1,
+				Description:    "Web application development",
+				Quantity:       domain.NewAmount(80, 0),
+				Unit:           "hod",
+				UnitPrice:      domain.NewAmount(1200, 0),
+				VATRatePercent: 21,
+				SortOrder:      1,
+			},
+			{
+				ID:             2,
+				InvoiceID:      1,
+				Description:    "Domain registration",
+				Quantity:       domain.NewAmount(1, 0),
+				Unit:           "ks",
+				UnitPrice:      domain.NewAmount(350, 0),
+				VATRatePercent: 21,
+				SortOrder:      2,
+			},
+		},
+	}
+	inv.CalculateTotals()
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	testutil.AssertGolden(t, goldenPath("regular_invoice"), data)
+}
+
+func TestISDOC_Golden_CreditNote(t *testing.T) {
+	gen := NewISDOCGenerator()
+	relatedID := int64(1)
+	inv := &domain.Invoice{
+		ID:               2,
+		InvoiceNumber:    "DC20250001",
+		Type:             domain.InvoiceTypeCreditNote,
+		Status:           domain.InvoiceStatusSent,
+		IssueDate:        time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC),
+		DueDate:          time.Date(2025, 4, 3, 0, 0, 0, 0, time.UTC),
+		DeliveryDate:     time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC),
+		VariableSymbol:   "20250002",
+		ConstantSymbol:   "0308",
+		CustomerID:       10,
+		CurrencyCode:     "CZK",
+		PaymentMethod:    "bank_transfer",
+		BankAccount:      "1234567890",
+		BankCode:         "0100",
+		IBAN:             "CZ6508000000001234567890",
+		SWIFT:            "KOMBCZPP",
+		Notes:            "Credit note for invoice FV20250001.",
+		RelatedInvoiceID: &relatedID,
+		RelationType:     domain.RelationTypeCreditNote,
+		Customer: &domain.Contact{
+			ID:      10,
+			Type:    domain.ContactTypeCompany,
+			Name:    "Acme s.r.o.",
+			ICO:     "12345678",
+			DIC:     "CZ12345678",
+			Street:  "Hlavni 100",
+			City:    "Praha",
+			ZIP:     "11000",
+			Country: "CZ",
+			Email:   "info@acme.cz",
+			Phone:   "+420111222333",
+		},
+		Items: []domain.InvoiceItem{
+			{
+				ID:             3,
+				InvoiceID:      2,
+				Description:    "Web application development - correction",
+				Quantity:       domain.NewAmount(10, 0),
+				Unit:           "hod",
+				UnitPrice:      domain.NewAmount(1200, 0),
+				VATRatePercent: 21,
+				SortOrder:      1,
+			},
+		},
+	}
+	inv.CalculateTotals()
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	testutil.AssertGolden(t, goldenPath("credit_note"), data)
+}
+
+func TestISDOC_Golden_ForeignCurrency(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := &domain.Invoice{
+		ID:             3,
+		InvoiceNumber:  "FV20250003",
+		Type:           domain.InvoiceTypeRegular,
+		Status:         domain.InvoiceStatusSent,
+		IssueDate:      time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		DueDate:        time.Date(2025, 3, 29, 0, 0, 0, 0, time.UTC),
+		DeliveryDate:   time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		VariableSymbol: "20250003",
+		ConstantSymbol: "0308",
+		CustomerID:     20,
+		CurrencyCode:   "EUR",
+		ExchangeRate:   domain.NewAmount(25, 34),
+		PaymentMethod:  "bank_transfer",
+		BankAccount:    "1234567890",
+		BankCode:       "0100",
+		IBAN:           "CZ6508000000001234567890",
+		SWIFT:          "KOMBCZPP",
+		Notes:          "Invoice in EUR.",
+		Customer: &domain.Contact{
+			ID:      20,
+			Type:    domain.ContactTypeCompany,
+			Name:    "EuroTech GmbH",
+			ICO:     "DE987654",
+			DIC:     "DE123456789",
+			Street:  "Berliner Str. 42",
+			City:    "Berlin",
+			ZIP:     "10115",
+			Country: "DE",
+			Email:   "billing@eurotech.de",
+			Phone:   "+49301234567",
+		},
+		Items: []domain.InvoiceItem{
+			{
+				ID:             4,
+				InvoiceID:      3,
+				Description:    "Consulting services",
+				Quantity:       domain.NewAmount(40, 0),
+				Unit:           "hod",
+				UnitPrice:      domain.NewAmount(75, 0),
+				VATRatePercent: 0,
+				SortOrder:      1,
+			},
+		},
+	}
+	inv.CalculateTotals()
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	testutil.AssertGolden(t, goldenPath("foreign_currency"), data)
+}
+
+func TestISDOC_Golden_CashPayment(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := &domain.Invoice{
+		ID:             4,
+		InvoiceNumber:  "FV20250004",
+		Type:           domain.InvoiceTypeRegular,
+		Status:         domain.InvoiceStatusPaid,
+		IssueDate:      time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		DueDate:        time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		DeliveryDate:   time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC),
+		VariableSymbol: "20250004",
+		ConstantSymbol: "0308",
+		CustomerID:     30,
+		CurrencyCode:   "CZK",
+		PaymentMethod:  "cash",
+		Notes:          "Paid in cash.",
+		Customer: &domain.Contact{
+			ID:      30,
+			Type:    domain.ContactTypeIndividual,
+			Name:    "Petr Svoboda",
+			ICO:     "98765432",
+			Street:  "Namesti Miru 5",
+			City:    "Olomouc",
+			ZIP:     "77900",
+			Country: "CZ",
+		},
+		Items: []domain.InvoiceItem{
+			{
+				ID:             5,
+				InvoiceID:      4,
+				Description:    "IT equipment repair",
+				Quantity:       domain.NewAmount(1, 0),
+				Unit:           "ks",
+				UnitPrice:      domain.NewAmount(2500, 0),
+				VATRatePercent: 21,
+				SortOrder:      1,
+			},
+		},
+	}
+	inv.CalculateTotals()
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	testutil.AssertGolden(t, goldenPath("cash_payment"), data)
+}
+
+func TestGenerate_CustomerWithEmptyCountry(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := testInvoice()
+	inv.Customer.Country = ""
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	var doc Invoice
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
+	}
+
+	cp := doc.AccountingCustomerParty.Party
+	if cp.PostalAddress.Country.IdentificationCode != "CZ" {
+		t.Errorf("Country code = %q, want %q (default)", cp.PostalAddress.Country.IdentificationCode, "CZ")
+	}
+}
+
+func TestGenerate_CustomerWithoutDIC(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := testInvoice()
+	inv.Customer.DIC = ""
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	var doc Invoice
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
+	}
+
+	cp := doc.AccountingCustomerParty.Party
+	if cp.PartyTaxScheme != nil {
+		t.Error("PartyTaxScheme should be nil when customer DIC is empty")
+	}
+}
+
+func TestGenerate_CustomerWithoutContactInfo(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := testInvoice()
+	inv.Customer.Email = ""
+	inv.Customer.Phone = ""
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	var doc Invoice
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
+	}
+
+	cp := doc.AccountingCustomerParty.Party
+	if cp.Contact != nil {
+		t.Error("Contact should be nil when customer has no email or phone")
+	}
+}
+
+func TestGenerate_SupplierWithoutContactInfo(t *testing.T) {
+	gen := NewISDOCGenerator()
+	supplier := testSupplier()
+	supplier.Email = ""
+	supplier.Phone = ""
+
+	data, err := gen.Generate(context.Background(), testInvoice(), supplier)
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	var doc Invoice
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
+	}
+
+	sp := doc.AccountingSupplierParty.Party
+	if sp.Contact != nil {
+		t.Error("Contact should be nil when supplier has no email or phone")
 	}
 }
 

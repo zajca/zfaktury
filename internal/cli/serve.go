@@ -38,7 +38,7 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer app.Close()
+		defer func() { _ = app.Close() }()
 
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()

@@ -133,8 +133,48 @@ jobs:
           path: "zfaktury-*.*"
           retention-days: 1
 
+  build-desktop:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev pkg-config
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: web/frontend/build/
+
+      - name: Build desktop binary
+        env:
+          CGO_ENABLED: 1
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w -X github.com/zajca/zfaktury/internal/version.Version=${VERSION} -X github.com/zajca/zfaktury/internal/version.Commit=${COMMIT} -X github.com/zajca/zfaktury/internal/version.Date=${DATE}"
+
+          go build -ldflags "${LDFLAGS}" -o zfaktury ./cmd/zfaktury
+
+      - name: Archive
+        run: tar czf zfaktury-desktop-linux-amd64.tar.gz zfaktury
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zfaktury-desktop-linux-amd64
+          path: zfaktury-desktop-linux-amd64.tar.gz
+          retention-days: 1
+
   release:
-    needs: build-binaries
+    needs: [build-binaries, build-desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

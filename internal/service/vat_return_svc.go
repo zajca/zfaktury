@@ -307,7 +307,7 @@ func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.Taxpay
 		return val
 	}
 
-	dic := getSetting("dic")
+	dic := getSetting(SettingDIC)
 	if dic == "" {
 		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
 	}
@@ -317,17 +317,17 @@ func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.Taxpay
 
 	return vatxml.TaxpayerInfo{
 		DIC:       dicNum,
-		FirstName: getSetting("first_name"),
-		LastName:  getSetting("last_name"),
-		Street:    getSetting("street"),
-		HouseNum:  getSetting("house_number"),
-		ZIP:       getSetting("zip"),
-		City:      getSetting("city"),
-		Phone:     getSetting("phone"),
-		Email:     getSetting("email"),
-		UFOCode:   getSetting("c_ufo"),
-		PracUFO:   getSetting("c_pracufo"),
-		OKEC:      getSetting("c_okec"),
+		FirstName: getSetting(SettingFirstName),
+		LastName:  getSetting(SettingLastName),
+		Street:    getSetting(SettingStreet),
+		HouseNum:  getSetting(SettingHouseNumber),
+		ZIP:       getSetting(SettingZIP),
+		City:      getSetting(SettingCity),
+		Phone:     getSetting(SettingPhone),
+		Email:     getSetting(SettingEmail),
+		UFOCode:   getSetting(SettingUFOCode),
+		PracUFO:   getSetting(SettingPracUFO),
+		OKEC:      getSetting(SettingOKEC),
 	}, nil
 }
 

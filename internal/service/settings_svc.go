@@ -30,10 +30,18 @@ const (
 	SettingEmailSubjectTpl  = "email_subject_template"
 	SettingEmailBodyTpl     = "email_body_template"
 
+	// Personal details (used in VAT return XML).
+	SettingFirstName   = "first_name"
+	SettingLastName    = "last_name"
+	SettingHouseNumber = "house_number"
+
 	// Office codes (global, rarely change).
 	SettingHealthInsCode    = "health_insurance_code"
 	SettingFinancniUradCode = "financni_urad_code"
 	SettingCSSZCode         = "cssz_code"
+	SettingUFOCode          = "c_ufo"
+	SettingPracUFO          = "c_pracufo"
+	SettingOKEC             = "c_okec"
 
 	// PDF template settings.
 	SettingPDFLogoPath        = "pdf.logo_path"
@@ -213,9 +221,15 @@ var knownKeys = map[string]bool{
 	SettingEmailAttachISDOC: true,
 	SettingEmailSubjectTpl:  true,
 	SettingEmailBodyTpl:     true,
+	SettingFirstName:        true,
+	SettingLastName:         true,
+	SettingHouseNumber:      true,
 	SettingHealthInsCode:    true,
 	SettingFinancniUradCode: true,
 	SettingCSSZCode:         true,
+	SettingUFOCode:          true,
+	SettingPracUFO:          true,
+	SettingOKEC:             true,
 
 	SettingPDFLogoPath:        true,
 	SettingPDFAccentColor:     true,

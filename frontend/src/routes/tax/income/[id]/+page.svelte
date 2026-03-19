@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { incomeTaxApi, type IncomeTaxReturn, type TaxConstants } from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
+	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -82,15 +83,7 @@
 	async function handleDownloadXml() {
 		actionLoading = 'download';
 		try {
-			const blob = await incomeTaxApi.downloadXml(returnId);
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `dpfo-${returnId}.xml`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			await downloadFile(`/api/v1/income-tax-returns/${returnId}/xml`, `dpfo-${returnId}.xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		} finally {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Invoice } from '$lib/api/client';
 	import { invoicesApi } from '$lib/api/client';
+	import { downloadFile } from '$lib/utils/download';
 	import { statusLabels, statusVariant, invoiceTypeLabels } from '$lib/utils/invoice';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -118,7 +119,11 @@
 					<HelpTip topic="vyrovnani-zalohy" />
 				</Button>
 			{/if}
-			<Button variant="secondary" href={invoicesApi.getPdfUrl(invoiceId)}>
+			<Button
+				variant="secondary"
+				onclick={() =>
+					downloadFile(invoicesApi.getPdfUrl(invoiceId), `faktura-${invoice.invoice_number}.pdf`)}
+			>
 				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 					<path
 						stroke-linecap="round"
@@ -131,7 +136,11 @@
 			<Button variant="secondary" onclick={onshowsendemail}>Odeslat emailem</Button>
 			<Button
 				variant="secondary"
-				href={invoicesApi.getIsdocUrl(invoiceId)}
+				onclick={() =>
+					downloadFile(
+						invoicesApi.getIsdocUrl(invoiceId),
+						`faktura-${invoice.invoice_number}.isdoc`
+					)}
 				title="Stáhne fakturu ve formátu ISDOC (český standard elektronické fakturace)"
 			>
 				Export ISDOC <HelpTip topic="isdoc-export" />

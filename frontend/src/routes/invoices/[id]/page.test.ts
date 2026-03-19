@@ -247,7 +247,7 @@ describe('Invoice detail page', () => {
 		});
 	});
 
-	it('PDF download link present', async () => {
+	it('PDF download button present', async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleInvoice));
 
 		render(Page);
@@ -256,8 +256,8 @@ describe('Invoice detail page', () => {
 			expect(screen.getByText('Stáhnout PDF')).toBeInTheDocument();
 		});
 
-		const pdfLink = screen.getByText('Stáhnout PDF').closest('a');
-		expect(pdfLink).toHaveAttribute('href', '/api/v1/invoices/1/pdf');
+		const pdfButton = screen.getByText('Stáhnout PDF').closest('button');
+		expect(pdfButton).toBeInTheDocument();
 	});
 
 	it('shows credit note button for regular sent invoice', async () => {

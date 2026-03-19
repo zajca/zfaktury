@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { nativeDownload } from '$lib/actions/download';
 	import type { TaxDeduction, TaxConstants } from '$lib/api/client';
 	import { taxDeductionsApi } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
@@ -103,7 +104,8 @@
 									<a
 										href={taxDeductionsApi.downloadDocument(doc.id)}
 										class="text-accent hover:underline"
-										target="_blank">{doc.filename}</a
+										target="_blank"
+										use:nativeDownload={doc.filename}>{doc.filename}</a
 									>
 									{#if doc.extracted_amount > 0}
 										<span class="rounded bg-success-bg px-1.5 py-0.5 text-success">

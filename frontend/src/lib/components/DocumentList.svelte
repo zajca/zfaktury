@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { nativeDownload } from '$lib/actions/download';
 	import { documentsApi, type ExpenseDocument } from '$lib/api/client';
 	import { formatDate } from '$lib/utils/date';
 
@@ -65,6 +66,7 @@
 						rel="noopener noreferrer"
 						class="rounded-md px-2.5 py-1.5 text-xs text-secondary hover:bg-hover hover:text-primary transition-colors"
 						title="Stáhnout"
+						use:nativeDownload={doc.filename}
 					>
 						<svg
 							class="h-4 w-4"

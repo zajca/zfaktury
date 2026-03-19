@@ -919,20 +919,6 @@ export const vatReturnApi = {
 		return post<VATReturn>(`/vat-returns/${id}/generate-xml`, {});
 	},
 
-	async downloadXml(id: number): Promise<Blob> {
-		const res = await fetch(`${API_BASE}/vat-returns/${id}/xml`);
-		if (!res.ok) {
-			let body: unknown;
-			try {
-				body = await res.json();
-			} catch {
-				/* ignore */
-			}
-			throw new ApiError(res.status, res.statusText, body);
-		}
-		return res.blob();
-	},
-
 	markFiled(id: number): Promise<VATReturn> {
 		return post<VATReturn>(`/vat-returns/${id}/mark-filed`, {});
 	}
@@ -966,21 +952,6 @@ export const controlStatementApi = {
 		return post<ControlStatement>(`/vat-control-statements/${id}/generate-xml`);
 	},
 
-	async downloadXml(id: number): Promise<Blob> {
-		const url = `${API_BASE}/vat-control-statements/${id}/xml`;
-		const response = await fetch(url, { method: 'GET' });
-		if (!response.ok) {
-			let body: unknown;
-			try {
-				body = await response.json();
-			} catch {
-				/* ignore */
-			}
-			throw new ApiError(response.status, response.statusText, body);
-		}
-		return response.blob();
-	},
-
 	markFiled(id: number) {
 		return post<ControlStatement>(`/vat-control-statements/${id}/mark-filed`);
 	}
@@ -1012,21 +983,6 @@ export const viesApi = {
 
 	generateXml(id: number) {
 		return post<VIESSummary>(`/vies-summaries/${id}/generate-xml`);
-	},
-
-	async downloadXml(id: number): Promise<Blob> {
-		const url = `${API_BASE}/vies-summaries/${id}/xml`;
-		const response = await fetch(url, { method: 'GET' });
-		if (!response.ok) {
-			let body: unknown;
-			try {
-				body = await response.json();
-			} catch {
-				/* ignore */
-			}
-			throw new ApiError(response.status, response.statusText, body);
-		}
-		return response.blob();
 	},
 
 	markFiled(id: number) {
@@ -1141,19 +1097,6 @@ export const incomeTaxApi = {
 	generateXml(id: number) {
 		return post<IncomeTaxReturn>(`/income-tax-returns/${id}/generate-xml`, {});
 	},
-	async downloadXml(id: number): Promise<Blob> {
-		const res = await fetch(`${API_BASE}/income-tax-returns/${id}/xml`);
-		if (!res.ok) {
-			let body: unknown;
-			try {
-				body = await res.json();
-			} catch {
-				/* ignore */
-			}
-			throw new ApiError(res.status, res.statusText, body);
-		}
-		return res.blob();
-	},
 	markFiled(id: number) {
 		return post<IncomeTaxReturn>(`/income-tax-returns/${id}/mark-filed`, {});
 	}
@@ -1181,19 +1124,6 @@ export const socialInsuranceApi = {
 	generateXml(id: number) {
 		return post<SocialInsuranceOverview>(`/social-insurance/${id}/generate-xml`, {});
 	},
-	async downloadXml(id: number): Promise<Blob> {
-		const res = await fetch(`${API_BASE}/social-insurance/${id}/xml`);
-		if (!res.ok) {
-			let body: unknown;
-			try {
-				body = await res.json();
-			} catch {
-				/* ignore */
-			}
-			throw new ApiError(res.status, res.statusText, body);
-		}
-		return res.blob();
-	},
 	markFiled(id: number) {
 		return post<SocialInsuranceOverview>(`/social-insurance/${id}/mark-filed`, {});
 	}
@@ -1220,19 +1150,6 @@ export const healthInsuranceApi = {
 	},
 	generateXml(id: number) {
 		return post<HealthInsuranceOverview>(`/health-insurance/${id}/generate-xml`, {});
-	},
-	async downloadXml(id: number): Promise<Blob> {
-		const res = await fetch(`${API_BASE}/health-insurance/${id}/xml`);
-		if (!res.ok) {
-			let body: unknown;
-			try {
-				body = await res.json();
-			} catch {
-				/* ignore */
-			}
-			throw new ApiError(res.status, res.statusText, body);
-		}
-		return res.blob();
 	},
 	markFiled(id: number) {
 		return post<HealthInsuranceOverview>(`/health-insurance/${id}/mark-filed`, {});

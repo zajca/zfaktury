@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { viesApi, type VIESSummary } from '$lib/api/client';
+	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels, quarterLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
@@ -63,15 +64,8 @@
 
 	async function handleDownloadXml() {
 		try {
-			const blob = await viesApi.downloadXml(summaryId);
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `souhrnne-hlaseni-${summary?.period.year}-Q${summary?.period.quarter}.xml`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			const filename = `souhrnne-hlaseni-${summary?.period.year}-Q${summary?.period.quarter}.xml`;
+			await downloadFile(`/api/v1/vies-summaries/${summaryId}/xml`, filename);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		}

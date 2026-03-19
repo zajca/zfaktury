@@ -7,6 +7,7 @@
 		type ControlStatement,
 		type ControlStatementLine
 	} from '$lib/api/client';
+	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
@@ -82,15 +83,8 @@
 
 	async function handleDownloadXml() {
 		try {
-			const blob = await controlStatementApi.downloadXml(statementId);
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `kontrolni-hlaseni-${statement?.period.year}-${String(statement?.period.month).padStart(2, '0')}.xml`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			const filename = `kontrolni-hlaseni-${statement?.period.year}-${String(statement?.period.month).padStart(2, '0')}.xml`;
+			await downloadFile(`/api/v1/vat-control-statements/${statementId}/xml`, filename);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		}

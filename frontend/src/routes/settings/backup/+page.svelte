@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { nativeDownload } from '$lib/actions/download';
 	import { backupApi, type BackupRecord, type BackupStatus } from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -254,6 +255,7 @@
 										href={backupApi.downloadUrl(backup.id)}
 										class="text-accent-text hover:text-accent mr-3"
 										download
+										use:nativeDownload={backup.filename}
 									>
 										Stahnout
 									</a>

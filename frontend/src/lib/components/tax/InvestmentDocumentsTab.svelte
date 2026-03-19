@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { nativeDownload } from '$lib/actions/download';
 	import type { InvestmentDocument } from '$lib/api/client';
 	import { investmentsApi } from '$lib/api/client';
 	import Button from '$lib/ui/Button.svelte';
@@ -87,7 +88,8 @@
 								<a
 									href={investmentsApi.downloadDocumentUrl(doc.id)}
 									class="text-accent hover:underline"
-									target="_blank">{doc.filename}</a
+									target="_blank"
+									use:nativeDownload={doc.filename}>{doc.filename}</a
 								>
 							</td>
 							<td class="py-2 pr-4 text-tertiary">{platformLabels[doc.platform] ?? doc.platform}</td

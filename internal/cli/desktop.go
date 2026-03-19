@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"github.com/zajca/zfaktury/internal/desktop"
 	"github.com/zajca/zfaktury/internal/server"
 )
 
@@ -25,12 +26,17 @@ func runDesktop(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	downloadSvc := &desktop.DownloadService{Handler: srvApp.Router()}
+
 	// Wails serves requests through AssetOptions.Handler directly,
 	// no separate HTTP server needed.
 	app := application.New(application.Options{
 		Name: "ZFaktury",
 		Assets: application.AssetOptions{
 			Handler: srvApp.Router(),
+		},
+		Services: []application.Service{
+			application.NewService(downloadSvc),
 		},
 		OnShutdown: func() {
 			srvApp.Close()

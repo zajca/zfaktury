@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { vatReturnApi, type VATReturn } from '$lib/api/client';
+	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
@@ -64,15 +65,7 @@
 	async function handleDownloadXml() {
 		actionLoading = 'download';
 		try {
-			const blob = await vatReturnApi.downloadXml(returnId);
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `dph-priznani-${returnId}.xml`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			await downloadFile(`/api/v1/vat-returns/${returnId}/xml`, `dph-priznani-${returnId}.xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		} finally {

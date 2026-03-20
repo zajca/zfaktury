@@ -212,6 +212,37 @@ pub fn current_version(conn: &Connection) -> Result<i64, DbError> {
     Ok(version)
 }
 
+/// Returns the total number of available migrations.
+pub fn total_migrations() -> usize {
+    MIGRATIONS.len()
+}
+
+/// Returns a list of all migration entries with their applied status.
+/// Each tuple is (version, name, is_applied).
+pub fn migration_status(conn: &Connection) -> Result<Vec<(i64, &'static str, bool)>, DbError> {
+    // Collect applied versions.
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='_zfaktury_migrations'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)?;
+
+    let applied: Vec<i64> = if table_exists {
+        let mut stmt = conn.prepare("SELECT version FROM _zfaktury_migrations ORDER BY version")?;
+        let rows = stmt.query_map([], |row| row.get(0))?;
+        rows.collect::<Result<Vec<i64>, _>>()?
+    } else {
+        Vec::new()
+    };
+
+    Ok(MIGRATIONS
+        .iter()
+        .map(|&(version, name, _sql)| (version, name, applied.contains(&version)))
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

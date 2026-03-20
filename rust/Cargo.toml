@@ -8,6 +8,7 @@ members = [
     "crates/zfaktury-db",
     "crates/zfaktury-testutil",
     "crates/zfaktury-gen",
+    "crates/zfaktury-api",
 ]
 
 [workspace.package]

@@ -1,0 +1,19 @@
+[package]
+name = "zfaktury-api"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+zfaktury-domain = { path = "../zfaktury-domain" }
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls"] }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+thiserror = "2"
+log = "0.4"
+base64 = "0.22"
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt", "macros"] }

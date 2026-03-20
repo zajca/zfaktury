@@ -6,14 +6,32 @@ use crate::app::AppServices;
 use crate::navigation::{NavigationState, Route};
 use crate::sidebar::{NavigateEvent, SidebarView};
 use crate::theme::ZfColors;
+use crate::views::contact_detail::ContactDetailView;
 use crate::views::contact_list::ContactListView;
 use crate::views::dashboard::DashboardView;
+use crate::views::expense_detail::ExpenseDetailView;
+use crate::views::expense_form::ExpenseFormView;
 use crate::views::expense_list::ExpenseListView;
+use crate::views::import_fakturoid::ImportFakturoidView;
 use crate::views::invoice_detail::InvoiceDetailView;
 use crate::views::invoice_form::InvoiceFormView;
 use crate::views::invoice_list::InvoiceListView;
+use crate::views::recurring_expense_list::RecurringExpenseListView;
+use crate::views::recurring_invoice_list::RecurringInvoiceListView;
+use crate::views::reports::ReportsView;
+use crate::views::settings_audit::SettingsAuditView;
+use crate::views::settings_backup::SettingsBackupView;
+use crate::views::settings_categories::SettingsCategoriesView;
+use crate::views::settings_email::SettingsEmailView;
 use crate::views::settings_firma::SettingsFirmaView;
+use crate::views::settings_sequences::SettingsSequencesView;
 use crate::views::stub::StubView;
+use crate::views::tax_credits::TaxCreditsView;
+use crate::views::tax_investments::TaxInvestmentsView;
+use crate::views::tax_overview::TaxOverviewView;
+use crate::views::tax_prepayments::TaxPrepaymentsView;
+use crate::views::vat_overview::VatOverviewView;
+use crate::views::vat_return_detail::VatReturnDetailView;
 
 /// Root view: sidebar + main content area. Routes to appropriate view based on
 /// the current NavigationState.
@@ -31,8 +49,26 @@ enum ContentView {
     InvoiceDetail(Entity<InvoiceDetailView>),
     InvoiceForm(Entity<InvoiceFormView>),
     ExpenseList(Entity<ExpenseListView>),
+    ExpenseDetail(Entity<ExpenseDetailView>),
+    ExpenseForm(Entity<ExpenseFormView>),
     ContactList(Entity<ContactListView>),
+    ContactDetail(Entity<ContactDetailView>),
+    RecurringInvoiceList(Entity<RecurringInvoiceListView>),
+    RecurringExpenseList(Entity<RecurringExpenseListView>),
+    VatOverview(Entity<VatOverviewView>),
+    VatReturnDetail(Entity<VatReturnDetailView>),
+    TaxOverview(Entity<TaxOverviewView>),
+    TaxCredits(Entity<TaxCreditsView>),
+    TaxPrepayments(Entity<TaxPrepaymentsView>),
+    TaxInvestments(Entity<TaxInvestmentsView>),
+    Reports(Entity<ReportsView>),
     SettingsFirma(Entity<SettingsFirmaView>),
+    SettingsEmail(Entity<SettingsEmailView>),
+    SettingsSequences(Entity<SettingsSequencesView>),
+    SettingsCategories(Entity<SettingsCategoriesView>),
+    SettingsAudit(Entity<SettingsAuditView>),
+    SettingsBackup(Entity<SettingsBackupView>),
+    ImportFakturoid(Entity<ImportFakturoidView>),
     Stub(Entity<StubView>),
 }
 
@@ -104,13 +140,79 @@ impl RootView {
                 let svc = services.expenses.clone();
                 ContentView::ExpenseList(cx.new(|cx| ExpenseListView::new(svc, cx)))
             }
+            Route::ExpenseNew => ContentView::ExpenseForm(cx.new(|_cx| ExpenseFormView::new())),
+            Route::ExpenseDetail(id) => {
+                let svc = services.expenses.clone();
+                let id = *id;
+                ContentView::ExpenseDetail(cx.new(|cx| ExpenseDetailView::new(svc, id, cx)))
+            }
             Route::ContactList => {
                 let svc = services.contacts.clone();
                 ContentView::ContactList(cx.new(|cx| ContactListView::new(svc, cx)))
             }
+            Route::ContactDetail(id) => {
+                let svc = services.contacts.clone();
+                let id = *id;
+                ContentView::ContactDetail(cx.new(|cx| ContactDetailView::new(svc, id, cx)))
+            }
+            Route::RecurringInvoiceList => {
+                let svc = services.recurring_invoices.clone();
+                ContentView::RecurringInvoiceList(
+                    cx.new(|cx| RecurringInvoiceListView::new(svc, cx)),
+                )
+            }
+            Route::RecurringExpenseList => {
+                let svc = services.recurring_expenses.clone();
+                ContentView::RecurringExpenseList(
+                    cx.new(|cx| RecurringExpenseListView::new(svc, cx)),
+                )
+            }
+            Route::VATOverview => {
+                let svc = services.vat_returns.clone();
+                ContentView::VatOverview(cx.new(|cx| VatOverviewView::new(svc, cx)))
+            }
+            Route::VATReturnDetail(id) => {
+                let svc = services.vat_returns.clone();
+                let id = *id;
+                ContentView::VatReturnDetail(cx.new(|cx| VatReturnDetailView::new(svc, id, cx)))
+            }
+            Route::TaxOverview => ContentView::TaxOverview(cx.new(|_cx| TaxOverviewView::new())),
+            Route::TaxCredits => ContentView::TaxCredits(cx.new(|_cx| TaxCreditsView::new())),
+            Route::TaxPrepayments => {
+                ContentView::TaxPrepayments(cx.new(|_cx| TaxPrepaymentsView::new()))
+            }
+            Route::TaxInvestments => {
+                ContentView::TaxInvestments(cx.new(|_cx| TaxInvestmentsView::new()))
+            }
+            Route::Reports => {
+                let svc = services.reports.clone();
+                ContentView::Reports(cx.new(|cx| ReportsView::new(svc, cx)))
+            }
             Route::SettingsFirma => {
                 let svc = services.settings.clone();
                 ContentView::SettingsFirma(cx.new(|cx| SettingsFirmaView::new(svc, cx)))
+            }
+            Route::SettingsEmail => {
+                let svc = services.settings.clone();
+                ContentView::SettingsEmail(cx.new(|cx| SettingsEmailView::new(svc, cx)))
+            }
+            Route::SettingsSequences => {
+                let svc = services.sequences.clone();
+                ContentView::SettingsSequences(cx.new(|cx| SettingsSequencesView::new(svc, cx)))
+            }
+            Route::SettingsCategories => {
+                let svc = services.categories.clone();
+                ContentView::SettingsCategories(cx.new(|cx| SettingsCategoriesView::new(svc, cx)))
+            }
+            Route::SettingsAuditLog => {
+                let svc = services.audit.clone();
+                ContentView::SettingsAudit(cx.new(|cx| SettingsAuditView::new(svc, cx)))
+            }
+            Route::SettingsBackup => {
+                ContentView::SettingsBackup(cx.new(|_cx| SettingsBackupView::new()))
+            }
+            Route::ImportFakturoid => {
+                ContentView::ImportFakturoid(cx.new(|_cx| ImportFakturoidView::new()))
             }
             other => {
                 let label = other.label().to_string();
@@ -128,8 +230,26 @@ impl Render for RootView {
             ContentView::InvoiceDetail(v) => v.clone().into_any_element(),
             ContentView::InvoiceForm(v) => v.clone().into_any_element(),
             ContentView::ExpenseList(v) => v.clone().into_any_element(),
+            ContentView::ExpenseDetail(v) => v.clone().into_any_element(),
+            ContentView::ExpenseForm(v) => v.clone().into_any_element(),
             ContentView::ContactList(v) => v.clone().into_any_element(),
+            ContentView::ContactDetail(v) => v.clone().into_any_element(),
+            ContentView::RecurringInvoiceList(v) => v.clone().into_any_element(),
+            ContentView::RecurringExpenseList(v) => v.clone().into_any_element(),
+            ContentView::VatOverview(v) => v.clone().into_any_element(),
+            ContentView::VatReturnDetail(v) => v.clone().into_any_element(),
+            ContentView::TaxOverview(v) => v.clone().into_any_element(),
+            ContentView::TaxCredits(v) => v.clone().into_any_element(),
+            ContentView::TaxPrepayments(v) => v.clone().into_any_element(),
+            ContentView::TaxInvestments(v) => v.clone().into_any_element(),
+            ContentView::Reports(v) => v.clone().into_any_element(),
             ContentView::SettingsFirma(v) => v.clone().into_any_element(),
+            ContentView::SettingsEmail(v) => v.clone().into_any_element(),
+            ContentView::SettingsSequences(v) => v.clone().into_any_element(),
+            ContentView::SettingsCategories(v) => v.clone().into_any_element(),
+            ContentView::SettingsAudit(v) => v.clone().into_any_element(),
+            ContentView::SettingsBackup(v) => v.clone().into_any_element(),
+            ContentView::ImportFakturoid(v) => v.clone().into_any_element(),
             ContentView::Stub(v) => v.clone().into_any_element(),
         };
 

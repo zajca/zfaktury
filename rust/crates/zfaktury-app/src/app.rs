@@ -4,7 +4,8 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use zfaktury_core::service::{
     AuditService, CategoryService, ContactService, DashboardService, ExpenseService,
-    InvoiceService, SequenceService, SettingsService,
+    InvoiceService, RecurringExpenseService, RecurringInvoiceService, ReportService,
+    SequenceService, SettingsService, VATReturnService,
 };
 use zfaktury_db::connection::open_connection;
 use zfaktury_db::migrate::run_migrations;
@@ -14,8 +15,12 @@ use zfaktury_db::repos::contact_repo::SqliteContactRepo;
 use zfaktury_db::repos::dashboard_repo::SqliteDashboardRepo;
 use zfaktury_db::repos::expense_repo::SqliteExpenseRepo;
 use zfaktury_db::repos::invoice_repo::SqliteInvoiceRepo;
+use zfaktury_db::repos::recurring_expense_repo::SqliteRecurringExpenseRepo;
+use zfaktury_db::repos::recurring_invoice_repo::SqliteRecurringInvoiceRepo;
+use zfaktury_db::repos::report_repo::SqliteReportRepo;
 use zfaktury_db::repos::sequence_repo::SqliteSequenceRepo;
 use zfaktury_db::repos::settings_repo::SqliteSettingsRepo;
+use zfaktury_db::repos::vat_return_repo::SqliteVATReturnRepo;
 
 /// Shared application state holding all service instances.
 #[allow(dead_code)]
@@ -28,6 +33,10 @@ pub struct AppServices {
     pub categories: Arc<CategoryService>,
     pub sequences: Arc<SequenceService>,
     pub audit: Arc<AuditService>,
+    pub recurring_invoices: Arc<RecurringInvoiceService>,
+    pub recurring_expenses: Arc<RecurringExpenseService>,
+    pub vat_returns: Arc<VATReturnService>,
+    pub reports: Arc<ReportService>,
 }
 
 impl AppServices {
@@ -86,6 +95,50 @@ impl AppServices {
         ));
         let dashboard = Arc::new(DashboardService::new(dashboard_repo));
 
+        let recurring_invoice_repo = Arc::new(SqliteRecurringInvoiceRepo::new(
+            open_connection(db_path).context("opening db for recurring invoices")?,
+        ));
+        let recurring_invoices = Arc::new(RecurringInvoiceService::new(
+            recurring_invoice_repo,
+            invoices.clone(),
+            Some(audit.clone()),
+        ));
+
+        let recurring_expense_repo = Arc::new(SqliteRecurringExpenseRepo::new(
+            open_connection(db_path).context("opening db for recurring expenses")?,
+        ));
+        let recurring_expenses = Arc::new(RecurringExpenseService::new(
+            recurring_expense_repo,
+            expenses.clone(),
+            Some(audit.clone()),
+        ));
+
+        let vat_return_repo = Arc::new(SqliteVATReturnRepo::new(
+            open_connection(db_path).context("opening db for vat returns")?,
+        ));
+        // VATReturnService needs its own invoice/expense/settings repo instances.
+        let vat_invoice_repo = Arc::new(SqliteInvoiceRepo::new(
+            open_connection(db_path).context("opening db for vat invoices")?,
+        ));
+        let vat_expense_repo = Arc::new(SqliteExpenseRepo::new(
+            open_connection(db_path).context("opening db for vat expenses")?,
+        ));
+        let vat_settings_repo = Arc::new(SqliteSettingsRepo::new(
+            open_connection(db_path).context("opening db for vat settings")?,
+        ));
+        let vat_returns = Arc::new(VATReturnService::new(
+            vat_return_repo,
+            vat_invoice_repo,
+            vat_expense_repo,
+            vat_settings_repo,
+            Some(audit.clone()),
+        ));
+
+        let report_repo = Arc::new(SqliteReportRepo::new(
+            open_connection(db_path).context("opening db for reports")?,
+        ));
+        let reports = Arc::new(ReportService::new(report_repo));
+
         Ok(Self {
             dashboard,
             invoices,
@@ -95,6 +148,10 @@ impl AppServices {
             categories,
             sequences,
             audit,
+            recurring_invoices,
+            recurring_expenses,
+            vat_returns,
+            reports,
         })
     }
 }

@@ -8,9 +8,11 @@
 //! - ISDOC 6.0.2 XML
 //! - QR/SPAYD payment codes
 //! - CSV export
+//! - Invoice PDF (via typst)
 
 pub mod csv;
 pub mod isdoc;
+pub mod pdf;
 pub mod qr;
 pub mod xml;
 

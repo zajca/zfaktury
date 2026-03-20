@@ -20,11 +20,8 @@ struct RootView {
 }
 
 impl Render for RootView {
-    fn render(&mut self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
-        let route_text = self
-            .route
-            .as_deref()
-            .unwrap_or("Dashboard");
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let route_text = self.route.as_deref().unwrap_or("Dashboard");
 
         div()
             .flex()
@@ -61,7 +58,7 @@ impl Render for RootView {
 fn main() {
     let cli = Cli::parse();
 
-    Application::new().run(move |cx: &mut AppContext| {
+    gpui_platform::application().run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);
         let route = cli.route.clone();
 
@@ -74,14 +71,16 @@ fn main() {
                 }),
                 ..Default::default()
             },
-            |cx| cx.new_view(|_cx| RootView { route }),
+            |_window, cx| cx.new(|_cx| RootView { route }),
         )
         .unwrap();
 
         if let Some(seconds) = cli.exit_after {
-            cx.spawn(|cx| async move {
-                Timer::after(Duration::from_secs(seconds)).await;
-                cx.update(|cx| cx.quit()).ok();
+            cx.spawn(async move |cx| {
+                cx.background_executor()
+                    .timer(Duration::from_secs(seconds))
+                    .await;
+                cx.update(|cx| cx.quit());
             })
             .detach();
         }

@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/zfaktury-app",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+rust-version = "1.93"

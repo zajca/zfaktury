@@ -190,8 +190,11 @@ impl InvoiceService {
             return Err(DomainError::InvalidInput);
         }
         let mut invoice = self.repo.get_by_id(id)?;
-        if invoice.status != InvoiceStatus::Draft {
-            return Err(DomainError::InvalidInput);
+        match invoice.status {
+            InvoiceStatus::Paid => return Err(DomainError::PaidInvoice),
+            InvoiceStatus::Cancelled => return Err(DomainError::InvalidInput),
+            InvoiceStatus::Draft => {} // allowed
+            InvoiceStatus::Sent | InvoiceStatus::Overdue => return Err(DomainError::InvalidInput),
         }
         invoice.status = InvoiceStatus::Sent;
         invoice.sent_at = Some(chrono::Local::now().naive_local());

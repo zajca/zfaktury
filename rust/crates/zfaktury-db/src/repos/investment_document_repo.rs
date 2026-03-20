@@ -45,8 +45,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<InvestmentDocument> {
         size: row.get("size")?,
         extraction_status: pes(&es),
         extraction_error: row.get("extraction_error")?,
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl InvestmentDocumentRepo for SqliteInvestmentDocumentRepo {

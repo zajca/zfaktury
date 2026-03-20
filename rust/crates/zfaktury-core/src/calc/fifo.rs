@@ -172,13 +172,10 @@ pub fn calculate_fifo(
 
 /// Subtracts N years from a date, handling leap year edge cases.
 fn subtract_years(date: NaiveDate, years: i32) -> NaiveDate {
-    // Go's AddDate(-years, 0, 0) behavior: Feb 29 in leap year - 3 years -> Mar 1
-    // chrono's checked_sub_months returns None for invalid dates, so we use this logic:
-    let target_year = date.year_ce().1 as i32 - years;
+    let target_year = date.year() - years;
     NaiveDate::from_ymd_opt(target_year, date.month(), date.day()).unwrap_or_else(|| {
-        // Day doesn't exist in target month/year (e.g. Feb 29 in non-leap year).
-        // Go returns March 1 in this case (AddDate adds then normalizes).
-        NaiveDate::from_ymd_opt(target_year, date.month() + 1, 1).unwrap()
+        // Feb 29 in a leap year -> Mar 1 in non-leap year (matches Go AddDate behavior)
+        NaiveDate::from_ymd_opt(target_year, 3, 1).expect("March 1 always exists")
     })
 }
 

@@ -36,7 +36,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<InvoiceStatusChange> {
         invoice_id: row.get("invoice_id")?,
         old_status: parse_status(&old),
         new_status: parse_status(&new),
-        changed_at: parse_datetime(&at).unwrap_or_default(),
+        changed_at: parse_datetime_or_default(&at),
         note: row.get("note")?,
     })
 }

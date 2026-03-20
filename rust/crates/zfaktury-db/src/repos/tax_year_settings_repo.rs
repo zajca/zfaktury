@@ -20,8 +20,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<TaxYearSettings> {
     Ok(TaxYearSettings {
         year: row.get("year")?,
         flat_rate_percent: row.get("flat_rate_percent")?,
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl TaxYearSettingsRepo for SqliteTaxYearSettingsRepo {

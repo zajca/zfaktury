@@ -26,7 +26,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<InvoiceDocument> {
         content_type: row.get("content_type")?,
         storage_path: row.get("storage_path")?,
         size: row.get("size")?,
-        created_at: parse_datetime(&c).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
         deleted_at: parse_datetime_optional(d.as_deref()).unwrap_or(None),
     })
 }

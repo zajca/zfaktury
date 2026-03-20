@@ -27,7 +27,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<AuditLogEntry> {
         new_values: row
             .get::<_, Option<String>>("new_values")?
             .unwrap_or_default(),
-        created_at: parse_datetime(&c).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
     })
 }
 impl AuditLogRepo for SqliteAuditLogRepo {
@@ -88,7 +88,10 @@ impl AuditLogRepo for SqliteAuditLogRepo {
             })?;
         let mut q = format!("SELECT * FROM audit_log WHERE {w} ORDER BY created_at DESC");
         if filter.limit > 0 {
-            q.push_str(&format!(" LIMIT {} OFFSET {}", filter.limit, filter.offset));
+            let next = pv.len() + 1;
+            q.push_str(&format!(" LIMIT ?{} OFFSET ?{}", next, next + 1));
+            pv.push(Box::new(filter.limit as i64));
+            pv.push(Box::new(filter.offset as i64));
         }
         let pr2: Vec<&dyn rusqlite::types::ToSql> = pv.iter().map(|p| p.as_ref()).collect();
         let mut st = c.prepare(&q).map_err(|e| {

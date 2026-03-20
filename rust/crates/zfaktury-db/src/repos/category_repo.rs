@@ -30,7 +30,7 @@ fn scan_category(row: &Row<'_>) -> rusqlite::Result<ExpenseCategory> {
         color: row.get("color")?,
         sort_order: row.get("sort_order")?,
         is_default: row.get::<_, i32>("is_default")? != 0,
-        created_at: parse_datetime(&created_at_str).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&created_at_str),
         deleted_at: parse_datetime_optional(deleted_at_str.as_deref()).unwrap_or(None),
     })
 }

@@ -38,7 +38,7 @@ fn scan_expense_core(row: &Row<'_>) -> rusqlite::Result<Expense> {
             .get::<_, Option<String>>("category")?
             .unwrap_or_default(),
         description: row.get("description")?,
-        issue_date: parse_date(&issue_date_str).unwrap_or_default(),
+        issue_date: parse_date_or_default(&issue_date_str),
         amount: Amount::from_halere(row.get::<_, i64>("amount")?),
         currency_code: row.get("currency_code")?,
         exchange_rate: Amount::from_halere(row.get::<_, i64>("exchange_rate")?),
@@ -53,8 +53,8 @@ fn scan_expense_core(row: &Row<'_>) -> rusqlite::Result<Expense> {
         notes: row.get::<_, Option<String>>("notes")?.unwrap_or_default(),
         tax_reviewed_at: parse_datetime_optional(tax_reviewed_str.as_deref()).unwrap_or(None),
         items: Vec::new(),
-        created_at: parse_datetime(&created_at_str).unwrap_or_default(),
-        updated_at: parse_datetime(&updated_at_str).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&created_at_str),
+        updated_at: parse_datetime_or_default(&updated_at_str),
         deleted_at: parse_datetime_optional(deleted_at_str.as_deref()).unwrap_or(None),
     })
 }
@@ -293,7 +293,10 @@ impl ExpenseRepo for SqliteExpenseRepo {
             "SELECT {exp_cols_prefixed} FROM expenses e WHERE {where_clause} ORDER BY e.issue_date DESC"
         );
         if filter.limit > 0 {
-            query.push_str(&format!(" LIMIT {} OFFSET {}", filter.limit, filter.offset));
+            let next = param_values.len() + 1;
+            query.push_str(&format!(" LIMIT ?{} OFFSET ?{}", next, next + 1));
+            param_values.push(Box::new(filter.limit as i64));
+            param_values.push(Box::new(filter.offset as i64));
         }
 
         let params_ref2: Vec<&dyn rusqlite::types::ToSql> =

@@ -38,7 +38,7 @@ fn scan_ri(row: &Row<'_>) -> rusqlite::Result<RecurringInvoice> {
         customer_id: row.get("customer_id")?,
         customer: None,
         frequency: parse_freq(&freq),
-        next_issue_date: parse_date(&next).unwrap_or_default(),
+        next_issue_date: parse_date_or_default(&next),
         end_date: parse_date_optional(end.as_deref()).unwrap_or(None),
         currency_code: row.get("currency_code")?,
         exchange_rate: Amount::from_halere(row.get::<_, i64>("exchange_rate")?),
@@ -51,8 +51,8 @@ fn scan_ri(row: &Row<'_>) -> rusqlite::Result<RecurringInvoice> {
         notes: row.get("notes")?,
         is_active: row.get::<_, i32>("is_active")? != 0,
         items: Vec::new(),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
         deleted_at: parse_datetime_optional(d.as_deref()).unwrap_or(None),
     })
 }

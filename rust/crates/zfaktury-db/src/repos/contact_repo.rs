@@ -61,8 +61,8 @@ fn scan_contact(row: &Row<'_>) -> rusqlite::Result<Contact> {
         is_favorite: row.get::<_, i32>("is_favorite")? != 0,
         vat_unreliable_at: parse_datetime_optional(vat_unreliable_at_str.as_deref())
             .unwrap_or(None),
-        created_at: parse_datetime(&created_at_str).unwrap_or_default(),
-        updated_at: parse_datetime(&updated_at_str).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&created_at_str),
+        updated_at: parse_datetime_or_default(&updated_at_str),
         deleted_at: parse_datetime_optional(deleted_at_str.as_deref()).unwrap_or(None),
     })
 }
@@ -239,7 +239,10 @@ impl ContactRepo for SqliteContactRepo {
         let mut query =
             format!("SELECT {SELECT_COLUMNS} FROM contacts WHERE {where_clause} ORDER BY name ASC");
         if filter.limit > 0 {
-            query.push_str(&format!(" LIMIT {} OFFSET {}", filter.limit, filter.offset));
+            let next = param_values.len() + 1;
+            query.push_str(&format!(" LIMIT ?{} OFFSET ?{}", next, next + 1));
+            param_values.push(Box::new(filter.limit as i64));
+            param_values.push(Box::new(filter.offset as i64));
         }
 
         let params_ref2: Vec<&dyn rusqlite::types::ToSql> =

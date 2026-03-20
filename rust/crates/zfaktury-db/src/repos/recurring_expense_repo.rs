@@ -49,11 +49,11 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<RecurringExpense> {
         payment_method: row.get("payment_method")?,
         notes: row.get("notes")?,
         frequency: parse_freq(&f),
-        next_issue_date: parse_date(&n).unwrap_or_default(),
+        next_issue_date: parse_date_or_default(&n),
         end_date: parse_date_optional(e.as_deref()).unwrap_or(None),
         is_active: row.get::<_, i32>("is_active")? != 0,
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
         deleted_at: parse_datetime_optional(d.as_deref()).unwrap_or(None),
     })
 }
@@ -118,15 +118,20 @@ impl RecurringExpenseRepo for SqliteRecurringExpenseRepo {
             })?;
         let mut q =
             format!("SELECT {COLS} FROM recurring_expenses WHERE deleted_at IS NULL ORDER BY name");
+        let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
         if limit > 0 {
-            q.push_str(&format!(" LIMIT {limit} OFFSET {offset}"));
+            q.push_str(" LIMIT ?1 OFFSET ?2");
+            param_values.push(Box::new(limit as i64));
+            param_values.push(Box::new(offset as i64));
         }
+        let params_ref: Vec<&dyn rusqlite::types::ToSql> =
+            param_values.iter().map(|p| p.as_ref()).collect();
         let mut s = conn.prepare(&q).map_err(|e| {
             log::error!("prep: {e}");
             DomainError::InvalidInput
         })?;
         let list = s
-            .query_map([], scan)
+            .query_map(params_ref.as_slice(), scan)
             .map_err(|e| {
                 log::error!("list: {e}");
                 DomainError::InvalidInput

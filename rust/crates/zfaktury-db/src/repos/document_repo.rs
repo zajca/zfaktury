@@ -26,7 +26,7 @@ fn scan_doc(row: &Row<'_>) -> rusqlite::Result<ExpenseDocument> {
         content_type: row.get("content_type")?,
         storage_path: row.get("storage_path")?,
         size: row.get("size")?,
-        created_at: parse_datetime(&created_str).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&created_str),
         deleted_at: parse_datetime_optional(deleted_str.as_deref()).unwrap_or(None),
     })
 }

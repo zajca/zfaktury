@@ -70,8 +70,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<VATReturn> {
             .unwrap_or_default(),
         status: parse_fs(&st),
         filed_at: parse_datetime_optional(fa.as_deref()).unwrap_or(None),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 

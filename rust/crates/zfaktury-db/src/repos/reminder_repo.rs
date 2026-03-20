@@ -22,11 +22,11 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<PaymentReminder> {
         id: row.get("id")?,
         invoice_id: row.get("invoice_id")?,
         reminder_number: row.get("reminder_number")?,
-        sent_at: parse_datetime(&sent).unwrap_or_default(),
+        sent_at: parse_datetime_or_default(&sent),
         sent_to: row.get("sent_to")?,
         subject: row.get("subject")?,
         body_preview: row.get("body_preview")?,
-        created_at: parse_datetime(&created).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&created),
     })
 }
 

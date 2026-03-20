@@ -22,7 +22,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<FakturoidImportLog> {
         fakturoid_id: row.get("fakturoid_id")?,
         local_entity_type: row.get("local_entity_type")?,
         local_id: row.get("local_id")?,
-        imported_at: parse_datetime(&i).unwrap_or_default(),
+        imported_at: parse_datetime_or_default(&i),
     })
 }
 impl FakturoidImportLogRepo for SqliteFakturoidImportRepo {

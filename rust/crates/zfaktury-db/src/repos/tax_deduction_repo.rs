@@ -35,8 +35,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<TaxDeduction> {
         claimed_amount: Amount::from_halere(row.get::<_, i64>("claimed_amount")?),
         max_amount: Amount::from_halere(row.get::<_, i64>("max_amount")?),
         allowed_amount: Amount::from_halere(row.get::<_, i64>("allowed_amount")?),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl TaxDeductionRepo for SqliteTaxDeductionRepo {

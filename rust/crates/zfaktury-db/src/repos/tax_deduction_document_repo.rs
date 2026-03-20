@@ -26,7 +26,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<TaxDeductionDocument> {
         size: row.get("size")?,
         extracted_amount: Amount::from_halere(row.get::<_, i64>("extracted_amount")?),
         confidence: row.get("confidence")?,
-        created_at: parse_datetime(&c).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
         deleted_at: parse_datetime_optional(d.as_deref()).unwrap_or(None),
     })
 }

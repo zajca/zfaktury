@@ -92,7 +92,7 @@ impl DashboardRepo for SqliteDashboardRepo {
                 customer_name: r.get("customer_name")?,
                 total_amount: Amount::from_halere(r.get::<_, i64>("total_amount")?),
                 status: pis(&st),
-                issue_date: parse_date(&id_str).unwrap_or_default(),
+                issue_date: parse_date_or_default(&id_str),
             })
         })
         .map_err(|e| {
@@ -115,7 +115,7 @@ impl DashboardRepo for SqliteDashboardRepo {
                 description: r.get("description")?,
                 category: r.get("category")?,
                 amount: Amount::from_halere(r.get::<_, i64>("amount")?),
-                issue_date: parse_date(&id_str).unwrap_or_default(),
+                issue_date: parse_date_or_default(&id_str),
             })
         })
         .map_err(|e| {

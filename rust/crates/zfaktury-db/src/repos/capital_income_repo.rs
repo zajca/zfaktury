@@ -35,15 +35,15 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<CapitalIncomeEntry> {
         document_id: row.get("document_id")?,
         category: pcc(&cat),
         description: row.get("description")?,
-        income_date: parse_date(&id_str).unwrap_or_default(),
+        income_date: parse_date_or_default(&id_str),
         gross_amount: Amount::from_halere(row.get::<_, i64>("gross_amount")?),
         withheld_tax_cz: Amount::from_halere(row.get::<_, i64>("withheld_tax_cz")?),
         withheld_tax_foreign: Amount::from_halere(row.get::<_, i64>("withheld_tax_foreign")?),
         country_code: row.get("country_code")?,
         needs_declaring: row.get::<_, i32>("needs_declaring")? != 0,
         net_amount: Amount::from_halere(row.get::<_, i64>("net_amount")?),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl CapitalIncomeRepo for SqliteCapitalIncomeRepo {

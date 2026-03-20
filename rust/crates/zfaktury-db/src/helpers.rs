@@ -47,6 +47,24 @@ pub fn format_datetime(dt: &NaiveDateTime) -> String {
     dt.format(DATETIME_FORMAT).to_string()
 }
 
+/// Parse a date string with a lenient fallback: logs a warning and returns the default
+/// value when parsing fails. Use this instead of `parse_date(...).unwrap_or_default()`.
+pub fn parse_date_or_default(value: &str) -> NaiveDate {
+    parse_date(value).unwrap_or_else(|e| {
+        log::warn!("Failed to parse date '{}': {}", value, e);
+        NaiveDate::default()
+    })
+}
+
+/// Parse a datetime string with a lenient fallback: logs a warning and returns the default
+/// value when parsing fails. Use this instead of `parse_datetime(...).unwrap_or_default()`.
+pub fn parse_datetime_or_default(value: &str) -> NaiveDateTime {
+    parse_datetime(value).unwrap_or_else(|e| {
+        log::warn!("Failed to parse datetime '{}': {}", value, e);
+        NaiveDateTime::default()
+    })
+}
+
 /// Format an optional NaiveDateTime. Returns None if the value is None.
 pub fn format_datetime_opt(dt: &Option<NaiveDateTime>) -> Option<String> {
     dt.as_ref().map(format_datetime)

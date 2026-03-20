@@ -44,7 +44,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<SecurityTransaction> {
         asset_name: row.get("asset_name")?,
         isin: row.get("isin")?,
         transaction_type: ptt(&tt),
-        transaction_date: parse_date(&td).unwrap_or_default(),
+        transaction_date: parse_date_or_default(&td),
         quantity: row.get("quantity")?,
         unit_price: Amount::from_halere(row.get::<_, i64>("unit_price")?),
         total_amount: Amount::from_halere(row.get::<_, i64>("total_amount")?),
@@ -55,8 +55,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<SecurityTransaction> {
         computed_gain: Amount::from_halere(row.get::<_, i64>("computed_gain")?),
         time_test_exempt: row.get::<_, i32>("time_test_exempt")? != 0,
         exempt_amount: Amount::from_halere(row.get::<_, i64>("exempt_amount")?),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl SecurityTransactionRepo for SqliteSecurityTransactionRepo {

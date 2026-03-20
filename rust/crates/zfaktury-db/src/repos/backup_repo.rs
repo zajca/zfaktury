@@ -44,7 +44,7 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<BackupRecord> {
         db_migration_version: row.get("db_migration_version")?,
         duration_ms: row.get("duration_ms")?,
         error_message: row.get("error_message")?,
-        created_at: parse_datetime(&c).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
         completed_at: parse_datetime_optional(ca.as_deref()).unwrap_or(None),
     })
 }

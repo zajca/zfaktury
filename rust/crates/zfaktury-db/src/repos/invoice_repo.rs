@@ -68,9 +68,9 @@ fn scan_invoice_core(row: &Row<'_>) -> rusqlite::Result<Invoice> {
         invoice_number: row.get("invoice_number")?,
         invoice_type: parse_invoice_type(&type_str),
         status: parse_invoice_status(&status_str),
-        issue_date: parse_date(&issue_date_str).unwrap_or_default(),
-        due_date: parse_date(&due_date_str).unwrap_or_default(),
-        delivery_date: parse_date(&delivery_date_str.unwrap_or_default()).unwrap_or_default(),
+        issue_date: parse_date_or_default(&issue_date_str),
+        due_date: parse_date_or_default(&due_date_str),
+        delivery_date: parse_date_or_default(&delivery_date_str.unwrap_or_default()),
         variable_symbol: row
             .get::<_, Option<String>>("variable_symbol")?
             .unwrap_or_default(),
@@ -103,8 +103,8 @@ fn scan_invoice_core(row: &Row<'_>) -> rusqlite::Result<Invoice> {
         sent_at: parse_datetime_optional(sent_at_str.as_deref()).unwrap_or(None),
         paid_at: parse_datetime_optional(paid_at_str.as_deref()).unwrap_or(None),
         items: Vec::new(),
-        created_at: parse_datetime(&created_at_str).unwrap_or_default(),
-        updated_at: parse_datetime(&updated_at_str).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&created_at_str),
+        updated_at: parse_datetime_or_default(&updated_at_str),
         deleted_at: parse_datetime_optional(deleted_at_str.as_deref()).unwrap_or(None),
     })
 }
@@ -397,7 +397,10 @@ impl InvoiceRepo for SqliteInvoiceRepo {
             "SELECT {inv_cols_prefixed} FROM invoices i WHERE {where_clause} ORDER BY i.issue_date DESC"
         );
         if filter.limit > 0 {
-            query.push_str(&format!(" LIMIT {} OFFSET {}", filter.limit, filter.offset));
+            let next = param_values.len() + 1;
+            query.push_str(&format!(" LIMIT ?{} OFFSET ?{}", next, next + 1));
+            param_values.push(Box::new(filter.limit as i64));
+            param_values.push(Box::new(filter.offset as i64));
         }
 
         let params_ref2: Vec<&dyn rusqlite::types::ToSql> =

@@ -26,8 +26,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<TaxChildCredit> {
         months_claimed: row.get("months_claimed")?,
         ztp: row.get::<_, i32>("ztp")? != 0,
         credit_amount: Amount::from_halere(row.get::<_, i64>("credit_amount")?),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl TaxChildCreditRepo for SqliteTaxChildCreditRepo {

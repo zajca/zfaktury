@@ -26,8 +26,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<TaxSpouseCredit> {
         spouse_ztp: row.get::<_, i32>("spouse_ztp")? != 0,
         months_claimed: row.get("months_claimed")?,
         credit_amount: Amount::from_halere(row.get::<_, i64>("credit_amount")?),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl TaxSpouseCreditRepo for SqliteTaxSpouseCreditRepo {

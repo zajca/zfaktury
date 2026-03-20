@@ -24,8 +24,8 @@ fn scan(row: &Row<'_>) -> rusqlite::Result<TaxPersonalCredits> {
         disability_level: row.get("disability_level")?,
         credit_student: Amount::from_halere(row.get::<_, i64>("credit_student")?),
         credit_disability: Amount::from_halere(row.get::<_, i64>("credit_disability")?),
-        created_at: parse_datetime(&c).unwrap_or_default(),
-        updated_at: parse_datetime(&u).unwrap_or_default(),
+        created_at: parse_datetime_or_default(&c),
+        updated_at: parse_datetime_or_default(&u),
     })
 }
 impl TaxPersonalCreditsRepo for SqliteTaxPersonalCreditsRepo {

@@ -182,7 +182,14 @@ impl EmailSender {
                 builder.build()
             }
             port => {
-                // Plain SMTP (e.g., localhost relay).
+                // Plain SMTP -- only allowed for localhost to prevent credential leakage.
+                let is_local =
+                    matches!(self.config.host.as_str(), "127.0.0.1" | "::1" | "localhost");
+                if !is_local {
+                    return Err(ApiError::SmtpError(
+                        "plaintext SMTP is only allowed for localhost (use port 465 or 587 for remote hosts)".to_string(),
+                    ));
+                }
                 let mut builder = SmtpTransport::builder_dangerous(&self.config.host).port(port);
                 if let Some(c) = creds {
                     builder = builder.credentials(c);
@@ -336,11 +343,23 @@ mod tests {
     }
 
     #[test]
-    fn test_build_transport_plain() {
+    fn test_build_transport_plain_localhost() {
         let mut config = test_config();
+        config.host = "localhost".to_string();
         config.port = 25;
         let sender = EmailSender::new(config);
         let result = sender.build_transport();
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_build_transport_plain_remote_rejected() {
+        let mut config = test_config();
+        config.port = 25;
+        // Remote host on non-TLS port should be rejected.
+        let sender = EmailSender::new(config);
+        let result = sender.build_transport();
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ApiError::SmtpError(_)));
     }
 }

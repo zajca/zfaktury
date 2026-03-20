@@ -326,15 +326,25 @@ impl ExpenseRepo for SqliteExpenseRepo {
         }
         let conn = self.conn.lock().unwrap();
         let now_str = format_datetime(&Local::now().naive_local());
-        let placeholders: String = ids
-            .iter()
-            .map(|id| id.to_string())
+        let placeholders: String = (0..ids.len())
+            .map(|i| format!("?{}", i + 2))
             .collect::<Vec<_>>()
             .join(",");
-        conn.execute(
-            &format!("UPDATE expenses SET tax_reviewed_at = ?1 WHERE id IN ({placeholders}) AND deleted_at IS NULL"),
-            params![now_str],
-        ).map_err(|e| { log::error!("marking tax reviewed: {e}"); DomainError::InvalidInput })?;
+        let sql = format!(
+            "UPDATE expenses SET tax_reviewed_at = ?1 WHERE id IN ({}) AND deleted_at IS NULL",
+            placeholders
+        );
+        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+        params.push(Box::new(now_str));
+        for id in ids {
+            params.push(Box::new(*id));
+        }
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+        conn.execute(&sql, param_refs.as_slice()).map_err(|e| {
+            log::error!("marking tax reviewed: {e}");
+            DomainError::InvalidInput
+        })?;
         Ok(())
     }
 
@@ -343,15 +353,24 @@ impl ExpenseRepo for SqliteExpenseRepo {
             return Ok(());
         }
         let conn = self.conn.lock().unwrap();
-        let placeholders: String = ids
-            .iter()
-            .map(|id| id.to_string())
+        let placeholders: String = (0..ids.len())
+            .map(|i| format!("?{}", i + 1))
             .collect::<Vec<_>>()
             .join(",");
-        conn.execute(
-            &format!("UPDATE expenses SET tax_reviewed_at = NULL WHERE id IN ({placeholders}) AND deleted_at IS NULL"),
-            [],
-        ).map_err(|e| { log::error!("unmarking tax reviewed: {e}"); DomainError::InvalidInput })?;
+        let sql = format!(
+            "UPDATE expenses SET tax_reviewed_at = NULL WHERE id IN ({}) AND deleted_at IS NULL",
+            placeholders
+        );
+        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+        for id in ids {
+            params.push(Box::new(*id));
+        }
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+        conn.execute(&sql, param_refs.as_slice()).map_err(|e| {
+            log::error!("unmarking tax reviewed: {e}");
+            DomainError::InvalidInput
+        })?;
         Ok(())
     }
 }

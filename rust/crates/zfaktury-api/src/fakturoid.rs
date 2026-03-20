@@ -230,6 +230,8 @@ pub struct Expense {
 }
 
 /// Client for the Fakturoid API v3 with OAuth2 Client Credentials.
+const FAKTUROID_HOST: &str = "app.fakturoid.cz";
+
 pub struct FakturoidClient {
     base_url: String,
     token_url: String,
@@ -237,6 +239,8 @@ pub struct FakturoidClient {
     client_id: String,
     client_secret: String,
     access_token: Option<String>,
+    /// Allowed host for attachment downloads (SSRF protection).
+    allowed_download_host: String,
     client: reqwest::blocking::Client,
 }
 
@@ -254,6 +258,7 @@ impl FakturoidClient {
             client_id: client_id.to_string(),
             client_secret: client_secret.to_string(),
             access_token: None,
+            allowed_download_host: FAKTUROID_HOST.to_string(),
             client: reqwest::blocking::Client::builder()
                 .timeout(DEFAULT_TIMEOUT)
                 .build()
@@ -263,6 +268,13 @@ impl FakturoidClient {
 
     /// Override the base URL and token URL (for testing).
     pub fn with_urls(mut self, base_url: &str, token_url: &str) -> Self {
+        // Derive allowed download host from the base URL for testing.
+        if let Ok(parsed) = url::Url::parse(base_url) {
+            if let Some(host) = parsed.host_str() {
+                let port_suffix = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
+                self.allowed_download_host = format!("{}{}", host, port_suffix);
+            }
+        }
         self.base_url = base_url.to_string();
         self.token_url = token_url.to_string();
         self
@@ -337,7 +349,23 @@ impl FakturoidClient {
     }
 
     /// Download a file attachment from the given absolute URL.
+    /// The URL must belong to app.fakturoid.cz to prevent SSRF attacks.
     pub fn download_attachment(&self, download_url: &str) -> Result<(Vec<u8>, String)> {
+        let parsed = url::Url::parse(download_url)
+            .map_err(|_| ApiError::InvalidInput("invalid attachment URL".to_string()))?;
+        let url_host = {
+            let host = parsed.host_str().unwrap_or("");
+            match parsed.port() {
+                Some(p) => format!("{}:{}", host, p),
+                None => host.to_string(),
+            }
+        };
+        if url_host != self.allowed_download_host {
+            return Err(ApiError::InvalidInput(
+                "attachment URL must be on app.fakturoid.cz".to_string(),
+            ));
+        }
+
         let token = self.access_token.as_deref().ok_or_else(|| {
             ApiError::OAuthError("not authenticated, call authenticate() first".to_string())
         })?;
@@ -606,6 +634,25 @@ mod tests {
 
         assert_eq!(data, vec![0x25, 0x50, 0x44, 0x46]);
         assert_eq!(content_type, "application/pdf");
+    }
+
+    #[test]
+    fn test_download_attachment_ssrf_rejected() {
+        let mut client = FakturoidClient::new("slug", "test@example.com", "cid", "csecret");
+        client.access_token = Some("test-token".to_string());
+        // Attempt to download from a non-Fakturoid host.
+        let result = client.download_attachment("https://evil.example.com/steal-data");
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ApiError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn test_download_attachment_invalid_url() {
+        let mut client = FakturoidClient::new("slug", "test@example.com", "cid", "csecret");
+        client.access_token = Some("test-token".to_string());
+        let result = client.download_attachment("not-a-valid-url");
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), ApiError::InvalidInput(_)));
     }
 
     #[test]

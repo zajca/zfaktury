@@ -9,6 +9,24 @@ use zfaktury_domain::DomainError;
 
 use crate::helpers::format_datetime;
 
+/// Returns true if the settings key might contain a secret value.
+fn is_sensitive_key(key: &str) -> bool {
+    let lower = key.to_ascii_lowercase();
+    lower.contains("password")
+        || lower.contains("secret")
+        || lower.contains("token")
+        || lower.contains("api_key")
+}
+
+/// Returns "<redacted>" for sensitive keys, otherwise the key itself.
+fn redact_key<'a>(key: &'a str) -> &'a str {
+    if is_sensitive_key(key) {
+        "<redacted>"
+    } else {
+        key
+    }
+}
+
 /// SQLite implementation of SettingsRepo.
 pub struct SqliteSettingsRepo {
     conn: Mutex<Connection>,
@@ -62,7 +80,7 @@ impl SettingsRepo for SqliteSettingsRepo {
         .map_err(|e| match e {
             rusqlite::Error::QueryReturnedNoRows => DomainError::NotFound,
             _ => {
-                log::error!("querying setting {key}: {e}");
+                log::error!("querying setting {}: {e}", redact_key(key));
                 DomainError::InvalidInput
             }
         })
@@ -77,7 +95,7 @@ impl SettingsRepo for SqliteSettingsRepo {
             params![key, value, now],
         )
         .map_err(|e| {
-            log::error!("upserting setting {key}: {e}");
+            log::error!("upserting setting {}: {e}", redact_key(key));
             DomainError::InvalidInput
         })?;
         Ok(())
@@ -105,7 +123,7 @@ impl SettingsRepo for SqliteSettingsRepo {
 
             for (key, value) in settings {
                 stmt.execute(params![key, value, now]).map_err(|e| {
-                    log::error!("upserting setting {key} in bulk: {e}");
+                    log::error!("upserting setting {} in bulk: {e}", redact_key(key));
                     DomainError::InvalidInput
                 })?;
             }
@@ -164,6 +182,16 @@ mod tests {
         let all = repo.get_all().unwrap();
         assert_eq!(all.get("a").unwrap(), "1");
         assert_eq!(all.get("b").unwrap(), "2");
+    }
+
+    #[test]
+    fn test_redact_sensitive_keys() {
+        assert_eq!(redact_key("company_name"), "company_name");
+        assert_eq!(redact_key("smtp_password"), "<redacted>");
+        assert_eq!(redact_key("fakturoid_client_secret"), "<redacted>");
+        assert_eq!(redact_key("oauth_token"), "<redacted>");
+        assert_eq!(redact_key("my_api_key"), "<redacted>");
+        assert_eq!(redact_key("company_ico"), "company_ico");
     }
 
     #[test]

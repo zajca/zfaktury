@@ -31,12 +31,7 @@ impl Render for RootView {
             .justify_center()
             .items_center()
             .gap_4()
-            .child(
-                div()
-                    .text_xl()
-                    .text_color(rgb(0xececef))
-                    .child("ZFaktury"),
-            )
+            .child(div().text_xl().text_color(rgb(0xececef)).child("ZFaktury"))
             .child(
                 div()
                     .text_color(rgb(0xa0a0a8))

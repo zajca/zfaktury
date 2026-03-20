@@ -192,8 +192,14 @@ mod tests {
 
     #[test]
     fn test_add() {
-        assert_eq!(Amount::from_halere(100) + Amount::from_halere(200), Amount::from_halere(300));
-        assert_eq!(Amount::from_halere(100) + Amount::from_halere(-50), Amount::from_halere(50));
+        assert_eq!(
+            Amount::from_halere(100) + Amount::from_halere(200),
+            Amount::from_halere(300)
+        );
+        assert_eq!(
+            Amount::from_halere(100) + Amount::from_halere(-50),
+            Amount::from_halere(50)
+        );
         assert_eq!(
             Amount::from_halere(-100) + Amount::from_halere(-200),
             Amount::from_halere(-300)
@@ -211,8 +217,14 @@ mod tests {
 
     #[test]
     fn test_sub() {
-        assert_eq!(Amount::from_halere(300) - Amount::from_halere(100), Amount::from_halere(200));
-        assert_eq!(Amount::from_halere(100) - Amount::from_halere(200), Amount::from_halere(-100));
+        assert_eq!(
+            Amount::from_halere(300) - Amount::from_halere(100),
+            Amount::from_halere(200)
+        );
+        assert_eq!(
+            Amount::from_halere(100) - Amount::from_halere(200),
+            Amount::from_halere(-100)
+        );
     }
 
     #[test]
@@ -235,12 +247,30 @@ mod tests {
 
     #[test]
     fn test_multiply() {
-        assert_eq!(Amount::from_halere(10000).multiply(0.21), Amount::from_halere(2100));
-        assert_eq!(Amount::from_halere(10000).multiply(0.0), Amount::from_halere(0));
-        assert_eq!(Amount::from_halere(10000).multiply(1.0), Amount::from_halere(10000));
-        assert_eq!(Amount::from_halere(10000).multiply(2.5), Amount::from_halere(25000));
-        assert_eq!(Amount::from_halere(333).multiply(0.21), Amount::from_halere(70)); // 69.93 rounds to 70
-        assert_eq!(Amount::from_halere(-10000).multiply(0.21), Amount::from_halere(-2100));
+        assert_eq!(
+            Amount::from_halere(10000).multiply(0.21),
+            Amount::from_halere(2100)
+        );
+        assert_eq!(
+            Amount::from_halere(10000).multiply(0.0),
+            Amount::from_halere(0)
+        );
+        assert_eq!(
+            Amount::from_halere(10000).multiply(1.0),
+            Amount::from_halere(10000)
+        );
+        assert_eq!(
+            Amount::from_halere(10000).multiply(2.5),
+            Amount::from_halere(25000)
+        );
+        assert_eq!(
+            Amount::from_halere(333).multiply(0.21),
+            Amount::from_halere(70)
+        ); // 69.93 rounds to 70
+        assert_eq!(
+            Amount::from_halere(-10000).multiply(0.21),
+            Amount::from_halere(-2100)
+        );
     }
 
     // -- is_zero() / is_negative() tests --

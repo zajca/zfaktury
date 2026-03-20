@@ -19,8 +19,8 @@ impl fmt::Display for ContactType {
 
 /// EU member state country codes for DIC validation.
 const EU_COUNTRY_CODES: &[&str] = &[
-    "AT", "BE", "BG", "HR", "CY", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "EL", "HU", "IE",
-    "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
+    "AT", "BE", "BG", "HR", "CY", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "EL", "HU", "IE", "IT",
+    "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
 ];
 
 /// A business contact (customer or vendor).
@@ -72,7 +72,11 @@ impl Contact {
     /// Returns the 2-letter country prefix from the DIC (e.g. "CZ" from "CZ12345678").
     /// Returns empty string if DIC is too short.
     pub fn dic_country_code(&self) -> &str {
-        if self.dic.len() < 2 { "" } else { &self.dic[..2] }
+        if self.dic.len() < 2 {
+            ""
+        } else {
+            &self.dic[..2]
+        }
     }
 
     /// Returns true if the contact has a non-CZ EU DIC.

@@ -8200,9 +8200,15 @@ name = "zfaktury-app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "gpui",
  "gpui_platform",
+ "log",
+ "zfaktury-config",
+ "zfaktury-core",
+ "zfaktury-db",
+ "zfaktury-domain",
 ]
 
 [[package]]

@@ -1,7 +1,21 @@
+mod app;
+mod components;
+mod navigation;
+mod root;
+mod sidebar;
+mod theme;
+mod util;
+mod views;
+
+use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
 use gpui::*;
+
+use crate::app::AppServices;
+use crate::navigation::Route;
+use crate::root::RootView;
 
 #[derive(Parser)]
 #[command(name = "zfaktury", version)]
@@ -13,49 +27,58 @@ struct Cli {
     /// Exit after N seconds (for headless screenshot testing)
     #[arg(long)]
     exit_after: Option<u64>,
-}
 
-struct RootView {
-    route: Option<String>,
-}
-
-impl Render for RootView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let route_text = self.route.as_deref().unwrap_or("Dashboard");
-
-        div()
-            .flex()
-            .flex_col()
-            .size_full()
-            .bg(rgb(0x1e1d21))
-            .justify_center()
-            .items_center()
-            .gap_4()
-            .child(div().text_xl().text_color(rgb(0xececef)).child("ZFaktury"))
-            .child(
-                div()
-                    .text_color(rgb(0xa0a0a8))
-                    .child(format!("Route: {route_text}")),
-            )
-            .child(
-                div()
-                    .px_4()
-                    .py_2()
-                    .bg(rgb(0x5e6ad2))
-                    .rounded_md()
-                    .text_color(rgb(0xffffff))
-                    .cursor_pointer()
-                    .child("Test Button"),
-            )
-    }
+    /// Custom database path (overrides config)
+    #[arg(long)]
+    db: Option<String>,
 }
 
 fn main() {
     let cli = Cli::parse();
 
+    // Determine database path.
+    let db_path = if let Some(ref db) = cli.db {
+        std::path::PathBuf::from(db)
+    } else {
+        match zfaktury_config::Config::load() {
+            Ok(cfg) => cfg.database_path(),
+            Err(e) => {
+                eprintln!("Error loading config: {e}");
+                std::process::exit(1);
+            }
+        }
+    };
+
+    // Ensure parent directory exists.
+    if let Some(parent) = db_path.parent() {
+        if !parent.exists() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                eprintln!("Error creating data directory: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // Initialize services.
+    let services = match AppServices::new(&db_path) {
+        Ok(s) => Arc::new(s),
+        Err(e) => {
+            eprintln!("Error initializing application: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    // Parse initial route.
+    let initial_route = cli
+        .route
+        .as_deref()
+        .and_then(Route::from_path)
+        .unwrap_or(Route::Dashboard);
+
     gpui_platform::application().run(move |cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);
-        let route = cli.route.clone();
+        let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
+        let services = services.clone();
+        let initial_route = initial_route.clone();
 
         cx.open_window(
             WindowOptions {
@@ -66,7 +89,7 @@ fn main() {
                 }),
                 ..Default::default()
             },
-            |_window, cx| cx.new(|_cx| RootView { route }),
+            |_window, cx| cx.new(|cx| RootView::new(services, initial_route, cx)),
         )
         .unwrap();
 

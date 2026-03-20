@@ -8,3 +8,9 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 gpui = { git = "https://github.com/zed-industries/zed" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "wayland", "x11"] }
+zfaktury-core = { path = "../zfaktury-core" }
+zfaktury-domain = { path = "../zfaktury-domain" }
+zfaktury-db = { path = "../zfaktury-db" }
+zfaktury-config = { path = "../zfaktury-config" }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+log = "0.4"

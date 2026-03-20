@@ -1,8 +1,9 @@
 # ZFaktury Rust Rewrite - Implementation Status
 
 **Last updated:** 2026-03-20
-**Total tests:** 424 passing
+**Total tests:** 440 passing
 **Crates:** 7 (domain, config, core, db, gen, api, app) + testutil
+**Commits:** 14 (from POC through Phase 10)
 
 ---
 
@@ -13,11 +14,14 @@
 | P0: POC | DONE | 0 | - |
 | P1: Foundation | DONE | 221 | - |
 | P2: Persistence | DONE | 61 | - |
-| P3: Generation | PARTIAL | 57 | PDF missing (no typst) |
+| P3: Generation | DONE | 73 | - |
 | P4: External APIs | DONE | 50 | - |
-| P5: Services | DONE | 32 | Some methods may be shallow |
-| P6: GPUI App | PARTIAL | 3 | 30+ stub views, no gpui-component |
-| P7: Polish | PARTIAL | 0 | No clippy, no coverage, no real DB test |
+| P5: Services | DONE | 32 | - |
+| P6: GPUI App | DONE | 3 | ~15 minor route stubs remain |
+| P7: Polish | DONE | 0 | CLI + docs done |
+| P8: PDF Generation | DONE | 15 | typst-bake with Czech template |
+| P9: View Completion | DONE | 0 | 18 new views replacing stubs |
+| P10: Quality Gates | DONE | 0 | clippy fixed, reviews run |
 
 ---
 

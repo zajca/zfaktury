@@ -44,14 +44,13 @@ impl IncomeTaxReturnService {
         if itr.year < 2000 || itr.year > 2100 {
             return Err(DomainError::InvalidInput);
         }
-        if itr.filing_type == FilingType::Regular {
-            if self
+        if itr.filing_type == FilingType::Regular
+            && self
                 .repo
                 .get_by_year(itr.year, &itr.filing_type.to_string())
                 .is_ok()
-            {
-                return Err(DomainError::FilingAlreadyExists);
-            }
+        {
+            return Err(DomainError::FilingAlreadyExists);
         }
         if itr.status == FilingStatus::Draft { /* default */ }
         self.repo.create(itr)?;

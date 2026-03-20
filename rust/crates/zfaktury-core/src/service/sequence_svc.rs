@@ -62,10 +62,10 @@ impl SequenceService {
         }
 
         // Check uniqueness of prefix+year (excluding self).
-        if let Ok(dup) = self.repo.get_by_prefix_and_year(&seq.prefix, seq.year) {
-            if dup.id != seq.id {
-                return Err(DomainError::DuplicateNumber);
-            }
+        if let Ok(dup) = self.repo.get_by_prefix_and_year(&seq.prefix, seq.year)
+            && dup.id != seq.id
+        {
+            return Err(DomainError::DuplicateNumber);
         }
 
         self.repo.update(seq)?;

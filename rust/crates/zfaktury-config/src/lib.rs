@@ -25,6 +25,7 @@ pub enum ConfigError {
 /// Application configuration loaded from config.toml.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct Config {
     /// Override via `ZFAKTURY_DATA_DIR` env var.
     pub data_dir: Option<PathBuf>,
@@ -68,6 +69,7 @@ pub struct ServerConfig {
 /// Backup settings.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct BackupConfig {
     /// Backup directory. Defaults to `{data_dir}/backups`.
     pub destination: Option<PathBuf>,
@@ -137,21 +139,6 @@ fn default_smtp_port() -> u16 {
     587
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            data_dir: None,
-            database: DatabaseConfig::default(),
-            log: LogConfig::default(),
-            server: ServerConfig::default(),
-            backup: BackupConfig::default(),
-            smtp: None,
-            fio: None,
-            ocr: None,
-        }
-    }
-}
-
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
@@ -179,17 +166,6 @@ impl Default for ServerConfig {
     }
 }
 
-impl Default for BackupConfig {
-    fn default() -> Self {
-        Self {
-            destination: None,
-            schedule: None,
-            retention_count: 0,
-            s3: None,
-        }
-    }
-}
-
 // --- Config resolution ---
 
 /// Return the default data directory: `~/.zfaktury`.
@@ -205,7 +181,7 @@ pub fn expand_home(path: &Path) -> PathBuf {
         return path.to_path_buf();
     }
     match dirs::home_dir() {
-        Some(home) => home.join(&s[2..].trim_start_matches('/')),
+        Some(home) => home.join(s[2..].trim_start_matches('/')),
         None => path.to_path_buf(),
     }
 }
@@ -231,10 +207,10 @@ impl Config {
         };
 
         // Env var always overrides data_dir from file.
-        if let Ok(dir) = env::var("ZFAKTURY_DATA_DIR") {
-            if !dir.is_empty() {
-                cfg.data_dir = Some(PathBuf::from(dir));
-            }
+        if let Ok(dir) = env::var("ZFAKTURY_DATA_DIR")
+            && !dir.is_empty()
+        {
+            cfg.data_dir = Some(PathBuf::from(dir));
         }
 
         // If data_dir was not set at all, use the default.

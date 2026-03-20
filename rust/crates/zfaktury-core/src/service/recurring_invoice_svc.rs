@@ -100,21 +100,21 @@ impl RecurringInvoiceService {
         let mut count = 0;
 
         for mut ri in due_list {
-            if let Some(ref end_date) = ri.end_date {
-                if today > *end_date {
-                    self.repo.deactivate(ri.id)?;
-                    continue;
-                }
+            if let Some(ref end_date) = ri.end_date
+                && today > *end_date
+            {
+                self.repo.deactivate(ri.id)?;
+                continue;
             }
 
             self.create_invoice_from_template(&ri, ri.next_issue_date)?;
             count += 1;
 
             ri.next_issue_date = ri.next_date();
-            if let Some(ref end_date) = ri.end_date {
-                if ri.next_issue_date > *end_date {
-                    ri.is_active = false;
-                }
+            if let Some(ref end_date) = ri.end_date
+                && ri.next_issue_date > *end_date
+            {
+                ri.is_active = false;
             }
             self.repo.update(&mut ri)?;
         }

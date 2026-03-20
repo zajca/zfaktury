@@ -177,10 +177,10 @@ impl RecurringExpenseService {
             generated += 1;
 
             re.next_issue_date = re.next_date();
-            if let Some(ref end_date) = re.end_date {
-                if re.next_issue_date > *end_date {
-                    re.is_active = false;
-                }
+            if let Some(ref end_date) = re.end_date
+                && re.next_issue_date > *end_date
+            {
+                re.is_active = false;
             }
             self.repo.update(&mut re)?;
         }

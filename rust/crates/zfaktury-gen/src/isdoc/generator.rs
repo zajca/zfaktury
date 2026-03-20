@@ -300,9 +300,9 @@ fn write_tax_total(writer: &mut Writer<Cursor<Vec<u8>>>, invoice: &Invoice) -> c
             tax: Amount::ZERO,
             total: Amount::ZERO,
         });
-        group.taxable = group.taxable + item_subtotal;
-        group.tax = group.tax + item.vat_amount;
-        group.total = group.total + item.total_amount;
+        group.taxable += item_subtotal;
+        group.tax += item.vat_amount;
+        group.total += item.total_amount;
     }
 
     writer.write_event(Event::Start(BytesStart::new("TaxTotal")))?;

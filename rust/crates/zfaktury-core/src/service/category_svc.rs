@@ -64,10 +64,10 @@ impl CategoryService {
         Self::validate_category(cat)?;
 
         // Check for duplicate key (excluding self).
-        if let Ok(existing) = self.repo.get_by_key(&cat.key) {
-            if existing.id != cat.id {
-                return Err(DomainError::DuplicateNumber);
-            }
+        if let Ok(existing) = self.repo.get_by_key(&cat.key)
+            && existing.id != cat.id
+        {
+            return Err(DomainError::DuplicateNumber);
         }
 
         self.repo.get_by_id(cat.id)?; // verify exists

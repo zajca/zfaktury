@@ -67,20 +67,21 @@ impl InvoiceService {
         }
 
         // Auto-assign sequence if none provided.
-        if invoice.sequence_id == 0 && invoice.invoice_number.is_empty() {
-            if let Some(ref sequences) = self.sequences {
-                let prefix = match invoice.invoice_type {
-                    InvoiceType::Proforma => "ZF",
-                    InvoiceType::CreditNote => "DN",
-                    _ => "FV",
-                };
-                let year = {
-                    use chrono::Datelike;
-                    invoice.issue_date.year()
-                };
-                let seq = sequences.get_or_create_for_year(prefix, year)?;
-                invoice.sequence_id = seq.id;
-            }
+        if invoice.sequence_id == 0
+            && invoice.invoice_number.is_empty()
+            && let Some(ref sequences) = self.sequences
+        {
+            let prefix = match invoice.invoice_type {
+                InvoiceType::Proforma => "ZF",
+                InvoiceType::CreditNote => "DN",
+                _ => "FV",
+            };
+            let year = {
+                use chrono::Datelike;
+                invoice.issue_date.year()
+            };
+            let seq = sequences.get_or_create_for_year(prefix, year)?;
+            invoice.sequence_id = seq.id;
         }
 
         // Assign invoice number from sequence.

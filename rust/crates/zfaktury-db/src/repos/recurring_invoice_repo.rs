@@ -64,7 +64,7 @@ impl RecurringInvoiceRepo for SqliteRecurringInvoiceRepo {
         let conn = self.conn.lock().unwrap();
         let now = format_datetime(&Local::now().naive_local());
         let end = ri.end_date.as_ref().map(format_date);
-        conn.execute(&format!("INSERT INTO recurring_invoices (name,customer_id,frequency,next_issue_date,end_date,currency_code,exchange_rate,payment_method,bank_account,bank_code,iban,swift,constant_symbol,notes,is_active,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?16)"),
+        conn.execute(&"INSERT INTO recurring_invoices (name,customer_id,frequency,next_issue_date,end_date,currency_code,exchange_rate,payment_method,bank_account,bank_code,iban,swift,constant_symbol,notes,is_active,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?16)".to_string(),
             params![ri.name, ri.customer_id, ri.frequency.to_string(), format_date(&ri.next_issue_date), end, ri.currency_code, ri.exchange_rate.halere(), ri.payment_method, ri.bank_account, ri.bank_code, ri.iban, ri.swift, ri.constant_symbol, ri.notes, ri.is_active as i32, now])
             .map_err(|e|{log::error!("insert ri: {e}");DomainError::InvalidInput})?;
         ri.id = conn.last_insert_rowid();

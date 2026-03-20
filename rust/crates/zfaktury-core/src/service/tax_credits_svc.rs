@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use zfaktury_domain::{
-    Amount, DomainError, TaxChildCredit, TaxDeduction, TaxPersonalCredits, TaxSpouseCredit,
+    DomainError, TaxChildCredit, TaxDeduction, TaxPersonalCredits, TaxSpouseCredit,
 };
 
 use super::audit_svc::AuditService;

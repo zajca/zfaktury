@@ -41,14 +41,13 @@ impl VATControlStatementService {
         {
             return Err(DomainError::InvalidInput);
         }
-        if cs.filing_type == FilingType::Regular {
-            if self
+        if cs.filing_type == FilingType::Regular
+            && self
                 .repo
                 .get_by_period(cs.period.year, cs.period.month, &cs.filing_type.to_string())
                 .is_ok()
-            {
-                return Err(DomainError::DuplicateNumber);
-            }
+        {
+            return Err(DomainError::DuplicateNumber);
         }
         cs.status = FilingStatus::Draft;
         self.repo.create(cs)?;

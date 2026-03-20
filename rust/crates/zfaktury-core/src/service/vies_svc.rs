@@ -36,8 +36,8 @@ impl VIESSummaryService {
         {
             return Err(DomainError::InvalidInput);
         }
-        if vs.filing_type == FilingType::Regular {
-            if self
+        if vs.filing_type == FilingType::Regular
+            && self
                 .repo
                 .get_by_period(
                     vs.period.year,
@@ -45,9 +45,8 @@ impl VIESSummaryService {
                     &vs.filing_type.to_string(),
                 )
                 .is_ok()
-            {
-                return Err(DomainError::DuplicateNumber);
-            }
+        {
+            return Err(DomainError::DuplicateNumber);
         }
         vs.status = FilingStatus::Draft;
         self.repo.create(vs)?;

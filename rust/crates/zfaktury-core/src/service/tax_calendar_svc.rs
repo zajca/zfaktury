@@ -12,6 +12,12 @@ pub struct TaxDeadline {
 /// Stateless service providing Czech tax calendar with holiday-aware deadline shifting.
 pub struct TaxCalendarService;
 
+impl Default for TaxCalendarService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaxCalendarService {
     pub fn new() -> Self {
         Self

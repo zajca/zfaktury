@@ -39,15 +39,15 @@ impl VATReturnService {
         if vr.period.month == 0 && vr.period.quarter == 0 {
             return Err(DomainError::InvalidInput);
         }
-        if vr.filing_type == FilingType::Regular {
-            if let Ok(_existing) = self.repo.get_by_period(
+        if vr.filing_type == FilingType::Regular
+            && let Ok(_existing) = self.repo.get_by_period(
                 vr.period.year,
                 vr.period.month,
                 vr.period.quarter,
                 &vr.filing_type.to_string(),
-            ) {
-                return Err(DomainError::FilingAlreadyExists);
-            }
+            )
+        {
+            return Err(DomainError::FilingAlreadyExists);
         }
         if vr.status == FilingStatus::Draft {
             // default

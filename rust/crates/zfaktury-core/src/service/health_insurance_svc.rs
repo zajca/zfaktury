@@ -44,14 +44,13 @@ impl HealthInsuranceService {
         if hi.year < 2000 || hi.year > 2100 {
             return Err(DomainError::InvalidInput);
         }
-        if hi.filing_type == FilingType::Regular {
-            if self
+        if hi.filing_type == FilingType::Regular
+            && self
                 .repo
                 .get_by_year(hi.year, &hi.filing_type.to_string())
                 .is_ok()
-            {
-                return Err(DomainError::FilingAlreadyExists);
-            }
+        {
+            return Err(DomainError::FilingAlreadyExists);
         }
         self.repo.create(hi)?;
         if let Some(ref audit) = self.audit {

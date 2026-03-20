@@ -194,12 +194,11 @@ fn resolve_db_path(cli: &Cli) -> PathBuf {
 
 /// Ensure the parent directory of the given path exists.
 fn ensure_parent_dir(path: &PathBuf) {
-    if let Some(parent) = path.parent() {
-        if !parent.exists() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                eprintln!("Error creating data directory: {e}");
-                std::process::exit(1);
-            }
-        }
+    if let Some(parent) = path.parent()
+        && !parent.exists()
+        && let Err(e) = std::fs::create_dir_all(parent)
+    {
+        eprintln!("Error creating data directory: {e}");
+        std::process::exit(1);
     }
 }

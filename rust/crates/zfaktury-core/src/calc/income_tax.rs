@@ -63,7 +63,7 @@ pub fn calculate_income_tax(input: &IncomeTaxInput) -> IncomeTaxResult {
     let tax_base_before_deductions = tax_base;
 
     // Step 5b: Apply deductions (reduce tax base before rounding).
-    tax_base = tax_base - input.total_deductions;
+    tax_base -= input.total_deductions;
     if tax_base.is_negative() {
         tax_base = Amount::ZERO;
     }
@@ -118,10 +118,10 @@ pub fn calculate_income_tax(input: &IncomeTaxInput) -> IncomeTaxResult {
 
 /// Apply flat rate cap if one exists for the given percent.
 fn cap_flat_rate(amount: Amount, percent: i32, caps: &HashMap<i32, Amount>) -> Amount {
-    if let Some(&cap) = caps.get(&percent) {
-        if amount > cap {
-            return cap;
-        }
+    if let Some(&cap) = caps.get(&percent)
+        && amount > cap
+    {
+        return cap;
     }
     amount
 }

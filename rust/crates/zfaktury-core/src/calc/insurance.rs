@@ -92,10 +92,10 @@ pub fn resolve_used_expenses(
 ) -> Amount {
     if flat_rate_percent > 0 {
         let amount = revenue.multiply(flat_rate_percent as f64 / 100.0);
-        if let Some(&cap) = caps.get(&flat_rate_percent) {
-            if amount > cap {
-                return cap;
-            }
+        if let Some(&cap) = caps.get(&flat_rate_percent)
+            && amount > cap
+        {
+            return cap;
         }
         amount
     } else {

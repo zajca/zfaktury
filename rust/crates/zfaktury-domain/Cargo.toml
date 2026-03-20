@@ -1,0 +1,8 @@
+[package]
+name = "zfaktury-domain"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+thiserror = "2"

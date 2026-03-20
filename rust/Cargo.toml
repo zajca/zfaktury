@@ -2,6 +2,9 @@
 resolver = "2"
 members = [
     "crates/zfaktury-app",
+    "crates/zfaktury-config",
+    "crates/zfaktury-domain",
+    "crates/zfaktury-core",
 ]
 
 [workspace.package]

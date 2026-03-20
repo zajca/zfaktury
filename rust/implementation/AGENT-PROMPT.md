@@ -188,17 +188,24 @@ If stuck on a blocker:
 ## Phase Execution Order
 
 ```
-Phase 0: POC (GPUI + cage + grim) → Verify →
-Phase 1: Foundation → Gates →
-Phase 2: Persistence → Gates →
-Phase 3: Generation → Gates →
-Phase 4: External APIs → Gates →
-Phase 5: Services → Gates →
-Phase 6: GPUI App → Gates →
-Phase 7: Polish → Final Gates → Done
+Phase 0: POC (GPUI + cage + grim)       → DONE
+Phase 1: Foundation                       → DONE (221 tests)
+Phase 2: Persistence                      → DONE (61 tests)
+Phase 3: Generation                       → DONE (57 tests) -- PDF MISSING
+Phase 4: External APIs                    → DONE (50 tests)
+Phase 5: Services                         → DONE (32 tests)
+Phase 6: GPUI App                         → PARTIAL (7/43 views functional)
+Phase 7: Polish                           → PARTIAL (CLI done, docs done, quality gates not run)
+
+Phase 8: PDF Generation                   → NOT STARTED
+Phase 9: View Completion + gpui-component → NOT STARTED
+Phase 10: Quality Gates + Final Polish    → NOT STARTED
 ```
 
-Phases MUST be sequential (each depends on previous). Within a phase, maximize parallelism via TeamCreate.
+**Current state:** 424 tests passing, 7 crates, ~25k lines Rust code.
+**See:** `rust/implementation/STATUS.md` for detailed gap analysis.
+
+Phases 0-7 established the full architecture. Phases 8-10 complete the implementation.
 
 ## Team Structure Per Phase
 
@@ -503,3 +510,185 @@ After each phase completion, provide a status report and update tasks:
 Then:
 - TaskUpdate: phase task → completed
 - TaskUpdate: next phase task → in_progress
+
+---
+
+## Phases 8-10: Completion (NEW)
+
+These phases complete the implementation gaps identified after Phases 0-7.
+
+### Phase 8: PDF Generation (1 week)
+
+**Goal:** Implement invoice PDF generation using typst as a library.
+
+**Reference:** Read `internal/pdf/invoice_pdf.go` and `internal/pdf/qr_payment.go` for exact layout.
+
+**Files to create/modify:**
+- `rust/crates/zfaktury-gen/Cargo.toml` -- add `typst`, `typst-pdf`, `typst-syntax` dependencies
+- `rust/crates/zfaktury-gen/src/pdf/mod.rs` -- module declaration
+- `rust/crates/zfaktury-gen/src/pdf/invoice.rs` -- main PDF generator
+- `rust/crates/zfaktury-gen/src/pdf/types.rs` -- SupplierInfo, PDFSettings structs
+- `rust/crates/zfaktury-gen/src/pdf/template.typ` -- typst template for invoice layout
+- `rust/assets/fonts/` -- embed Inter + JetBrains Mono TTF files
+
+**PDF layout (A4, Czech locale):**
+1. Header: optional logo, invoice number, type (Faktura/Dobropis/Proforma), dates
+2. Two columns: Dodavatel (supplier) | Odberatel (customer) with ICO, DIC, address
+3. Items table: #, Popis, Mnozstvi, Jednotka, Cena/ks, DPH %, DPH, Celkem
+4. VAT summary by rate (21%, 12%)
+5. Totals: Zaklad dane, DPH, Celkem k uhrade
+6. Payment: bank details, IBAN, VS, KS, splatnost, QR code (SPAYD PNG)
+7. Footer: VAT note + custom text
+
+**Amount format:** "1 234,56 CZK" (Czech locale, space as thousands separator, comma as decimal)
+
+**Public API:**
+```rust
+pub fn generate_invoice_pdf(
+    invoice: &Invoice,
+    supplier: &SupplierInfo,
+    settings: &PDFSettings,
+) -> Result<Vec<u8>, GenError>
+```
+
+**Tests:**
+- Generate PDF → verify it's valid PDF (check magic bytes `%PDF`)
+- Parse with `lopdf` → verify page count = 1 (for simple invoice)
+- Extract text with `pdf-extract` → verify invoice number, customer name, total present
+- Generate with credit note → verify "Dobropis" label
+- Generate with QR code → verify QR PNG embedded
+
+**If typst doesn't work as library:** Fall back to `printpdf` or `genpdf` crate. The key is producing a valid, Czech-locale PDF with tables and QR code.
+
+**Acceptance:** PDF opens in viewer, shows correct invoice data, Czech labels, formatted amounts.
+
+---
+
+### Phase 9: View Completion + gpui-component (3-4 weeks)
+
+**Goal:** Replace all 30+ stub views with functional implementations. Integrate gpui-component for rich UI components.
+
+**Step 1: Add gpui-component dependency**
+```toml
+gpui-component = { git = "https://github.com/longbridge/gpui-component" }
+gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
+```
+
+**Step 2: Replace hand-built tables with gpui-component Table**
+- Invoice list, expense list, contact list → `gpui_component::Table` with virtual scrolling
+- Column definitions with sort, resize
+
+**Step 3: Add form components**
+- `gpui_component::Input` for text fields
+- `gpui_component::DatePicker` for dates
+- `gpui_component::Select` / `Dropdown` for enums (status, category, frequency)
+- `gpui_component::Checkbox` / `Switch` for booleans
+- `gpui_component::Dialog` for confirmations
+
+**Step 4: Implement remaining views (grouped by priority)**
+
+**Batch A: Core CRUD forms (highest priority)**
+- Contact detail + edit form (ARES lookup button)
+- Invoice form: functional save with items editor, customer picker, date pickers
+- Expense detail + edit form with document upload area
+- Expense import page (file upload → OCR review → create expense)
+
+**Batch B: Recurring + Reports**
+- Recurring invoice list + form + detail
+- Recurring expense list + form + detail
+- Reports: 5 tabs with gpui-component BarChart/PieChart/Table
+- Dashboard: replace placeholder charts with real gpui-component charts
+
+**Batch C: Tax views**
+- VAT overview (quarter grid with color-coded months)
+- VAT return detail + recalculate/generate/file actions
+- VAT control statement detail
+- VIES summary detail
+- Tax overview page
+- Income tax return detail + stepper wizard
+- Social/health insurance detail
+- Tax credits page (spouse, children, personal, deductions cards)
+- Tax prepayments page
+- Tax investments page (3 tabs: documents, capital income, securities)
+
+**Batch D: Settings**
+- Settings email (SMTP config form)
+- Settings sequences (list + create/edit dialog)
+- Settings categories (reorderable list, color picker)
+- Settings PDF (template config, logo upload)
+- Settings audit log (searchable table)
+- Settings backup (list, create, restore)
+- Fakturoid import page
+
+**Step 5: UX features**
+- Command palette (Ctrl+K): overlay with fuzzy search
+- Split-view (Ctrl+\\): master-detail for invoices/expenses
+- Live PDF preview: inspector panel during invoice edit
+- Toast notifications via gpui-component Toast
+- Confirm dialogs for delete/file actions
+- Keyboard shortcuts (see Phase 6 RFC for full list)
+
+**Step 6: Headless screenshot verification**
+For each completed view:
+1. `./scripts/headless-screenshot.sh "./target/debug/zfaktury-app --route /path --db tests/fixtures/test.db --exit-after 5" /tmp/screenshots/route.png 4`
+2. View screenshot, verify layout + Czech labels + data
+
+**Parallelization (TeamCreate):**
+- Agent A: Batch A (core CRUD forms) + gpui-component integration
+- Agent B: Batch B (recurring + reports)
+- Agent C: Batch C (tax views)
+- Agent D: Batch D (settings)
+- Lead: UX features (command palette, split-view, keyboard shortcuts)
+
+---
+
+### Phase 10: Quality Gates + Final Polish (1 week)
+
+**Goal:** Pass all quality gates from the original plan.
+
+**Gate 1: Clippy**
+```bash
+cargo clippy --workspace -- -D warnings
+```
+Fix ALL warnings. Zero tolerance.
+
+**Gate 2: Coverage**
+```bash
+cargo llvm-cov --workspace
+```
+Verify thresholds:
+- calc/ + domain/amount.rs: 100% (line + branch)
+- gen/: 100% (line)
+- Everything else: 90%+
+
+Add missing tests where coverage is below threshold.
+
+**Gate 3: Golden files**
+- Create `rust/tests/golden/` directory
+- Generate golden files for all XML outputs (VAT, KH, VIES, DPFO, CSSZ, ISDOC)
+- Generate golden metadata for PDF
+- `UPDATE_GOLDEN=1 cargo test` to create, CI verifies on mismatch
+
+**Gate 4: Real database import**
+- Copy existing `~/.zfaktury/zfaktury.db` to `tests/fixtures/real_zfaktury.db`
+- Write integration test that opens it, reads contacts/invoices/expenses, verifies counts
+- Generate PDF for an existing invoice, compare content with Go version
+
+**Gate 5: Code review**
+- Launch `developer:code-reviewer` agent on all Rust code
+- Fix all critical/high findings
+
+**Gate 6: Security review**
+- Launch `developer:code-security` agent
+- Verify: no SQL injection, parameterized queries, path traversal prevention, input validation
+
+**Gate 7: Headless screenshots**
+- Create test fixture DB with representative data
+- Screenshot all 43 routes
+- Agent reviews each screenshot for: layout, Czech labels, data, theme colors
+- Save to `rust/tests/screenshots/`
+
+**Gate 8: Documentation update**
+- Update STATUS.md to reflect final state
+- Update ARCHITECTURE.md and GUI-DEVELOPMENT.md with any changes
+- Verify CLAUDE.md is accurate

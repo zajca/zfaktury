@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Tax overview view showing income tax, social insurance, health insurance cards.
@@ -69,6 +70,8 @@ impl TaxOverviewView {
 }
 
 use chrono::Datelike;
+
+impl EventEmitter<NavigateEvent> for TaxOverviewView {}
 
 impl Render for TaxOverviewView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

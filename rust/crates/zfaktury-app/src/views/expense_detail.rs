@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::ExpenseService;
 use zfaktury_domain::Expense;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -222,6 +223,8 @@ impl ExpenseDetailView {
         content
     }
 }
+
+impl EventEmitter<NavigateEvent> for ExpenseDetailView {}
 
 impl Render for ExpenseDetailView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

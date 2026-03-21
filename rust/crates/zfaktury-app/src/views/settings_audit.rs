@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::AuditService;
 use zfaktury_domain::{AuditLogEntry, AuditLogFilter};
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Audit log settings view.
@@ -68,6 +69,8 @@ impl SettingsAuditView {
         dt.format("%-d. %-m. %Y %H:%M").to_string()
     }
 }
+
+impl EventEmitter<NavigateEvent> for SettingsAuditView {}
 
 impl Render for SettingsAuditView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

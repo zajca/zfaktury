@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::RecurringInvoiceService;
 use zfaktury_domain::RecurringInvoice;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -61,6 +62,8 @@ impl RecurringInvoiceListView {
         total
     }
 }
+
+impl EventEmitter<NavigateEvent> for RecurringInvoiceListView {}
 
 impl Render for RecurringInvoiceListView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

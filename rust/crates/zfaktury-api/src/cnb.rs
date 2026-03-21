@@ -28,6 +28,12 @@ pub struct CnbClient {
     client: reqwest::blocking::Client,
 }
 
+impl Default for CnbClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CnbClient {
     /// Create a new CNB client with default settings.
     pub fn new() -> Self {

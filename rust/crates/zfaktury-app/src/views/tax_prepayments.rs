@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Tax prepayments view showing monthly prepayment schedule.
@@ -15,6 +16,8 @@ impl TaxPrepaymentsView {
 }
 
 use chrono::Datelike;
+
+impl EventEmitter<NavigateEvent> for TaxPrepaymentsView {}
 
 impl Render for TaxPrepaymentsView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

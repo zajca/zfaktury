@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::VATReturnService;
 use zfaktury_domain::VATReturn;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::format_amount;
 
@@ -102,6 +103,8 @@ impl VatOverviewView {
 }
 
 use chrono::Datelike;
+
+impl EventEmitter<NavigateEvent> for VatOverviewView {}
 
 impl Render for VatOverviewView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

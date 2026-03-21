@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::SequenceService;
 use zfaktury_domain::InvoiceSequence;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Settings sequences view showing invoice number sequences.
@@ -49,6 +50,8 @@ impl SettingsSequencesView {
         .detach();
     }
 }
+
+impl EventEmitter<NavigateEvent> for SettingsSequencesView {}
 
 impl Render for SettingsSequencesView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

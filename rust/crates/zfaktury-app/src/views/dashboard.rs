@@ -6,6 +6,7 @@ use zfaktury_core::service::DashboardService;
 use zfaktury_domain::Amount;
 
 use crate::components::status_badge::render_status_badge;
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -320,6 +321,8 @@ impl DashboardView {
         table
     }
 }
+
+impl EventEmitter<NavigateEvent> for DashboardView {}
 
 impl Render for DashboardView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

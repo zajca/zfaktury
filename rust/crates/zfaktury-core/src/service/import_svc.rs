@@ -7,6 +7,7 @@ use super::expense_svc::ExpenseService;
 use super::ocr_svc::OCRService;
 
 /// Service for importing expenses from uploaded documents.
+#[allow(dead_code)]
 pub struct ImportService {
     expenses: Arc<ExpenseService>,
     documents: Arc<DocumentService>,

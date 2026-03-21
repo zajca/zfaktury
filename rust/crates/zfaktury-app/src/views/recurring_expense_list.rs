@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::RecurringExpenseService;
 use zfaktury_domain::RecurringExpense;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -55,6 +56,8 @@ impl RecurringExpenseListView {
         .detach();
     }
 }
+
+impl EventEmitter<NavigateEvent> for RecurringExpenseListView {}
 
 impl Render for RecurringExpenseListView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

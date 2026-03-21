@@ -1,6 +1,6 @@
 use gpui::*;
 
-use crate::navigation::Route;
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 
 /// Navigation item definition.
@@ -112,9 +112,6 @@ fn build_nav() -> Vec<NavEntry> {
     ]
 }
 
-/// Event emitted when a navigation item is clicked.
-pub struct NavigateEvent(pub Route);
-
 /// Sidebar view with navigation.
 pub struct SidebarView {
     current_route: Route,
@@ -140,16 +137,20 @@ impl SidebarView {
         match route {
             Route::InvoiceList => matches!(
                 self.current_route,
-                Route::InvoiceNew | Route::InvoiceDetail(_)
+                Route::InvoiceNew | Route::InvoiceEdit(_) | Route::InvoiceDetail(_)
             ),
             Route::ExpenseList => matches!(
                 self.current_route,
                 Route::ExpenseNew
+                    | Route::ExpenseEdit(_)
                     | Route::ExpenseDetail(_)
                     | Route::ExpenseImport
                     | Route::ExpenseReview
             ),
-            Route::ContactList => matches!(self.current_route, Route::ContactDetail(_)),
+            Route::ContactList => matches!(
+                self.current_route,
+                Route::ContactNew | Route::ContactEdit(_) | Route::ContactDetail(_)
+            ),
             Route::RecurringInvoiceList => matches!(
                 self.current_route,
                 Route::RecurringInvoiceNew | Route::RecurringInvoiceDetail(_)

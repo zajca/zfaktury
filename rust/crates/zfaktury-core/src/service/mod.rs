@@ -44,6 +44,7 @@ pub use dashboard_svc::DashboardService;
 pub use document_svc::DocumentService;
 pub use expense_svc::ExpenseService;
 pub use health_insurance_svc::HealthInsuranceService;
+pub use import_svc::ImportService;
 pub use income_tax_return_svc::IncomeTaxReturnService;
 pub use investment_document_svc::InvestmentDocumentService;
 pub use investment_income_svc::InvestmentIncomeService;

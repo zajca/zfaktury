@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Invoice creation/edit form view.
@@ -14,6 +15,13 @@ impl InvoiceFormView {
         Self {
             is_edit: false,
             invoice_id: None,
+        }
+    }
+
+    pub fn new_edit(id: i64) -> Self {
+        Self {
+            is_edit: true,
+            invoice_id: Some(id),
         }
     }
 
@@ -43,6 +51,8 @@ impl InvoiceFormView {
             )
     }
 }
+
+impl EventEmitter<NavigateEvent> for InvoiceFormView {}
 
 impl Render for InvoiceFormView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

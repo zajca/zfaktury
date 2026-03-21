@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Tax credits and deductions view.
@@ -46,6 +47,8 @@ impl TaxCreditsView {
 }
 
 use chrono::Datelike;
+
+impl EventEmitter<NavigateEvent> for TaxCreditsView {}
 
 impl Render for TaxCreditsView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

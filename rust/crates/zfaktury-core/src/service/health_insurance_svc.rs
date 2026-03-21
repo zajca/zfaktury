@@ -9,6 +9,7 @@ use crate::repository::traits::{
 };
 
 /// Service for health insurance overview management.
+#[allow(dead_code)]
 pub struct HealthInsuranceService {
     repo: Arc<dyn HealthInsuranceOverviewRepo + Send + Sync>,
     invoice_repo: Arc<dyn InvoiceRepo + Send + Sync>,

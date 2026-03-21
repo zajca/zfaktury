@@ -10,6 +10,7 @@ pub trait OCRProvider: Send + Sync {
 }
 
 /// Service for OCR processing of expense documents.
+#[allow(dead_code)]
 pub struct OCRService {
     provider: Arc<dyn OCRProvider>,
     documents: Arc<DocumentService>,

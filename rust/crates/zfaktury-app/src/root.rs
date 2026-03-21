@@ -3,8 +3,8 @@ use std::sync::Arc;
 use gpui::*;
 
 use crate::app::AppServices;
-use crate::navigation::{NavigationState, Route};
-use crate::sidebar::{NavigateEvent, SidebarView};
+use crate::navigation::{NavigateEvent, NavigationState, Route};
+use crate::sidebar::SidebarView;
 use crate::theme::ZfColors;
 use crate::views::contact_detail::ContactDetailView;
 use crate::views::contact_list::ContactListView;
@@ -86,6 +86,7 @@ impl RootView {
         .detach();
 
         let content = Self::create_content_view(&services, &initial_route, cx);
+        Self::subscribe_to_content(&content, cx);
         let nav = NavigationState::new(initial_route);
 
         Self {
@@ -105,6 +106,7 @@ impl RootView {
     fn update_content(&mut self, cx: &mut Context<Self>) {
         let route = self.nav.current.clone();
         self.content = Self::create_content_view(&self.services, &route, cx);
+        Self::subscribe_to_content(&self.content, cx);
 
         // Update sidebar route
         self.sidebar.update(cx, |sidebar, _cx| {
@@ -112,6 +114,48 @@ impl RootView {
         });
 
         cx.notify();
+    }
+
+    /// Subscribe to NavigateEvent from the content view so that row clicks,
+    /// "New" buttons, and form saves can trigger navigation.
+    fn subscribe_to_content(content: &ContentView, cx: &mut Context<Self>) {
+        macro_rules! subscribe_nav {
+            ($entity:expr, $cx:expr) => {{
+                $cx.subscribe($entity, |this: &mut Self, _, event: &NavigateEvent, cx| {
+                    this.navigate_to(event.0.clone(), cx);
+                })
+                .detach()
+            }};
+        }
+
+        match content {
+            ContentView::Dashboard(e) => subscribe_nav!(e, cx),
+            ContentView::InvoiceList(e) => subscribe_nav!(e, cx),
+            ContentView::InvoiceDetail(e) => subscribe_nav!(e, cx),
+            ContentView::InvoiceForm(e) => subscribe_nav!(e, cx),
+            ContentView::ExpenseList(e) => subscribe_nav!(e, cx),
+            ContentView::ExpenseDetail(e) => subscribe_nav!(e, cx),
+            ContentView::ExpenseForm(e) => subscribe_nav!(e, cx),
+            ContentView::ContactList(e) => subscribe_nav!(e, cx),
+            ContentView::ContactDetail(e) => subscribe_nav!(e, cx),
+            ContentView::RecurringInvoiceList(e) => subscribe_nav!(e, cx),
+            ContentView::RecurringExpenseList(e) => subscribe_nav!(e, cx),
+            ContentView::VatOverview(e) => subscribe_nav!(e, cx),
+            ContentView::VatReturnDetail(e) => subscribe_nav!(e, cx),
+            ContentView::TaxOverview(e) => subscribe_nav!(e, cx),
+            ContentView::TaxCredits(e) => subscribe_nav!(e, cx),
+            ContentView::TaxPrepayments(e) => subscribe_nav!(e, cx),
+            ContentView::TaxInvestments(e) => subscribe_nav!(e, cx),
+            ContentView::Reports(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsFirma(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsEmail(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsSequences(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsCategories(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsAudit(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsBackup(e) => subscribe_nav!(e, cx),
+            ContentView::ImportFakturoid(e) => subscribe_nav!(e, cx),
+            ContentView::Stub(_) => {} // Stubs don't emit navigation events
+        }
     }
 
     fn create_content_view(
@@ -131,6 +175,10 @@ impl RootView {
             Route::InvoiceNew => {
                 ContentView::InvoiceForm(cx.new(|_cx| InvoiceFormView::new_create()))
             }
+            Route::InvoiceEdit(id) => {
+                let id = *id;
+                ContentView::InvoiceForm(cx.new(move |_cx| InvoiceFormView::new_edit(id)))
+            }
             Route::InvoiceDetail(id) => {
                 let svc = services.invoices.clone();
                 let id = *id;
@@ -141,6 +189,10 @@ impl RootView {
                 ContentView::ExpenseList(cx.new(|cx| ExpenseListView::new(svc, cx)))
             }
             Route::ExpenseNew => ContentView::ExpenseForm(cx.new(|_cx| ExpenseFormView::new())),
+            Route::ExpenseEdit(id) => {
+                let id = *id;
+                ContentView::ExpenseForm(cx.new(move |_cx| ExpenseFormView::new_edit(id)))
+            }
             Route::ExpenseDetail(id) => {
                 let svc = services.expenses.clone();
                 let id = *id;
@@ -149,6 +201,10 @@ impl RootView {
             Route::ContactList => {
                 let svc = services.contacts.clone();
                 ContentView::ContactList(cx.new(|cx| ContactListView::new(svc, cx)))
+            }
+            Route::ContactNew | Route::ContactEdit(_) => {
+                let label = route.label().to_string();
+                ContentView::Stub(cx.new(|_cx| StubView::new(label)))
             }
             Route::ContactDetail(id) => {
                 let svc = services.contacts.clone();

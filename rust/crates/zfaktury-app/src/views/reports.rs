@@ -3,6 +3,7 @@ use std::sync::Arc;
 use gpui::*;
 use zfaktury_core::service::report_svc::{ProfitLossReport, ReportService};
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::format_amount;
 
@@ -107,6 +108,8 @@ impl ReportsView {
 }
 
 use chrono::Datelike;
+
+impl EventEmitter<NavigateEvent> for ReportsView {}
 
 impl Render for ReportsView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

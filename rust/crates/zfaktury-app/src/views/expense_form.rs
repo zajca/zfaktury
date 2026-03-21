@@ -1,14 +1,28 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Expense creation form view.
 /// Currently a placeholder with the form layout structure.
-pub struct ExpenseFormView;
+pub struct ExpenseFormView {
+    is_edit: bool,
+    expense_id: Option<i64>,
+}
 
 impl ExpenseFormView {
     pub fn new() -> Self {
-        Self
+        Self {
+            is_edit: false,
+            expense_id: None,
+        }
+    }
+
+    pub fn new_edit(id: i64) -> Self {
+        Self {
+            is_edit: true,
+            expense_id: Some(id),
+        }
     }
 
     fn render_form_field(&self, label: &str, placeholder: &str) -> Div {
@@ -38,8 +52,16 @@ impl ExpenseFormView {
     }
 }
 
+impl EventEmitter<NavigateEvent> for ExpenseFormView {}
+
 impl Render for ExpenseFormView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let title = if self.is_edit {
+            format!("Upravit naklad #{}", self.expense_id.unwrap_or_default())
+        } else {
+            "Novy naklad".to_string()
+        };
+
         div()
             .id("expense-form-scroll")
             .size_full()
@@ -55,7 +77,7 @@ impl Render for ExpenseFormView {
                     .text_xl()
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                    .child("Novy naklad"),
+                    .child(title),
             )
             // Basic info section
             .child(

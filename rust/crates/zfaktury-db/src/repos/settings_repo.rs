@@ -19,7 +19,7 @@ fn is_sensitive_key(key: &str) -> bool {
 }
 
 /// Returns "<redacted>" for sensitive keys, otherwise the key itself.
-fn redact_key<'a>(key: &'a str) -> &'a str {
+fn redact_key(key: &str) -> &str {
     if is_sensitive_key(key) {
         "<redacted>"
     } else {

@@ -6,6 +6,7 @@ use super::audit_svc::AuditService;
 use crate::repository::traits::{ContactRepo, InvoiceRepo, VIESSummaryRepo};
 
 /// Service for VIES recapitulative statement management.
+#[allow(dead_code)]
 pub struct VIESSummaryService {
     repo: Arc<dyn VIESSummaryRepo + Send + Sync>,
     invoices: Arc<dyn InvoiceRepo + Send + Sync>,

@@ -7,7 +7,7 @@ mod theme;
 mod util;
 mod views;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -131,8 +131,11 @@ fn cmd_gui(cli: Cli) {
     let db_path = resolve_db_path(&cli);
     ensure_parent_dir(&db_path);
 
+    let data_dir = resolve_data_dir(&cli);
+    ensure_parent_dir_of(&data_dir);
+
     // Initialize services.
-    let services = match AppServices::new(&db_path) {
+    let services = match AppServices::new(&db_path, &data_dir) {
         Ok(s) => Arc::new(s),
         Err(e) => {
             eprintln!("Error initializing application: {e}");
@@ -192,11 +195,39 @@ fn resolve_db_path(cli: &Cli) -> PathBuf {
     }
 }
 
+/// Resolve the data directory from config.
+fn resolve_data_dir(cli: &Cli) -> PathBuf {
+    // If --db is set to a custom path, use its parent as data_dir.
+    if let Some(ref db) = cli.db {
+        return db
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."));
+    }
+    match zfaktury_config::Config::load() {
+        Ok(cfg) => cfg.data_dir(),
+        Err(e) => {
+            eprintln!("Error loading config: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
 /// Ensure the parent directory of the given path exists.
-fn ensure_parent_dir(path: &PathBuf) {
+fn ensure_parent_dir(path: &Path) {
     if let Some(parent) = path.parent()
         && !parent.exists()
         && let Err(e) = std::fs::create_dir_all(parent)
+    {
+        eprintln!("Error creating data directory: {e}");
+        std::process::exit(1);
+    }
+}
+
+/// Ensure the given directory exists.
+fn ensure_parent_dir_of(path: &Path) {
+    if !path.exists()
+        && let Err(e) = std::fs::create_dir_all(path)
     {
         eprintln!("Error creating data directory: {e}");
         std::process::exit(1);

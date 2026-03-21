@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Import from Fakturoid view.
@@ -10,6 +11,8 @@ impl ImportFakturoidView {
         Self
     }
 }
+
+impl EventEmitter<NavigateEvent> for ImportFakturoidView {}
 
 impl Render for ImportFakturoidView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

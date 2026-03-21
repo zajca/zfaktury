@@ -1,7 +1,7 @@
 # ZFaktury Rust Rewrite - Implementation Status
 
-**Last updated:** 2026-03-20
-**Total tests:** 440 passing
+**Last updated:** 2026-03-21
+**Total tests:** 444 passing
 **Crates:** 7 (domain, config, core, db, gen, api, app) + testutil
 **Commits:** 14 (from POC through Phase 10)
 
@@ -17,19 +17,26 @@
 | P3: Generation | DONE | 73 | - |
 | P4: External APIs | DONE | 50 | - |
 | P5: Services | DONE | 32 | - |
-| P6: GPUI App | DONE | 3 | ~15 minor route stubs remain |
+| P6: GPUI App | PARTIAL | 3 | 17 read-only views, no forms/actions work |
 | P7: Polish | DONE | 0 | CLI + docs done |
 | P8: PDF Generation | DONE | 15 | typst-bake with Czech template |
-| P9: View Completion | DONE | 0 | 18 new views replacing stubs |
-| P10: Quality Gates | DONE | 0 | clippy fixed, reviews run |
+| P9: View Completion | PARTIAL | 0 | Views exist but all read-only, 8 stubs, 19 StubView routes |
+| P10: Quality Gates | PARTIAL | 0 | Clippy fixed, reviews run, but UI not usable |
+| P11: UI Infrastructure | DONE | 0 | 9 form components, 4 new routes, 18 services wired, NavigateEvent for all views |
+| P12: Invoice CRUD | NOT STARTED | - | Forms, actions, items editor, PDF/ISDOC/email |
+| P13: Expense+Contact CRUD | NOT STARTED | - | Forms, ARES lookup, documents, tax review |
+| P14: Settings CRUD | NOT STARTED | - | Editable settings, PDF config, backup |
+| P15: Recurring Templates | NOT STARTED | - | CRUD for recurring invoices/expenses |
+| P16: VAT Management | NOT STARTED | - | Returns, control statements, VIES |
+| P17: Tax Filing | NOT STARTED | - | Income tax, social/health insurance, credits |
+| P18: Reports+Dashboard | NOT STARTED | - | Charts, CSV export, quick actions |
+| P19: Import+UX Polish | NOT STARTED | - | Fakturoid, OCR, toasts, keyboard shortcuts |
 
 ---
 
-## Detailed Gap Analysis
+## COMPLETE - No Further Work Needed
 
-### COMPLETE - No Further Work Needed
-
-#### zfaktury-domain (18 files, 23 tests)
+### zfaktury-domain (18 files, 23 tests)
 - All 34+ domain types ported from Go `internal/domain/`
 - Amount(i64) with all ops (Add, Sub, Neg, multiply, Display, Ord)
 - All enums with Display impl
@@ -38,13 +45,13 @@
 - DomainError enum (10 variants)
 - NO serde derives -- domain purity maintained
 
-#### zfaktury-config (1 file, 14 tests)
+### zfaktury-config (1 file, 14 tests)
 - All config structs match Go internal/config/config.go
 - ZFAKTURY_DATA_DIR env override
 - TOML parsing, path expansion, defaults
 - Fail-fast on missing file
 
-#### zfaktury-core/calc (9 modules, 178 tests)
+### zfaktury-core/calc (9 modules, 178 tests)
 - constants.rs: 2024/2025/2026 tax constants
 - vat.rs: VAT return calculation (credit notes, business_percent)
 - income_tax.rs: Progressive 15%/23%, rounding to 100 CZK
@@ -56,12 +63,12 @@
 - recurring.rs: next_occurrence with month-end clamping
 - proptest strategies for Amount, tax invariants
 
-#### zfaktury-core/repository (3 files)
+### zfaktury-core/repository (3 files)
 - traits.rs: 33 repository traits matching Go interfaces.go
 - types.rs: MonthlyAmount, QuarterlyAmount, CategoryAmount, CustomerRevenue, RecentInvoice, RecentExpense
 - All method signatures match Go originals
 
-#### zfaktury-db (32 repo implementations + 21 migrations, 61 tests)
+### zfaktury-db (32 repo implementations + 21 migrations, 61 tests)
 - All repos fully implemented with rusqlite (not stubs)
 - Connection setup: WAL, foreign_keys ON, busy_timeout 5000
 - Date/datetime parsing helpers
@@ -69,162 +76,213 @@
 - Soft delete pattern consistently applied
 - Parameterized queries (no SQL injection)
 
-#### zfaktury-api (6 clients, 50 tests)
+### zfaktury-api (6 clients, 50 tests)
 - ARES: ICO lookup with 8-digit validation
 - CNB: Exchange rates with weekend fallback (5 days)
 - Email: lettre with TLS/STARTTLS, multipart MIME, attachments
 - OCR: Anthropic + OpenAI providers with Czech prompt
-- Fakturoid: OAuth2, pagination, FlexFloat64
-- FIO: Bank transaction stub with trait
+- Fakturoid: OAuth2, pagination, FlexFloat64, SSRF protection
+- FIO: Bank transaction stub with trait (intentionally not implemented)
 
-#### zfaktury-core/service (31 files, 32 tests)
+### zfaktury-core/service (31 files, 32 tests)
 - All 31 services implemented
 - Arc<dyn Repo + Send + Sync> dependency injection
 - Audit logging on mutations
 - Error wrapping with DomainError
 
----
-
-### PARTIAL - Specific Gaps Listed
-
-#### zfaktury-gen: PDF Generation MISSING
-
-**What exists:**
-- XML: DPHDP3, DPHKH1, DPHSHV, DPFDP5, CSSZ, health insurance (57 tests)
+### zfaktury-gen (PDF, XML, ISDOC, QR, CSV)
+- PDF: typst-bake with Czech template, Liberation Sans fonts, QR embedding
+- XML: DPHDP3, DPHKH1, DPHSHV, DPFDP5, CSSZ, health insurance
 - ISDOC 6.0.2 with DocumentType 1/2/4
 - QR/SPAYD payment string + PNG generation
 - CSV export with UTF-8 BOM, semicolons
 
-**What's missing:**
-- [ ] Invoice PDF via typst -- the RFC specified typst as a library for template-based PDF generation. This is NOT implemented. No typst dependency in Cargo.toml, no PDF templates, no PDF output.
-- [ ] PDF test infrastructure (lopdf parse, pdf-extract text verification)
-- [ ] Golden files for PDF metadata comparison
+---
 
-**Priority:** HIGH -- users need PDFs for invoices
+## PARTIAL - Detailed UI Gap Analysis
 
-**Implementation plan:**
-1. Add `typst`, `typst-pdf` dependencies to zfaktury-gen
-2. Create `src/pdf/mod.rs` with invoice PDF template
-3. Template sections: header (logo, invoice number), parties (supplier/customer), items table, VAT summary, totals, payment info (QR code), footer
-4. Czech labels: "Faktura", "Dobropis", "Dodavatel", "Odberatel", etc.
-5. Fonts: Inter (UI text), JetBrains Mono (amounts) -- embed from assets/
-6. Amount format: "1 234,56 CZK" (Czech locale)
-7. Tests: generate → parse with lopdf → verify text content
+The backend (domain, config, core, db, gen, api) is production-ready. The gap is entirely in `zfaktury-app` -- the GPUI desktop UI layer.
 
-#### zfaktury-app: 30+ Stub Views
+### AppServices: 18 Services NOT Wired
 
-**Functional views (7):**
-- [x] Dashboard (stat cards, recent tables)
-- [x] Invoice list (table with status badges)
-- [x] Invoice detail (header, items, totals)
-- [x] Invoice form (create layout -- fields are placeholders)
-- [x] Expense list (table)
-- [x] Contact list (table with search)
-- [x] Settings firma (company info display)
+`app.rs` currently has 12 services. These 18 are implemented in `zfaktury-core` but NOT instantiated in `AppServices`:
 
-**Stub views showing "Tato stranka bude brzy dostupna" (30+):**
-- [ ] Reports (5 tabs: revenue, expenses, P&L, top customers, tax calendar)
-- [ ] Contact detail/edit
-- [ ] Expense detail/edit/form
-- [ ] Expense import (document upload + OCR review)
-- [ ] Expense review (tax review marking)
-- [ ] Recurring invoice list/form/detail
-- [ ] Recurring expense list/form/detail
-- [ ] VAT overview (quarter grid)
-- [ ] VAT return detail/form
-- [ ] VAT control statement detail/form
-- [ ] VIES summary detail/form
-- [ ] Tax overview
-- [ ] Tax credits page
-- [ ] Tax prepayments page
-- [ ] Tax investments page
-- [ ] Income tax return detail/form
-- [ ] Social insurance detail/form
-- [ ] Health insurance detail/form
-- [ ] Settings: email, sequences, categories, PDF, audit log, backup
-- [ ] Fakturoid import page
+| Missing Service | Required By |
+|---|---|
+| BackupService | Settings Backup view |
+| DocumentService | Expense document upload |
+| HealthInsuranceService | Tax health insurance views |
+| IncomeTaxReturnService | Tax income views |
+| ImportService | Expense OCR import |
+| InvestmentDocumentService | Tax investments view |
+| InvestmentIncomeService | Tax investments view |
+| InvoiceDocumentService | Invoice document attachments |
+| OCRService | Expense import, tax document extraction |
+| OverdueService | Invoice list (check overdue) |
+| ReminderService | Invoice detail (send reminder) |
+| SocialInsuranceService | Tax social insurance views |
+| TaxCalendarService | Reports (tax calendar tab) |
+| TaxCreditsService | Tax credits view |
+| TaxDeductionService | Tax credits/deductions view |
+| TaxYearSettingsService | Tax overview |
+| VATControlStatementService | VAT control statement views |
+| VIESSummaryService | VIES summary views |
 
-**Priority:** HIGH -- most views are not usable
+### Missing Routes in navigation.rs
 
-#### zfaktury-app: Missing gpui-component Integration
+These routes do NOT exist in the `Route` enum:
 
-**What the plan specified:**
-- gpui-component for Table, Input, DatePicker, Dialog, Tabs, BarChart, PieChart, Checkbox, Select, Switch, Stepper, Toast
-- Currently: raw GPUI divs only, no gpui-component dependency
+| Missing Route | Purpose |
+|---|---|
+| `ContactNew` | Create new contact |
+| `ContactEdit(i64)` | Edit existing contact |
+| `InvoiceEdit(i64)` | Edit existing invoice |
+| `ExpenseEdit(i64)` | Edit existing expense |
 
-**What needs to happen:**
-1. Add `gpui-component` git dependency to Cargo.toml
-2. Replace hand-built tables with `gpui_component::Table` (virtual scrolling)
-3. Use `gpui_component::Input` for form fields
-4. Use `gpui_component::DatePicker` for date inputs
-5. Use `gpui_component::Dialog` for confirmations/modals
-6. Use `gpui_component::BarChart` / `PieChart` for reports/dashboard
-7. Use `gpui_component::Tabs` for reports, settings
-8. Use `gpui_component::Toast` for notifications
+### Components: Only 1 Exists
 
-**Priority:** MEDIUM -- functional but ugly without it
+`zfaktury-app/src/components/` contains only `status_badge.rs`. Missing:
 
-#### zfaktury-app: Missing UX Features
+- Text input, number input, text area
+- Select/dropdown
+- Date picker
+- Checkbox/toggle
+- Button (with loading/disabled states)
+- Confirm dialog (modal)
+- Toast notification system
+- Invoice items editor
+- Contact picker
+- Category picker
+- Document upload widget
+- Bar/doughnut chart
 
-- [ ] Command palette (Ctrl+K) -- fuzzy search across invoices/contacts/commands
-- [ ] Split-view (Ctrl+\\) -- master-detail for invoices/expenses
-- [ ] Live PDF preview -- inspector panel during invoice editing
-- [ ] Keyboard shortcuts -- only basic navigation exists
-- [ ] Animations -- none implemented (sidebar collapse, page crossfade, dialog scale)
-- [ ] Drag & drop -- for document uploads
-- [ ] Custom themes -- ZfColors exists but not registered as gpui-component theme
-- [ ] Toast notifications -- no notification system
-- [ ] Confirm dialogs -- no delete/action confirmations
-- [ ] Empty/loading/error states -- not all views handle these
+### View Status Detail
 
-**Priority:** LOW-MEDIUM -- nice-to-have, not blocking core functionality
+#### Read-Only Views (17) -- Display data but NO create/edit/delete actions
+
+| View | File | What Works | What's Missing |
+|---|---|---|---|
+| Dashboard | `dashboard.rs` | Stats, recent tables | Quick action buttons, charts, click navigation |
+| Invoice List | `invoice_list.rs` | Table with badges | Row click, search, filters, pagination, "New" button |
+| Invoice Detail | `invoice_detail.rs` | All fields + items | Edit, Delete, Send, Mark Paid, Duplicate, Credit Note, PDF, QR, ISDOC, Email |
+| Expense List | `expense_list.rs` | Table | Row click, search, filters, pagination, "New" button |
+| Expense Detail | `expense_detail.rs` | Basic fields | Edit, Delete, Tax review, Document upload |
+| Contact List | `contact_list.rs` | Table | Row click, search, "New" button |
+| Contact Detail | `contact_detail.rs` | All fields | Edit, Delete, Favorite toggle, related invoices |
+| Recurring Invoice List | `recurring_invoice_list.rs` | Table | Row click, "New", Generate, Activate/Deactivate |
+| Recurring Expense List | `recurring_expense_list.rs` | Table | Row click, "New", Generate |
+| VAT Overview | `vat_overview.rs` | Year selector, quarter cards | Real data loading, status, "New" buttons |
+| VAT Return Detail | `vat_return_detail.rs` | Period, status, amounts | Recalculate, Generate XML, Mark Filed, Delete |
+| Settings Firma | `settings_firma.rs` | Read-only display | Edit mode with save/cancel |
+| Settings Email | `settings_email.rs` | Read-only display | Edit mode, test email button |
+| Settings Categories | `settings_categories.rs` | List display | CRUD (create, edit, delete), color picker |
+| Settings Sequences | `settings_sequences.rs` | List display | CRUD (create, edit, delete) |
+| Settings Audit | `settings_audit.rs` | Paginated log | Filters (entity type, action, date range) |
+| Reports | `reports.rs` | P&L tab | Revenue, Expenses, Top Customers, Tax Calendar tabs, charts |
+
+#### Stub/Placeholder Views (8) -- Layout only, no data, no functionality
+
+| View | File | What Exists | What's Needed |
+|---|---|---|---|
+| Invoice Form | `invoice_form.rs` | Title + placeholder sections | Full form with items editor, customer select, validation, save |
+| Expense Form | `expense_form.rs` | Title + placeholder sections | Full form with category/vendor select, document upload, save |
+| Settings Backup | `settings_backup.rs` | Non-functional button, empty table | Wire BackupService, create/list/download/delete |
+| Import Fakturoid | `import_fakturoid.rs` | Title + "no import" card | OAuth input, preview, import with progress, summary |
+| Tax Overview | `tax_overview.rs` | Year selector + static cards | Wire services, load data, create/calculate/file buttons |
+| Tax Credits | `tax_credits.rs` | Year selector + empty message | Spouse/children/personal credits CRUD, deductions CRUD |
+| Tax Prepayments | `tax_prepayments.rs` | Year selector + empty table | Load monthly data, edit per month |
+| Tax Investments | `tax_investments.rs` | Year selector + empty summary | Capital income CRUD, securities CRUD, FIFO, documents |
+
+#### StubView Routes (19) -- Fall through to generic "Coming soon" page
+
+```
+RecurringInvoiceNew          RecurringInvoiceDetail(id)
+RecurringExpenseNew          RecurringExpenseDetail(id)
+ExpenseImport                ExpenseReview
+VATReturnNew                 VATControlNew
+VATControlDetail(id)         VIESNew
+VIESDetail(id)               TaxIncomeNew
+TaxIncomeDetail(id)          TaxSocialNew
+TaxSocialDetail(id)          TaxHealthNew
+TaxHealthDetail(id)          SettingsPdf
+ContactNew (ROUTE MISSING)
+```
+
+### Navigation: No View-Level Navigation
+
+- Only sidebar emits `NavigateEvent`
+- List views have hover styling but NO `on_click` handlers on rows
+- No "New" buttons on list views
+- No "Back" button on detail/form views
+- `NavigationState::go_back()` exists but is never called
 
 ---
 
-### NOT DONE - Quality Gates
+## SvelteKit Feature Parity Reference
 
-- [ ] `cargo clippy --workspace -- -D warnings` -- not run, likely has warnings
-- [ ] `cargo llvm-cov` -- coverage not measured
-- [ ] Code review (developer:code-reviewer agent) -- not run
-- [ ] Security review (developer:code-security agent) -- not run
-- [ ] Headless screenshots of all 43 routes -- not verified
-- [ ] Real database import test (load Go's zfaktury.db) -- not done
-- [ ] Golden file tests for XML outputs -- golden/ directory not created
-- [ ] Compare generated XML/PDF against Go version output -- not done
-- [ ] Performance verification (10k rows, scroll fps) -- not done
+The SvelteKit frontend has these capabilities that the Rust GPUI app must match:
+
+### Invoice Actions (SvelteKit)
+- Create/edit with items editor (InvoiceItemsEditor component)
+- Mark sent, mark paid (with amount/date dialog)
+- Duplicate, create credit note (CreditNoteDialog), settle proforma
+- Download PDF, QR code, ISDOC XML
+- Send via email (SendEmailDialog with attachments)
+- Status timeline, payment history
+- Search by number/customer, filter by status/type, pagination
+
+### Expense Actions (SvelteKit)
+- Create/edit with items, category/vendor select
+- Document upload (drag & drop, PDF/JPG/PNG/WebP, 20MB max)
+- OCR import with review dialog (OCRReviewDialog)
+- Bulk tax review (mark/unmark)
+- Search, date range filter, pagination
+
+### Contact Actions (SvelteKit)
+- Create/edit with ARES lookup (auto-populate from ICO)
+- Favorite toggle, VAT reliability display
+- Search by name/ICO/email, pagination
+
+### Tax Management (SvelteKit)
+- Income Tax: Create, view detail, recalculate, generate XML (DPFDP5), mark filed
+- Social Insurance: Same workflow
+- Health Insurance: Same workflow
+- Tax Credits: Spouse, children, personal (student/disability) -- full CRUD
+- Tax Deductions: CRUD with document upload + OCR extraction
+- Tax Prepayments: Monthly display, edit per month
+- Investment Income: Capital income CRUD, security transactions CRUD, FIFO calc
+
+### VAT Management (SvelteKit)
+- VAT Returns: Create, view detail, recalculate, generate XML, mark filed
+- Control Statements: Same workflow
+- VIES Summaries: Same workflow
+
+### Reports (SvelteKit)
+- Revenue (monthly/quarterly bars), Expenses (monthly + category doughnut)
+- Profit & Loss (combined chart), Top Customers, Tax Calendar
+- Year selector, CSV export links
+
+### Settings (SvelteKit)
+- Company Info: Editable form
+- Email: Editable SMTP + test email
+- Sequences: CRUD, Categories: CRUD with color
+- PDF: Logo upload/delete, accent color, footer, QR/bank toggles, preview
+- Backup: Create, history, download/delete
+- Audit Log: Filters (entity type, action, date range)
 
 ---
 
-## Recommended Next Steps (Priority Order)
+## Recommended Next Steps
 
-### Priority 1: Make the app actually usable
-1. **PDF generation** via typst (without this, the app can't produce invoices)
-2. **Invoice form** -- make it actually save data (currently placeholder fields)
-3. **Contact form** -- create/edit contacts
-4. **Expense form** -- create/edit expenses with document upload
+See `rust/implementation/AGENT-PROMPT.md` for Phases 11-19 with detailed task lists, team structures, and acceptance criteria.
 
-### Priority 2: Complete the most-used views
-5. **VAT overview** -- quarter grid with status colors
-6. **VAT return detail** -- display calculated VAT with recalculate/generate actions
-7. **Reports** -- at least revenue + expenses charts
-8. **Settings** -- at minimum firma (edit mode) and sequences
-
-### Priority 3: gpui-component integration
-9. Add gpui-component dependency
-10. Replace tables with virtual-scrolling Table component
-11. Add Input, DatePicker, Dialog, Tabs components
-12. Add BarChart/PieChart for dashboard and reports
-
-### Priority 4: Quality gates
-13. Run cargo clippy and fix all warnings
-14. Measure coverage with cargo-llvm-cov
-15. Create golden files for XML outputs
-16. Test with real Go database
-17. Run code review + security review agents
-
-### Priority 5: UX polish
-18. Command palette (Ctrl+K)
-19. Keyboard shortcuts
-20. Toast notifications
-21. Confirm dialogs
-22. Animations
+**Execution order:**
+1. **Phase 11: UI Infrastructure** -- MUST be first (blocks all other phases)
+2. **Phase 12: Invoice CRUD** -- highest business value
+3. **Phase 13: Expense+Contact CRUD** -- core business features
+4. **Phase 14: Settings CRUD** -- needed for configuration
+5. **Phase 15: Recurring Templates** -- automation feature
+6. **Phase 16: VAT Management** -- tax compliance
+7. **Phase 17: Tax Filing** -- tax compliance
+8. **Phase 18: Reports+Dashboard** -- analytics/visibility
+9. **Phase 19: Import+UX Polish** -- final polish

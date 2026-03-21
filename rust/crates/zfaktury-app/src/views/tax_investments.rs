@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Tax investments view showing investment income summary.
@@ -15,6 +16,8 @@ impl TaxInvestmentsView {
 }
 
 use chrono::Datelike;
+
+impl EventEmitter<NavigateEvent> for TaxInvestmentsView {}
 
 impl Render for TaxInvestmentsView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

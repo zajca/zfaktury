@@ -8,6 +8,7 @@ use zfaktury_domain::{
     SETTING_EMAIL_SUBJECT_TPL,
 };
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Email settings view displaying SMTP configuration.
@@ -92,6 +93,8 @@ impl SettingsEmailView {
             )
     }
 }
+
+impl EventEmitter<NavigateEvent> for SettingsEmailView {}
 
 impl Render for SettingsEmailView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

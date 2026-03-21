@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::ContactService;
 use zfaktury_domain::{Contact, ContactFilter};
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Contact list view with search and table.
@@ -59,6 +60,8 @@ impl ContactListView {
         .detach();
     }
 }
+
+impl EventEmitter<NavigateEvent> for ContactListView {}
 
 impl Render for ContactListView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

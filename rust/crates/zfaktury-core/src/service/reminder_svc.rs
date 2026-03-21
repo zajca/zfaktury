@@ -10,6 +10,7 @@ pub trait EmailSender: Send + Sync {
 }
 
 /// Service for payment reminder management.
+#[allow(dead_code)]
 pub struct ReminderService {
     reminder_repo: Arc<dyn ReminderRepo + Send + Sync>,
     invoice_repo: Arc<dyn InvoiceRepo + Send + Sync>,

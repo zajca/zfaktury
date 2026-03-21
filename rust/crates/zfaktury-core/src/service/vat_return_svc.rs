@@ -7,6 +7,7 @@ use super::audit_svc::AuditService;
 use crate::repository::traits::{ExpenseRepo, InvoiceRepo, SettingsRepo, VATReturnRepo};
 
 /// Service for VAT return management.
+#[allow(dead_code)]
 pub struct VATReturnService {
     repo: Arc<dyn VATReturnRepo + Send + Sync>,
     invoice_repo: Arc<dyn InvoiceRepo + Send + Sync>,

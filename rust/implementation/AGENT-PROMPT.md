@@ -8,7 +8,7 @@ You are implementing a complete rewrite of ZFaktury (Czech invoicing app) from G
 
 **Reference code:** Go source in `internal/`, frontend in `frontend/src/`.
 
-**Implementation RFCs:** `rust/implementation/phase-{1-7}-*.md` - These are your detailed specifications. Follow them meticulously.
+**Implementation RFCs:** `rust/implementation/phase-{1-7}-*.md` and `rust/implementation/phase-11-ui-completion.md` - These are your detailed specifications. Follow them meticulously.
 
 ## Progress Tracking with Tasks
 
@@ -191,21 +191,32 @@ If stuck on a blocker:
 Phase 0: POC (GPUI + cage + grim)       → DONE
 Phase 1: Foundation                       → DONE (221 tests)
 Phase 2: Persistence                      → DONE (61 tests)
-Phase 3: Generation                       → DONE (57 tests) -- PDF MISSING
+Phase 3: Generation                       → DONE (73 tests)
 Phase 4: External APIs                    → DONE (50 tests)
 Phase 5: Services                         → DONE (32 tests)
-Phase 6: GPUI App                         → PARTIAL (7/43 views functional)
-Phase 7: Polish                           → PARTIAL (CLI done, docs done, quality gates not run)
+Phase 6: GPUI App                         → PARTIAL (17 read-only views, 8 stubs, 19 StubView routes)
+Phase 7: Polish                           → DONE (CLI + docs)
+Phase 8: PDF Generation                   → DONE (15 tests, typst-bake)
+Phase 9: View Completion                  → PARTIAL (views exist but all read-only, no forms/actions)
+Phase 10: Quality Gates                   → PARTIAL (clippy done, reviews done, UI not usable)
 
-Phase 8: PDF Generation                   → NOT STARTED
-Phase 9: View Completion + gpui-component → NOT STARTED
-Phase 10: Quality Gates + Final Polish    → NOT STARTED
+Phase 11: UI Infrastructure               → DONE (9 components, 4 routes, 18 services, NavigateEvent)
+Phase 12: Invoice CRUD                    → NOT STARTED
+Phase 13: Expense+Contact CRUD           → NOT STARTED
+Phase 14: Settings CRUD                   → NOT STARTED
+Phase 15: Recurring Templates             → NOT STARTED
+Phase 16: VAT Management                  → NOT STARTED
+Phase 17: Tax Filing                      → NOT STARTED
+Phase 18: Reports+Dashboard               → NOT STARTED
+Phase 19: Import+UX Polish               → NOT STARTED
 ```
 
-**Current state:** 424 tests passing, 7 crates, ~25k lines Rust code.
+**Current state:** 444 tests passing, 8 crates, ~25k lines Rust code.
+**Backend is production-ready.** The gap is entirely in the GPUI UI layer.
 **See:** `rust/implementation/STATUS.md` for detailed gap analysis.
+**See:** `rust/implementation/phase-11-ui-completion.md` for the UI completion RFC.
 
-Phases 0-7 established the full architecture. Phases 8-10 complete the implementation.
+Phases 0-10 established the full backend + read-only views. Phases 11-19 make the UI fully functional.
 
 ## Team Structure Per Phase
 
@@ -513,182 +524,303 @@ Then:
 
 ---
 
-## Phases 8-10: Completion (NEW)
+## Phases 11-19: UI Completion
 
-These phases complete the implementation gaps identified after Phases 0-7.
+These phases make the GPUI desktop UI fully functional -- 100% feature parity with the SvelteKit frontend. The backend is already complete; all work is in `zfaktury-app`.
 
-### Phase 8: PDF Generation (1 week)
+**Detailed RFC:** `rust/implementation/phase-11-ui-completion.md`
 
-**Goal:** Implement invoice PDF generation using typst as a library.
+### Phase 11: UI Infrastructure (lead only, BLOCKS ALL OTHER UI PHASES)
 
-**Reference:** Read `internal/pdf/invoice_pdf.go` and `internal/pdf/qr_payment.go` for exact layout.
+**Goal:** Build reusable form components, navigation system, and wire missing services.
 
-**Files to create/modify:**
-- `rust/crates/zfaktury-gen/Cargo.toml` -- add `typst`, `typst-pdf`, `typst-syntax` dependencies
-- `rust/crates/zfaktury-gen/src/pdf/mod.rs` -- module declaration
-- `rust/crates/zfaktury-gen/src/pdf/invoice.rs` -- main PDF generator
-- `rust/crates/zfaktury-gen/src/pdf/types.rs` -- SupplierInfo, PDFSettings structs
-- `rust/crates/zfaktury-gen/src/pdf/template.typ` -- typst template for invoice layout
-- `rust/assets/fonts/` -- embed Inter + JetBrains Mono TTF files
-
-**PDF layout (A4, Czech locale):**
-1. Header: optional logo, invoice number, type (Faktura/Dobropis/Proforma), dates
-2. Two columns: Dodavatel (supplier) | Odberatel (customer) with ICO, DIC, address
-3. Items table: #, Popis, Mnozstvi, Jednotka, Cena/ks, DPH %, DPH, Celkem
-4. VAT summary by rate (21%, 12%)
-5. Totals: Zaklad dane, DPH, Celkem k uhrade
-6. Payment: bank details, IBAN, VS, KS, splatnost, QR code (SPAYD PNG)
-7. Footer: VAT note + custom text
-
-**Amount format:** "1 234,56 CZK" (Czech locale, space as thousands separator, comma as decimal)
-
-**Public API:**
-```rust
-pub fn generate_invoice_pdf(
-    invoice: &Invoice,
-    supplier: &SupplierInfo,
-    settings: &PDFSettings,
-) -> Result<Vec<u8>, GenError>
+**Tasks:**
+```
+TaskCreate: "P11: Add gpui-component dependency or build minimal form widgets" (status: pending)
+TaskCreate: "P11: TextInput component (editable text field)" (status: pending)
+TaskCreate: "P11: NumberInput component (Amount-aware numeric input)" (status: pending)
+TaskCreate: "P11: Select/Dropdown component" (status: pending)
+TaskCreate: "P11: DateInput component (dd.mm.yyyy Czech format)" (status: pending)
+TaskCreate: "P11: Checkbox/Toggle component" (status: pending)
+TaskCreate: "P11: Button component (loading/disabled states)" (status: pending)
+TaskCreate: "P11: ConfirmDialog component (modal overlay)" (status: pending)
+TaskCreate: "P11: Toast notification system" (status: pending)
+TaskCreate: "P11: View-level NavigateEvent emission (row clicks, buttons)" (status: pending)
+TaskCreate: "P11: Add missing routes (ContactNew, InvoiceEdit, ExpenseEdit, ContactEdit)" (status: pending)
+TaskCreate: "P11: Wire 18 missing services into AppServices" (status: pending)
+TaskCreate: "P11: Build + test gates" (status: pending)
 ```
 
-**Tests:**
-- Generate PDF → verify it's valid PDF (check magic bytes `%PDF`)
-- Parse with `lopdf` → verify page count = 1 (for simple invoice)
-- Extract text with `pdf-extract` → verify invoice number, customer name, total present
-- Generate with credit note → verify "Dobropis" label
-- Generate with QR code → verify QR PNG embedded
+**Shared files (lead only):**
+- `rust/crates/zfaktury-app/src/app.rs` -- AppServices expansion
+- `rust/crates/zfaktury-app/src/root.rs` -- content view event subscriptions
+- `rust/crates/zfaktury-app/src/navigation.rs` -- new Route variants
+- `rust/crates/zfaktury-app/src/components/mod.rs` -- register all new components
+- `rust/crates/zfaktury-app/Cargo.toml` -- add gpui-component if used
 
-**If typst doesn't work as library:** Fall back to `printpdf` or `genpdf` crate. The key is producing a valid, Czech-locale PDF with tables and QR code.
-
-**Acceptance:** PDF opens in viewer, shows correct invoice data, Czech labels, formatted amounts.
+**Acceptance:** All components render in isolation. Navigation works from any view. `cargo build --workspace` passes.
 
 ---
 
-### Phase 9: View Completion + gpui-component (3-4 weeks)
+### Phase 12: Invoice CRUD (2 teammates)
 
-**Goal:** Replace all 30+ stub views with functional implementations. Integrate gpui-component for rich UI components.
+**Goal:** Make invoice management fully functional -- create, edit, actions, exports.
 
-**Step 1: Add gpui-component dependency**
-```toml
-gpui-component = { git = "https://github.com/longbridge/gpui-component" }
-gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
+**Tasks:**
+```
+TaskCreate: "P12: Invoice items editor component (add/remove/edit items, live totals)" (status: pending)
+TaskCreate: "P12: Invoice form -- create mode (customer select, dates, items, save)" (status: pending)
+TaskCreate: "P12: Invoice form -- edit mode (load existing, pre-fill, update)" (status: pending)
+TaskCreate: "P12: Invoice detail -- action buttons (edit, delete, send, mark paid)" (status: pending)
+TaskCreate: "P12: Invoice detail -- duplicate, credit note, settle proforma" (status: pending)
+TaskCreate: "P12: Invoice detail -- PDF download, ISDOC download, QR download" (status: pending)
+TaskCreate: "P12: Invoice detail -- send email dialog (recipient, subject, body, attachments)" (status: pending)
+TaskCreate: "P12: Invoice list -- row click, search, status filter, type filter, pagination" (status: pending)
+TaskCreate: "P12: Invoice list -- 'New' button, 'Check overdue' button" (status: pending)
+TaskCreate: "P12: Build + test gates" (status: pending)
 ```
 
-**Step 2: Replace hand-built tables with gpui-component Table**
-- Invoice list, expense list, contact list → `gpui_component::Table` with virtual scrolling
-- Column definitions with sort, resize
+**TeamCreate:**
+```
+  - name: "p12-invoice-form"
+    files: rust/crates/zfaktury-app/src/views/invoice_form.rs, rust/crates/zfaktury-app/src/components/invoice_items_editor.rs
+    prompt: "Rewrite invoice_form.rs with real form inputs using the Phase 11 components. Implement invoice_items_editor.rs component. Form must: load contacts for customer select, support create (InvoiceNew) and edit (InvoiceEdit) modes, calculate totals live, validate (customer required, min 1 item), call invoices.create() or invoices.update(), navigate to InvoiceDetail on success. Read frontend/src/routes/invoices/new/+page.svelte and frontend/src/lib/components/InvoiceItemsEditor.svelte for exact UX. Run cargo build."
 
-**Step 3: Add form components**
-- `gpui_component::Input` for text fields
-- `gpui_component::DatePicker` for dates
-- `gpui_component::Select` / `Dropdown` for enums (status, category, frequency)
-- `gpui_component::Checkbox` / `Switch` for booleans
-- `gpui_component::Dialog` for confirmations
+  - name: "p12-invoice-actions"
+    files: rust/crates/zfaktury-app/src/views/invoice_detail.rs, rust/crates/zfaktury-app/src/views/invoice_list.rs
+    prompt: "Add action buttons to invoice_detail.rs: Edit (navigate to InvoiceEdit), Delete (confirm dialog + invoices.delete), Mark Sent (invoices.mark_as_sent), Mark Paid (dialog with amount+date + invoices.mark_as_paid), Duplicate (invoices.duplicate + navigate), Credit Note (dialog + invoices.create_credit_note), Settle Proforma, PDF download (PdfGenerator), ISDOC download (IsdocGenerator), QR download (QrGenerator), Send Email (dialog with EmailSender). Enhance invoice_list.rs: row click navigation, search input, status/type filter dropdowns, pagination controls, 'New' button. Read frontend/src/routes/invoices/[id]/+page.svelte for UX. Run cargo build."
+```
 
-**Step 4: Implement remaining views (grouped by priority)**
-
-**Batch A: Core CRUD forms (highest priority)**
-- Contact detail + edit form (ARES lookup button)
-- Invoice form: functional save with items editor, customer picker, date pickers
-- Expense detail + edit form with document upload area
-- Expense import page (file upload → OCR review → create expense)
-
-**Batch B: Recurring + Reports**
-- Recurring invoice list + form + detail
-- Recurring expense list + form + detail
-- Reports: 5 tabs with gpui-component BarChart/PieChart/Table
-- Dashboard: replace placeholder charts with real gpui-component charts
-
-**Batch C: Tax views**
-- VAT overview (quarter grid with color-coded months)
-- VAT return detail + recalculate/generate/file actions
-- VAT control statement detail
-- VIES summary detail
-- Tax overview page
-- Income tax return detail + stepper wizard
-- Social/health insurance detail
-- Tax credits page (spouse, children, personal, deductions cards)
-- Tax prepayments page
-- Tax investments page (3 tabs: documents, capital income, securities)
-
-**Batch D: Settings**
-- Settings email (SMTP config form)
-- Settings sequences (list + create/edit dialog)
-- Settings categories (reorderable list, color picker)
-- Settings PDF (template config, logo upload)
-- Settings audit log (searchable table)
-- Settings backup (list, create, restore)
-- Fakturoid import page
-
-**Step 5: UX features**
-- Command palette (Ctrl+K): overlay with fuzzy search
-- Split-view (Ctrl+\\): master-detail for invoices/expenses
-- Live PDF preview: inspector panel during invoice edit
-- Toast notifications via gpui-component Toast
-- Confirm dialogs for delete/file actions
-- Keyboard shortcuts (see Phase 6 RFC for full list)
-
-**Step 6: Headless screenshot verification**
-For each completed view:
-1. `./scripts/headless-screenshot.sh "./target/debug/zfaktury-app --route /path --db tests/fixtures/test.db --exit-after 5" /tmp/screenshots/route.png 4`
-2. View screenshot, verify layout + Czech labels + data
-
-**Parallelization (TeamCreate):**
-- Agent A: Batch A (core CRUD forms) + gpui-component integration
-- Agent B: Batch B (recurring + reports)
-- Agent C: Batch C (tax views)
-- Agent D: Batch D (settings)
-- Lead: UX features (command palette, split-view, keyboard shortcuts)
+**Acceptance:** Full invoice lifecycle: create with items → view detail → send → mark paid → download PDF.
 
 ---
 
-### Phase 10: Quality Gates + Final Polish (1 week)
+### Phase 13: Expense+Contact CRUD (2 teammates)
 
-**Goal:** Pass all quality gates from the original plan.
+**Goal:** Make expense and contact management fully functional.
 
-**Gate 1: Clippy**
+**Tasks:**
+```
+TaskCreate: "P13: Expense form -- create/edit with category/vendor select, items, save" (status: pending)
+TaskCreate: "P13: Expense detail -- edit, delete, tax review toggle, document upload" (status: pending)
+TaskCreate: "P13: Expense list -- row click, search, filters, pagination, 'New' button" (status: pending)
+TaskCreate: "P13: Contact form (new file) -- create/edit with ARES lookup button" (status: pending)
+TaskCreate: "P13: Contact detail -- edit, delete, favorite toggle" (status: pending)
+TaskCreate: "P13: Contact list -- row click, search, 'New' button" (status: pending)
+TaskCreate: "P13: Build + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p13-expenses"
+    files: rust/crates/zfaktury-app/src/views/{expense_form,expense_detail,expense_list}.rs
+    prompt: "Rewrite expense_form.rs: category select (CategoryService), vendor select (ContactService), date/amount/VAT/business% inputs, optional expense items, save via expenses.create()/update(). Add actions to expense_detail.rs: Edit, Delete, Mark/Unmark Tax Reviewed, document upload (file picker + DocumentService). Enhance expense_list.rs: row click, search, date range filter, pagination, 'New' button. Read frontend/src/routes/expenses/. Run cargo build."
+
+  - name: "p13-contacts"
+    files: rust/crates/zfaktury-app/src/views/{contact_form,contact_detail,contact_list}.rs
+    prompt: "Create contact_form.rs: name, type (company/individual), ICO with ARES lookup button (AresClient), DIC, address, contact info, bank details, payment terms, notes. Save via contacts.create()/update(). Add to contact_detail.rs: Edit, Delete (confirm), Favorite toggle. Enhance contact_list.rs: row click, search by name/ICO/email, 'New' button. Read frontend/src/routes/contacts/. Run cargo build."
+```
+
+**New file:** `rust/crates/zfaktury-app/src/views/contact_form.rs`
+
+**Acceptance:** Create contact → create expense for that vendor → view detail → tax review.
+
+---
+
+### Phase 14: Settings CRUD (2 teammates)
+
+**Goal:** Make all settings pages editable.
+
+**Tasks:**
+```
+TaskCreate: "P14: Settings Firma -- editable form with save/cancel" (status: pending)
+TaskCreate: "P14: Settings Email -- editable SMTP, test email button" (status: pending)
+TaskCreate: "P14: Settings Sequences -- CRUD (create, edit, delete)" (status: pending)
+TaskCreate: "P14: Settings Categories -- CRUD with color input" (status: pending)
+TaskCreate: "P14: Settings PDF (new view) -- logo upload, accent color, footer, toggles" (status: pending)
+TaskCreate: "P14: Settings Backup -- wire BackupService, create/list/delete" (status: pending)
+TaskCreate: "P14: Settings Audit -- add filters (entity type, action, date)" (status: pending)
+TaskCreate: "P14: Build + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p14-settings-forms"
+    files: rust/crates/zfaktury-app/src/views/{settings_firma,settings_email,settings_sequences,settings_categories}.rs
+    prompt: "Make settings_firma.rs editable: toggle edit mode, text inputs for all fields, save via settings.set_bulk(), cancel reverts. Make settings_email.rs editable: SMTP fields, template fields, attachment toggles, 'Test email' button via EmailSender. Make settings_sequences.rs CRUD: 'New' button, inline edit/delete per row. Make settings_categories.rs CRUD: 'New' button, color hex input, edit/delete. Read frontend/src/routes/settings/. Run cargo build."
+
+  - name: "p14-settings-misc"
+    files: rust/crates/zfaktury-app/src/views/{settings_pdf,settings_backup,settings_audit}.rs
+    prompt: "Create settings_pdf.rs (new file): logo upload (file picker), accent color input, footer text, QR toggle, bank details toggle, preview button. Make settings_backup.rs functional: wire BackupService, 'Create backup' button, load history list, download/delete buttons. Make settings_audit.rs filterable: entity type dropdown, action dropdown, date range inputs. Read frontend/src/routes/settings/. Run cargo build."
+```
+
+**New file:** `rust/crates/zfaktury-app/src/views/settings_pdf.rs`
+
+**Acceptance:** Edit company info → save → verify persisted. Create backup → see in list.
+
+---
+
+### Phase 15: Recurring Templates (1 teammate)
+
+**Goal:** Full CRUD for recurring invoice and expense templates.
+
+**Tasks:**
+```
+TaskCreate: "P15: Recurring invoice detail + form (new files)" (status: pending)
+TaskCreate: "P15: Recurring expense detail + form (new files)" (status: pending)
+TaskCreate: "P15: Recurring lists -- row click, 'New', generate, activate/deactivate" (status: pending)
+TaskCreate: "P15: Build + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p15-recurring"
+    files: rust/crates/zfaktury-app/src/views/{recurring_invoice_detail,recurring_invoice_form,recurring_expense_detail,recurring_expense_form,recurring_invoice_list,recurring_expense_list}.rs
+    prompt: "Create 4 new view files. recurring_invoice_detail.rs: display all fields + items, action buttons (Edit, Delete, Generate Next, Activate/Deactivate). recurring_invoice_form.rs: customer select, items editor (reuse from P12), frequency select, dates, save. recurring_expense_detail.rs + form.rs: similar pattern. Enhance both list views: row click, 'New' button, status indicators, generate button. Read frontend/src/routes/recurring/ and expenses/recurring/. Run cargo build."
+```
+
+**New files:** `recurring_invoice_detail.rs`, `recurring_invoice_form.rs`, `recurring_expense_detail.rs`, `recurring_expense_form.rs`
+
+**Acceptance:** Create recurring invoice → generate instance → verify created.
+
+---
+
+### Phase 16: VAT Management (1 teammate)
+
+**Goal:** Full VAT returns, control statements, and VIES summaries.
+
+**Tasks:**
+```
+TaskCreate: "P16: VAT overview -- wire services, load real data, navigation" (status: pending)
+TaskCreate: "P16: VAT return detail -- actions (recalculate, XML, mark filed, delete)" (status: pending)
+TaskCreate: "P16: VAT return form (new file)" (status: pending)
+TaskCreate: "P16: VAT control statement detail + form (new files)" (status: pending)
+TaskCreate: "P16: VIES summary detail + form (new files)" (status: pending)
+TaskCreate: "P16: Build + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p16-vat"
+    files: rust/crates/zfaktury-app/src/views/{vat_overview,vat_return_detail,vat_return_form,vat_control_detail,vat_control_form,vies_detail,vies_form}.rs
+    prompt: "Wire VATReturnService, VATControlStatementService, VIESSummaryService into views. Enhance vat_overview.rs: load real data per quarter, status badges, click navigation, 'New' buttons. Enhance vat_return_detail.rs: add Recalculate/Generate XML/Mark Filed/Delete buttons. Create vat_return_form.rs: period selector (year, month/quarter), filing type, auto-calculate button. Create vat_control_detail.rs + form.rs: display lines (A.4, A.5, B.2, B.3), same actions. Create vies_detail.rs + form.rs: EU trade lines, same actions. Read frontend/src/routes/vat/. Run cargo build."
+```
+
+**New files:** `vat_return_form.rs`, `vat_control_detail.rs`, `vat_control_form.rs`, `vies_detail.rs`, `vies_form.rs`
+
+**Acceptance:** Create VAT return → recalculate → generate XML → mark filed.
+
+---
+
+### Phase 17: Tax Filing (2 teammates)
+
+**Goal:** Full income tax, social/health insurance, credits, prepayments, investments.
+
+**Tasks:**
+```
+TaskCreate: "P17: Tax overview -- wire services, load data, create buttons" (status: pending)
+TaskCreate: "P17: Income tax detail + form (new files)" (status: pending)
+TaskCreate: "P17: Social insurance detail + form (new files)" (status: pending)
+TaskCreate: "P17: Health insurance detail + form (new files)" (status: pending)
+TaskCreate: "P17: Tax credits -- spouse/children/personal CRUD, deductions CRUD" (status: pending)
+TaskCreate: "P17: Tax prepayments -- monthly data, edit per month" (status: pending)
+TaskCreate: "P17: Tax investments -- capital income CRUD, securities CRUD, FIFO" (status: pending)
+TaskCreate: "P17: Build + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p17-tax-filings"
+    files: rust/crates/zfaktury-app/src/views/{tax_overview,tax_income_detail,tax_income_form,tax_social_detail,tax_social_form,tax_health_detail,tax_health_form}.rs
+    prompt: "Wire IncomeTaxReturnService, SocialInsuranceService, HealthInsuranceService. Enhance tax_overview.rs: real data, status badges, 'Create' buttons. Create tax_income_detail.rs: display revenue/expenses/base/tax/credits/bonuses, actions (recalculate, XML DPFDP5, mark filed, delete). Create tax_income_form.rs: year, filing type, auto-calculate. Create tax_social_detail.rs + form.rs: assessment base, insurance rate, prepayments, difference. Create tax_health_detail.rs + form.rs: same pattern. Read frontend/src/routes/tax/. Run cargo build."
+
+  - name: "p17-tax-support"
+    files: rust/crates/zfaktury-app/src/views/{tax_credits,tax_prepayments,tax_investments}.rs
+    prompt: "Wire TaxCreditsService, TaxDeductionService, InvestmentIncomeService, TaxYearSettingsService. Rewrite tax_credits.rs: spouse credit form (months, ZTP, income), children list with add/edit/delete, personal credits (student/disability toggles), deductions list with CRUD and document upload. Rewrite tax_prepayments.rs: load monthly data, editable amounts per month, totals. Rewrite tax_investments.rs: capital income entries CRUD, security transactions CRUD, FIFO recalculate button, document upload, year summary card. Read frontend/src/routes/tax/. Run cargo build."
+```
+
+**New files:** `tax_income_detail.rs`, `tax_income_form.rs`, `tax_social_detail.rs`, `tax_social_form.rs`, `tax_health_detail.rs`, `tax_health_form.rs`
+
+**Acceptance:** Create income tax return → recalculate → verify credits applied → generate XML.
+
+---
+
+### Phase 18: Reports+Dashboard (1 teammate)
+
+**Goal:** Full reports with all tabs, enhanced dashboard.
+
+**Tasks:**
+```
+TaskCreate: "P18: Reports -- revenue tab (monthly/quarterly bars)" (status: pending)
+TaskCreate: "P18: Reports -- expenses tab (monthly + category breakdown)" (status: pending)
+TaskCreate: "P18: Reports -- profit & loss tab (combined)" (status: pending)
+TaskCreate: "P18: Reports -- top customers tab (ranked list)" (status: pending)
+TaskCreate: "P18: Reports -- tax calendar tab (deadlines)" (status: pending)
+TaskCreate: "P18: Reports -- year selector, CSV export buttons" (status: pending)
+TaskCreate: "P18: Dashboard -- quick action buttons, chart bars, clickable stats" (status: pending)
+TaskCreate: "P18: Build + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p18-reports-dashboard"
+    files: rust/crates/zfaktury-app/src/views/{reports,dashboard}.rs
+    prompt: "Expand reports.rs to 5 tabs: Revenue (ReportService.revenue_report, bar chart using colored divs), Expenses (expense_report + category breakdown), Profit & Loss (profit_loss_report, combined bars), Top Customers (top_customers, ranked table), Tax Calendar (TaxCalendarService, deadline list). Add year selector affecting all tabs. Add CSV export buttons (save file dialog). Enhance dashboard.rs: quick action buttons (New Invoice, New Expense) with click navigation, monthly bar chart (colored div widths), clickable stat cards → navigate to lists. Read frontend/src/routes/reports/ and dashboard. Run cargo build."
+```
+
+**Note:** GPUI has no chart library. Use simple colored `div().w(px(value))` bars proportional to values. Functional parity, not pixel-perfect charts.
+
+**Acceptance:** Select year → see revenue/expense data → CSV export works.
+
+---
+
+### Phase 19: Import+UX Polish (2 teammates)
+
+**Goal:** Fakturoid import, expense OCR import, UX polish.
+
+**Tasks:**
+```
+TaskCreate: "P19: Fakturoid import -- input fields, preview, import with progress" (status: pending)
+TaskCreate: "P19: Expense import (new file) -- file picker, OCR, review dialog" (status: pending)
+TaskCreate: "P19: Expense review (new file) -- bulk tax review" (status: pending)
+TaskCreate: "P19: Toast notifications after save/delete/send operations" (status: pending)
+TaskCreate: "P19: Confirm dialogs before all destructive actions" (status: pending)
+TaskCreate: "P19: Loading/error/empty states for all views" (status: pending)
+TaskCreate: "P19: Keyboard shortcuts (Ctrl+S save, Escape back, Enter on row)" (status: pending)
+TaskCreate: "P19: Back navigation button on all detail/form views" (status: pending)
+TaskCreate: "P19: Final headless screenshot verification of all routes" (status: pending)
+TaskCreate: "P19: Build + clippy + test gates" (status: pending)
+```
+
+**TeamCreate:**
+```
+  - name: "p19-import"
+    files: rust/crates/zfaktury-app/src/views/{import_fakturoid,expense_import,expense_review}.rs
+    prompt: "Rewrite import_fakturoid.rs: input fields (slug, email, client_id, secret), 'Preview' button (ImportService preview), 'Import' button with progress indicator, result summary (contacts/invoices/expenses/attachments counts). Create expense_import.rs: file picker dialog (cx.open_file_dialog()), upload document, OCR processing (OCRService), review dialog showing extracted data with editable fields, confirm creates expense. Create expense_review.rs: list unreviewed expenses, checkboxes per row, bulk 'Mark reviewed'/'Unmark' buttons. Read frontend/src/routes/import/ and expenses/import/. Run cargo build."
+
+  - name: "p19-ux-polish"
+    files: (audit all views, modify as needed)
+    prompt: "UX polish across all views: 1) Add toast notifications (success/error) after every save/create/update/delete/send operation. 2) Add confirm dialogs before every delete action and filing operations. 3) Add loading spinner while data loads, error alert on failure, empty state with action button when no data. 4) Add keyboard shortcuts: Ctrl+S in forms = save, Escape = go back, Enter on focused list row = navigate to detail, Tab between form fields. 5) Add 'Back' button (NavigationState::go_back()) to all detail and form views. Run cargo build."
+```
+
+**New files:** `expense_import.rs`, `expense_review.rs`
+
+**Acceptance:** Full UX test: every route has loading/error/empty states, every destructive action has confirmation, every save shows toast.
+
+---
+
+### Phase-Specific Quality Gates (Phases 11-19)
+
+After each phase:
+
 ```bash
+cargo build --workspace
+cargo test --workspace
 cargo clippy --workspace -- -D warnings
 ```
-Fix ALL warnings. Zero tolerance.
 
-**Gate 2: Coverage**
-```bash
-cargo llvm-cov --workspace
-```
-Verify thresholds:
-- calc/ + domain/amount.rs: 100% (line + branch)
-- gen/: 100% (line)
-- Everything else: 90%+
-
-Add missing tests where coverage is below threshold.
-
-**Gate 3: Golden files**
-- Create `rust/tests/golden/` directory
-- Generate golden files for all XML outputs (VAT, KH, VIES, DPFO, CSSZ, ISDOC)
-- Generate golden metadata for PDF
-- `UPDATE_GOLDEN=1 cargo test` to create, CI verifies on mismatch
-
-**Gate 4: Real database import**
-- Copy existing `~/.zfaktury/zfaktury.db` to `tests/fixtures/real_zfaktury.db`
-- Write integration test that opens it, reads contacts/invoices/expenses, verifies counts
-- Generate PDF for an existing invoice, compare content with Go version
-
-**Gate 5: Code review**
-- Launch `developer:code-reviewer` agent on all Rust code
-- Fix all critical/high findings
-
-**Gate 6: Security review**
-- Launch `developer:code-security` agent
-- Verify: no SQL injection, parameterized queries, path traversal prevention, input validation
-
-**Gate 7: Headless screenshots**
-- Create test fixture DB with representative data
-- Screenshot all 43 routes
-- Agent reviews each screenshot for: layout, Czech labels, data, theme colors
-- Save to `rust/tests/screenshots/`
-
-**Gate 8: Documentation update**
-- Update STATUS.md to reflect final state
-- Update ARCHITECTURE.md and GUI-DEVELOPMENT.md with any changes
-- Verify CLAUDE.md is accurate
+After Phase 19 (final):
+- Headless screenshot all 47 routes (43 original + 4 new)
+- Code review agent on all new/modified view files
+- Security review on any file upload / email / external API usage
+- Verify every Route in navigation.rs renders a functional view (not StubView)

@@ -21,6 +21,12 @@ pub struct AresClient {
     client: reqwest::blocking::Client,
 }
 
+impl Default for AresClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AresClient {
     /// Create a new ARES client with default settings.
     pub fn new() -> Self {

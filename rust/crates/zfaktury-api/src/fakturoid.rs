@@ -269,11 +269,11 @@ impl FakturoidClient {
     /// Override the base URL and token URL (for testing).
     pub fn with_urls(mut self, base_url: &str, token_url: &str) -> Self {
         // Derive allowed download host from the base URL for testing.
-        if let Ok(parsed) = url::Url::parse(base_url) {
-            if let Some(host) = parsed.host_str() {
-                let port_suffix = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
-                self.allowed_download_host = format!("{}{}", host, port_suffix);
-            }
+        if let Ok(parsed) = url::Url::parse(base_url)
+            && let Some(host) = parsed.host_str()
+        {
+            let port_suffix = parsed.port().map(|p| format!(":{}", p)).unwrap_or_default();
+            self.allowed_download_host = format!("{}{}", host, port_suffix);
         }
         self.base_url = base_url.to_string();
         self.token_url = token_url.to_string();

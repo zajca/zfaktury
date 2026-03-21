@@ -10,6 +10,7 @@ use zfaktury_domain::{
     SETTING_ZIP,
 };
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Company settings form view.
@@ -117,6 +118,8 @@ impl SettingsFirmaView {
         section
     }
 }
+
+impl EventEmitter<NavigateEvent> for SettingsFirmaView {}
 
 impl Render for SettingsFirmaView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::CategoryService;
 use zfaktury_domain::ExpenseCategory;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Settings categories view showing expense categories.
@@ -49,6 +50,8 @@ impl SettingsCategoriesView {
         .detach();
     }
 }
+
+impl EventEmitter<NavigateEvent> for SettingsCategoriesView {}
 
 impl Render for SettingsCategoriesView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

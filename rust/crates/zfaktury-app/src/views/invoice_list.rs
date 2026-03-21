@@ -5,6 +5,7 @@ use zfaktury_core::service::InvoiceService;
 use zfaktury_domain::{Invoice, InvoiceFilter};
 
 use crate::components::status_badge::render_status_badge;
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -61,6 +62,8 @@ impl InvoiceListView {
         .detach();
     }
 }
+
+impl EventEmitter<NavigateEvent> for InvoiceListView {}
 
 impl Render for InvoiceListView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

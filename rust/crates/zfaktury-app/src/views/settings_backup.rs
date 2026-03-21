@@ -1,5 +1,6 @@
 use gpui::*;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Backup settings view showing backup history.
@@ -10,6 +11,8 @@ impl SettingsBackupView {
         Self
     }
 }
+
+impl EventEmitter<NavigateEvent> for SettingsBackupView {}
 
 impl Render for SettingsBackupView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::ContactService;
 use zfaktury_domain::Contact;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 
 /// Contact detail view displaying all contact data.
@@ -212,6 +213,8 @@ impl ContactDetailView {
         content
     }
 }
+
+impl EventEmitter<NavigateEvent> for ContactDetailView {}
 
 impl Render for ContactDetailView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

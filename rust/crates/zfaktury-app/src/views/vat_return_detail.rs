@@ -4,6 +4,7 @@ use gpui::*;
 use zfaktury_core::service::VATReturnService;
 use zfaktury_domain::VATReturn;
 
+use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::format_amount;
 
@@ -343,6 +344,8 @@ impl VatReturnDetailView {
         content
     }
 }
+
+impl EventEmitter<NavigateEvent> for VatReturnDetailView {}
 
 impl Render for VatReturnDetailView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {

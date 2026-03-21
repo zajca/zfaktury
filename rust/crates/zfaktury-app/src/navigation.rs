@@ -1,3 +1,6 @@
+/// Event emitted when navigation is requested from any view.
+pub struct NavigateEvent(pub Route);
+
 /// Application routes matching the frontend SvelteKit routes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Route {
@@ -8,6 +11,7 @@ pub enum Route {
     // Invoices
     InvoiceList,
     InvoiceNew,
+    InvoiceEdit(i64),
     InvoiceDetail(i64),
 
     // Recurring invoices (templates)
@@ -18,6 +22,7 @@ pub enum Route {
     // Expenses
     ExpenseList,
     ExpenseNew,
+    ExpenseEdit(i64),
     ExpenseDetail(i64),
     ExpenseImport,
     ExpenseReview,
@@ -29,6 +34,8 @@ pub enum Route {
 
     // Contacts
     ContactList,
+    ContactNew,
+    ContactEdit(i64),
     ContactDetail(i64),
 
     // VAT
@@ -83,6 +90,7 @@ impl Route {
             "/expenses/recurring" => Some(Route::RecurringExpenseList),
             "/expenses/recurring/new" => Some(Route::RecurringExpenseNew),
             "/contacts" => Some(Route::ContactList),
+            "/contacts/new" => Some(Route::ContactNew),
             "/vat" => Some(Route::VATOverview),
             "/vat/returns/new" => Some(Route::VATReturnNew),
             "/vat/control/new" => Some(Route::VATControlNew),
@@ -113,12 +121,14 @@ impl Route {
             Route::Reports => "Prehled",
             Route::InvoiceList => "Faktury",
             Route::InvoiceNew => "Nova faktura",
+            Route::InvoiceEdit(_) => "Upravit fakturu",
             Route::InvoiceDetail(_) => "Detail faktury",
             Route::RecurringInvoiceList => "Sablony faktur",
             Route::RecurringInvoiceNew => "Nova sablona",
             Route::RecurringInvoiceDetail(_) => "Detail sablony",
             Route::ExpenseList => "Naklady",
             Route::ExpenseNew => "Novy naklad",
+            Route::ExpenseEdit(_) => "Upravit naklad",
             Route::ExpenseDetail(_) => "Detail nakladu",
             Route::ExpenseImport => "Import dokladu",
             Route::ExpenseReview => "Kontrola nakladu",
@@ -126,6 +136,8 @@ impl Route {
             Route::RecurringExpenseNew => "Novy opakovany naklad",
             Route::RecurringExpenseDetail(_) => "Detail opak. nakladu",
             Route::ContactList => "Kontakty",
+            Route::ContactNew => "Novy kontakt",
+            Route::ContactEdit(_) => "Upravit kontakt",
             Route::ContactDetail(_) => "Detail kontaktu",
             Route::VATOverview => "DPH",
             Route::VATReturnNew => "Nove DPH prizani",
@@ -159,10 +171,13 @@ impl Route {
 fn parse_dynamic_route(path: &str) -> Option<Route> {
     let parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     match parts.as_slice() {
+        ["invoices", id, "edit"] => id.parse().ok().map(Route::InvoiceEdit),
         ["invoices", id] => id.parse().ok().map(Route::InvoiceDetail),
         ["recurring", id] => id.parse().ok().map(Route::RecurringInvoiceDetail),
         ["expenses", "recurring", id] => id.parse().ok().map(Route::RecurringExpenseDetail),
+        ["expenses", id, "edit"] => id.parse().ok().map(Route::ExpenseEdit),
         ["expenses", id] => id.parse().ok().map(Route::ExpenseDetail),
+        ["contacts", id, "edit"] => id.parse().ok().map(Route::ContactEdit),
         ["contacts", id] => id.parse().ok().map(Route::ContactDetail),
         ["vat", "returns", id] => id.parse().ok().map(Route::VATReturnDetail),
         ["vat", "control", id] => id.parse().ok().map(Route::VATControlDetail),

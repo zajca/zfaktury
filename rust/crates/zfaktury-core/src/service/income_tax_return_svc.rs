@@ -9,6 +9,7 @@ use crate::repository::traits::{
 };
 
 /// Service for income tax return management.
+#[allow(dead_code)]
 pub struct IncomeTaxReturnService {
     repo: Arc<dyn IncomeTaxReturnRepo + Send + Sync>,
     invoice_repo: Arc<dyn InvoiceRepo + Send + Sync>,

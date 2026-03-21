@@ -63,7 +63,12 @@ impl ReportsView {
         .detach();
     }
 
-    fn render_tab_button(&self, label: &str, tab: ReportTab) -> Div {
+    fn render_tab_button(
+        &self,
+        label: &str,
+        tab: ReportTab,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
         let is_active = self.active_tab == tab;
         let bg = if is_active {
             ZfColors::ACCENT
@@ -75,8 +80,17 @@ impl ReportsView {
         } else {
             ZfColors::TEXT_SECONDARY
         };
+        let tab_id = format!(
+            "tab-{}",
+            match tab {
+                ReportTab::Revenue => "revenue",
+                ReportTab::Expenses => "expenses",
+                ReportTab::ProfitLoss => "profit-loss",
+            }
+        );
 
         div()
+            .id(ElementId::Name(tab_id.into()))
             .px_4()
             .py_2()
             .bg(rgb(bg))
@@ -85,7 +99,53 @@ impl ReportsView {
             .font_weight(FontWeight::MEDIUM)
             .text_color(rgb(text_color))
             .cursor_pointer()
+            .hover(|s| {
+                s.bg(rgb(if is_active {
+                    ZfColors::ACCENT_HOVER
+                } else {
+                    ZfColors::SURFACE_HOVER
+                }))
+            })
+            .on_click(cx.listener(move |this, _ev: &ClickEvent, _w, cx| {
+                this.active_tab = tab.clone();
+                cx.notify();
+            }))
             .child(label.to_string())
+    }
+
+    fn render_year_button(&self, year: i32, cx: &mut Context<Self>) -> Stateful<Div> {
+        let is_active = self.year == year;
+        let bg = if is_active {
+            ZfColors::ACCENT
+        } else {
+            ZfColors::SURFACE
+        };
+        let text_color = if is_active {
+            0xffffff
+        } else {
+            ZfColors::TEXT_SECONDARY
+        };
+        div()
+            .id(ElementId::Name(format!("year-{year}").into()))
+            .px_3()
+            .py_1()
+            .rounded_md()
+            .text_sm()
+            .bg(rgb(bg))
+            .text_color(rgb(text_color))
+            .cursor_pointer()
+            .hover(|s| {
+                s.bg(rgb(if is_active {
+                    ZfColors::ACCENT_HOVER
+                } else {
+                    ZfColors::SURFACE_HOVER
+                }))
+            })
+            .on_click(cx.listener(move |this, _ev: &ClickEvent, _w, cx| {
+                this.year = year;
+                this.load_data(cx);
+            }))
+            .child(year.to_string())
     }
 
     fn month_name(month: i32) -> &'static str {
@@ -112,7 +172,7 @@ use chrono::Datelike;
 impl EventEmitter<NavigateEvent> for ReportsView {}
 
 impl Render for ReportsView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut content = div()
             .id("reports-scroll")
             .size_full()
@@ -123,12 +183,13 @@ impl Render for ReportsView {
             .gap_6()
             .overflow_y_scroll();
 
-        // Header
+        // Header with year selector
+        let current_year = chrono::Local::now().date_naive().year();
         content = content.child(
             div()
                 .flex()
                 .items_center()
-                .gap_3()
+                .justify_between()
                 .child(
                     div()
                         .text_xl()
@@ -138,15 +199,10 @@ impl Render for ReportsView {
                 )
                 .child(
                     div()
-                        .px_3()
-                        .py_1()
-                        .bg(rgb(ZfColors::SURFACE))
-                        .border_1()
-                        .border_color(rgb(ZfColors::BORDER))
-                        .rounded_md()
-                        .text_sm()
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child(self.year.to_string()),
+                        .flex()
+                        .gap_1()
+                        .child(self.render_year_button(current_year - 1, cx))
+                        .child(self.render_year_button(current_year, cx)),
                 ),
         );
 
@@ -155,9 +211,9 @@ impl Render for ReportsView {
             div()
                 .flex()
                 .gap_2()
-                .child(self.render_tab_button("Prijmy", ReportTab::Revenue))
-                .child(self.render_tab_button("Naklady", ReportTab::Expenses))
-                .child(self.render_tab_button("Zisk a ztrata", ReportTab::ProfitLoss)),
+                .child(self.render_tab_button("Prijmy", ReportTab::Revenue, cx))
+                .child(self.render_tab_button("Naklady", ReportTab::Expenses, cx))
+                .child(self.render_tab_button("Zisk a ztrata", ReportTab::ProfitLoss, cx)),
         );
 
         if self.loading {

@@ -4,27 +4,47 @@ use gpui::*;
 use zfaktury_core::service::ExpenseService;
 use zfaktury_domain::{Expense, ExpenseFilter};
 
-use crate::navigation::NavigateEvent;
+use crate::components::button::{ButtonVariant, render_button};
+use crate::components::text_input::{TextChanged, TextInput};
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
-/// Expense list view with table.
+/// Expense list view with search, table, and pagination.
 pub struct ExpenseListView {
     service: Arc<ExpenseService>,
     loading: bool,
     error: Option<String>,
     expenses: Vec<Expense>,
     total: i64,
+    search_input: Entity<TextInput>,
+    current_page: usize,
+    page_size: i64,
 }
 
 impl ExpenseListView {
     pub fn new(service: Arc<ExpenseService>, cx: &mut Context<Self>) -> Self {
+        let search_input = cx.new(|cx| TextInput::new("expense-search", "Hledat naklady...", cx));
+
+        // Subscribe to search changes
+        cx.subscribe(
+            &search_input,
+            |this: &mut Self, _input, _event: &TextChanged, cx| {
+                this.current_page = 0;
+                this.load_data(cx);
+            },
+        )
+        .detach();
+
         let mut view = Self {
             service,
             loading: true,
             error: None,
             expenses: Vec::new(),
             total: 0,
+            search_input,
+            current_page: 0,
+            page_size: 20,
         };
         view.load_data(cx);
         view
@@ -32,12 +52,21 @@ impl ExpenseListView {
 
     fn load_data(&mut self, cx: &mut Context<Self>) {
         let service = self.service.clone();
+        let search = self.search_input.read(cx).value().to_string();
+        let offset = (self.current_page as i32) * (self.page_size as i32);
+        let limit = self.page_size as i32;
+
+        self.loading = true;
+        cx.notify();
+
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
                 .spawn(async move {
                     service.list(ExpenseFilter {
-                        limit: 50,
+                        search,
+                        limit,
+                        offset,
                         ..Default::default()
                     })
                 })
@@ -60,12 +89,20 @@ impl ExpenseListView {
         })
         .detach();
     }
+
+    fn total_pages(&self) -> usize {
+        if self.total == 0 {
+            1
+        } else {
+            ((self.total as f64) / (self.page_size as f64)).ceil() as usize
+        }
+    }
 }
 
 impl EventEmitter<NavigateEvent> for ExpenseListView {}
 
 impl Render for ExpenseListView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut content = div()
             .id("expense-list-scroll")
             .size_full()
@@ -76,38 +113,54 @@ impl Render for ExpenseListView {
             .gap_4()
             .overflow_y_scroll();
 
-        // Header
+        // Header with title and New button
+        content = content.child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            div()
+                                .text_xl()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .child("Naklady"),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child(format!("({} celkem)", self.total)),
+                        ),
+                )
+                .child(render_button(
+                    "new-expense-btn",
+                    "Novy naklad",
+                    ButtonVariant::Primary,
+                    false,
+                    false,
+                    cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                        cx.emit(NavigateEvent(Route::ExpenseNew));
+                    }),
+                )),
+        );
+
+        // Search row
         content = content.child(
             div()
                 .flex()
                 .items_center()
                 .gap_3()
-                .child(
-                    div()
-                        .text_xl()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Naklady"),
-                )
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child(format!("({} celkem)", self.total)),
-                ),
+                .child(div().flex_1().child(self.search_input.clone())),
         );
 
-        if self.loading {
-            return content.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
-            );
-        }
-
         if let Some(ref error) = self.error {
-            return content.child(
+            content = content.child(
                 div()
                     .px_4()
                     .py_3()
@@ -116,6 +169,15 @@ impl Render for ExpenseListView {
                     .text_sm()
                     .text_color(rgb(ZfColors::STATUS_RED))
                     .child(error.clone()),
+            );
+        }
+
+        if self.loading {
+            return content.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::TEXT_MUTED))
+                    .child("Nacitani..."),
             );
         }
 
@@ -155,12 +217,14 @@ impl Render for ExpenseListView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne naklady."),
+                    .child("Zadne naklady. Vytvorte novy naklad."),
             );
         } else {
             for exp in &self.expenses {
+                let exp_id = exp.id;
                 table = table.child(
                     div()
+                        .id(ElementId::Name(format!("exp-row-{exp_id}").into()))
                         .flex()
                         .items_center()
                         .px_4()
@@ -170,6 +234,9 @@ impl Render for ExpenseListView {
                         .border_color(rgb(ZfColors::BORDER_SUBTLE))
                         .cursor_pointer()
                         .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)))
+                        .on_click(cx.listener(move |_this, _event: &ClickEvent, _window, cx| {
+                            cx.emit(NavigateEvent(Route::ExpenseDetail(exp_id)));
+                        }))
                         .child(
                             div()
                                 .w_24()
@@ -213,6 +280,54 @@ impl Render for ExpenseListView {
             }
         }
 
-        content.child(table)
+        content = content.child(table);
+
+        // Pagination
+        let total_pages = self.total_pages();
+        if total_pages > 1 {
+            let current = self.current_page;
+            content = content.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .gap_3()
+                    .py_2()
+                    .child(render_button(
+                        "btn-prev-page",
+                        "Predchozi",
+                        ButtonVariant::Secondary,
+                        current == 0,
+                        false,
+                        cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                            if this.current_page > 0 {
+                                this.current_page -= 1;
+                                this.load_data(cx);
+                            }
+                        }),
+                    ))
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .child(format!("Strana {} z {}", current + 1, total_pages)),
+                    )
+                    .child(render_button(
+                        "btn-next-page",
+                        "Dalsi",
+                        ButtonVariant::Secondary,
+                        current >= total_pages - 1,
+                        false,
+                        cx.listener(move |this, _event: &ClickEvent, _window, cx| {
+                            if this.current_page < total_pages - 1 {
+                                this.current_page += 1;
+                                this.load_data(cx);
+                            }
+                        }),
+                    )),
+            );
+        }
+
+        content
     }
 }

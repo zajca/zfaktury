@@ -4,17 +4,21 @@ use gpui::*;
 use zfaktury_core::service::ExpenseService;
 use zfaktury_domain::Expense;
 
-use crate::navigation::NavigateEvent;
+use crate::components::button::{ButtonVariant, render_button};
+use crate::components::confirm_dialog::{ConfirmDialog, ConfirmDialogResult};
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
-/// Expense detail view displaying all expense data.
+/// Expense detail view displaying all expense data with action buttons.
 pub struct ExpenseDetailView {
     service: Arc<ExpenseService>,
     expense_id: i64,
     loading: bool,
     error: Option<String>,
     expense: Option<Expense>,
+    confirm_dialog: Option<Entity<ConfirmDialog>>,
+    action_loading: bool,
 }
 
 impl ExpenseDetailView {
@@ -25,6 +29,8 @@ impl ExpenseDetailView {
             loading: true,
             error: None,
             expense: None,
+            confirm_dialog: None,
+            action_loading: false,
         };
         view.load_data(cx);
         view
@@ -50,6 +56,98 @@ impl ExpenseDetailView {
             .ok();
         })
         .detach();
+    }
+
+    fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
+        let dialog = cx.new(|_cx| {
+            ConfirmDialog::new(
+                "Smazat naklad?",
+                "Tato akce je nevratna. Naklad bude trvale smazan.",
+                "Smazat",
+            )
+        });
+        cx.subscribe(
+            &dialog,
+            |this: &mut Self, _, result: &ConfirmDialogResult, cx| match result {
+                ConfirmDialogResult::Confirmed => {
+                    let service = this.service.clone();
+                    let id = this.expense_id;
+                    this.confirm_dialog = None;
+                    this.action_loading = true;
+                    this.error = None;
+                    cx.notify();
+                    cx.spawn(async move |this, cx| {
+                        let result = cx
+                            .background_executor()
+                            .spawn(async move { service.delete(id) })
+                            .await;
+                        this.update(cx, |this, cx| {
+                            this.action_loading = false;
+                            match result {
+                                Ok(()) => cx.emit(NavigateEvent(Route::ExpenseList)),
+                                Err(e) => {
+                                    this.error = Some(format!("{e}"));
+                                    cx.notify();
+                                }
+                            }
+                        })
+                        .ok();
+                    })
+                    .detach();
+                }
+                ConfirmDialogResult::Cancelled => {
+                    this.confirm_dialog = None;
+                    cx.notify();
+                }
+            },
+        )
+        .detach();
+        self.confirm_dialog = Some(dialog);
+        cx.notify();
+    }
+
+    fn render_action_buttons(&self, cx: &mut Context<Self>) -> Div {
+        let mut bar = div().flex().items_center().gap_2().flex_wrap();
+        let disabled = self.action_loading;
+        let expense_id = self.expense_id;
+
+        // Back button
+        bar = bar.child(render_button(
+            "btn-back",
+            "Zpet na seznam",
+            ButtonVariant::Secondary,
+            disabled,
+            false,
+            cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                cx.emit(NavigateEvent(Route::ExpenseList));
+            }),
+        ));
+
+        // Edit button
+        bar = bar.child(render_button(
+            "btn-edit",
+            "Upravit",
+            ButtonVariant::Secondary,
+            disabled,
+            false,
+            cx.listener(move |_this, _event: &ClickEvent, _window, cx| {
+                cx.emit(NavigateEvent(Route::ExpenseEdit(expense_id)));
+            }),
+        ));
+
+        // Delete button
+        bar = bar.child(render_button(
+            "btn-delete",
+            "Smazat",
+            ButtonVariant::Danger,
+            disabled,
+            false,
+            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                this.show_delete_dialog(cx);
+            }),
+        ));
+
+        bar
     }
 
     fn render_field(&self, label: &str, value: String) -> Div {
@@ -106,7 +204,7 @@ impl ExpenseDetailView {
         section
     }
 
-    fn render_expense_content(&self, exp: &Expense) -> Div {
+    fn render_expense_content(&self, exp: &Expense, cx: &mut Context<Self>) -> Div {
         let vendor_name = exp
             .vendor
             .as_ref()
@@ -122,47 +220,28 @@ impl ExpenseDetailView {
         // Header
         content = content.child(
             div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .text_xl()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child(format!("Naklad {}", exp.expense_number)),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .gap_2()
-                        .child(
-                            div()
-                                .px_4()
-                                .py_2()
-                                .bg(rgb(ZfColors::ACCENT))
-                                .rounded_md()
-                                .text_sm()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(rgb(0xffffff))
-                                .cursor_pointer()
-                                .hover(|s| s.bg(rgb(ZfColors::ACCENT_HOVER)))
-                                .child("Upravit"),
-                        )
-                        .child(
-                            div()
-                                .px_4()
-                                .py_2()
-                                .bg(rgb(ZfColors::STATUS_RED_BG))
-                                .rounded_md()
-                                .text_sm()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(rgb(ZfColors::STATUS_RED))
-                                .cursor_pointer()
-                                .child("Smazat"),
-                        ),
-                ),
+                .text_xl()
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                .child(format!("Naklad {}", exp.expense_number)),
         );
+
+        // Action buttons
+        content = content.child(self.render_action_buttons(cx));
+
+        // Error message (if action failed)
+        if let Some(ref error) = self.error {
+            content = content.child(
+                div()
+                    .px_4()
+                    .py_3()
+                    .bg(rgb(ZfColors::STATUS_RED_BG))
+                    .rounded_md()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::STATUS_RED))
+                    .child(error.clone()),
+            );
+        }
 
         // Basic info
         content = content.child(self.render_section(
@@ -227,13 +306,14 @@ impl ExpenseDetailView {
 impl EventEmitter<NavigateEvent> for ExpenseDetailView {}
 
 impl Render for ExpenseDetailView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut outer = div()
             .id("expense-detail-scroll")
             .size_full()
             .bg(rgb(ZfColors::BG))
             .p_6()
-            .overflow_y_scroll();
+            .overflow_y_scroll()
+            .relative();
 
         if self.loading {
             return outer.child(
@@ -244,7 +324,9 @@ impl Render for ExpenseDetailView {
             );
         }
 
-        if let Some(ref error) = self.error {
+        if self.expense.is_none()
+            && let Some(ref error) = self.error
+        {
             return outer.child(
                 div()
                     .px_4()
@@ -257,8 +339,13 @@ impl Render for ExpenseDetailView {
             );
         }
 
-        if let Some(ref expense) = self.expense {
-            outer = outer.child(self.render_expense_content(expense));
+        if let Some(ref expense) = self.expense.clone() {
+            outer = outer.child(self.render_expense_content(expense, cx));
+        }
+
+        // Confirm dialog overlay
+        if let Some(ref dialog) = self.confirm_dialog {
+            outer = outer.child(dialog.clone());
         }
 
         outer

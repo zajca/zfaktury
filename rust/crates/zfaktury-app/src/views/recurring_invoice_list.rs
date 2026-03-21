@@ -4,7 +4,8 @@ use gpui::*;
 use zfaktury_core::service::RecurringInvoiceService;
 use zfaktury_domain::RecurringInvoice;
 
-use crate::navigation::NavigateEvent;
+use crate::components::button::{ButtonVariant, render_button};
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -66,7 +67,7 @@ impl RecurringInvoiceListView {
 impl EventEmitter<NavigateEvent> for RecurringInvoiceListView {}
 
 impl Render for RecurringInvoiceListView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut content = div()
             .id("recurring-invoice-list-scroll")
             .size_full()
@@ -77,25 +78,41 @@ impl Render for RecurringInvoiceListView {
             .gap_4()
             .overflow_y_scroll();
 
-        // Header
+        // Header with title and New button
         content = content.child(
             div()
                 .flex()
                 .items_center()
-                .gap_3()
+                .justify_between()
                 .child(
                     div()
-                        .text_xl()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Sablony faktur"),
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            div()
+                                .text_xl()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .child("Sablony faktur"),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child(format!("({} celkem)", self.items.len())),
+                        ),
                 )
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child(format!("({} celkem)", self.items.len())),
-                ),
+                .child(render_button(
+                    "new-recurring-invoice-btn",
+                    "Nova sablona",
+                    ButtonVariant::Primary,
+                    false,
+                    false,
+                    cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                        cx.emit(NavigateEvent(Route::RecurringInvoiceNew));
+                    }),
+                )),
         );
 
         if self.loading {
@@ -156,7 +173,7 @@ impl Render for RecurringInvoiceListView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne sablony faktur."),
+                    .child("Zadne sablony faktur. Vytvorte novou sablonu."),
             );
         } else {
             for ri in &self.items {
@@ -175,8 +192,10 @@ impl Render for RecurringInvoiceListView {
                     ZfColors::STATUS_GRAY
                 };
 
+                let ri_id = ri.id;
                 table = table.child(
                     div()
+                        .id(ElementId::Name(format!("ri-row-{ri_id}").into()))
                         .flex()
                         .items_center()
                         .px_4()
@@ -186,6 +205,9 @@ impl Render for RecurringInvoiceListView {
                         .border_color(rgb(ZfColors::BORDER_SUBTLE))
                         .cursor_pointer()
                         .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)))
+                        .on_click(cx.listener(move |_this, _event: &ClickEvent, _window, cx| {
+                            cx.emit(NavigateEvent(Route::RecurringInvoiceDetail(ri_id)));
+                        }))
                         .child(
                             div()
                                 .flex_1()

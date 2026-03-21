@@ -5,8 +5,9 @@ use zfaktury_core::repository::types::{RecentExpense, RecentInvoice};
 use zfaktury_core::service::DashboardService;
 use zfaktury_domain::Amount;
 
+use crate::components::button::{ButtonVariant, render_button};
 use crate::components::status_badge::render_status_badge;
-use crate::navigation::NavigateEvent;
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -123,7 +124,7 @@ impl DashboardView {
         card
     }
 
-    fn render_invoice_table(&self) -> Div {
+    fn render_invoice_table(&self, cx: &mut Context<Self>) -> Div {
         let mut table = div()
             .flex()
             .flex_col()
@@ -178,8 +179,10 @@ impl DashboardView {
             );
 
             for inv in &self.recent_invoices {
+                let inv_id = inv.id;
                 table = table.child(
                     div()
+                        .id(ElementId::Name(format!("dash-inv-{inv_id}").into()))
                         .flex()
                         .items_center()
                         .px_4()
@@ -187,7 +190,11 @@ impl DashboardView {
                         .text_sm()
                         .border_t_1()
                         .border_color(rgb(ZfColors::BORDER_SUBTLE))
+                        .cursor_pointer()
                         .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)))
+                        .on_click(cx.listener(move |_this, _ev: &ClickEvent, _w, cx| {
+                            cx.emit(NavigateEvent(Route::InvoiceDetail(inv_id)));
+                        }))
                         .child(
                             div()
                                 .w_24()
@@ -227,7 +234,7 @@ impl DashboardView {
         table
     }
 
-    fn render_expense_table(&self) -> Div {
+    fn render_expense_table(&self, cx: &mut Context<Self>) -> Div {
         let mut table = div()
             .flex()
             .flex_col()
@@ -279,8 +286,10 @@ impl DashboardView {
             );
 
             for exp in &self.recent_expenses {
+                let exp_id = exp.id;
                 table = table.child(
                     div()
+                        .id(ElementId::Name(format!("dash-exp-{exp_id}").into()))
                         .flex()
                         .items_center()
                         .px_4()
@@ -288,7 +297,11 @@ impl DashboardView {
                         .text_sm()
                         .border_t_1()
                         .border_color(rgb(ZfColors::BORDER_SUBTLE))
+                        .cursor_pointer()
                         .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)))
+                        .on_click(cx.listener(move |_this, _ev: &ClickEvent, _w, cx| {
+                            cx.emit(NavigateEvent(Route::ExpenseDetail(exp_id)));
+                        }))
                         .child(
                             div()
                                 .flex_1()
@@ -325,7 +338,7 @@ impl DashboardView {
 impl EventEmitter<NavigateEvent> for DashboardView {}
 
 impl Render for DashboardView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut content = div()
             .id("dashboard-scroll")
             .size_full()
@@ -369,6 +382,43 @@ impl Render for DashboardView {
             return content;
         }
 
+        // Quick action buttons
+        content = content.child(
+            div()
+                .flex()
+                .gap_3()
+                .child(render_button(
+                    "dash-new-invoice",
+                    "Nova faktura",
+                    ButtonVariant::Primary,
+                    false,
+                    false,
+                    cx.listener(|_this, _ev: &ClickEvent, _w, cx| {
+                        cx.emit(NavigateEvent(Route::InvoiceNew));
+                    }),
+                ))
+                .child(render_button(
+                    "dash-new-expense",
+                    "Novy naklad",
+                    ButtonVariant::Secondary,
+                    false,
+                    false,
+                    cx.listener(|_this, _ev: &ClickEvent, _w, cx| {
+                        cx.emit(NavigateEvent(Route::ExpenseNew));
+                    }),
+                ))
+                .child(render_button(
+                    "dash-new-contact",
+                    "Novy kontakt",
+                    ButtonVariant::Secondary,
+                    false,
+                    false,
+                    cx.listener(|_this, _ev: &ClickEvent, _w, cx| {
+                        cx.emit(NavigateEvent(Route::ContactNew));
+                    }),
+                )),
+        );
+
         // Stats cards row
         content = content.child(
             div()
@@ -402,8 +452,8 @@ impl Render for DashboardView {
 
         // Recent tables
         content = content
-            .child(self.render_invoice_table())
-            .child(self.render_expense_table());
+            .child(self.render_invoice_table(cx))
+            .child(self.render_expense_table(cx));
 
         content
     }

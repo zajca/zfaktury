@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::*;
-use zfaktury_core::service::VATReturnService;
-use zfaktury_domain::{FilingStatus, VATReturn};
+use zfaktury_core::service::VATControlStatementService;
+use zfaktury_domain::{FilingStatus, VATControlStatement, VATControlStatementLine};
 
 use crate::components::button::{ButtonVariant, render_button};
 use crate::components::confirm_dialog::{ConfirmDialog, ConfirmDialogResult};
@@ -10,25 +10,31 @@ use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 use crate::util::format::format_amount;
 
-/// VAT return detail view.
-pub struct VatReturnDetailView {
-    service: Arc<VATReturnService>,
-    return_id: i64,
+/// VAT control statement detail view.
+pub struct VatControlDetailView {
+    service: Arc<VATControlStatementService>,
+    statement_id: i64,
     loading: bool,
     error: Option<String>,
-    vat_return: Option<VATReturn>,
+    statement: Option<VATControlStatement>,
+    lines: Vec<VATControlStatementLine>,
     confirm_dialog: Option<Entity<ConfirmDialog>>,
     action_loading: bool,
 }
 
-impl VatReturnDetailView {
-    pub fn new(service: Arc<VATReturnService>, return_id: i64, cx: &mut Context<Self>) -> Self {
+impl VatControlDetailView {
+    pub fn new(
+        service: Arc<VATControlStatementService>,
+        statement_id: i64,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut view = Self {
             service,
-            return_id,
+            statement_id,
             loading: true,
             error: None,
-            vat_return: None,
+            statement: None,
+            lines: Vec::new(),
             confirm_dialog: None,
             action_loading: false,
         };
@@ -38,44 +44,30 @@ impl VatReturnDetailView {
 
     fn load_data(&mut self, cx: &mut Context<Self>) {
         let service = self.service.clone();
-        let id = self.return_id;
+        let id = self.statement_id;
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
-                .spawn(async move { service.get_by_id(id) })
+                .spawn(async move {
+                    let cs = service.get_by_id(id)?;
+                    let lines = service.get_lines(id)?;
+                    Ok::<
+                        (VATControlStatement, Vec<VATControlStatementLine>),
+                        zfaktury_domain::DomainError,
+                    >((cs, lines))
+                })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.loading = false;
                 match result {
-                    Ok(vr) => this.vat_return = Some(vr),
-                    Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani DPH priznani: {e}"));
+                    Ok((cs, lines)) => {
+                        this.statement = Some(cs);
+                        this.lines = lines;
                     }
-                }
-                cx.notify();
-            })
-            .ok();
-        })
-        .detach();
-    }
-
-    fn handle_recalculate(&mut self, cx: &mut Context<Self>) {
-        self.action_loading = true;
-        self.error = None;
-        cx.notify();
-        let service = self.service.clone();
-        let id = self.return_id;
-        cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_executor()
-                .spawn(async move { service.recalculate(id) })
-                .await;
-            this.update(cx, |this, cx| {
-                this.action_loading = false;
-                match result {
-                    Ok(vr) => this.vat_return = Some(vr),
-                    Err(e) => this.error = Some(format!("{e}")),
+                    Err(e) => {
+                        this.error = Some(format!("Chyba pri nacitani kontrolniho hlaseni: {e}"));
+                    }
                 }
                 cx.notify();
             })
@@ -89,7 +81,7 @@ impl VatReturnDetailView {
         self.error = None;
         cx.notify();
         let service = self.service.clone();
-        let id = self.return_id;
+        let id = self.statement_id;
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
@@ -98,7 +90,7 @@ impl VatReturnDetailView {
             this.update(cx, |this, cx| {
                 this.action_loading = false;
                 match result {
-                    Ok(vr) => this.vat_return = Some(vr),
+                    Ok(()) => this.load_data(cx),
                     Err(e) => this.error = Some(format!("{e}")),
                 }
                 cx.notify();
@@ -114,7 +106,7 @@ impl VatReturnDetailView {
         self.error = None;
         cx.notify();
         let service = self.service.clone();
-        let id = self.return_id;
+        let id = self.statement_id;
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
@@ -136,8 +128,8 @@ impl VatReturnDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat DPH priznani?",
-                "Tato akce je nevratna. DPH priznani bude trvale smazano.",
+                "Smazat kontrolni hlaseni?",
+                "Tato akce je nevratna. Kontrolni hlaseni bude trvale smazano.",
                 "Smazat",
             )
         });
@@ -158,7 +150,7 @@ impl VatReturnDetailView {
         cx.notify();
     }
 
-    fn render_action_buttons(&self, vr: &VATReturn, cx: &mut Context<Self>) -> Div {
+    fn render_action_buttons(&self, cs: &VATControlStatement, cx: &mut Context<Self>) -> Div {
         let mut bar = div().flex().items_center().gap_2().flex_wrap();
         let disabled = self.action_loading;
 
@@ -174,26 +166,14 @@ impl VatReturnDetailView {
             }),
         ));
 
-        if vr.status != FilingStatus::Filed {
-            // Recalculate
-            bar = bar.child(render_button(
-                "btn-recalculate",
-                "Prepocitat",
-                ButtonVariant::Primary,
-                disabled,
-                self.action_loading,
-                cx.listener(|this, _event: &ClickEvent, _window, cx| {
-                    this.handle_recalculate(cx);
-                }),
-            ));
-
+        if cs.status != FilingStatus::Filed {
             // Mark filed
             bar = bar.child(render_button(
                 "btn-mark-filed",
                 "Oznacit jako podane",
-                ButtonVariant::Secondary,
+                ButtonVariant::Primary,
                 disabled,
-                false,
+                self.action_loading,
                 cx.listener(|this, _event: &ClickEvent, _window, cx| {
                     this.handle_mark_filed(cx);
                 }),
@@ -215,32 +195,10 @@ impl VatReturnDetailView {
         bar
     }
 
-    fn render_amount_row(&self, label: &str, value: zfaktury_domain::Amount) -> Div {
-        div()
-            .flex()
-            .justify_between()
-            .text_sm()
-            .child(
-                div()
-                    .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child(label.to_string()),
-            )
-            .child(
-                div()
-                    .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                    .child(format_amount(value)),
-            )
-    }
-
-    fn render_vat_content(&self, vr: &VATReturn, cx: &mut Context<Self>) -> Div {
-        let period_label = if vr.period.month > 0 {
-            format!("{}/{}", vr.period.month, vr.period.year)
-        } else {
-            format!("Q{}/{}", vr.period.quarter, vr.period.year)
-        };
-
-        let status_text = vr.status.to_string();
-        let status_color = match vr.status {
+    fn render_content(&self, cs: &VATControlStatement, cx: &mut Context<Self>) -> Div {
+        let period_label = format!("{}/{}", cs.period.month, cs.period.year);
+        let status_text = cs.status.to_string();
+        let status_color = match cs.status {
             FilingStatus::Draft => ZfColors::STATUS_GRAY,
             FilingStatus::Ready => ZfColors::STATUS_YELLOW,
             FilingStatus::Filed => ZfColors::STATUS_GREEN,
@@ -260,7 +218,7 @@ impl VatReturnDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("DPH priznani {}", period_label)),
+                            .child(format!("Kontrolni hlaseni {}", period_label)),
                     )
                     .child(
                         div()
@@ -274,10 +232,10 @@ impl VatReturnDetailView {
             ),
         );
 
-        // Action buttons (wired)
-        content = content.child(self.render_action_buttons(vr, cx));
+        // Action buttons
+        content = content.child(self.render_action_buttons(cs, cx));
 
-        // Error message
+        // Error
         if let Some(ref error) = self.error {
             content = content.child(
                 div()
@@ -334,152 +292,150 @@ impl VatReturnDetailView {
                             div()
                                 .text_sm()
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child(vr.filing_type.to_string()),
+                                .child(cs.filing_type.to_string()),
                         ),
-                ),
-        );
-
-        // Output VAT section
-        content = content.child(
-            div()
-                .p_4()
-                .bg(rgb(ZfColors::SURFACE))
-                .rounded_md()
-                .border_1()
-                .border_color(rgb(ZfColors::BORDER))
-                .flex()
-                .flex_col()
-                .gap_3()
-                .child(
-                    div()
-                        .text_sm()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vystupni DPH (dan na vystupu)"),
                 )
-                .child(self.render_amount_row("Zaklad 21%", vr.output_vat_base_21))
-                .child(self.render_amount_row("DPH 21%", vr.output_vat_amount_21))
-                .child(self.render_amount_row("Zaklad 12%", vr.output_vat_base_12))
-                .child(self.render_amount_row("DPH 12%", vr.output_vat_amount_12))
-                .child(self.render_amount_row("Zaklad 0%", vr.output_vat_base_0))
-                .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
                     div()
                         .flex()
-                        .justify_between()
+                        .flex_col()
+                        .gap(px(2.0))
                         .child(
                             div()
-                                .text_sm()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Celkem vystupni DPH"),
+                                .text_xs()
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child("Pocet radku"),
                         )
                         .child(
                             div()
                                 .text_sm()
-                                .font_weight(FontWeight::BOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child(format_amount(vr.total_output_vat)),
+                                .child(self.lines.len().to_string()),
                         ),
                 ),
         );
 
-        // Input VAT section
-        content = content.child(
+        // Lines table
+        let mut table = div()
+            .flex()
+            .flex_col()
+            .bg(rgb(ZfColors::SURFACE))
+            .rounded_md()
+            .border_1()
+            .border_color(rgb(ZfColors::BORDER))
+            .overflow_hidden();
+
+        table = table.child(
             div()
-                .p_4()
-                .bg(rgb(ZfColors::SURFACE))
-                .rounded_md()
-                .border_1()
+                .px_4()
+                .py_3()
+                .border_b_1()
                 .border_color(rgb(ZfColors::BORDER))
+                .text_sm()
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                .child("Radky kontrolniho hlaseni"),
+        );
+
+        // Column headers
+        table = table.child(
+            div()
                 .flex()
-                .flex_col()
-                .gap_3()
-                .child(
-                    div()
-                        .text_sm()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vstupni DPH (dan na vstupu)"),
-                )
-                .child(self.render_amount_row("Zaklad 21%", vr.input_vat_base_21))
-                .child(self.render_amount_row("DPH 21%", vr.input_vat_amount_21))
-                .child(self.render_amount_row("Zaklad 12%", vr.input_vat_base_12))
-                .child(self.render_amount_row("DPH 12%", vr.input_vat_amount_12))
-                .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
-                .child(
+                .px_4()
+                .py_2()
+                .text_xs()
+                .text_color(rgb(ZfColors::TEXT_MUTED))
+                .border_b_1()
+                .border_color(rgb(ZfColors::BORDER_SUBTLE))
+                .child(div().w(px(60.0)).child("Sekce"))
+                .child(div().w(px(120.0)).child("DIC partnera"))
+                .child(div().flex_1().child("Cislo dokladu"))
+                .child(div().w(px(100.0)).child("DPPD"))
+                .child(div().w(px(112.0)).text_right().child("Zaklad"))
+                .child(div().w(px(112.0)).text_right().child("DPH"))
+                .child(div().w(px(60.0)).text_right().child("Sazba")),
+        );
+
+        if self.lines.is_empty() {
+            table = table.child(
+                div()
+                    .px_4()
+                    .py_8()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::TEXT_MUTED))
+                    .child("Zadne radky."),
+            );
+        } else {
+            for line in &self.lines {
+                table = table.child(
                     div()
                         .flex()
-                        .justify_between()
+                        .items_center()
+                        .px_4()
+                        .py_2()
+                        .text_sm()
+                        .border_t_1()
+                        .border_color(rgb(ZfColors::BORDER_SUBTLE))
                         .child(
                             div()
-                                .text_sm()
-                                .font_weight(FontWeight::SEMIBOLD)
+                                .w(px(60.0))
+                                .font_weight(FontWeight::MEDIUM)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Celkem vstupni DPH"),
+                                .child(line.section.to_string()),
                         )
                         .child(
                             div()
-                                .text_sm()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child(format_amount(vr.total_input_vat)),
-                        ),
-                ),
-        );
-
-        // Summary
-        content = content.child(
-            div()
-                .p_4()
-                .bg(rgb(ZfColors::SURFACE))
-                .rounded_md()
-                .border_1()
-                .border_color(rgb(ZfColors::BORDER))
-                .flex()
-                .flex_col()
-                .gap_3()
-                .child(
-                    div()
-                        .text_sm()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Souhrn"),
-                )
-                .child(self.render_amount_row("Vystupni DPH", vr.total_output_vat))
-                .child(self.render_amount_row("Vstupni DPH", vr.total_input_vat))
-                .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
-                .child(
-                    div()
-                        .flex()
-                        .justify_between()
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Vysledna danova povinnost"),
+                                .w(px(120.0))
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .child(line.partner_dic.clone()),
                         )
                         .child(
                             div()
-                                .text_lg()
-                                .font_weight(FontWeight::BOLD)
-                                .text_color(rgb(ZfColors::ACCENT))
-                                .child(format_amount(vr.net_vat)),
+                                .flex_1()
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .child(line.document_number.clone()),
+                        )
+                        .child(
+                            div()
+                                .w(px(100.0))
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child(line.dppd.clone()),
+                        )
+                        .child(
+                            div()
+                                .w(px(112.0))
+                                .text_right()
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .child(format_amount(line.base)),
+                        )
+                        .child(
+                            div()
+                                .w(px(112.0))
+                                .text_right()
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .child(format_amount(line.vat)),
+                        )
+                        .child(
+                            div()
+                                .w(px(60.0))
+                                .text_right()
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child(format!("{}%", line.vat_rate_percent)),
                         ),
-                ),
-        );
+                );
+            }
+        }
 
-        content
+        content.child(table)
     }
 }
 
-impl EventEmitter<NavigateEvent> for VatReturnDetailView {}
+impl EventEmitter<NavigateEvent> for VatControlDetailView {}
 
-impl Render for VatReturnDetailView {
+impl Render for VatControlDetailView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut outer = div()
-            .id("vat-return-detail-scroll")
+            .id("vat-control-detail-scroll")
             .size_full()
             .bg(rgb(ZfColors::BG))
             .p_6()
@@ -491,11 +447,11 @@ impl Render for VatReturnDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani DPH priznani..."),
+                    .child("Nacitani kontrolniho hlaseni..."),
             );
         }
 
-        if self.vat_return.is_none()
+        if self.statement.is_none()
             && let Some(ref error) = self.error
         {
             return outer.child(
@@ -510,8 +466,8 @@ impl Render for VatReturnDetailView {
             );
         }
 
-        if let Some(ref vr) = self.vat_return.clone() {
-            outer = outer.child(self.render_vat_content(vr, cx));
+        if let Some(ref cs) = self.statement.clone() {
+            outer = outer.child(self.render_content(cs, cx));
         }
 
         // Confirm dialog overlay

@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use chrono::{Local, NaiveDate};
 use gpui::*;
+use zfaktury_core::service::RecurringExpenseService;
 use zfaktury_core::service::category_svc::CategoryService;
 use zfaktury_core::service::contact_svc::ContactService;
-use zfaktury_core::service::expense_svc::ExpenseService;
-use zfaktury_domain::{Amount, CURRENCY_CZK, Contact, ContactFilter, Expense, ExpenseCategory};
+use zfaktury_domain::{
+    Amount, CURRENCY_CZK, Contact, ContactFilter, ExpenseCategory, Frequency, RecurringExpense,
+};
 
 use crate::components::button::{ButtonVariant, render_button};
 use crate::components::date_input::DateInput;
@@ -16,14 +18,12 @@ use crate::components::text_input::{TextInput, render_form_field};
 use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 
-/// Expense creation/edit form view.
+/// Recurring expense template creation form view.
 #[allow(dead_code)]
-pub struct ExpenseFormView {
-    expense_service: Arc<ExpenseService>,
+pub struct RecurringExpenseFormView {
+    service: Arc<RecurringExpenseService>,
     contact_service: Arc<ContactService>,
     category_service: Arc<CategoryService>,
-    is_edit: bool,
-    expense_id: Option<i64>,
     saving: bool,
     loading: bool,
     error: Option<String>,
@@ -33,21 +33,23 @@ pub struct ExpenseFormView {
     categories: Vec<ExpenseCategory>,
 
     // Form fields
-    expense_number: Entity<TextInput>,
+    name: Entity<TextInput>,
     description: Entity<TextInput>,
     category_select: Entity<Select>,
     vendor_select: Entity<Select>,
-    issue_date: Entity<DateInput>,
     amount_input: Entity<NumberInput>,
     currency_select: Entity<Select>,
     vat_rate_select: Entity<Select>,
     business_percent: Entity<NumberInput>,
     payment_method_select: Entity<Select>,
+    frequency_select: Entity<Select>,
+    start_date: Entity<DateInput>,
+    end_date: Entity<DateInput>,
     notes: Entity<TextArea>,
     is_tax_deductible: bool,
 }
 
-impl EventEmitter<NavigateEvent> for ExpenseFormView {}
+impl EventEmitter<NavigateEvent> for RecurringExpenseFormView {}
 
 fn currency_options() -> Vec<SelectOption> {
     vec![
@@ -100,6 +102,27 @@ fn payment_method_options() -> Vec<SelectOption> {
     ]
 }
 
+fn frequency_options() -> Vec<SelectOption> {
+    vec![
+        SelectOption {
+            value: "weekly".to_string(),
+            label: "Tydenni".to_string(),
+        },
+        SelectOption {
+            value: "monthly".to_string(),
+            label: "Mesicni".to_string(),
+        },
+        SelectOption {
+            value: "quarterly".to_string(),
+            label: "Ctvrtletni".to_string(),
+        },
+        SelectOption {
+            value: "yearly".to_string(),
+            label: "Rocni".to_string(),
+        },
+    ]
+}
+
 fn render_labeled_field(label: &str, child: impl IntoElement) -> Div {
     div()
         .flex()
@@ -135,31 +158,24 @@ fn render_card(title: &str, content: Div) -> Div {
         .child(content)
 }
 
-impl ExpenseFormView {
-    /// Create a new expense form (create mode).
+impl RecurringExpenseFormView {
+    /// Create a new recurring expense template form.
     pub fn new_create(
-        expense_service: Arc<ExpenseService>,
+        service: Arc<RecurringExpenseService>,
         contact_service: Arc<ContactService>,
         category_service: Arc<CategoryService>,
         cx: &mut Context<Self>,
     ) -> Self {
         let today = Local::now().date_naive();
 
-        let expense_number = cx.new(|cx| TextInput::new("expense-number", "Napr. N2024001", cx));
-        let description =
-            cx.new(|cx| TextInput::new("expense-description", "Popis nakladu...", cx));
+        let name = cx.new(|cx| TextInput::new("re-name", "Nazev sablony...", cx));
+        let description = cx.new(|cx| TextInput::new("re-description", "Popis nakladu...", cx));
 
         let category_select =
             cx.new(|_cx| Select::new("category-select", "Vyberte kategorii...", vec![]));
 
         let vendor_select =
             cx.new(|_cx| Select::new("vendor-select", "Vyberte dodavatele...", vec![]));
-
-        let issue_date = cx.new(|cx| {
-            let mut d = DateInput::new("issue-date", cx);
-            d.set_iso_value(&format!("{}", today), cx);
-            d
-        });
 
         let amount_input = cx.new(|cx| NumberInput::new("amount-input", "0,00", cx));
 
@@ -191,6 +207,20 @@ impl ExpenseFormView {
             s
         });
 
+        let frequency_select = cx.new(|cx| {
+            let mut s = Select::new("frequency-select", "Frekvence", frequency_options());
+            s.set_selected_value("monthly", cx);
+            s
+        });
+
+        let start_date = cx.new(|cx| {
+            let mut d = DateInput::new("start-date", cx);
+            d.set_iso_value(&format!("{}", today), cx);
+            d
+        });
+
+        let end_date = cx.new(|cx| DateInput::new("end-date", cx));
+
         let notes = cx.new(|cx| TextArea::new("notes", "Volitelne poznamky...", cx));
 
         // Load contacts for vendor picker
@@ -251,217 +281,42 @@ impl ExpenseFormView {
         .detach();
 
         Self {
-            expense_service,
+            service,
             contact_service,
             category_service,
-            is_edit: false,
-            expense_id: None,
             saving: false,
             loading: false,
             error: None,
             contacts: Vec::new(),
             categories: Vec::new(),
-            expense_number,
+            name,
             description,
             category_select,
             vendor_select,
-            issue_date,
             amount_input,
             currency_select,
             vat_rate_select,
             business_percent,
             payment_method_select,
+            frequency_select,
+            start_date,
+            end_date,
             notes,
             is_tax_deductible: true,
         }
     }
 
-    /// Create an expense form in edit mode (loads existing expense).
-    pub fn new_edit(
-        expense_service: Arc<ExpenseService>,
-        contact_service: Arc<ContactService>,
-        category_service: Arc<CategoryService>,
-        id: i64,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        let expense_number = cx.new(|cx| TextInput::new("expense-number", "Napr. N2024001", cx));
-        let description =
-            cx.new(|cx| TextInput::new("expense-description", "Popis nakladu...", cx));
-
-        let category_select =
-            cx.new(|_cx| Select::new("category-select", "Vyberte kategorii...", vec![]));
-
-        let vendor_select =
-            cx.new(|_cx| Select::new("vendor-select", "Vyberte dodavatele...", vec![]));
-
-        let issue_date = cx.new(|cx| DateInput::new("issue-date", cx));
-
-        let amount_input = cx.new(|cx| NumberInput::new("amount-input", "0,00", cx));
-
-        let currency_select =
-            cx.new(|_cx| Select::new("currency-select", "Mena", currency_options()));
-
-        let vat_rate_select =
-            cx.new(|_cx| Select::new("vat-rate-select", "DPH sazba", vat_rate_options()));
-
-        let business_percent =
-            cx.new(|cx| NumberInput::new("biz-percent", "100", cx).integer_only());
-
-        let payment_method_select = cx.new(|_cx| {
-            Select::new(
-                "payment-method-select",
-                "Zpusob platby",
-                payment_method_options(),
-            )
-        });
-
-        let notes = cx.new(|cx| TextArea::new("notes", "Volitelne poznamky...", cx));
-
-        // Load contacts for vendor picker
-        let con_svc = contact_service.clone();
-        let vendor_sel = vendor_select.clone();
-        cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_executor()
-                .spawn(async move {
-                    con_svc.list(ContactFilter {
-                        limit: 200,
-                        ..Default::default()
-                    })
-                })
-                .await;
-            this.update(cx, |this, cx| {
-                if let Ok((contacts, _)) = result {
-                    let options: Vec<SelectOption> = contacts
-                        .iter()
-                        .map(|c| SelectOption {
-                            value: c.id.to_string(),
-                            label: c.name.clone(),
-                        })
-                        .collect();
-                    vendor_sel.update(cx, |sel, cx| sel.set_options(options, cx));
-                    this.contacts = contacts;
-                }
-                cx.notify();
-            })
-            .ok();
-        })
-        .detach();
-
-        // Load categories for category picker
-        let cat_svc = category_service.clone();
-        let cat_sel = category_select.clone();
-        cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_executor()
-                .spawn(async move { cat_svc.list() })
-                .await;
-            this.update(cx, |this, cx| {
-                if let Ok(categories) = result {
-                    let options: Vec<SelectOption> = categories
-                        .iter()
-                        .map(|c| SelectOption {
-                            value: c.key.clone(),
-                            label: c.label_cs.clone(),
-                        })
-                        .collect();
-                    cat_sel.update(cx, |sel, cx| sel.set_options(options, cx));
-                    this.categories = categories;
-                }
-                cx.notify();
-            })
-            .ok();
-        })
-        .detach();
-
-        // Load the expense data
-        let exp_svc = expense_service.clone();
-        cx.spawn(async move |this, cx| {
-            let result = cx
-                .background_executor()
-                .spawn(async move { exp_svc.get_by_id(id) })
-                .await;
-            this.update(cx, |this, cx| {
-                match result {
-                    Ok(exp) => this.populate_from_expense(&exp, cx),
-                    Err(e) => this.error = Some(format!("{e}")),
-                }
-                this.loading = false;
-                cx.notify();
-            })
-            .ok();
-        })
-        .detach();
-
-        Self {
-            expense_service,
-            contact_service,
-            category_service,
-            is_edit: true,
-            expense_id: Some(id),
-            saving: false,
-            loading: true,
-            error: None,
-            contacts: Vec::new(),
-            categories: Vec::new(),
-            expense_number,
-            description,
-            category_select,
-            vendor_select,
-            issue_date,
-            amount_input,
-            currency_select,
-            vat_rate_select,
-            business_percent,
-            payment_method_select,
-            notes,
-            is_tax_deductible: true,
-        }
-    }
-
-    /// Populate all form fields from an existing Expense.
-    fn populate_from_expense(&mut self, exp: &Expense, cx: &mut Context<Self>) {
-        self.expense_number.update(cx, |t, cx| {
-            t.set_value(&exp.expense_number, cx);
-        });
-        self.description.update(cx, |t, cx| {
-            t.set_value(&exp.description, cx);
-        });
-        self.category_select.update(cx, |s, cx| {
-            s.set_selected_value(&exp.category, cx);
-        });
-        if let Some(vendor_id) = exp.vendor_id {
-            self.vendor_select.update(cx, |s, cx| {
-                s.set_selected_value(&vendor_id.to_string(), cx);
-            });
-        }
-        self.issue_date.update(cx, |d, cx| {
-            d.set_iso_value(&exp.issue_date.to_string(), cx);
-        });
-        self.amount_input.update(cx, |n, cx| {
-            n.set_amount(exp.amount, cx);
-        });
-        self.currency_select.update(cx, |s, cx| {
-            s.set_selected_value(&exp.currency_code, cx);
-        });
-        self.vat_rate_select.update(cx, |s, cx| {
-            s.set_selected_value(&exp.vat_rate_percent.to_string(), cx);
-        });
-        self.business_percent.update(cx, |n, cx| {
-            n.set_value(exp.business_percent.to_string(), cx);
-        });
-        self.payment_method_select.update(cx, |s, cx| {
-            s.set_selected_value(&exp.payment_method, cx);
-        });
-        self.notes.update(cx, |t, cx| {
-            t.set_value(&exp.notes, cx);
-        });
-        self.is_tax_deductible = exp.is_tax_deductible;
-    }
-
-    /// Validate and save the expense (create or update).
+    /// Validate and save the recurring expense template.
     fn save(&mut self, cx: &mut Context<Self>) {
         if self.saving {
+            return;
+        }
+
+        // Read and validate name
+        let name = self.name.read(cx).value().to_string();
+        if name.trim().is_empty() {
+            self.error = Some("Zadejte nazev sablony".into());
+            cx.notify();
             return;
         }
 
@@ -488,11 +343,8 @@ impl ExpenseFormView {
             return;
         }
 
-        // Read expense number
-        let expense_number = self.expense_number.read(cx).value().to_string();
-
         // Read category
-        let category_key = self
+        let category = self
             .category_select
             .read(cx)
             .selected_value()
@@ -500,16 +352,11 @@ impl ExpenseFormView {
             .to_string();
 
         // Read vendor (optional)
-        let vendor_id_opt: Option<i64> = self
+        let vendor_id: Option<i64> = self
             .vendor_select
             .read(cx)
             .selected_value()
             .and_then(|v| v.parse().ok());
-
-        // Read issue date
-        let issue_date_str = self.issue_date.read(cx).iso_value().to_string();
-        let issue_date = NaiveDate::parse_from_str(&issue_date_str, "%Y-%m-%d")
-            .unwrap_or_else(|_| Local::now().date_naive());
 
         // Read currency
         let currency = self
@@ -543,18 +390,39 @@ impl ExpenseFormView {
             .unwrap_or("bank_transfer")
             .to_string();
 
+        // Read frequency
+        let freq_str = self
+            .frequency_select
+            .read(cx)
+            .selected_value()
+            .unwrap_or("monthly")
+            .to_string();
+        let frequency = match freq_str.as_str() {
+            "weekly" => Frequency::Weekly,
+            "quarterly" => Frequency::Quarterly,
+            "yearly" => Frequency::Yearly,
+            _ => Frequency::Monthly,
+        };
+
+        // Read dates
+        let start_date_str = self.start_date.read(cx).iso_value().to_string();
+        let next_issue_date = NaiveDate::parse_from_str(&start_date_str, "%Y-%m-%d")
+            .unwrap_or_else(|_| Local::now().date_naive());
+
+        let end_date_str = self.end_date.read(cx).iso_value().to_string();
+        let end_date = NaiveDate::parse_from_str(&end_date_str, "%Y-%m-%d").ok();
+
         // Read notes
         let notes = self.notes.read(cx).value().to_string();
 
         let now = chrono::Local::now().naive_local();
-        let mut expense = Expense {
-            id: self.expense_id.unwrap_or(0),
-            vendor_id: vendor_id_opt,
+        let mut re = RecurringExpense {
+            id: 0,
+            name,
+            vendor_id,
             vendor: None,
-            expense_number,
-            category: category_key,
+            category,
             description,
-            issue_date,
             amount: amount_val,
             currency_code: currency,
             exchange_rate: Amount::new(1, 0),
@@ -563,10 +431,11 @@ impl ExpenseFormView {
             is_tax_deductible: self.is_tax_deductible,
             business_percent: biz_pct,
             payment_method,
-            document_path: String::new(),
             notes,
-            tax_reviewed_at: None,
-            items: Vec::new(),
+            frequency,
+            next_issue_date,
+            end_date,
+            is_active: true,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -576,24 +445,19 @@ impl ExpenseFormView {
         self.error = None;
         cx.notify();
 
-        let service = self.expense_service.clone();
-        let is_edit = self.is_edit;
+        let service = self.service.clone();
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    if is_edit {
-                        service.update(&mut expense)?;
-                    } else {
-                        service.create(&mut expense)?;
-                    }
-                    Ok::<i64, zfaktury_domain::DomainError>(expense.id)
+                    service.create(&mut re)?;
+                    Ok::<i64, zfaktury_domain::DomainError>(re.id)
                 })
                 .await;
             this.update(cx, |this, cx| {
                 this.saving = false;
                 match result {
-                    Ok(id) => cx.emit(NavigateEvent(Route::ExpenseDetail(id))),
+                    Ok(id) => cx.emit(NavigateEvent(Route::RecurringExpenseDetail(id))),
                     Err(e) => this.error = Some(format!("{e}")),
                 }
                 cx.notify();
@@ -604,16 +468,10 @@ impl ExpenseFormView {
     }
 }
 
-impl Render for ExpenseFormView {
+impl Render for RecurringExpenseFormView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let title = if self.is_edit {
-            format!("Upravit naklad #{}", self.expense_id.unwrap_or_default())
-        } else {
-            "Novy naklad".to_string()
-        };
-
         let mut outer = div()
-            .id("expense-form-scroll")
+            .id("recurring-expense-form-scroll")
             .size_full()
             .bg(rgb(ZfColors::BG))
             .p_6()
@@ -628,7 +486,7 @@ impl Render for ExpenseFormView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child(title),
+                .child("Novy opakovany naklad"),
         );
 
         // Error message
@@ -651,7 +509,7 @@ impl Render for ExpenseFormView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani nakladu..."),
+                    .child("Nacitani..."),
             );
         }
 
@@ -662,22 +520,23 @@ impl Render for ExpenseFormView {
                 .flex()
                 .flex_col()
                 .gap_4()
-                // Row 1: expense_number (w-48), description (flex-1)
+                // Row 1: name, description
                 .child(
                     div()
                         .flex()
                         .gap_4()
-                        .child(div().w(px(192.0)).child(render_form_field(
-                            "Cislo dokladu",
-                            self.expense_number.clone(),
-                        )))
+                        .child(
+                            div()
+                                .w(px(240.0))
+                                .child(render_form_field("Nazev sablony", self.name.clone())),
+                        )
                         .child(
                             div()
                                 .flex_1()
                                 .child(render_form_field("Popis", self.description.clone())),
                         ),
                 )
-                // Row 2: category, issue_date, vendor
+                // Row 2: category, vendor, frequency
                 .child(
                     div()
                         .flex()
@@ -686,11 +545,28 @@ impl Render for ExpenseFormView {
                             "Kategorie",
                             self.category_select.clone(),
                         )))
-                        .child(render_labeled_field("Datum", self.issue_date.clone()))
                         .child(div().flex_1().child(render_labeled_field(
                             "Dodavatel",
                             self.vendor_select.clone(),
+                        )))
+                        .child(div().w(px(160.0)).child(render_labeled_field(
+                            "Frekvence",
+                            self.frequency_select.clone(),
                         ))),
+                )
+                // Row 3: dates
+                .child(
+                    div()
+                        .flex()
+                        .gap_4()
+                        .child(render_labeled_field(
+                            "Datum zahajeni",
+                            self.start_date.clone(),
+                        ))
+                        .child(render_labeled_field(
+                            "Datum ukonceni (volitelne)",
+                            self.end_date.clone(),
+                        )),
                 ),
         ));
 
@@ -713,7 +589,7 @@ impl Render for ExpenseFormView {
                 .flex()
                 .flex_col()
                 .gap_4()
-                // Row 1: amount (flex-1), currency (w-32), vat_rate (w-32)
+                // Row 1: amount, currency, vat_rate
                 .child(
                     div()
                         .flex()
@@ -733,7 +609,7 @@ impl Render for ExpenseFormView {
                             self.vat_rate_select.clone(),
                         ))),
                 )
-                // Row 2: business_percent (w-32), payment_method (flex-1), tax deductible toggle
+                // Row 2: business_percent, payment_method, tax deductible toggle
                 .child(
                     div()
                         .flex()
@@ -782,13 +658,13 @@ impl Render for ExpenseFormView {
             self.saving,
             false,
             cx.listener(|_this, _event: &ClickEvent, _window, cx| {
-                cx.emit(NavigateEvent(Route::ExpenseList));
+                cx.emit(NavigateEvent(Route::RecurringExpenseList));
             }),
         );
 
         let save_btn = render_button(
             "save-btn",
-            "Ulozit naklad",
+            "Ulozit sablonu",
             ButtonVariant::Primary,
             false,
             self.saving,

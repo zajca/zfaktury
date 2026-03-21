@@ -7,6 +7,7 @@ use crate::navigation::{NavigateEvent, NavigationState, Route};
 use crate::sidebar::SidebarView;
 use crate::theme::ZfColors;
 use crate::views::contact_detail::ContactDetailView;
+use crate::views::contact_form::ContactFormView;
 use crate::views::contact_list::ContactListView;
 use crate::views::dashboard::DashboardView;
 use crate::views::expense_detail::ExpenseDetailView;
@@ -16,7 +17,11 @@ use crate::views::import_fakturoid::ImportFakturoidView;
 use crate::views::invoice_detail::InvoiceDetailView;
 use crate::views::invoice_form::InvoiceFormView;
 use crate::views::invoice_list::InvoiceListView;
+use crate::views::recurring_expense_detail::RecurringExpenseDetailView;
+use crate::views::recurring_expense_form::RecurringExpenseFormView;
 use crate::views::recurring_expense_list::RecurringExpenseListView;
+use crate::views::recurring_invoice_detail::RecurringInvoiceDetailView;
+use crate::views::recurring_invoice_form::RecurringInvoiceFormView;
 use crate::views::recurring_invoice_list::RecurringInvoiceListView;
 use crate::views::reports::ReportsView;
 use crate::views::settings_audit::SettingsAuditView;
@@ -27,11 +32,22 @@ use crate::views::settings_firma::SettingsFirmaView;
 use crate::views::settings_sequences::SettingsSequencesView;
 use crate::views::stub::StubView;
 use crate::views::tax_credits::TaxCreditsView;
+use crate::views::tax_health_detail::TaxHealthDetailView;
+use crate::views::tax_health_form::TaxHealthFormView;
+use crate::views::tax_income_detail::TaxIncomeDetailView;
+use crate::views::tax_income_form::TaxIncomeFormView;
 use crate::views::tax_investments::TaxInvestmentsView;
 use crate::views::tax_overview::TaxOverviewView;
 use crate::views::tax_prepayments::TaxPrepaymentsView;
+use crate::views::tax_social_detail::TaxSocialDetailView;
+use crate::views::tax_social_form::TaxSocialFormView;
+use crate::views::vat_control_detail::VatControlDetailView;
+use crate::views::vat_control_form::VatControlFormView;
 use crate::views::vat_overview::VatOverviewView;
 use crate::views::vat_return_detail::VatReturnDetailView;
+use crate::views::vat_return_form::VatReturnFormView;
+use crate::views::vies_detail::ViesDetailView;
+use crate::views::vies_form::ViesFormView;
 
 /// Root view: sidebar + main content area. Routes to appropriate view based on
 /// the current NavigationState.
@@ -53,14 +69,30 @@ enum ContentView {
     ExpenseForm(Entity<ExpenseFormView>),
     ContactList(Entity<ContactListView>),
     ContactDetail(Entity<ContactDetailView>),
+    ContactForm(Entity<ContactFormView>),
     RecurringInvoiceList(Entity<RecurringInvoiceListView>),
+    RecurringInvoiceDetail(Entity<RecurringInvoiceDetailView>),
+    RecurringInvoiceForm(Entity<RecurringInvoiceFormView>),
     RecurringExpenseList(Entity<RecurringExpenseListView>),
+    RecurringExpenseDetail(Entity<RecurringExpenseDetailView>),
+    RecurringExpenseForm(Entity<RecurringExpenseFormView>),
     VatOverview(Entity<VatOverviewView>),
     VatReturnDetail(Entity<VatReturnDetailView>),
+    VatReturnForm(Entity<VatReturnFormView>),
+    VatControlDetail(Entity<VatControlDetailView>),
+    VatControlForm(Entity<VatControlFormView>),
+    ViesDetail(Entity<ViesDetailView>),
+    ViesForm(Entity<ViesFormView>),
     TaxOverview(Entity<TaxOverviewView>),
     TaxCredits(Entity<TaxCreditsView>),
     TaxPrepayments(Entity<TaxPrepaymentsView>),
     TaxInvestments(Entity<TaxInvestmentsView>),
+    TaxIncomeDetail(Entity<TaxIncomeDetailView>),
+    TaxIncomeForm(Entity<TaxIncomeFormView>),
+    TaxSocialDetail(Entity<TaxSocialDetailView>),
+    TaxSocialForm(Entity<TaxSocialFormView>),
+    TaxHealthDetail(Entity<TaxHealthDetailView>),
+    TaxHealthForm(Entity<TaxHealthFormView>),
     Reports(Entity<ReportsView>),
     SettingsFirma(Entity<SettingsFirmaView>),
     SettingsEmail(Entity<SettingsEmailView>),
@@ -138,14 +170,30 @@ impl RootView {
             ContentView::ExpenseForm(e) => subscribe_nav!(e, cx),
             ContentView::ContactList(e) => subscribe_nav!(e, cx),
             ContentView::ContactDetail(e) => subscribe_nav!(e, cx),
+            ContentView::ContactForm(e) => subscribe_nav!(e, cx),
             ContentView::RecurringInvoiceList(e) => subscribe_nav!(e, cx),
+            ContentView::RecurringInvoiceDetail(e) => subscribe_nav!(e, cx),
+            ContentView::RecurringInvoiceForm(e) => subscribe_nav!(e, cx),
             ContentView::RecurringExpenseList(e) => subscribe_nav!(e, cx),
+            ContentView::RecurringExpenseDetail(e) => subscribe_nav!(e, cx),
+            ContentView::RecurringExpenseForm(e) => subscribe_nav!(e, cx),
             ContentView::VatOverview(e) => subscribe_nav!(e, cx),
             ContentView::VatReturnDetail(e) => subscribe_nav!(e, cx),
+            ContentView::VatReturnForm(e) => subscribe_nav!(e, cx),
+            ContentView::VatControlDetail(e) => subscribe_nav!(e, cx),
+            ContentView::VatControlForm(e) => subscribe_nav!(e, cx),
+            ContentView::ViesDetail(e) => subscribe_nav!(e, cx),
+            ContentView::ViesForm(e) => subscribe_nav!(e, cx),
             ContentView::TaxOverview(e) => subscribe_nav!(e, cx),
             ContentView::TaxCredits(e) => subscribe_nav!(e, cx),
             ContentView::TaxPrepayments(e) => subscribe_nav!(e, cx),
             ContentView::TaxInvestments(e) => subscribe_nav!(e, cx),
+            ContentView::TaxIncomeDetail(e) => subscribe_nav!(e, cx),
+            ContentView::TaxIncomeForm(e) => subscribe_nav!(e, cx),
+            ContentView::TaxSocialDetail(e) => subscribe_nav!(e, cx),
+            ContentView::TaxSocialForm(e) => subscribe_nav!(e, cx),
+            ContentView::TaxHealthDetail(e) => subscribe_nav!(e, cx),
+            ContentView::TaxHealthForm(e) => subscribe_nav!(e, cx),
             ContentView::Reports(e) => subscribe_nav!(e, cx),
             ContentView::SettingsFirma(e) => subscribe_nav!(e, cx),
             ContentView::SettingsEmail(e) => subscribe_nav!(e, cx),
@@ -173,11 +221,19 @@ impl RootView {
                 ContentView::InvoiceList(cx.new(|cx| InvoiceListView::new(svc, cx)))
             }
             Route::InvoiceNew => {
-                ContentView::InvoiceForm(cx.new(|_cx| InvoiceFormView::new_create()))
+                let inv_svc = services.invoices.clone();
+                let con_svc = services.contacts.clone();
+                ContentView::InvoiceForm(
+                    cx.new(|cx| InvoiceFormView::new_create(inv_svc, con_svc, cx)),
+                )
             }
             Route::InvoiceEdit(id) => {
+                let inv_svc = services.invoices.clone();
+                let con_svc = services.contacts.clone();
                 let id = *id;
-                ContentView::InvoiceForm(cx.new(move |_cx| InvoiceFormView::new_edit(id)))
+                ContentView::InvoiceForm(
+                    cx.new(move |cx| InvoiceFormView::new_edit(inv_svc, con_svc, id, cx)),
+                )
             }
             Route::InvoiceDetail(id) => {
                 let svc = services.invoices.clone();
@@ -188,10 +244,22 @@ impl RootView {
                 let svc = services.expenses.clone();
                 ContentView::ExpenseList(cx.new(|cx| ExpenseListView::new(svc, cx)))
             }
-            Route::ExpenseNew => ContentView::ExpenseForm(cx.new(|_cx| ExpenseFormView::new())),
+            Route::ExpenseNew => {
+                let exp_svc = services.expenses.clone();
+                let con_svc = services.contacts.clone();
+                let cat_svc = services.categories.clone();
+                ContentView::ExpenseForm(
+                    cx.new(|cx| ExpenseFormView::new_create(exp_svc, con_svc, cat_svc, cx)),
+                )
+            }
             Route::ExpenseEdit(id) => {
+                let exp_svc = services.expenses.clone();
+                let con_svc = services.contacts.clone();
+                let cat_svc = services.categories.clone();
                 let id = *id;
-                ContentView::ExpenseForm(cx.new(move |_cx| ExpenseFormView::new_edit(id)))
+                ContentView::ExpenseForm(
+                    cx.new(move |cx| ExpenseFormView::new_edit(exp_svc, con_svc, cat_svc, id, cx)),
+                )
             }
             Route::ExpenseDetail(id) => {
                 let svc = services.expenses.clone();
@@ -202,9 +270,14 @@ impl RootView {
                 let svc = services.contacts.clone();
                 ContentView::ContactList(cx.new(|cx| ContactListView::new(svc, cx)))
             }
-            Route::ContactNew | Route::ContactEdit(_) => {
-                let label = route.label().to_string();
-                ContentView::Stub(cx.new(|_cx| StubView::new(label)))
+            Route::ContactNew => {
+                let svc = services.contacts.clone();
+                ContentView::ContactForm(cx.new(|cx| ContactFormView::new_create(svc, cx)))
+            }
+            Route::ContactEdit(id) => {
+                let svc = services.contacts.clone();
+                let id = *id;
+                ContentView::ContactForm(cx.new(move |cx| ContactFormView::new_edit(svc, id, cx)))
             }
             Route::ContactDetail(id) => {
                 let svc = services.contacts.clone();
@@ -217,28 +290,122 @@ impl RootView {
                     cx.new(|cx| RecurringInvoiceListView::new(svc, cx)),
                 )
             }
+            Route::RecurringInvoiceNew => {
+                let svc = services.recurring_invoices.clone();
+                let con_svc = services.contacts.clone();
+                ContentView::RecurringInvoiceForm(
+                    cx.new(|cx| RecurringInvoiceFormView::new_create(svc, con_svc, cx)),
+                )
+            }
+            Route::RecurringInvoiceDetail(id) => {
+                let svc = services.recurring_invoices.clone();
+                let id = *id;
+                ContentView::RecurringInvoiceDetail(
+                    cx.new(|cx| RecurringInvoiceDetailView::new(svc, id, cx)),
+                )
+            }
             Route::RecurringExpenseList => {
                 let svc = services.recurring_expenses.clone();
                 ContentView::RecurringExpenseList(
                     cx.new(|cx| RecurringExpenseListView::new(svc, cx)),
                 )
             }
+            Route::RecurringExpenseNew => {
+                let svc = services.recurring_expenses.clone();
+                let con_svc = services.contacts.clone();
+                let cat_svc = services.categories.clone();
+                ContentView::RecurringExpenseForm(
+                    cx.new(|cx| RecurringExpenseFormView::new_create(svc, con_svc, cat_svc, cx)),
+                )
+            }
+            Route::RecurringExpenseDetail(id) => {
+                let svc = services.recurring_expenses.clone();
+                let id = *id;
+                ContentView::RecurringExpenseDetail(
+                    cx.new(|cx| RecurringExpenseDetailView::new(svc, id, cx)),
+                )
+            }
             Route::VATOverview => {
+                let vat_svc = services.vat_returns.clone();
+                let control_svc = services.vat_control.clone();
+                let vies_svc = services.vies.clone();
+                ContentView::VatOverview(
+                    cx.new(|cx| VatOverviewView::new(vat_svc, control_svc, vies_svc, cx)),
+                )
+            }
+            Route::VATReturnNew => {
                 let svc = services.vat_returns.clone();
-                ContentView::VatOverview(cx.new(|cx| VatOverviewView::new(svc, cx)))
+                ContentView::VatReturnForm(cx.new(|cx| VatReturnFormView::new(svc, cx)))
             }
             Route::VATReturnDetail(id) => {
                 let svc = services.vat_returns.clone();
                 let id = *id;
                 ContentView::VatReturnDetail(cx.new(|cx| VatReturnDetailView::new(svc, id, cx)))
             }
-            Route::TaxOverview => ContentView::TaxOverview(cx.new(|_cx| TaxOverviewView::new())),
-            Route::TaxCredits => ContentView::TaxCredits(cx.new(|_cx| TaxCreditsView::new())),
+            Route::VATControlNew => {
+                let svc = services.vat_control.clone();
+                ContentView::VatControlForm(cx.new(|cx| VatControlFormView::new(svc, cx)))
+            }
+            Route::VATControlDetail(id) => {
+                let svc = services.vat_control.clone();
+                let id = *id;
+                ContentView::VatControlDetail(cx.new(|cx| VatControlDetailView::new(svc, id, cx)))
+            }
+            Route::VIESNew => {
+                let svc = services.vies.clone();
+                ContentView::ViesForm(cx.new(|cx| ViesFormView::new(svc, cx)))
+            }
+            Route::VIESDetail(id) => {
+                let svc = services.vies.clone();
+                let id = *id;
+                ContentView::ViesDetail(cx.new(|cx| ViesDetailView::new(svc, id, cx)))
+            }
+            Route::TaxOverview => {
+                let income_svc = services.income_tax.clone();
+                let social_svc = services.social_insurance.clone();
+                let health_svc = services.health_insurance.clone();
+                ContentView::TaxOverview(
+                    cx.new(|cx| TaxOverviewView::new(income_svc, social_svc, health_svc, cx)),
+                )
+            }
+            Route::TaxCredits => {
+                let svc = services.tax_credits.clone();
+                ContentView::TaxCredits(cx.new(|cx| TaxCreditsView::new(svc, cx)))
+            }
             Route::TaxPrepayments => {
-                ContentView::TaxPrepayments(cx.new(|_cx| TaxPrepaymentsView::new()))
+                let svc = services.tax_year_settings.clone();
+                ContentView::TaxPrepayments(cx.new(|cx| TaxPrepaymentsView::new(svc, cx)))
             }
             Route::TaxInvestments => {
-                ContentView::TaxInvestments(cx.new(|_cx| TaxInvestmentsView::new()))
+                let svc = services.investment_income.clone();
+                ContentView::TaxInvestments(cx.new(|cx| TaxInvestmentsView::new(svc, cx)))
+            }
+            Route::TaxIncomeNew => {
+                let svc = services.income_tax.clone();
+                ContentView::TaxIncomeForm(cx.new(|cx| TaxIncomeFormView::new(svc, cx)))
+            }
+            Route::TaxIncomeDetail(id) => {
+                let svc = services.income_tax.clone();
+                let id = *id;
+                ContentView::TaxIncomeDetail(cx.new(|cx| TaxIncomeDetailView::new(svc, id, cx)))
+            }
+            Route::TaxSocialNew => {
+                let svc = services.social_insurance.clone();
+                ContentView::TaxSocialForm(cx.new(|cx| TaxSocialFormView::new(svc, cx)))
+            }
+            Route::TaxSocialDetail(id) => {
+                let svc = services.social_insurance.clone();
+                let id = *id;
+                ContentView::TaxSocialDetail(cx.new(|cx| TaxSocialDetailView::new(svc, id, cx)))
+            }
+            Route::TaxHealthNew => {
+                let svc = services.health_insurance.clone();
+                ContentView::TaxHealthForm(cx.new(|cx| TaxHealthFormView::new(svc, cx)))
+            }
+            Route::TaxHealthDetail(id) => {
+                let svc = services.health_insurance.clone();
+                let id = *id;
+                ContentView::TaxHealthDetail(cx.new(|cx| TaxHealthDetailView::new(svc, id, cx)))
             }
             Route::Reports => {
                 let svc = services.reports.clone();
@@ -290,14 +457,30 @@ impl Render for RootView {
             ContentView::ExpenseForm(v) => v.clone().into_any_element(),
             ContentView::ContactList(v) => v.clone().into_any_element(),
             ContentView::ContactDetail(v) => v.clone().into_any_element(),
+            ContentView::ContactForm(v) => v.clone().into_any_element(),
             ContentView::RecurringInvoiceList(v) => v.clone().into_any_element(),
+            ContentView::RecurringInvoiceDetail(v) => v.clone().into_any_element(),
+            ContentView::RecurringInvoiceForm(v) => v.clone().into_any_element(),
             ContentView::RecurringExpenseList(v) => v.clone().into_any_element(),
+            ContentView::RecurringExpenseDetail(v) => v.clone().into_any_element(),
+            ContentView::RecurringExpenseForm(v) => v.clone().into_any_element(),
             ContentView::VatOverview(v) => v.clone().into_any_element(),
             ContentView::VatReturnDetail(v) => v.clone().into_any_element(),
+            ContentView::VatReturnForm(v) => v.clone().into_any_element(),
+            ContentView::VatControlDetail(v) => v.clone().into_any_element(),
+            ContentView::VatControlForm(v) => v.clone().into_any_element(),
+            ContentView::ViesDetail(v) => v.clone().into_any_element(),
+            ContentView::ViesForm(v) => v.clone().into_any_element(),
             ContentView::TaxOverview(v) => v.clone().into_any_element(),
             ContentView::TaxCredits(v) => v.clone().into_any_element(),
             ContentView::TaxPrepayments(v) => v.clone().into_any_element(),
             ContentView::TaxInvestments(v) => v.clone().into_any_element(),
+            ContentView::TaxIncomeDetail(v) => v.clone().into_any_element(),
+            ContentView::TaxIncomeForm(v) => v.clone().into_any_element(),
+            ContentView::TaxSocialDetail(v) => v.clone().into_any_element(),
+            ContentView::TaxSocialForm(v) => v.clone().into_any_element(),
+            ContentView::TaxHealthDetail(v) => v.clone().into_any_element(),
+            ContentView::TaxHealthForm(v) => v.clone().into_any_element(),
             ContentView::Reports(v) => v.clone().into_any_element(),
             ContentView::SettingsFirma(v) => v.clone().into_any_element(),
             ContentView::SettingsEmail(v) => v.clone().into_any_element(),

@@ -4,7 +4,8 @@ use gpui::*;
 use zfaktury_core::service::RecurringExpenseService;
 use zfaktury_domain::RecurringExpense;
 
-use crate::navigation::NavigateEvent;
+use crate::components::button::{ButtonVariant, render_button};
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 use crate::util::format::{format_amount, format_date};
 
@@ -60,7 +61,7 @@ impl RecurringExpenseListView {
 impl EventEmitter<NavigateEvent> for RecurringExpenseListView {}
 
 impl Render for RecurringExpenseListView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut content = div()
             .id("recurring-expense-list-scroll")
             .size_full()
@@ -71,25 +72,41 @@ impl Render for RecurringExpenseListView {
             .gap_4()
             .overflow_y_scroll();
 
-        // Header
+        // Header with title and New button
         content = content.child(
             div()
                 .flex()
                 .items_center()
-                .gap_3()
+                .justify_between()
                 .child(
                     div()
-                        .text_xl()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Opakovane naklady"),
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            div()
+                                .text_xl()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .child("Opakovane naklady"),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child(format!("({} celkem)", self.total)),
+                        ),
                 )
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child(format!("({} celkem)", self.total)),
-                ),
+                .child(render_button(
+                    "new-recurring-expense-btn",
+                    "Novy opakovany naklad",
+                    ButtonVariant::Primary,
+                    false,
+                    false,
+                    cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                        cx.emit(NavigateEvent(Route::RecurringExpenseNew));
+                    }),
+                )),
         );
 
         if self.loading {
@@ -150,7 +167,7 @@ impl Render for RecurringExpenseListView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne opakovane naklady."),
+                    .child("Zadne opakovane naklady. Vytvorte novy opakovany naklad."),
             );
         } else {
             for re in &self.items {
@@ -161,8 +178,10 @@ impl Render for RecurringExpenseListView {
                     ZfColors::STATUS_GRAY
                 };
 
+                let re_id = re.id;
                 table = table.child(
                     div()
+                        .id(ElementId::Name(format!("re-row-{re_id}").into()))
                         .flex()
                         .items_center()
                         .px_4()
@@ -172,6 +191,9 @@ impl Render for RecurringExpenseListView {
                         .border_color(rgb(ZfColors::BORDER_SUBTLE))
                         .cursor_pointer()
                         .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)))
+                        .on_click(cx.listener(move |_this, _event: &ClickEvent, _window, cx| {
+                            cx.emit(NavigateEvent(Route::RecurringExpenseDetail(re_id)));
+                        }))
                         .child(
                             div()
                                 .flex_1()

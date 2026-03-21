@@ -4,26 +4,46 @@ use gpui::*;
 use zfaktury_core::service::ContactService;
 use zfaktury_domain::{Contact, ContactFilter};
 
-use crate::navigation::NavigateEvent;
+use crate::components::button::{ButtonVariant, render_button};
+use crate::components::text_input::{TextChanged, TextInput};
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 
-/// Contact list view with search and table.
+/// Contact list view with search, table, and pagination.
 pub struct ContactListView {
     service: Arc<ContactService>,
     loading: bool,
     error: Option<String>,
     contacts: Vec<Contact>,
     total: i64,
+    search_input: Entity<TextInput>,
+    current_page: usize,
+    page_size: i64,
 }
 
 impl ContactListView {
     pub fn new(service: Arc<ContactService>, cx: &mut Context<Self>) -> Self {
+        let search_input = cx.new(|cx| TextInput::new("contact-search", "Hledat kontakty...", cx));
+
+        // Subscribe to search changes
+        cx.subscribe(
+            &search_input,
+            |this: &mut Self, _input, _event: &TextChanged, cx| {
+                this.current_page = 0;
+                this.load_data(cx);
+            },
+        )
+        .detach();
+
         let mut view = Self {
             service,
             loading: true,
             error: None,
             contacts: Vec::new(),
             total: 0,
+            search_input,
+            current_page: 0,
+            page_size: 20,
         };
         view.load_data(cx);
         view
@@ -31,12 +51,21 @@ impl ContactListView {
 
     fn load_data(&mut self, cx: &mut Context<Self>) {
         let service = self.service.clone();
+        let search = self.search_input.read(cx).value().to_string();
+        let offset = (self.current_page as i32) * (self.page_size as i32);
+        let limit = self.page_size as i32;
+
+        self.loading = true;
+        cx.notify();
+
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
                 .spawn(async move {
                     service.list(ContactFilter {
-                        limit: 50,
+                        search,
+                        limit,
+                        offset,
                         ..Default::default()
                     })
                 })
@@ -59,12 +88,20 @@ impl ContactListView {
         })
         .detach();
     }
+
+    fn total_pages(&self) -> usize {
+        if self.total == 0 {
+            1
+        } else {
+            ((self.total as f64) / (self.page_size as f64)).ceil() as usize
+        }
+    }
 }
 
 impl EventEmitter<NavigateEvent> for ContactListView {}
 
 impl Render for ContactListView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut content = div()
             .id("contact-list-scroll")
             .size_full()
@@ -75,38 +112,54 @@ impl Render for ContactListView {
             .gap_4()
             .overflow_y_scroll();
 
-        // Header
+        // Header with title and New button
+        content = content.child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            div()
+                                .text_xl()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .child("Kontakty"),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_MUTED))
+                                .child(format!("({} celkem)", self.total)),
+                        ),
+                )
+                .child(render_button(
+                    "new-contact-btn",
+                    "Novy kontakt",
+                    ButtonVariant::Primary,
+                    false,
+                    false,
+                    cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                        cx.emit(NavigateEvent(Route::ContactNew));
+                    }),
+                )),
+        );
+
+        // Search row
         content = content.child(
             div()
                 .flex()
                 .items_center()
                 .gap_3()
-                .child(
-                    div()
-                        .text_xl()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Kontakty"),
-                )
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child(format!("({} celkem)", self.total)),
-                ),
+                .child(div().flex_1().child(self.search_input.clone())),
         );
 
-        if self.loading {
-            return content.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
-            );
-        }
-
         if let Some(ref error) = self.error {
-            return content.child(
+            content = content.child(
                 div()
                     .px_4()
                     .py_3()
@@ -115,6 +168,15 @@ impl Render for ContactListView {
                     .text_sm()
                     .text_color(rgb(ZfColors::STATUS_RED))
                     .child(error.clone()),
+            );
+        }
+
+        if self.loading {
+            return content.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::TEXT_MUTED))
+                    .child("Nacitani..."),
             );
         }
 
@@ -154,12 +216,14 @@ impl Render for ContactListView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne kontakty."),
+                    .child("Zadne kontakty. Vytvorte novy kontakt."),
             );
         } else {
             for contact in &self.contacts {
+                let contact_id = contact.id;
                 table = table.child(
                     div()
+                        .id(ElementId::Name(format!("contact-row-{contact_id}").into()))
                         .flex()
                         .items_center()
                         .px_4()
@@ -169,6 +233,9 @@ impl Render for ContactListView {
                         .border_color(rgb(ZfColors::BORDER_SUBTLE))
                         .cursor_pointer()
                         .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)))
+                        .on_click(cx.listener(move |_this, _event: &ClickEvent, _window, cx| {
+                            cx.emit(NavigateEvent(Route::ContactDetail(contact_id)));
+                        }))
                         .child(
                             div()
                                 .flex_1()
@@ -210,6 +277,54 @@ impl Render for ContactListView {
             }
         }
 
-        content.child(table)
+        content = content.child(table);
+
+        // Pagination
+        let total_pages = self.total_pages();
+        if total_pages > 1 {
+            let current = self.current_page;
+            content = content.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .gap_3()
+                    .py_2()
+                    .child(render_button(
+                        "btn-prev-page",
+                        "Predchozi",
+                        ButtonVariant::Secondary,
+                        current == 0,
+                        false,
+                        cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                            if this.current_page > 0 {
+                                this.current_page -= 1;
+                                this.load_data(cx);
+                            }
+                        }),
+                    ))
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .child(format!("Strana {} z {}", current + 1, total_pages)),
+                    )
+                    .child(render_button(
+                        "btn-next-page",
+                        "Dalsi",
+                        ButtonVariant::Secondary,
+                        current >= total_pages - 1,
+                        false,
+                        cx.listener(move |this, _event: &ClickEvent, _window, cx| {
+                            if this.current_page < total_pages - 1 {
+                                this.current_page += 1;
+                                this.load_data(cx);
+                            }
+                        }),
+                    )),
+            );
+        }
+
+        content
     }
 }

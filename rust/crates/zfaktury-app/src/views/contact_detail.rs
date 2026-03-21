@@ -4,16 +4,20 @@ use gpui::*;
 use zfaktury_core::service::ContactService;
 use zfaktury_domain::Contact;
 
-use crate::navigation::NavigateEvent;
+use crate::components::button::{ButtonVariant, render_button};
+use crate::components::confirm_dialog::{ConfirmDialog, ConfirmDialogResult};
+use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
 
-/// Contact detail view displaying all contact data.
+/// Contact detail view displaying all contact data with action buttons.
 pub struct ContactDetailView {
     service: Arc<ContactService>,
     contact_id: i64,
     loading: bool,
     error: Option<String>,
     contact: Option<Contact>,
+    confirm_dialog: Option<Entity<ConfirmDialog>>,
+    action_loading: bool,
 }
 
 impl ContactDetailView {
@@ -24,6 +28,8 @@ impl ContactDetailView {
             loading: true,
             error: None,
             contact: None,
+            confirm_dialog: None,
+            action_loading: false,
         };
         view.load_data(cx);
         view
@@ -49,6 +55,98 @@ impl ContactDetailView {
             .ok();
         })
         .detach();
+    }
+
+    fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
+        let dialog = cx.new(|_cx| {
+            ConfirmDialog::new(
+                "Smazat kontakt?",
+                "Tato akce je nevratna. Kontakt bude trvale smazan.",
+                "Smazat",
+            )
+        });
+        cx.subscribe(
+            &dialog,
+            |this: &mut Self, _, result: &ConfirmDialogResult, cx| match result {
+                ConfirmDialogResult::Confirmed => {
+                    let service = this.service.clone();
+                    let id = this.contact_id;
+                    this.confirm_dialog = None;
+                    this.action_loading = true;
+                    this.error = None;
+                    cx.notify();
+                    cx.spawn(async move |this, cx| {
+                        let result = cx
+                            .background_executor()
+                            .spawn(async move { service.delete(id) })
+                            .await;
+                        this.update(cx, |this, cx| {
+                            this.action_loading = false;
+                            match result {
+                                Ok(()) => cx.emit(NavigateEvent(Route::ContactList)),
+                                Err(e) => {
+                                    this.error = Some(format!("{e}"));
+                                    cx.notify();
+                                }
+                            }
+                        })
+                        .ok();
+                    })
+                    .detach();
+                }
+                ConfirmDialogResult::Cancelled => {
+                    this.confirm_dialog = None;
+                    cx.notify();
+                }
+            },
+        )
+        .detach();
+        self.confirm_dialog = Some(dialog);
+        cx.notify();
+    }
+
+    fn render_action_buttons(&self, cx: &mut Context<Self>) -> Div {
+        let mut bar = div().flex().items_center().gap_2().flex_wrap();
+        let disabled = self.action_loading;
+        let contact_id = self.contact_id;
+
+        // Back button
+        bar = bar.child(render_button(
+            "btn-back",
+            "Zpet na seznam",
+            ButtonVariant::Secondary,
+            disabled,
+            false,
+            cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                cx.emit(NavigateEvent(Route::ContactList));
+            }),
+        ));
+
+        // Edit button
+        bar = bar.child(render_button(
+            "btn-edit",
+            "Upravit",
+            ButtonVariant::Secondary,
+            disabled,
+            false,
+            cx.listener(move |_this, _event: &ClickEvent, _window, cx| {
+                cx.emit(NavigateEvent(Route::ContactEdit(contact_id)));
+            }),
+        ));
+
+        // Delete button
+        bar = bar.child(render_button(
+            "btn-delete",
+            "Smazat",
+            ButtonVariant::Danger,
+            disabled,
+            false,
+            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                this.show_delete_dialog(cx);
+            }),
+        ));
+
+        bar
     }
 
     fn render_field(&self, label: &str, value: &str) -> Div {
@@ -105,53 +203,34 @@ impl ContactDetailView {
         section
     }
 
-    fn render_contact_content(&self, c: &Contact) -> Div {
+    fn render_contact_content(&self, c: &Contact, cx: &mut Context<Self>) -> Div {
         let mut content = div().flex().flex_col().gap_6();
 
         // Header
         content = content.child(
             div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .text_xl()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child(c.name.clone()),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .gap_2()
-                        .child(
-                            div()
-                                .px_4()
-                                .py_2()
-                                .bg(rgb(ZfColors::ACCENT))
-                                .rounded_md()
-                                .text_sm()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(rgb(0xffffff))
-                                .cursor_pointer()
-                                .hover(|s| s.bg(rgb(ZfColors::ACCENT_HOVER)))
-                                .child("Upravit"),
-                        )
-                        .child(
-                            div()
-                                .px_4()
-                                .py_2()
-                                .bg(rgb(ZfColors::STATUS_RED_BG))
-                                .rounded_md()
-                                .text_sm()
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(rgb(ZfColors::STATUS_RED))
-                                .cursor_pointer()
-                                .child("Smazat"),
-                        ),
-                ),
+                .text_xl()
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                .child(c.name.clone()),
         );
+
+        // Action buttons
+        content = content.child(self.render_action_buttons(cx));
+
+        // Error message (if action failed)
+        if let Some(ref error) = self.error {
+            content = content.child(
+                div()
+                    .px_4()
+                    .py_3()
+                    .bg(rgb(ZfColors::STATUS_RED_BG))
+                    .rounded_md()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::STATUS_RED))
+                    .child(error.clone()),
+            );
+        }
 
         // Basic info section
         content = content.child(self.render_section(
@@ -217,13 +296,14 @@ impl ContactDetailView {
 impl EventEmitter<NavigateEvent> for ContactDetailView {}
 
 impl Render for ContactDetailView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut outer = div()
             .id("contact-detail-scroll")
             .size_full()
             .bg(rgb(ZfColors::BG))
             .p_6()
-            .overflow_y_scroll();
+            .overflow_y_scroll()
+            .relative();
 
         if self.loading {
             return outer.child(
@@ -234,7 +314,9 @@ impl Render for ContactDetailView {
             );
         }
 
-        if let Some(ref error) = self.error {
+        if self.contact.is_none()
+            && let Some(ref error) = self.error
+        {
             return outer.child(
                 div()
                     .px_4()
@@ -247,8 +329,13 @@ impl Render for ContactDetailView {
             );
         }
 
-        if let Some(ref contact) = self.contact {
-            outer = outer.child(self.render_contact_content(contact));
+        if let Some(ref contact) = self.contact.clone() {
+            outer = outer.child(self.render_contact_content(contact, cx));
+        }
+
+        // Confirm dialog overlay
+        if let Some(ref dialog) = self.confirm_dialog {
+            outer = outer.child(dialog.clone());
         }
 
         outer

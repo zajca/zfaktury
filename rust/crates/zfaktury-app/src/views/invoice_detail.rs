@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::*;
-use zfaktury_core::service::InvoiceService;
+use zfaktury_core::service::{InvoiceService, SettingsService};
 use zfaktury_domain::{Invoice, InvoiceStatus, InvoiceType};
 
 use crate::components::button::{ButtonVariant, render_button};
@@ -14,24 +14,39 @@ use crate::util::format::{format_amount, format_date, format_number};
 /// Invoice detail view displaying all invoice data with action buttons.
 pub struct InvoiceDetailView {
     service: Arc<InvoiceService>,
+    /// Settings service for supplier info + PDF settings.
+    /// NOTE for lead: wire this from `services.settings.clone()` in root.rs when creating InvoiceDetailView.
+    settings_service: Arc<SettingsService>,
     invoice_id: i64,
     loading: bool,
     error: Option<String>,
+    success: Option<String>,
     invoice: Option<Invoice>,
     confirm_dialog: Option<Entity<ConfirmDialog>>,
     action_loading: bool,
+    pdf_generating: bool,
+    isdoc_generating: bool,
 }
 
 impl InvoiceDetailView {
-    pub fn new(service: Arc<InvoiceService>, invoice_id: i64, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        service: Arc<InvoiceService>,
+        settings_service: Arc<SettingsService>,
+        invoice_id: i64,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut view = Self {
             service,
+            settings_service,
             invoice_id,
             loading: true,
             error: None,
+            success: None,
             invoice: None,
             confirm_dialog: None,
             action_loading: false,
+            pdf_generating: false,
+            isdoc_generating: false,
         };
         view.load_data(cx);
         view
@@ -236,6 +251,194 @@ impl InvoiceDetailView {
         cx.notify();
     }
 
+    fn download_pdf(&mut self, cx: &mut Context<Self>) {
+        let invoice = match self.invoice.clone() {
+            Some(inv) => inv,
+            None => return,
+        };
+
+        self.pdf_generating = true;
+        self.error = None;
+        self.success = None;
+        cx.notify();
+
+        let settings_service = self.settings_service.clone();
+        let invoice_number = invoice.invoice_number.clone();
+
+        cx.spawn(async move |this, cx| {
+            let result: Result<String, String> = cx
+                .background_executor()
+                .spawn(async move {
+                    // Load supplier info from settings.
+                    let all_settings = settings_service
+                        .get_all()
+                        .map_err(|e| format!("Chyba pri nacitani nastaveni: {e}"))?;
+
+                    let supplier = build_pdf_supplier_info(&all_settings);
+
+                    // Load PDF settings.
+                    let pdf_domain_settings = settings_service
+                        .get_pdf_settings()
+                        .map_err(|e| format!("Chyba pri nacitani PDF nastaveni: {e}"))?;
+                    let render_settings = zfaktury_gen::pdf::PdfRenderSettings {
+                        accent_color: pdf_domain_settings
+                            .accent_color
+                            .unwrap_or_else(|| "#2563eb".to_string()),
+                        footer_text: pdf_domain_settings.footer_text.unwrap_or_default(),
+                        show_qr: pdf_domain_settings.show_qr,
+                        show_bank_details: pdf_domain_settings.show_bank_details,
+                    };
+
+                    // Generate PDF.
+                    let pdf_bytes = zfaktury_gen::pdf::generate_invoice_pdf(
+                        &invoice,
+                        &supplier,
+                        &render_settings,
+                    )
+                    .map_err(|e| format!("Chyba pri generovani PDF: {e}"))?;
+
+                    // Save to temp file.
+                    let tmp_path =
+                        std::env::temp_dir().join(format!("faktura-{}.pdf", invoice_number));
+                    std::fs::write(&tmp_path, &pdf_bytes)
+                        .map_err(|e| format!("Chyba pri zapisu PDF: {e}"))?;
+
+                    // Open with system viewer.
+                    let _ = std::process::Command::new("xdg-open")
+                        .arg(&tmp_path)
+                        .spawn();
+
+                    Ok(tmp_path.to_string_lossy().to_string())
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.pdf_generating = false;
+                match result {
+                    Ok(_path) => {
+                        this.success = Some("PDF vygenerovano a otevreno".to_string());
+                    }
+                    Err(e) => {
+                        this.error = Some(e);
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn export_isdoc(&mut self, cx: &mut Context<Self>) {
+        let invoice = match self.invoice.clone() {
+            Some(inv) => inv,
+            None => return,
+        };
+
+        self.isdoc_generating = true;
+        self.error = None;
+        self.success = None;
+        cx.notify();
+
+        let settings_service = self.settings_service.clone();
+        let invoice_number = invoice.invoice_number.clone();
+
+        cx.spawn(async move |this, cx| {
+            let result: Result<String, String> = cx
+                .background_executor()
+                .spawn(async move {
+                    // Load supplier info from settings.
+                    let all_settings = settings_service
+                        .get_all()
+                        .map_err(|e| format!("Chyba pri nacitani nastaveni: {e}"))?;
+
+                    let supplier = zfaktury_gen::isdoc::SupplierInfo {
+                        company_name: all_settings
+                            .get(zfaktury_domain::SETTING_COMPANY_NAME)
+                            .cloned()
+                            .unwrap_or_default(),
+                        ico: all_settings
+                            .get(zfaktury_domain::SETTING_ICO)
+                            .cloned()
+                            .unwrap_or_default(),
+                        dic: all_settings
+                            .get(zfaktury_domain::SETTING_DIC)
+                            .cloned()
+                            .unwrap_or_default(),
+                        street: all_settings
+                            .get(zfaktury_domain::SETTING_STREET)
+                            .cloned()
+                            .unwrap_or_default(),
+                        city: all_settings
+                            .get(zfaktury_domain::SETTING_CITY)
+                            .cloned()
+                            .unwrap_or_default(),
+                        zip: all_settings
+                            .get(zfaktury_domain::SETTING_ZIP)
+                            .cloned()
+                            .unwrap_or_default(),
+                        email: all_settings
+                            .get(zfaktury_domain::SETTING_EMAIL)
+                            .cloned()
+                            .unwrap_or_default(),
+                        phone: all_settings
+                            .get(zfaktury_domain::SETTING_PHONE)
+                            .cloned()
+                            .unwrap_or_default(),
+                        bank_account: all_settings
+                            .get(zfaktury_domain::SETTING_BANK_ACCOUNT)
+                            .cloned()
+                            .unwrap_or_default(),
+                        bank_code: all_settings
+                            .get(zfaktury_domain::SETTING_BANK_CODE)
+                            .cloned()
+                            .unwrap_or_default(),
+                        iban: all_settings
+                            .get(zfaktury_domain::SETTING_IBAN)
+                            .cloned()
+                            .unwrap_or_default(),
+                        swift: all_settings
+                            .get(zfaktury_domain::SETTING_SWIFT)
+                            .cloned()
+                            .unwrap_or_default(),
+                    };
+
+                    // Generate ISDOC XML.
+                    let xml_bytes = zfaktury_gen::isdoc::generate_isdoc(&invoice, &supplier)
+                        .map_err(|e| format!("Chyba pri generovani ISDOC: {e}"))?;
+
+                    // Save to temp file.
+                    let tmp_path =
+                        std::env::temp_dir().join(format!("faktura-{}.isdoc", invoice_number));
+                    std::fs::write(&tmp_path, &xml_bytes)
+                        .map_err(|e| format!("Chyba pri zapisu ISDOC: {e}"))?;
+
+                    // Open with system viewer.
+                    let _ = std::process::Command::new("xdg-open")
+                        .arg(&tmp_path)
+                        .spawn();
+
+                    Ok(tmp_path.to_string_lossy().to_string())
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.isdoc_generating = false;
+                match result {
+                    Ok(_path) => {
+                        this.success = Some("ISDOC vygenerovano a otevreno".to_string());
+                    }
+                    Err(e) => {
+                        this.error = Some(e);
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     fn render_action_buttons(&self, inv: &Invoice, cx: &mut Context<Self>) -> Div {
         let mut bar = div().flex().items_center().gap_2().flex_wrap();
         let disabled = self.action_loading;
@@ -412,6 +615,30 @@ impl InvoiceDetailView {
             }
         }
 
+        // PDF download button (available for all statuses)
+        bar = bar.child(render_button(
+            "btn-download-pdf",
+            "Stahnout PDF",
+            ButtonVariant::Secondary,
+            disabled || self.pdf_generating,
+            self.pdf_generating,
+            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                this.download_pdf(cx);
+            }),
+        ));
+
+        // ISDOC export button (available for all statuses)
+        bar = bar.child(render_button(
+            "btn-export-isdoc",
+            "ISDOC",
+            ButtonVariant::Secondary,
+            disabled || self.isdoc_generating,
+            self.isdoc_generating,
+            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                this.export_isdoc(cx);
+            }),
+        ));
+
         bar
     }
 
@@ -461,6 +688,20 @@ impl InvoiceDetailView {
 
         // Action buttons
         content = content.child(self.render_action_buttons(inv, cx));
+
+        // Success message
+        if let Some(ref success) = self.success {
+            content = content.child(
+                div()
+                    .px_4()
+                    .py_3()
+                    .bg(rgb(ZfColors::STATUS_GREEN_BG))
+                    .rounded_md()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::STATUS_GREEN))
+                    .child(success.clone()),
+            );
+        }
 
         // Error message (if action failed)
         if let Some(ref error) = self.error {
@@ -711,6 +952,66 @@ impl InvoiceDetailView {
         }
 
         content
+    }
+}
+
+/// Build PDF SupplierInfo from settings HashMap.
+fn build_pdf_supplier_info(
+    all_settings: &std::collections::HashMap<String, String>,
+) -> zfaktury_gen::pdf::SupplierInfo {
+    zfaktury_gen::pdf::SupplierInfo {
+        name: all_settings
+            .get(zfaktury_domain::SETTING_COMPANY_NAME)
+            .cloned()
+            .unwrap_or_default(),
+        ico: all_settings
+            .get(zfaktury_domain::SETTING_ICO)
+            .cloned()
+            .unwrap_or_default(),
+        dic: all_settings
+            .get(zfaktury_domain::SETTING_DIC)
+            .cloned()
+            .unwrap_or_default(),
+        vat_registered: all_settings
+            .get(zfaktury_domain::SETTING_VAT_REGISTERED)
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        street: all_settings
+            .get(zfaktury_domain::SETTING_STREET)
+            .cloned()
+            .unwrap_or_default(),
+        city: all_settings
+            .get(zfaktury_domain::SETTING_CITY)
+            .cloned()
+            .unwrap_or_default(),
+        zip: all_settings
+            .get(zfaktury_domain::SETTING_ZIP)
+            .cloned()
+            .unwrap_or_default(),
+        email: all_settings
+            .get(zfaktury_domain::SETTING_EMAIL)
+            .cloned()
+            .unwrap_or_default(),
+        phone: all_settings
+            .get(zfaktury_domain::SETTING_PHONE)
+            .cloned()
+            .unwrap_or_default(),
+        bank_account: all_settings
+            .get(zfaktury_domain::SETTING_BANK_ACCOUNT)
+            .cloned()
+            .unwrap_or_default(),
+        bank_code: all_settings
+            .get(zfaktury_domain::SETTING_BANK_CODE)
+            .cloned()
+            .unwrap_or_default(),
+        iban: all_settings
+            .get(zfaktury_domain::SETTING_IBAN)
+            .cloned()
+            .unwrap_or_default(),
+        swift: all_settings
+            .get(zfaktury_domain::SETTING_SWIFT)
+            .cloned()
+            .unwrap_or_default(),
     }
 }
 

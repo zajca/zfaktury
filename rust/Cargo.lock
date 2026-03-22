@@ -9768,6 +9768,7 @@ dependencies = [
  "zfaktury-core",
  "zfaktury-db",
  "zfaktury-domain",
+ "zfaktury-gen",
 ]
 
 [[package]]

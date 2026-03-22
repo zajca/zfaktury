@@ -12,7 +12,9 @@ use crate::views::contact_list::ContactListView;
 use crate::views::dashboard::DashboardView;
 use crate::views::expense_detail::ExpenseDetailView;
 use crate::views::expense_form::ExpenseFormView;
+use crate::views::expense_import::ExpenseImportView;
 use crate::views::expense_list::ExpenseListView;
+use crate::views::expense_review::ExpenseReviewView;
 use crate::views::import_fakturoid::ImportFakturoidView;
 use crate::views::invoice_detail::InvoiceDetailView;
 use crate::views::invoice_form::InvoiceFormView;
@@ -29,6 +31,7 @@ use crate::views::settings_backup::SettingsBackupView;
 use crate::views::settings_categories::SettingsCategoriesView;
 use crate::views::settings_email::SettingsEmailView;
 use crate::views::settings_firma::SettingsFirmaView;
+use crate::views::settings_pdf::SettingsPdfView;
 use crate::views::settings_sequences::SettingsSequencesView;
 use crate::views::stub::StubView;
 use crate::views::tax_credits::TaxCreditsView;
@@ -67,6 +70,8 @@ enum ContentView {
     ExpenseList(Entity<ExpenseListView>),
     ExpenseDetail(Entity<ExpenseDetailView>),
     ExpenseForm(Entity<ExpenseFormView>),
+    ExpenseImport(Entity<ExpenseImportView>),
+    ExpenseReview(Entity<ExpenseReviewView>),
     ContactList(Entity<ContactListView>),
     ContactDetail(Entity<ContactDetailView>),
     ContactForm(Entity<ContactFormView>),
@@ -98,6 +103,7 @@ enum ContentView {
     SettingsEmail(Entity<SettingsEmailView>),
     SettingsSequences(Entity<SettingsSequencesView>),
     SettingsCategories(Entity<SettingsCategoriesView>),
+    SettingsPdf(Entity<SettingsPdfView>),
     SettingsAudit(Entity<SettingsAuditView>),
     SettingsBackup(Entity<SettingsBackupView>),
     ImportFakturoid(Entity<ImportFakturoidView>),
@@ -168,6 +174,8 @@ impl RootView {
             ContentView::ExpenseList(e) => subscribe_nav!(e, cx),
             ContentView::ExpenseDetail(e) => subscribe_nav!(e, cx),
             ContentView::ExpenseForm(e) => subscribe_nav!(e, cx),
+            ContentView::ExpenseImport(e) => subscribe_nav!(e, cx),
+            ContentView::ExpenseReview(e) => subscribe_nav!(e, cx),
             ContentView::ContactList(e) => subscribe_nav!(e, cx),
             ContentView::ContactDetail(e) => subscribe_nav!(e, cx),
             ContentView::ContactForm(e) => subscribe_nav!(e, cx),
@@ -199,6 +207,7 @@ impl RootView {
             ContentView::SettingsEmail(e) => subscribe_nav!(e, cx),
             ContentView::SettingsSequences(e) => subscribe_nav!(e, cx),
             ContentView::SettingsCategories(e) => subscribe_nav!(e, cx),
+            ContentView::SettingsPdf(e) => subscribe_nav!(e, cx),
             ContentView::SettingsAudit(e) => subscribe_nav!(e, cx),
             ContentView::SettingsBackup(e) => subscribe_nav!(e, cx),
             ContentView::ImportFakturoid(e) => subscribe_nav!(e, cx),
@@ -237,8 +246,11 @@ impl RootView {
             }
             Route::InvoiceDetail(id) => {
                 let svc = services.invoices.clone();
+                let settings_svc = services.settings.clone();
                 let id = *id;
-                ContentView::InvoiceDetail(cx.new(|cx| InvoiceDetailView::new(svc, id, cx)))
+                ContentView::InvoiceDetail(
+                    cx.new(|cx| InvoiceDetailView::new(svc, settings_svc, id, cx)),
+                )
             }
             Route::ExpenseList => {
                 let svc = services.expenses.clone();
@@ -265,6 +277,17 @@ impl RootView {
                 let svc = services.expenses.clone();
                 let id = *id;
                 ContentView::ExpenseDetail(cx.new(|cx| ExpenseDetailView::new(svc, id, cx)))
+            }
+            Route::ExpenseImport => {
+                let import_svc = services.import.clone();
+                let doc_svc = services.documents.clone();
+                ContentView::ExpenseImport(
+                    cx.new(|cx| ExpenseImportView::new(import_svc, doc_svc, cx)),
+                )
+            }
+            Route::ExpenseReview => {
+                let svc = services.expenses.clone();
+                ContentView::ExpenseReview(cx.new(|cx| ExpenseReviewView::new(svc, 0, cx)))
             }
             Route::ContactList => {
                 let svc = services.contacts.clone();
@@ -409,7 +432,9 @@ impl RootView {
             }
             Route::Reports => {
                 let svc = services.reports.clone();
-                ContentView::Reports(cx.new(|cx| ReportsView::new(svc, cx)))
+                let inv_svc = services.invoices.clone();
+                let exp_svc = services.expenses.clone();
+                ContentView::Reports(cx.new(|cx| ReportsView::new(svc, inv_svc, exp_svc, cx)))
             }
             Route::SettingsFirma => {
                 let svc = services.settings.clone();
@@ -427,6 +452,10 @@ impl RootView {
                 let svc = services.categories.clone();
                 ContentView::SettingsCategories(cx.new(|cx| SettingsCategoriesView::new(svc, cx)))
             }
+            Route::SettingsPdf => {
+                let svc = services.settings.clone();
+                ContentView::SettingsPdf(cx.new(|cx| SettingsPdfView::new(svc, cx)))
+            }
             Route::SettingsAuditLog => {
                 let svc = services.audit.clone();
                 ContentView::SettingsAudit(cx.new(|cx| SettingsAuditView::new(svc, cx)))
@@ -437,6 +466,9 @@ impl RootView {
             Route::ImportFakturoid => {
                 ContentView::ImportFakturoid(cx.new(|_cx| ImportFakturoidView::new()))
             }
+            // All routes have dedicated views now; this arm is kept
+            // for any future routes added to the Route enum.
+            #[allow(unreachable_patterns)]
             other => {
                 let label = other.label().to_string();
                 ContentView::Stub(cx.new(|_cx| StubView::new(label)))
@@ -455,6 +487,8 @@ impl Render for RootView {
             ContentView::ExpenseList(v) => v.clone().into_any_element(),
             ContentView::ExpenseDetail(v) => v.clone().into_any_element(),
             ContentView::ExpenseForm(v) => v.clone().into_any_element(),
+            ContentView::ExpenseImport(v) => v.clone().into_any_element(),
+            ContentView::ExpenseReview(v) => v.clone().into_any_element(),
             ContentView::ContactList(v) => v.clone().into_any_element(),
             ContentView::ContactDetail(v) => v.clone().into_any_element(),
             ContentView::ContactForm(v) => v.clone().into_any_element(),
@@ -486,6 +520,7 @@ impl Render for RootView {
             ContentView::SettingsEmail(v) => v.clone().into_any_element(),
             ContentView::SettingsSequences(v) => v.clone().into_any_element(),
             ContentView::SettingsCategories(v) => v.clone().into_any_element(),
+            ContentView::SettingsPdf(v) => v.clone().into_any_element(),
             ContentView::SettingsAudit(v) => v.clone().into_any_element(),
             ContentView::SettingsBackup(v) => v.clone().into_any_element(),
             ContentView::ImportFakturoid(v) => v.clone().into_any_element(),

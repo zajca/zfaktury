@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use gpui::*;
 use zfaktury_core::service::report_svc::{ProfitLossReport, ReportService};
+use zfaktury_core::service::{ExpenseService, InvoiceService};
+use zfaktury_domain::{ExpenseFilter, InvoiceFilter};
 
+use crate::components::button::{ButtonVariant, render_button};
 use crate::navigation::NavigateEvent;
 use crate::theme::ZfColors;
 use crate::util::format::format_amount;
@@ -10,11 +13,19 @@ use crate::util::format::format_amount;
 /// Reports view with tabs for Revenue, Expenses, and Profit/Loss.
 pub struct ReportsView {
     service: Arc<ReportService>,
+    /// Invoice service for CSV export.
+    /// NOTE for lead: wire this from `services.invoices.clone()` in root.rs when creating ReportsView.
+    invoice_service: Arc<InvoiceService>,
+    /// Expense service for CSV export.
+    /// NOTE for lead: wire this from `services.expenses.clone()` in root.rs when creating ReportsView.
+    expense_service: Arc<ExpenseService>,
     loading: bool,
     error: Option<String>,
+    success: Option<String>,
     year: i32,
     active_tab: ReportTab,
     report: Option<ProfitLossReport>,
+    csv_exporting: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -25,15 +36,24 @@ enum ReportTab {
 }
 
 impl ReportsView {
-    pub fn new(service: Arc<ReportService>, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        service: Arc<ReportService>,
+        invoice_service: Arc<InvoiceService>,
+        expense_service: Arc<ExpenseService>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let year = chrono::Local::now().date_naive().year();
         let mut view = Self {
             service,
+            invoice_service,
+            expense_service,
             loading: true,
             error: None,
+            success: None,
             year,
             active_tab: ReportTab::ProfitLoss,
             report: None,
+            csv_exporting: false,
         };
         view.load_data(cx);
         view
@@ -148,6 +168,130 @@ impl ReportsView {
             .child(year.to_string())
     }
 
+    fn export_invoices_csv(&mut self, cx: &mut Context<Self>) {
+        self.csv_exporting = true;
+        self.error = None;
+        self.success = None;
+        cx.notify();
+
+        let invoice_service = self.invoice_service.clone();
+        let year = self.year;
+
+        cx.spawn(async move |this, cx| {
+            let result: Result<usize, String> = cx
+                .background_executor()
+                .spawn(async move {
+                    // Load all invoices for the selected year using date filter.
+                    let date_from = chrono::NaiveDate::from_ymd_opt(year, 1, 1).unwrap_or_default();
+                    let date_to = chrono::NaiveDate::from_ymd_opt(year, 12, 31).unwrap_or_default();
+                    let filter = InvoiceFilter {
+                        date_from: Some(date_from),
+                        date_to: Some(date_to),
+                        limit: 10_000,
+                        offset: 0,
+                        ..InvoiceFilter::default()
+                    };
+                    let (invoices, _count) = invoice_service
+                        .list(filter)
+                        .map_err(|e| format!("Chyba pri nacitani faktur: {e}"))?;
+
+                    // Generate CSV.
+                    let csv_bytes = zfaktury_gen::csv::export_invoices_csv(&invoices)
+                        .map_err(|e| format!("Chyba pri generovani CSV: {e}"))?;
+
+                    // Save to temp file.
+                    let tmp_path = std::env::temp_dir().join(format!("faktury-{}.csv", year));
+                    std::fs::write(&tmp_path, &csv_bytes)
+                        .map_err(|e| format!("Chyba pri zapisu CSV: {e}"))?;
+
+                    // Open with system viewer.
+                    let _ = std::process::Command::new("xdg-open")
+                        .arg(&tmp_path)
+                        .spawn();
+
+                    Ok(invoices.len())
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.csv_exporting = false;
+                match result {
+                    Ok(count) => {
+                        this.success = Some(format!("Export {} faktur do CSV dokoncen", count));
+                    }
+                    Err(e) => {
+                        this.error = Some(e);
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn export_expenses_csv(&mut self, cx: &mut Context<Self>) {
+        self.csv_exporting = true;
+        self.error = None;
+        self.success = None;
+        cx.notify();
+
+        let expense_service = self.expense_service.clone();
+        let year = self.year;
+
+        cx.spawn(async move |this, cx| {
+            let result: Result<usize, String> = cx
+                .background_executor()
+                .spawn(async move {
+                    // Load all expenses for the selected year using date filter.
+                    let date_from = chrono::NaiveDate::from_ymd_opt(year, 1, 1).unwrap_or_default();
+                    let date_to = chrono::NaiveDate::from_ymd_opt(year, 12, 31).unwrap_or_default();
+                    let filter = ExpenseFilter {
+                        date_from: Some(date_from),
+                        date_to: Some(date_to),
+                        limit: 10_000,
+                        offset: 0,
+                        ..ExpenseFilter::default()
+                    };
+                    let (expenses, _count) = expense_service
+                        .list(filter)
+                        .map_err(|e| format!("Chyba pri nacitani nakladu: {e}"))?;
+
+                    // Generate CSV.
+                    let csv_bytes = zfaktury_gen::csv::export_expenses_csv(&expenses)
+                        .map_err(|e| format!("Chyba pri generovani CSV: {e}"))?;
+
+                    // Save to temp file.
+                    let tmp_path = std::env::temp_dir().join(format!("naklady-{}.csv", year));
+                    std::fs::write(&tmp_path, &csv_bytes)
+                        .map_err(|e| format!("Chyba pri zapisu CSV: {e}"))?;
+
+                    // Open with system viewer.
+                    let _ = std::process::Command::new("xdg-open")
+                        .arg(&tmp_path)
+                        .spawn();
+
+                    Ok(expenses.len())
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.csv_exporting = false;
+                match result {
+                    Ok(count) => {
+                        this.success = Some(format!("Export {} nakladu do CSV dokoncen", count));
+                    }
+                    Err(e) => {
+                        this.error = Some(e);
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     fn month_name(month: i32) -> &'static str {
         match month {
             1 => "Leden",
@@ -200,9 +344,31 @@ impl Render for ReportsView {
                 .child(
                     div()
                         .flex()
-                        .gap_1()
+                        .items_center()
+                        .gap_2()
                         .child(self.render_year_button(current_year - 1, cx))
-                        .child(self.render_year_button(current_year, cx)),
+                        .child(self.render_year_button(current_year, cx))
+                        .child(div().w(px(1.0)).h_6().bg(rgb(ZfColors::BORDER)).mx_1())
+                        .child(render_button(
+                            "btn-export-invoices-csv",
+                            "Export faktur (CSV)",
+                            ButtonVariant::Secondary,
+                            self.csv_exporting,
+                            self.csv_exporting,
+                            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                                this.export_invoices_csv(cx);
+                            }),
+                        ))
+                        .child(render_button(
+                            "btn-export-expenses-csv",
+                            "Export nakladu (CSV)",
+                            ButtonVariant::Secondary,
+                            self.csv_exporting,
+                            self.csv_exporting,
+                            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                                this.export_expenses_csv(cx);
+                            }),
+                        )),
                 ),
         );
 
@@ -215,6 +381,20 @@ impl Render for ReportsView {
                 .child(self.render_tab_button("Naklady", ReportTab::Expenses, cx))
                 .child(self.render_tab_button("Zisk a ztrata", ReportTab::ProfitLoss, cx)),
         );
+
+        // Success message
+        if let Some(ref success) = self.success {
+            content = content.child(
+                div()
+                    .px_4()
+                    .py_3()
+                    .bg(rgb(ZfColors::STATUS_GREEN_BG))
+                    .rounded_md()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::STATUS_GREEN))
+                    .child(success.clone()),
+            );
+        }
 
         if self.loading {
             return content.child(

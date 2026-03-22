@@ -128,14 +128,30 @@ fn cmd_version() {
 
 /// Launch the GPUI desktop application (default behavior).
 fn cmd_gui(cli: Cli) {
-    let db_path = resolve_db_path(&cli);
-    ensure_parent_dir(&db_path);
+    // Load config once.
+    let config = match zfaktury_config::Config::load() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("Error loading config: {e}");
+            std::process::exit(1);
+        }
+    };
 
-    let data_dir = resolve_data_dir(&cli);
+    // Resolve paths (CLI overrides config).
+    let db_path = cli.db.clone().unwrap_or_else(|| config.database_path());
+    let data_dir = if let Some(ref db) = cli.db {
+        db.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."))
+    } else {
+        config.data_dir()
+    };
+
+    ensure_parent_dir(&db_path);
     ensure_parent_dir_of(&data_dir);
 
-    // Initialize services.
-    let services = match AppServices::new(&db_path, &data_dir) {
+    // Initialize services (now receives config for OCR, SMTP, etc.).
+    let services = match AppServices::new(&db_path, &data_dir, &config) {
         Ok(s) => Arc::new(s),
         Err(e) => {
             eprintln!("Error initializing application: {e}");
@@ -191,24 +207,6 @@ fn resolve_db_path(cli: &Cli) -> PathBuf {
                 eprintln!("Error loading config: {e}");
                 std::process::exit(1);
             }
-        }
-    }
-}
-
-/// Resolve the data directory from config.
-fn resolve_data_dir(cli: &Cli) -> PathBuf {
-    // If --db is set to a custom path, use its parent as data_dir.
-    if let Some(ref db) = cli.db {
-        return db
-            .parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."));
-    }
-    match zfaktury_config::Config::load() {
-        Ok(cfg) => cfg.data_dir(),
-        Err(e) => {
-            eprintln!("Error loading config: {e}");
-            std::process::exit(1);
         }
     }
 }

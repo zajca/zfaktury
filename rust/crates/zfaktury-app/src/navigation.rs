@@ -25,7 +25,7 @@ pub enum Route {
     ExpenseEdit(i64),
     ExpenseDetail(i64),
     ExpenseImport,
-    ExpenseReview,
+    ExpenseReview(i64),
 
     // Recurring expenses
     RecurringExpenseList,
@@ -86,7 +86,6 @@ impl Route {
             "/expenses" => Some(Route::ExpenseList),
             "/expenses/new" => Some(Route::ExpenseNew),
             "/expenses/import" => Some(Route::ExpenseImport),
-            "/expenses/review" => Some(Route::ExpenseReview),
             "/expenses/recurring" => Some(Route::RecurringExpenseList),
             "/expenses/recurring/new" => Some(Route::RecurringExpenseNew),
             "/contacts" => Some(Route::ContactList),
@@ -131,7 +130,7 @@ impl Route {
             Route::ExpenseEdit(_) => "Upravit naklad",
             Route::ExpenseDetail(_) => "Detail nakladu",
             Route::ExpenseImport => "Import dokladu",
-            Route::ExpenseReview => "Kontrola nakladu",
+            Route::ExpenseReview(_) => "Kontrola nakladu",
             Route::RecurringExpenseList => "Opakovane naklady",
             Route::RecurringExpenseNew => "Novy opakovany naklad",
             Route::RecurringExpenseDetail(_) => "Detail opak. nakladu",
@@ -175,6 +174,7 @@ fn parse_dynamic_route(path: &str) -> Option<Route> {
         ["invoices", id] => id.parse().ok().map(Route::InvoiceDetail),
         ["recurring", id] => id.parse().ok().map(Route::RecurringInvoiceDetail),
         ["expenses", "recurring", id] => id.parse().ok().map(Route::RecurringExpenseDetail),
+        ["expenses", id, "review"] => id.parse().ok().map(Route::ExpenseReview),
         ["expenses", id, "edit"] => id.parse().ok().map(Route::ExpenseEdit),
         ["expenses", id] => id.parse().ok().map(Route::ExpenseDetail),
         ["contacts", id, "edit"] => id.parse().ok().map(Route::ContactEdit),

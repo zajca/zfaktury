@@ -281,13 +281,26 @@ impl RootView {
             Route::ExpenseImport => {
                 let import_svc = services.import.clone();
                 let doc_svc = services.documents.clone();
-                ContentView::ExpenseImport(
-                    cx.new(|cx| ExpenseImportView::new(import_svc, doc_svc, cx)),
-                )
+                let ocr_svc = services.ocr_service.clone();
+                let pending_ocr = services.pending_ocr_result.clone();
+                ContentView::ExpenseImport(cx.new(|cx| {
+                    ExpenseImportView::new(import_svc, doc_svc, ocr_svc, pending_ocr, cx)
+                }))
             }
-            Route::ExpenseReview => {
+            Route::ExpenseReview(id) => {
                 let svc = services.expenses.clone();
-                ContentView::ExpenseReview(cx.new(|cx| ExpenseReviewView::new(svc, 0, cx)))
+                let pending_ocr = services.pending_ocr_result.clone();
+                let id = *id;
+                let ocr_result = {
+                    let mut lock = pending_ocr.lock().unwrap();
+                    match lock.as_ref() {
+                        Some((eid, _)) if *eid == id => lock.take().map(|(_, r)| r),
+                        _ => None,
+                    }
+                };
+                ContentView::ExpenseReview(
+                    cx.new(move |cx| ExpenseReviewView::new(svc, id, ocr_result, cx)),
+                )
             }
             Route::ContactList => {
                 let svc = services.contacts.clone();
@@ -401,7 +414,11 @@ impl RootView {
             }
             Route::TaxInvestments => {
                 let svc = services.investment_income.clone();
-                ContentView::TaxInvestments(cx.new(|cx| TaxInvestmentsView::new(svc, cx)))
+                let doc_svc = services.investment_documents.clone();
+                let ocr_svc = services.ocr_service.clone();
+                ContentView::TaxInvestments(
+                    cx.new(|cx| TaxInvestmentsView::new(svc, doc_svc, ocr_svc, cx)),
+                )
             }
             Route::TaxIncomeNew => {
                 let svc = services.income_tax.clone();

@@ -9,6 +9,7 @@ use zfaktury_domain::{Amount, CURRENCY_CZK, Contact, ContactFilter, Expense, Exp
 
 use crate::components::button::{ButtonVariant, render_button};
 use crate::components::date_input::DateInput;
+use crate::components::expense_items_editor::{ExpenseItemsChanged, ExpenseItemsEditor};
 use crate::components::number_input::NumberInput;
 use crate::components::select::{Select, SelectOption};
 use crate::components::text_area::TextArea;
@@ -45,6 +46,10 @@ pub struct ExpenseFormView {
     payment_method_select: Entity<Select>,
     notes: Entity<TextArea>,
     is_tax_deductible: bool,
+
+    // Items editor
+    items_editor: Entity<ExpenseItemsEditor>,
+    use_items: bool,
 }
 
 impl EventEmitter<NavigateEvent> for ExpenseFormView {}
@@ -193,6 +198,15 @@ impl ExpenseFormView {
 
         let notes = cx.new(|cx| TextArea::new("notes", "Volitelne poznamky...", cx));
 
+        let items_editor = cx.new(ExpenseItemsEditor::new);
+        cx.subscribe(
+            &items_editor,
+            |_this: &mut Self, _, _: &ExpenseItemsChanged, cx| {
+                cx.notify();
+            },
+        )
+        .detach();
+
         // Load contacts for vendor picker
         let con_svc = contact_service.clone();
         let vendor_sel = vendor_select.clone();
@@ -273,6 +287,8 @@ impl ExpenseFormView {
             payment_method_select,
             notes,
             is_tax_deductible: true,
+            items_editor,
+            use_items: false,
         }
     }
 
@@ -316,6 +332,15 @@ impl ExpenseFormView {
         });
 
         let notes = cx.new(|cx| TextArea::new("notes", "Volitelne poznamky...", cx));
+
+        let items_editor = cx.new(ExpenseItemsEditor::new);
+        cx.subscribe(
+            &items_editor,
+            |_this: &mut Self, _, _: &ExpenseItemsChanged, cx| {
+                cx.notify();
+            },
+        )
+        .detach();
 
         // Load contacts for vendor picker
         let con_svc = contact_service.clone();
@@ -416,6 +441,8 @@ impl ExpenseFormView {
             payment_method_select,
             notes,
             is_tax_deductible: true,
+            items_editor,
+            use_items: false,
         }
     }
 
@@ -457,6 +484,11 @@ impl ExpenseFormView {
             t.set_value(&exp.notes, cx);
         });
         self.is_tax_deductible = exp.is_tax_deductible;
+        if !exp.items.is_empty() {
+            self.use_items = true;
+            self.items_editor
+                .update(cx, |editor, cx| editor.set_items(&exp.items, cx));
+        }
     }
 
     /// Validate and save the expense (create or update).
@@ -473,16 +505,19 @@ impl ExpenseFormView {
             return;
         }
 
-        // Read amount
+        // Read amount (skip zero check when using items -- service calculates from items)
         let amount_val = match self.amount_input.read(cx).to_amount() {
             Some(a) => a,
             None => {
-                self.error = Some("Neplatna castka".into());
-                cx.notify();
-                return;
+                if !self.use_items {
+                    self.error = Some("Neplatna castka".into());
+                    cx.notify();
+                    return;
+                }
+                Amount::ZERO
             }
         };
-        if amount_val == Amount::ZERO {
+        if !self.use_items && amount_val == Amount::ZERO {
             self.error = Some("Zadejte castku".into());
             cx.notify();
             return;
@@ -546,6 +581,19 @@ impl ExpenseFormView {
         // Read notes
         let notes = self.notes.read(cx).value().to_string();
 
+        // Read items if in items mode
+        let items = if self.use_items {
+            let editor_items = self.items_editor.read(cx).to_expense_items(cx);
+            if editor_items.is_empty() {
+                self.error = Some("Pridejte alespon jednu polozku".into());
+                cx.notify();
+                return;
+            }
+            editor_items
+        } else {
+            Vec::new()
+        };
+
         let now = chrono::Local::now().naive_local();
         let mut expense = Expense {
             id: self.expense_id.unwrap_or(0),
@@ -566,7 +614,7 @@ impl ExpenseFormView {
             document_path: String::new(),
             notes,
             tax_reviewed_at: None,
-            items: Vec::new(),
+            items,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -767,6 +815,41 @@ impl Render for ExpenseFormView {
                         ),
                 ),
         ));
+
+        // Items toggle button
+        let toggle_label = if self.use_items {
+            "Prepnout na jednoduchou castku"
+        } else {
+            "Pridat polozky"
+        };
+        outer = outer.child(
+            div().flex().child(
+                div()
+                    .id("toggle-items-mode")
+                    .cursor_pointer()
+                    .px_3()
+                    .py_2()
+                    .bg(rgb(ZfColors::SURFACE))
+                    .border_1()
+                    .border_color(rgb(ZfColors::BORDER))
+                    .rounded_md()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::ACCENT))
+                    .on_click(cx.listener(|this, _ev: &ClickEvent, _w, cx| {
+                        this.use_items = !this.use_items;
+                        cx.notify();
+                    }))
+                    .child(toggle_label),
+            ),
+        );
+
+        // Items editor (shown only in items mode)
+        if self.use_items {
+            outer = outer.child(render_card(
+                "Polozky nakladu",
+                div().child(self.items_editor.clone()),
+            ));
+        }
 
         // Card 3: Notes
         outer = outer.child(render_card(

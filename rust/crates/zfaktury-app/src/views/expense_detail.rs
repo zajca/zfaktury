@@ -272,6 +272,165 @@ impl ExpenseDetailView {
             ],
         ));
 
+        // Items table
+        if !exp.items.is_empty() {
+            let mut items_section = div()
+                .p_4()
+                .bg(rgb(ZfColors::SURFACE))
+                .rounded_md()
+                .border_1()
+                .border_color(rgb(ZfColors::BORDER))
+                .flex()
+                .flex_col()
+                .gap_3();
+
+            // Title
+            items_section = items_section.child(
+                div()
+                    .text_sm()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                    .child("Polozky"),
+            );
+
+            // Column headers
+            items_section = items_section.child(
+                div()
+                    .flex()
+                    .gap_2()
+                    .pb_2()
+                    .border_b_1()
+                    .border_color(rgb(ZfColors::BORDER))
+                    .child(
+                        div()
+                            .flex_1()
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .child("Popis"),
+                    )
+                    .child(
+                        div()
+                            .w(px(80.0))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .child("Mnozstvi"),
+                    )
+                    .child(
+                        div()
+                            .w(px(60.0))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .child("Jednotka"),
+                    )
+                    .child(
+                        div()
+                            .w(px(100.0))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .text_right()
+                            .child("Cena/ks"),
+                    )
+                    .child(
+                        div()
+                            .w(px(60.0))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .text_right()
+                            .child("DPH %"),
+                    )
+                    .child(
+                        div()
+                            .w(px(100.0))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .text_right()
+                            .child("DPH"),
+                    )
+                    .child(
+                        div()
+                            .w(px(100.0))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                            .text_right()
+                            .child("Celkem"),
+                    ),
+            );
+
+            // Item rows
+            for item in &exp.items {
+                let qty_display = format!("{}", item.quantity.to_czk());
+                items_section = items_section.child(
+                    div()
+                        .flex()
+                        .gap_2()
+                        .py_1()
+                        .child(
+                            div()
+                                .flex_1()
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .child(item.description.clone()),
+                        )
+                        .child(
+                            div()
+                                .w(px(80.0))
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .child(qty_display),
+                        )
+                        .child(
+                            div()
+                                .w(px(60.0))
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .child(item.unit.clone()),
+                        )
+                        .child(
+                            div()
+                                .w(px(100.0))
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .text_right()
+                                .child(format_amount(item.unit_price)),
+                        )
+                        .child(
+                            div()
+                                .w(px(60.0))
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .text_right()
+                                .child(format!("{}%", item.vat_rate_percent)),
+                        )
+                        .child(
+                            div()
+                                .w(px(100.0))
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                .text_right()
+                                .child(format_amount(item.vat_amount)),
+                        )
+                        .child(
+                            div()
+                                .w(px(100.0))
+                                .text_sm()
+                                .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                                .text_right()
+                                .font_weight(FontWeight::MEDIUM)
+                                .child(format_amount(item.total_amount)),
+                        ),
+                );
+            }
+
+            content = content.child(items_section);
+        }
+
         // Notes
         if !exp.notes.is_empty() {
             content = content.child(

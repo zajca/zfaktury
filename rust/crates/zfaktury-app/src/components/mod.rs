@@ -7,6 +7,8 @@ pub mod confirm_dialog;
 #[allow(dead_code)]
 pub mod date_input;
 #[allow(dead_code)]
+pub mod expense_items_editor;
+#[allow(dead_code)]
 pub mod invoice_items_editor;
 #[allow(dead_code)]
 pub mod number_input;

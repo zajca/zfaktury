@@ -2,11 +2,14 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use zfaktury_api::ocr::{AnthropicProvider, OcrProvider as ApiOcrProvider, OpenAIProvider};
+use zfaktury_config::{Config, OcrConfig};
+use zfaktury_core::service::ocr_svc::OCRProvider;
 use zfaktury_core::service::{
     AuditService, BackupService, CategoryService, ContactService, DashboardService,
     DocumentService, ExpenseService, HealthInsuranceService, ImportService, IncomeTaxReturnService,
     InvestmentDocumentService, InvestmentIncomeService, InvoiceDocumentService, InvoiceService,
-    OverdueService, RecurringExpenseService, RecurringInvoiceService, ReminderService,
+    OCRService, OverdueService, RecurringExpenseService, RecurringInvoiceService, ReminderService,
     ReportService, SequenceService, SettingsService, SocialInsuranceService, TaxCalendarService,
     TaxCreditsService, TaxDeductionDocumentService, TaxYearSettingsService,
     VATControlStatementService, VATReturnService, VIESSummaryService,
@@ -45,6 +48,7 @@ use zfaktury_db::repos::tax_year_settings_repo::SqliteTaxYearSettingsRepo;
 use zfaktury_db::repos::vat_control_repo::SqliteVATControlRepo;
 use zfaktury_db::repos::vat_return_repo::SqliteVATReturnRepo;
 use zfaktury_db::repos::vies_repo::SqliteVIESRepo;
+use zfaktury_domain::{DomainError, OCRResult};
 
 /// Shared application state holding all service instances.
 #[allow(dead_code)]
@@ -81,12 +85,18 @@ pub struct AppServices {
     pub vat_control: Arc<VATControlStatementService>,
     pub vies: Arc<VIESSummaryService>,
     pub import: Arc<ImportService>,
+
+    // --- OCR (optional) ---
+    pub ocr_service: Option<Arc<OCRService>>,
+
+    // --- OCR data cache (one-shot, import -> review) ---
+    pub pending_ocr_result: Arc<std::sync::Mutex<Option<(i64, OCRResult)>>>,
 }
 
 impl AppServices {
     /// Create all services wired to the given database and data directory.
     /// Opens a separate connection for each repository (SQLite WAL mode allows concurrent readers).
-    pub fn new(db_path: &Path, data_dir: &Path) -> Result<Self> {
+    pub fn new(db_path: &Path, data_dir: &Path, config: &Config) -> Result<Self> {
         // Run migrations on a dedicated connection.
         let migrate_conn =
             open_connection(db_path).context("opening db connection for migrations")?;
@@ -354,11 +364,16 @@ impl AppServices {
             Some(audit.clone()),
         ));
 
-        // ImportService (depends on ExpenseService, DocumentService; OCR not configured)
+        // --- OCR Service (optional, depends on config) ---
+        let ocr_provider = config.ocr.as_ref().and_then(create_ocr_provider);
+        let ocr_service =
+            ocr_provider.map(|provider| Arc::new(OCRService::new(provider, documents.clone())));
+
+        // ImportService (depends on ExpenseService, DocumentService, OCRService)
         let import = Arc::new(ImportService::new(
             expenses.clone(),
             documents.clone(),
-            None, // OCR provider not configured for desktop app
+            ocr_service.clone(),
         ));
 
         Ok(Self {
@@ -393,6 +408,78 @@ impl AppServices {
             vat_control,
             vies,
             import,
+            ocr_service,
+            pending_ocr_result: Arc::new(std::sync::Mutex::new(None)),
         })
     }
+}
+
+// --- OCR infrastructure ---
+
+/// Adapter that wraps an API-layer OcrProvider to satisfy the core OCRProvider trait.
+struct OcrProviderAdapter {
+    inner: Box<dyn ApiOcrProvider>,
+}
+
+impl OCRProvider for OcrProviderAdapter {
+    fn process_image(&self, data: &[u8], content_type: &str) -> Result<OCRResult, DomainError> {
+        self.inner.process_image(data, content_type).map_err(|e| {
+            log::error!("OCR provider error: {e}");
+            DomainError::InvalidInput
+        })
+    }
+}
+
+/// Construct an OCR provider from config. Returns None if not configured.
+fn create_ocr_provider(config: &OcrConfig) -> Option<Arc<dyn OCRProvider>> {
+    let api_key = config.api_key.as_deref().unwrap_or("");
+    if api_key.is_empty() {
+        log::info!("OCR not configured: no api_key in [ocr] section");
+        return None;
+    }
+
+    let provider_name = config.provider.as_deref().unwrap_or("openai");
+    let model = config.model.as_deref().unwrap_or("");
+
+    let api_provider: Box<dyn ApiOcrProvider> = match provider_name {
+        "anthropic" | "claude" => {
+            let mut p = AnthropicProvider::new(api_key, model);
+            if let Some(ref url) = config.base_url
+                && !url.is_empty()
+            {
+                p = p.with_base_url(url);
+            }
+            Box::new(p)
+        }
+        "openrouter" => {
+            let mut p = OpenAIProvider::new_openrouter(api_key, model);
+            if let Some(ref url) = config.base_url
+                && !url.is_empty()
+            {
+                p = p.with_base_url(url);
+            }
+            Box::new(p)
+        }
+        _ => {
+            // Default to OpenAI-compatible API (works for openai, gemini, mistral with base_url override)
+            let mut p = OpenAIProvider::new_openai(api_key, model);
+            if let Some(ref url) = config.base_url
+                && !url.is_empty()
+            {
+                p = p.with_base_url(url);
+            }
+            if provider_name != "openai" {
+                log::warn!(
+                    "Unknown OCR provider '{provider_name}', using OpenAI-compatible API. \
+                     Set base_url if the provider has a custom endpoint."
+                );
+            }
+            Box::new(p)
+        }
+    };
+
+    log::info!("OCR provider configured: {provider_name}");
+    Some(Arc::new(OcrProviderAdapter {
+        inner: api_provider,
+    }))
 }

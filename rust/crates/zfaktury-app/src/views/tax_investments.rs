@@ -1,11 +1,12 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{Datelike, Local, NaiveDate};
 use gpui::*;
-use zfaktury_core::service::InvestmentIncomeService;
+use zfaktury_core::service::{InvestmentDocumentService, InvestmentIncomeService, OCRService};
 use zfaktury_domain::{
-    Amount, AssetType, CapitalCategory, CapitalIncomeEntry, InvestmentYearSummary,
-    SecurityTransaction, TransactionType,
+    Amount, AssetType, CapitalCategory, CapitalIncomeEntry, ExtractionStatus, InvestmentDocument,
+    InvestmentYearSummary, Platform, SecurityTransaction, TransactionType,
 };
 
 use crate::components::button::{ButtonVariant, render_button};
@@ -25,6 +26,7 @@ use crate::util::format::{format_amount, format_date};
 
 #[derive(Clone, PartialEq)]
 enum InvestmentTab {
+    Documents,
     CapitalIncome,
     SecurityTransactions,
 }
@@ -71,15 +73,18 @@ struct EditingSecurityTx {
 enum DeleteTarget {
     CapitalEntry(i64),
     SecurityTx(i64),
+    Document(i64),
 }
 
 // ---------------------------------------------------------------------------
 // View
 // ---------------------------------------------------------------------------
 
-/// Tax investments view with tabbed CRUD for capital income and security transactions.
+/// Tax investments view with tabbed CRUD for capital income, security transactions, and documents.
 pub struct TaxInvestmentsView {
     service: Arc<InvestmentIncomeService>,
+    document_service: Arc<InvestmentDocumentService>,
+    ocr_service: Option<Arc<OCRService>>,
     year: i32,
     loading: bool,
     saving: bool,
@@ -88,6 +93,12 @@ pub struct TaxInvestmentsView {
     summary: Option<InvestmentYearSummary>,
     capital_entries: Vec<CapitalIncomeEntry>,
     security_transactions: Vec<SecurityTransaction>,
+
+    // Documents tab state
+    documents: Vec<InvestmentDocument>,
+    uploading: bool,
+    extracting_id: Option<i64>,
+    platform_select: Option<Entity<Select>>,
 
     // Inline editing state
     editing_capital: Option<EditingCapitalEntry>,
@@ -99,18 +110,36 @@ pub struct TaxInvestmentsView {
 }
 
 impl TaxInvestmentsView {
-    pub fn new(service: Arc<InvestmentIncomeService>, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        service: Arc<InvestmentIncomeService>,
+        document_service: Arc<InvestmentDocumentService>,
+        ocr_service: Option<Arc<OCRService>>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let year = Local::now().date_naive().year();
+        let platform_select = Some(cx.new(|_cx| {
+            Select::new(
+                "doc-platform-select",
+                "Platforma...",
+                Self::platform_options(),
+            )
+        }));
         let mut view = Self {
             service,
+            document_service,
+            ocr_service,
             year,
             loading: true,
             saving: false,
             error: None,
-            active_tab: InvestmentTab::CapitalIncome,
+            active_tab: InvestmentTab::Documents,
             summary: None,
             capital_entries: Vec::new(),
             security_transactions: Vec::new(),
+            documents: Vec::new(),
+            uploading: false,
+            extracting_id: None,
+            platform_select,
             editing_capital: None,
             editing_security: None,
             confirm_dialog: None,
@@ -126,6 +155,7 @@ impl TaxInvestmentsView {
 
     fn load_data(&mut self, cx: &mut Context<Self>) {
         let service = self.service.clone();
+        let doc_service = self.document_service.clone();
         let year = self.year;
 
         cx.spawn(async move |this, cx| {
@@ -135,24 +165,27 @@ impl TaxInvestmentsView {
                     let summary = service.get_year_summary(year)?;
                     let capital = service.list_capital_entries(year)?;
                     let securities = service.list_security_transactions(year)?;
+                    let documents = doc_service.list_by_year(year)?;
                     Ok::<
                         (
                             InvestmentYearSummary,
                             Vec<CapitalIncomeEntry>,
                             Vec<SecurityTransaction>,
+                            Vec<InvestmentDocument>,
                         ),
                         zfaktury_domain::DomainError,
-                    >((summary, capital, securities))
+                    >((summary, capital, securities, documents))
                 })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.loading = false;
                 match result {
-                    Ok((summary, capital, securities)) => {
+                    Ok((summary, capital, securities, documents)) => {
                         this.summary = Some(summary);
                         this.capital_entries = capital;
                         this.security_transactions = securities;
+                        this.documents = documents;
                     }
                     Err(e) => {
                         this.error = Some(format!("Chyba pri nacitani investic: {e}"));
@@ -171,8 +204,385 @@ impl TaxInvestmentsView {
         self.error = None;
         self.editing_capital = None;
         self.editing_security = None;
+        self.extracting_id = None;
         cx.notify();
         self.load_data(cx);
+    }
+
+    // ------------------------------------------------------------------
+    // Platform helpers
+    // ------------------------------------------------------------------
+
+    fn platform_options() -> Vec<SelectOption> {
+        vec![
+            SelectOption {
+                value: "portu".into(),
+                label: "Portu".into(),
+            },
+            SelectOption {
+                value: "zonky".into(),
+                label: "Zonky".into(),
+            },
+            SelectOption {
+                value: "trading212".into(),
+                label: "Trading 212".into(),
+            },
+            SelectOption {
+                value: "revolut".into(),
+                label: "Revolut".into(),
+            },
+            SelectOption {
+                value: "other".into(),
+                label: "Ostatni".into(),
+            },
+        ]
+    }
+
+    fn parse_platform(value: &str) -> Platform {
+        match value {
+            "portu" => Platform::Portu,
+            "zonky" => Platform::Zonky,
+            "trading212" => Platform::Trading212,
+            "revolut" => Platform::Revolut,
+            _ => Platform::Other,
+        }
+    }
+
+    fn platform_label(platform: &Platform) -> &'static str {
+        match platform {
+            Platform::Portu => "Portu",
+            Platform::Zonky => "Zonky",
+            Platform::Trading212 => "Trading 212",
+            Platform::Revolut => "Revolut",
+            Platform::Other => "Ostatni",
+        }
+    }
+
+    fn extraction_status_label(status: &ExtractionStatus) -> &'static str {
+        match status {
+            ExtractionStatus::Pending => "Ceka na zpracovani",
+            ExtractionStatus::Extracted => "Zpracovano",
+            ExtractionStatus::Failed => "Chyba",
+        }
+    }
+
+    fn extraction_status_color(status: &ExtractionStatus) -> u32 {
+        match status {
+            ExtractionStatus::Pending => ZfColors::STATUS_YELLOW,
+            ExtractionStatus::Extracted => ZfColors::STATUS_GREEN,
+            ExtractionStatus::Failed => ZfColors::STATUS_RED,
+        }
+    }
+
+    fn extraction_status_bg(status: &ExtractionStatus) -> u32 {
+        match status {
+            ExtractionStatus::Pending => ZfColors::STATUS_YELLOW_BG,
+            ExtractionStatus::Extracted => ZfColors::STATUS_GREEN_BG,
+            ExtractionStatus::Failed => ZfColors::STATUS_RED_BG,
+        }
+    }
+
+    fn content_type_from_filename(filename: &str) -> String {
+        let lower = filename.to_lowercase();
+        if lower.ends_with(".pdf") {
+            "application/pdf".to_string()
+        } else if lower.ends_with(".png") {
+            "image/png".to_string()
+        } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
+            "image/jpeg".to_string()
+        } else if lower.ends_with(".csv") {
+            "text/csv".to_string()
+        } else {
+            "application/octet-stream".to_string()
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Document upload flow
+    // ------------------------------------------------------------------
+
+    fn upload_document(&mut self, cx: &mut Context<Self>) {
+        if self.uploading {
+            return;
+        }
+
+        // Read selected platform
+        let platform_value = self
+            .platform_select
+            .as_ref()
+            .and_then(|s| s.read(cx).selected_value().map(|v| v.to_string()))
+            .unwrap_or_else(|| "other".to_string());
+
+        self.uploading = true;
+        self.error = None;
+        cx.notify();
+
+        let doc_service = self.document_service.clone();
+        let year = self.year;
+        let platform = Self::parse_platform(&platform_value);
+
+        cx.spawn(async move |this, cx| {
+            // Open file dialog via async API (xdg-desktop-portal)
+            let file_result = rfd::AsyncFileDialog::new()
+                .set_title("Vyberte soubor")
+                .add_filter("Dokumenty", &["pdf", "png", "jpg", "jpeg", "csv"])
+                .pick_file()
+                .await;
+
+            let file_path = match file_result {
+                Some(handle) => handle.path().to_path_buf(),
+                None => {
+                    // User cancelled
+                    this.update(cx, |this, cx| {
+                        this.uploading = false;
+                        cx.notify();
+                    })
+                    .ok();
+                    return;
+                }
+            };
+
+            // Read file and create record in background
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let filename = file_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "unknown".to_string());
+
+                    let data = std::fs::read(&file_path).map_err(|e| {
+                        log::error!("reading file {}: {e}", file_path.display());
+                        zfaktury_domain::DomainError::InvalidInput
+                    })?;
+
+                    let content_type = Self::content_type_from_filename(&filename);
+                    let size = data.len() as i64;
+
+                    // Generate unique storage path
+                    let timestamp = Local::now().format("%Y%m%d%H%M%S%f");
+                    let storage_dir = PathBuf::from(doc_service.data_dir())
+                        .join("investment-documents")
+                        .join(year.to_string());
+                    std::fs::create_dir_all(&storage_dir).map_err(|e| {
+                        log::error!("creating storage dir {}: {e}", storage_dir.display());
+                        zfaktury_domain::DomainError::InvalidInput
+                    })?;
+
+                    let storage_filename = format!("{timestamp}_{filename}");
+                    let storage_path = storage_dir.join(&storage_filename);
+
+                    std::fs::write(&storage_path, &data).map_err(|e| {
+                        log::error!("writing file {}: {e}", storage_path.display());
+                        zfaktury_domain::DomainError::InvalidInput
+                    })?;
+
+                    let now = Local::now().naive_local();
+                    let mut doc = InvestmentDocument {
+                        id: 0,
+                        year,
+                        platform,
+                        filename,
+                        content_type,
+                        storage_path: storage_path.to_string_lossy().to_string(),
+                        size,
+                        extraction_status: ExtractionStatus::Pending,
+                        extraction_error: String::new(),
+                        created_at: now,
+                        updated_at: now,
+                    };
+
+                    doc_service.create_record(&mut doc)?;
+                    doc_service.list_by_year(year)
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.uploading = false;
+                match result {
+                    Ok(documents) => {
+                        this.documents = documents;
+                    }
+                    Err(e) => this.error = Some(format!("Chyba pri nahravani souboru: {e}")),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    // ------------------------------------------------------------------
+    // Document extraction flow
+    // ------------------------------------------------------------------
+
+    fn extract_document(&mut self, doc_id: i64, cx: &mut Context<Self>) {
+        let ocr = match &self.ocr_service {
+            Some(ocr) => ocr.clone(),
+            None => {
+                self.error = Some("OCR sluzba neni nakonfigurovana.".to_string());
+                cx.notify();
+                return;
+            }
+        };
+
+        // Find the document to get its storage path and content type
+        let doc = match self.documents.iter().find(|d| d.id == doc_id) {
+            Some(d) => d.clone(),
+            None => return,
+        };
+
+        self.extracting_id = Some(doc_id);
+        self.error = None;
+        cx.notify();
+
+        let doc_service = self.document_service.clone();
+        let service = self.service.clone();
+        let year = self.year;
+
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    // Read file bytes
+                    let data = std::fs::read(&doc.storage_path).map_err(|e| {
+                        log::error!("reading document file {}: {e}", doc.storage_path);
+                        zfaktury_domain::DomainError::NotFound
+                    })?;
+
+                    // Call OCR
+                    let ocr_result = match ocr.process_bytes(&data, &doc.content_type) {
+                        Ok(result) => result,
+                        Err(e) => {
+                            let _ = doc_service.update_extraction_status(
+                                doc_id,
+                                "failed",
+                                &format!("{e}"),
+                            );
+                            return Err(e);
+                        }
+                    };
+
+                    // Create a single capital income entry from OCR result if we got meaningful data
+                    if !ocr_result.description.is_empty() && ocr_result.total_amount != Amount::ZERO
+                    {
+                        let income_date = if !ocr_result.issue_date.is_empty() {
+                            NaiveDate::parse_from_str(&ocr_result.issue_date, "%Y-%m-%d")
+                                .unwrap_or_else(|_| Local::now().date_naive())
+                        } else {
+                            Local::now().date_naive()
+                        };
+
+                        let now = Local::now().naive_local();
+                        let mut entry = CapitalIncomeEntry {
+                            id: 0,
+                            year,
+                            document_id: Some(doc_id),
+                            category: CapitalCategory::Other,
+                            description: ocr_result.description.clone(),
+                            income_date,
+                            gross_amount: ocr_result.total_amount,
+                            withheld_tax_cz: ocr_result.vat_amount,
+                            withheld_tax_foreign: Amount::ZERO,
+                            country_code: "CZ".to_string(),
+                            needs_declaring: true,
+                            net_amount: Amount::ZERO,
+                            created_at: now,
+                            updated_at: now,
+                        };
+                        service.create_capital_entry(&mut entry)?;
+                    }
+
+                    // Mark as extracted
+                    doc_service.update_extraction_status(doc_id, "extracted", "")?;
+
+                    // Reload all data
+                    let summary = service.get_year_summary(year)?;
+                    let capital = service.list_capital_entries(year)?;
+                    let securities = service.list_security_transactions(year)?;
+                    let documents = doc_service.list_by_year(year)?;
+                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities, documents))
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.extracting_id = None;
+                match result {
+                    Ok((summary, capital, securities, documents)) => {
+                        this.summary = Some(summary);
+                        this.capital_entries = capital;
+                        this.security_transactions = securities;
+                        this.documents = documents;
+                    }
+                    Err(e) => this.error = Some(format!("Chyba pri extrakci: {e}")),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    // ------------------------------------------------------------------
+    // Document delete
+    // ------------------------------------------------------------------
+
+    fn request_delete_document(&mut self, id: i64, cx: &mut Context<Self>) {
+        self.delete_target = Some(DeleteTarget::Document(id));
+        let dialog = cx.new(|_cx| {
+            ConfirmDialog::new(
+                "Smazat dokument",
+                "Opravdu chcete smazat tento dokument? Budou smazany i vsechny propojene zaznamy.",
+                "Smazat",
+            )
+        });
+        cx.subscribe(&dialog, Self::on_confirm_result).detach();
+        self.confirm_dialog = Some(dialog);
+        cx.notify();
+    }
+
+    fn do_delete_document(&mut self, id: i64, cx: &mut Context<Self>) {
+        self.saving = true;
+        self.error = None;
+        cx.notify();
+
+        let doc_service = self.document_service.clone();
+        let service = self.service.clone();
+        let year = self.year;
+
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    // Also delete the file from disk
+                    if let Ok(doc) = doc_service.get_by_id(id) {
+                        let _ = std::fs::remove_file(&doc.storage_path);
+                    }
+                    doc_service.delete(id)?;
+                    let summary = service.get_year_summary(year)?;
+                    let capital = service.list_capital_entries(year)?;
+                    let securities = service.list_security_transactions(year)?;
+                    let documents = doc_service.list_by_year(year)?;
+                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities, documents))
+                })
+                .await;
+
+            this.update(cx, |this, cx| {
+                this.saving = false;
+                match result {
+                    Ok((summary, capital, securities, documents)) => {
+                        this.summary = Some(summary);
+                        this.capital_entries = capital;
+                        this.security_transactions = securities;
+                        this.documents = documents;
+                    }
+                    Err(e) => this.error = Some(format!("Chyba pri mazani dokumentu: {e}")),
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
     }
 
     // ------------------------------------------------------------------
@@ -427,6 +837,7 @@ impl TaxInvestmentsView {
         cx.notify();
 
         let service = self.service.clone();
+        let doc_service = self.document_service.clone();
         let year = self.year;
         let now = Local::now().naive_local();
         let category = Self::parse_capital_category(&cat_value);
@@ -460,17 +871,19 @@ impl TaxInvestmentsView {
                     let summary = service.get_year_summary(year)?;
                     let capital = service.list_capital_entries(year)?;
                     let securities = service.list_security_transactions(year)?;
-                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities))
+                    let documents = doc_service.list_by_year(year)?;
+                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities, documents))
                 })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.saving = false;
                 match result {
-                    Ok((summary, capital, securities)) => {
+                    Ok((summary, capital, securities, documents)) => {
                         this.summary = Some(summary);
                         this.capital_entries = capital;
                         this.security_transactions = securities;
+                        this.documents = documents;
                         this.editing_capital = None;
                     }
                     Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
@@ -834,6 +1247,7 @@ impl TaxInvestmentsView {
         cx.notify();
 
         let service = self.service.clone();
+        let doc_service = self.document_service.clone();
         let year = self.year;
         let now = Local::now().naive_local();
         let asset_type = Self::parse_asset_type(&asset_type_val);
@@ -873,17 +1287,19 @@ impl TaxInvestmentsView {
                     let summary = service.get_year_summary(year)?;
                     let capital = service.list_capital_entries(year)?;
                     let securities = service.list_security_transactions(year)?;
-                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities))
+                    let documents = doc_service.list_by_year(year)?;
+                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities, documents))
                 })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.saving = false;
                 match result {
-                    Ok((summary, capital, securities)) => {
+                    Ok((summary, capital, securities, documents)) => {
                         this.summary = Some(summary);
                         this.capital_entries = capital;
                         this.security_transactions = securities;
+                        this.documents = documents;
                         this.editing_security = None;
                     }
                     Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
@@ -940,6 +1356,7 @@ impl TaxInvestmentsView {
                     match target {
                         DeleteTarget::CapitalEntry(id) => self.do_delete_capital(id, cx),
                         DeleteTarget::SecurityTx(id) => self.do_delete_security(id, cx),
+                        DeleteTarget::Document(id) => self.do_delete_document(id, cx),
                     }
                 }
             }
@@ -957,6 +1374,7 @@ impl TaxInvestmentsView {
         cx.notify();
 
         let service = self.service.clone();
+        let doc_service = self.document_service.clone();
         let year = self.year;
         cx.spawn(async move |this, cx| {
             let result = cx
@@ -966,17 +1384,19 @@ impl TaxInvestmentsView {
                     let summary = service.get_year_summary(year)?;
                     let capital = service.list_capital_entries(year)?;
                     let securities = service.list_security_transactions(year)?;
-                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities))
+                    let documents = doc_service.list_by_year(year)?;
+                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities, documents))
                 })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.saving = false;
                 match result {
-                    Ok((summary, capital, securities)) => {
+                    Ok((summary, capital, securities, documents)) => {
                         this.summary = Some(summary);
                         this.capital_entries = capital;
                         this.security_transactions = securities;
+                        this.documents = documents;
                         if let Some(ref editing) = this.editing_capital
                             && editing.id == id
                         {
@@ -998,6 +1418,7 @@ impl TaxInvestmentsView {
         cx.notify();
 
         let service = self.service.clone();
+        let doc_service = self.document_service.clone();
         let year = self.year;
         cx.spawn(async move |this, cx| {
             let result = cx
@@ -1007,17 +1428,19 @@ impl TaxInvestmentsView {
                     let summary = service.get_year_summary(year)?;
                     let capital = service.list_capital_entries(year)?;
                     let securities = service.list_security_transactions(year)?;
-                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities))
+                    let documents = doc_service.list_by_year(year)?;
+                    Ok::<_, zfaktury_domain::DomainError>((summary, capital, securities, documents))
                 })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.saving = false;
                 match result {
-                    Ok((summary, capital, securities)) => {
+                    Ok((summary, capital, securities, documents)) => {
                         this.summary = Some(summary);
                         this.capital_entries = capital;
                         this.security_transactions = securities;
+                        this.documents = documents;
                         if let Some(ref editing) = this.editing_security
                             && editing.id == id
                         {
@@ -1100,6 +1523,7 @@ impl TaxInvestmentsView {
         let tab_id = format!(
             "inv-tab-{}",
             match tab {
+                InvestmentTab::Documents => "documents",
                 InvestmentTab::CapitalIncome => "capital",
                 InvestmentTab::SecurityTransactions => "securities",
             }
@@ -2029,6 +2453,250 @@ impl TaxInvestmentsView {
 
         table
     }
+
+    // ------------------------------------------------------------------
+    // Render: Documents tab content
+    // ------------------------------------------------------------------
+
+    fn render_documents_tab(&self, cx: &mut Context<Self>) -> Div {
+        let mut container = div().flex().flex_col().gap_4();
+
+        // Upload section
+        let upload_disabled = self.uploading || self.saving;
+        container = container.child(
+            div()
+                .p_4()
+                .bg(rgb(ZfColors::SURFACE))
+                .rounded_md()
+                .border_1()
+                .border_color(rgb(ZfColors::BORDER))
+                .flex()
+                .flex_col()
+                .gap_3()
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                        .child("Nahrat dokument"),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_1()
+                                .w(px(200.0))
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .text_color(rgb(ZfColors::TEXT_SECONDARY))
+                                        .child("Platforma"),
+                                )
+                                .child(
+                                    self.platform_select
+                                        .as_ref()
+                                        .map(|s| s.clone().into_any_element())
+                                        .unwrap_or_else(|| div().into_any_element()),
+                                ),
+                        )
+                        .child(div().pt(px(18.0)).child(render_button(
+                            "btn-upload-doc",
+                            if self.uploading {
+                                "Nahravani..."
+                            } else {
+                                "Nahrat soubor"
+                            },
+                            ButtonVariant::Primary,
+                            upload_disabled,
+                            self.uploading,
+                            cx.listener(|this, _event: &ClickEvent, _window, cx| {
+                                this.upload_document(cx);
+                            }),
+                        ))),
+                ),
+        );
+
+        // Documents table
+        let mut table = div()
+            .flex()
+            .flex_col()
+            .bg(rgb(ZfColors::SURFACE))
+            .rounded_md()
+            .border_1()
+            .border_color(rgb(ZfColors::BORDER))
+            .overflow_hidden();
+
+        // Header
+        table = table.child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .px_4()
+                .py_3()
+                .border_b_1()
+                .border_color(rgb(ZfColors::BORDER))
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                        .child(format!("Dokumenty ({})", self.documents.len())),
+                ),
+        );
+
+        // Column headers
+        table = table.child(
+            div()
+                .flex()
+                .px_4()
+                .py_2()
+                .text_xs()
+                .text_color(rgb(ZfColors::TEXT_MUTED))
+                .border_b_1()
+                .border_color(rgb(ZfColors::BORDER_SUBTLE))
+                .child(div().flex_1().child("Nazev souboru"))
+                .child(div().w(px(120.0)).child("Platforma"))
+                .child(div().w(px(140.0)).child("Stav"))
+                .child(div().w(px(120.0)).child("Datum nahrani"))
+                .child(div().w(px(180.0)).text_right().child("Akce")),
+        );
+
+        // Document rows
+        if self.documents.is_empty() {
+            table = table.child(
+                div()
+                    .px_4()
+                    .py_4()
+                    .text_sm()
+                    .text_color(rgb(ZfColors::TEXT_MUTED))
+                    .child("Zadne dokumenty pro tento rok."),
+            );
+        } else {
+            for doc in &self.documents {
+                let doc_id = doc.id;
+                let is_extracting = self.extracting_id == Some(doc_id);
+                let can_extract = matches!(
+                    doc.extraction_status,
+                    ExtractionStatus::Pending | ExtractionStatus::Failed
+                );
+                let has_ocr = self.ocr_service.is_some();
+
+                let status_label = Self::extraction_status_label(&doc.extraction_status);
+                let status_color = Self::extraction_status_color(&doc.extraction_status);
+                let status_bg = Self::extraction_status_bg(&doc.extraction_status);
+                let platform_label = Self::platform_label(&doc.platform);
+
+                let created = doc.created_at.format("%d.%m.%Y %H:%M").to_string();
+
+                let mut row = div()
+                    .flex()
+                    .items_center()
+                    .px_4()
+                    .py_2()
+                    .text_sm()
+                    .border_t_1()
+                    .border_color(rgb(ZfColors::BORDER_SUBTLE))
+                    .hover(|s| s.bg(rgb(ZfColors::SURFACE_HOVER)));
+
+                // Filename
+                row = row.child(
+                    div()
+                        .flex_1()
+                        .text_color(rgb(ZfColors::TEXT_PRIMARY))
+                        .child(doc.filename.clone()),
+                );
+
+                // Platform
+                row = row.child(
+                    div()
+                        .w(px(120.0))
+                        .text_color(rgb(ZfColors::TEXT_MUTED))
+                        .child(platform_label),
+                );
+
+                // Status badge
+                row = row.child(
+                    div().w(px(140.0)).child(
+                        div()
+                            .px_2()
+                            .py(px(2.0))
+                            .bg(rgb(status_bg))
+                            .rounded(px(4.0))
+                            .text_xs()
+                            .text_color(rgb(status_color))
+                            .child(status_label),
+                    ),
+                );
+
+                // Created date
+                row = row.child(
+                    div()
+                        .w(px(120.0))
+                        .text_color(rgb(ZfColors::TEXT_MUTED))
+                        .text_xs()
+                        .child(created),
+                );
+
+                // Actions
+                let mut actions = div().w(px(180.0)).flex().justify_end().gap_1();
+
+                if can_extract && has_ocr {
+                    actions = actions.child(render_button(
+                        SharedString::from(format!("doc-extract-{doc_id}")),
+                        if is_extracting {
+                            "Zpracovavam..."
+                        } else {
+                            "Extrahovat"
+                        },
+                        ButtonVariant::Secondary,
+                        is_extracting || self.saving,
+                        is_extracting,
+                        cx.listener(move |this, _event: &ClickEvent, _window, cx| {
+                            this.extract_document(doc_id, cx);
+                        }),
+                    ));
+                }
+
+                actions = actions.child(render_button(
+                    SharedString::from(format!("doc-del-{doc_id}")),
+                    "Smazat",
+                    ButtonVariant::Danger,
+                    is_extracting || self.saving,
+                    false,
+                    cx.listener(move |this, _event: &ClickEvent, _window, cx| {
+                        this.request_delete_document(doc_id, cx);
+                    }),
+                ));
+
+                row = row.child(actions);
+
+                table = table.child(row);
+
+                // Show extraction error if any
+                if !doc.extraction_error.is_empty() {
+                    table = table.child(
+                        div()
+                            .px_4()
+                            .py_1()
+                            .text_xs()
+                            .text_color(rgb(ZfColors::STATUS_RED))
+                            .bg(rgb(ZfColors::STATUS_RED_BG))
+                            .child(format!("Chyba: {}", doc.extraction_error)),
+                    );
+                }
+            }
+        }
+
+        container = container.child(table);
+        container
+    }
 }
 
 impl EventEmitter<NavigateEvent> for TaxInvestmentsView {}
@@ -2183,6 +2851,7 @@ impl Render for TaxInvestmentsView {
             div()
                 .flex()
                 .gap_2()
+                .child(self.render_tab_button("Dokumenty", InvestmentTab::Documents, cx))
                 .child(self.render_tab_button(
                     "Kapitalove prijmy (p.8)",
                     InvestmentTab::CapitalIncome,
@@ -2197,6 +2866,9 @@ impl Render for TaxInvestmentsView {
 
         // Tab content
         match self.active_tab {
+            InvestmentTab::Documents => {
+                content = content.child(self.render_documents_tab(cx));
+            }
             InvestmentTab::CapitalIncome => {
                 content = content.child(self.render_capital_tab(cx));
             }

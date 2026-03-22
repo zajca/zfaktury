@@ -145,7 +145,7 @@ impl SidebarView {
                     | Route::ExpenseEdit(_)
                     | Route::ExpenseDetail(_)
                     | Route::ExpenseImport
-                    | Route::ExpenseReview
+                    | Route::ExpenseReview(_)
             ),
             Route::ContactList => matches!(
                 self.current_route,

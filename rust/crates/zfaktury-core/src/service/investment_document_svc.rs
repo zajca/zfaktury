@@ -59,6 +59,23 @@ impl InvestmentDocumentService {
         self.repo.list_by_year(year)
     }
 
+    /// Updates the extraction status and error message for a document.
+    pub fn update_extraction_status(
+        &self,
+        id: i64,
+        status: &str,
+        extraction_error: &str,
+    ) -> Result<(), DomainError> {
+        if id == 0 {
+            return Err(DomainError::InvalidInput);
+        }
+        self.repo.update_extraction(id, status, extraction_error)?;
+        if let Some(ref audit) = self.audit {
+            audit.log("investment_document", id, "update_extraction", None, None);
+        }
+        Ok(())
+    }
+
     /// Deletes the document and all linked capital income entries and security transactions.
     pub fn delete(&self, id: i64) -> Result<(), DomainError> {
         if id == 0 {

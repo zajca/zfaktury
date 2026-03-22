@@ -138,16 +138,31 @@ impl Render for ExpenseListView {
                                 .child(format!("({} celkem)", self.total)),
                         ),
                 )
-                .child(render_button(
-                    "new-expense-btn",
-                    "Novy naklad",
-                    ButtonVariant::Primary,
-                    false,
-                    false,
-                    cx.listener(|_this, _event: &ClickEvent, _window, cx| {
-                        cx.emit(NavigateEvent(Route::ExpenseNew));
-                    }),
-                )),
+                .child(
+                    div()
+                        .flex()
+                        .gap_2()
+                        .child(render_button(
+                            "import-expense-btn",
+                            "Import dokladu",
+                            ButtonVariant::Secondary,
+                            false,
+                            false,
+                            cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                                cx.emit(NavigateEvent(Route::ExpenseImport));
+                            }),
+                        ))
+                        .child(render_button(
+                            "new-expense-btn",
+                            "Novy naklad",
+                            ButtonVariant::Primary,
+                            false,
+                            false,
+                            cx.listener(|_this, _event: &ClickEvent, _window, cx| {
+                                cx.emit(NavigateEvent(Route::ExpenseNew));
+                            }),
+                        )),
+                ),
         );
 
         // Search row

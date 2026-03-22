@@ -1,18 +1,29 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use gpui::*;
 use zfaktury_core::service::document_svc::DocumentService;
 use zfaktury_core::service::import_svc::ImportService;
+use zfaktury_core::service::ocr_svc::OCRService;
+use zfaktury_domain::{ExpenseDocument, OCRResult};
 
 use crate::components::button::{ButtonVariant, render_button};
 use crate::navigation::{NavigateEvent, Route};
 use crate::theme::ZfColors;
+
+/// Maximum file size for import: 20 MB.
+const MAX_FILE_SIZE: u64 = 20 * 1024 * 1024;
+
+/// Supported file extensions for import.
+const SUPPORTED_EXTENSIONS: &[&str] = &["pdf", "jpg", "jpeg", "png", "webp"];
 
 /// View for importing expense documents (receipts, invoices).
 /// Provides file selection, upload, and optional OCR processing.
 pub struct ExpenseImportView {
     import_service: Arc<ImportService>,
     document_service: Arc<DocumentService>,
+    ocr_service: Option<Arc<OCRService>>,
+    pending_ocr_cache: Arc<std::sync::Mutex<Option<(i64, OCRResult)>>>,
 
     // State
     processing: bool,
@@ -26,63 +37,193 @@ impl ExpenseImportView {
     pub fn new(
         import_service: Arc<ImportService>,
         document_service: Arc<DocumentService>,
+        ocr_service: Option<Arc<OCRService>>,
+        pending_ocr_cache: Arc<std::sync::Mutex<Option<(i64, OCRResult)>>>,
         _cx: &mut Context<Self>,
     ) -> Self {
         Self {
             import_service,
             document_service,
+            ocr_service,
+            pending_ocr_cache,
             processing: false,
             error: None,
             success_message: None,
         }
     }
 
-    /// Trigger file selection dialog.
-    /// Currently a placeholder -- requires `rfd` crate to be added to Cargo.toml.
+    /// Trigger file selection dialog using rfd async API (xdg-desktop-portal).
     fn select_file(&mut self, cx: &mut Context<Self>) {
         if self.processing {
             return;
         }
 
-        // rfd is not yet in Cargo.toml, so we cannot open a native file dialog.
-        // Once rfd is added, this will use rfd::AsyncFileDialog to pick a file,
-        // then call process_file() with the selected path.
-        self.error =
-            Some("Vyber souboru bude dostupny po pridani rfd zavislosti do Cargo.toml".to_string());
-        cx.notify();
-    }
-
-    /// Process a selected file: create skeleton expense, store document, optionally run OCR.
-    #[allow(dead_code)]
-    fn process_file(&mut self, filename: String, _data: Vec<u8>, cx: &mut Context<Self>) {
         self.processing = true;
         self.error = None;
         self.success_message = None;
         cx.notify();
 
+        cx.spawn(async move |this, cx| {
+            let file_result = rfd::AsyncFileDialog::new()
+                .add_filter("Doklady", SUPPORTED_EXTENSIONS)
+                .set_title("Vyberte doklad")
+                .pick_file()
+                .await;
+
+            match file_result {
+                Some(handle) => {
+                    let path = handle.path().to_path_buf();
+                    this.update(cx, |this, cx| {
+                        this.process_file(path, cx);
+                    })
+                    .ok();
+                }
+                None => {
+                    // User cancelled the dialog
+                    this.update(cx, |this, cx| {
+                        this.processing = false;
+                        cx.notify();
+                    })
+                    .ok();
+                }
+            }
+        })
+        .detach();
+    }
+
+    /// Process a selected file: validate, create skeleton expense, store document,
+    /// optionally run OCR, then navigate to detail.
+    fn process_file(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        // Validate extension
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase())
+            .unwrap_or_default();
+
+        if !SUPPORTED_EXTENSIONS.contains(&extension.as_str()) {
+            self.processing = false;
+            self.error = Some(format!(
+                "Nepodporovany format souboru: .{}. Podporovane: PDF, JPG, PNG, WebP",
+                extension
+            ));
+            cx.notify();
+            return;
+        }
+
+        // Detect content type from extension
+        let content_type = match extension.as_str() {
+            "pdf" => "application/pdf",
+            "jpg" | "jpeg" => "image/jpeg",
+            "png" => "image/png",
+            "webp" => "image/webp",
+            _ => {
+                self.processing = false;
+                self.error = Some("Nepodporovany format souboru".to_string());
+                cx.notify();
+                return;
+            }
+        }
+        .to_string();
+
+        let filename = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("dokument")
+            .to_string();
+
         let import_svc = self.import_service.clone();
-        let _doc_svc = self.document_service.clone();
+        let doc_svc = self.document_service.clone();
+        let ocr_svc = self.ocr_service.clone();
 
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
-                .spawn(async move { import_svc.create_skeleton_expense(&filename) })
+                .spawn(async move {
+                    // 1. Read file bytes from disk
+                    let data =
+                        std::fs::read(&path).map_err(|e| format!("Nelze precist soubor: {e}"))?;
+
+                    // 2. Validate file size
+                    if data.len() as u64 > MAX_FILE_SIZE {
+                        return Err(format!(
+                            "Soubor je prilis velky ({:.1} MB). Maximum je 20 MB.",
+                            data.len() as f64 / (1024.0 * 1024.0)
+                        ));
+                    }
+
+                    // 3. Create skeleton expense
+                    let expense = import_svc
+                        .create_skeleton_expense(&filename)
+                        .map_err(|e| format!("Chyba pri vytvareni nakladu: {e}"))?;
+
+                    // 4. Store document record
+                    let data_dir = doc_svc.data_dir();
+                    let docs_dir = std::path::Path::new(data_dir).join("documents");
+                    std::fs::create_dir_all(&docs_dir)
+                        .map_err(|e| format!("Nelze vytvorit adresar pro dokumenty: {e}"))?;
+
+                    let storage_filename = format!("{}_{}", expense.id, filename);
+                    let storage_path = docs_dir.join(&storage_filename);
+                    std::fs::write(&storage_path, &data)
+                        .map_err(|e| format!("Nelze ulozit soubor: {e}"))?;
+
+                    let now = chrono::Local::now().naive_local();
+                    let mut doc = ExpenseDocument {
+                        id: 0,
+                        expense_id: expense.id,
+                        filename: filename.clone(),
+                        content_type: content_type.clone(),
+                        storage_path: storage_path.to_string_lossy().to_string(),
+                        size: data.len() as i64,
+                        created_at: now,
+                        deleted_at: None,
+                    };
+
+                    doc_svc
+                        .create_record(&mut doc)
+                        .map_err(|e| format!("Chyba pri ukladani dokumentu: {e}"))?;
+
+                    // 5. Optionally run OCR
+                    let mut ocr_result_out = None;
+                    if let Some(ref ocr) = ocr_svc {
+                        match ocr.process_bytes(&data, &content_type) {
+                            Ok(result) => {
+                                log::info!("OCR processing successful for expense {}", expense.id);
+                                ocr_result_out = Some(result);
+                            }
+                            Err(e) => {
+                                log::warn!("OCR processing failed for expense {}: {e}", expense.id);
+                                // Continue without OCR -- not a fatal error
+                            }
+                        }
+                    }
+
+                    Ok::<(i64, Option<OCRResult>), String>((expense.id, ocr_result_out))
+                })
                 .await;
 
             this.update(cx, |this, cx| {
                 this.processing = false;
                 match result {
-                    Ok(expense) => {
-                        this.success_message =
-                            Some(format!("Naklad #{} vytvoren", expense.expense_number));
-                        // Navigate to expense detail for manual editing
-                        cx.emit(NavigateEvent(Route::ExpenseDetail(expense.id)));
+                    Ok((expense_id, ocr_result)) => {
+                        if let Some(result) = ocr_result {
+                            // Store OCR result for review view
+                            if let Ok(mut lock) = this.pending_ocr_cache.lock() {
+                                *lock = Some((expense_id, result));
+                            }
+                            // Navigate to review (OCR data available)
+                            cx.emit(NavigateEvent(Route::ExpenseReview(expense_id)));
+                        } else {
+                            // No OCR data -- go directly to detail
+                            cx.emit(NavigateEvent(Route::ExpenseDetail(expense_id)));
+                        }
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri importu: {e}"));
+                        this.error = Some(e);
+                        cx.notify();
                     }
                 }
-                cx.notify();
             })
             .ok();
         })
@@ -115,10 +256,12 @@ impl ExpenseImportView {
                 .text_sm()
                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
                 .text_center()
-                .child("Vyberte soubor pro import. Podporovane formaty: PDF, JPG, PNG (max 20 MB)"),
+                .child(
+                    "Vyberte soubor pro import. Podporovane formaty: PDF, JPG, PNG, WebP (max 20 MB)",
+                ),
         );
 
-        // Upload button
+        // Upload button or processing spinner
         if self.processing {
             area = area.child(
                 div()
@@ -149,10 +292,27 @@ impl ExpenseImportView {
     }
 
     fn render_ocr_status(&self) -> Div {
-        // OCR is not configured yet (no OCR service wired in AppServices)
+        let (dot_color, message) = if self.ocr_service.is_some() {
+            (
+                ZfColors::STATUS_GREEN,
+                "OCR je aktivni - data budou automaticky rozpoznana",
+            )
+        } else {
+            (
+                ZfColors::STATUS_YELLOW,
+                "OCR neni nastaveno - doklad bude importovan bez rozpoznani",
+            )
+        };
+
+        let bg_color = if self.ocr_service.is_some() {
+            ZfColors::STATUS_GREEN_BG
+        } else {
+            ZfColors::STATUS_YELLOW_BG
+        };
+
         div()
             .p_3()
-            .bg(rgb(ZfColors::STATUS_YELLOW_BG))
+            .bg(rgb(bg_color))
             .rounded_md()
             .border_1()
             .border_color(rgb(ZfColors::BORDER))
@@ -164,13 +324,13 @@ impl ExpenseImportView {
                     .w(px(8.0))
                     .h(px(8.0))
                     .rounded_full()
-                    .bg(rgb(ZfColors::STATUS_YELLOW)),
+                    .bg(rgb(dot_color)),
             )
             .child(
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("OCR neni nastaveno - doklad bude importovan bez rozpoznani"),
+                    .child(message),
             )
     }
 

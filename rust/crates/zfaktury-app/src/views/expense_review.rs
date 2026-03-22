@@ -3,11 +3,12 @@ use std::sync::Arc;
 use chrono::{Local, NaiveDate};
 use gpui::*;
 use zfaktury_core::service::expense_svc::ExpenseService;
-use zfaktury_domain::{Amount, CURRENCY_CZK, Expense};
+use zfaktury_domain::{Amount, CURRENCY_CZK, Expense, ExpenseItem, OCRResult};
 
 use crate::components::button::{ButtonVariant, render_button};
 use crate::components::confirm_dialog::{ConfirmDialog, ConfirmDialogResult};
 use crate::components::date_input::DateInput;
+use crate::components::expense_items_editor::{ExpenseItemsChanged, ExpenseItemsEditor};
 use crate::components::number_input::NumberInput;
 use crate::components::select::{Select, SelectOption};
 use crate::components::text_input::{TextInput, render_form_field};
@@ -31,6 +32,10 @@ pub struct ExpenseReviewView {
     vat_amount: Entity<NumberInput>,
     vat_rate: Entity<Select>,
     currency: Entity<Select>,
+
+    // Items editor
+    items_editor: Entity<ExpenseItemsEditor>,
+    pending_ocr_result: Option<OCRResult>,
 
     // State
     saving: bool,
@@ -112,9 +117,11 @@ fn render_card(title: &str, content: Div) -> Div {
 impl ExpenseReviewView {
     /// Create a new review view for the given expense ID.
     /// Loads expense data and pre-populates the form fields.
+    /// If ocr_result is provided, OCR data will be applied after loading.
     pub fn new(
         expense_service: Arc<ExpenseService>,
         expense_id: i64,
+        ocr_result: Option<OCRResult>,
         cx: &mut Context<Self>,
     ) -> Self {
         let description = cx.new(|cx| TextInput::new("review-description", "Popis nakladu...", cx));
@@ -139,6 +146,15 @@ impl ExpenseReviewView {
             s
         });
 
+        let items_editor = cx.new(ExpenseItemsEditor::new);
+        cx.subscribe(
+            &items_editor,
+            |_this: &mut Self, _, _: &ExpenseItemsChanged, cx| {
+                cx.notify();
+            },
+        )
+        .detach();
+
         // Load existing expense data to pre-populate form
         let svc = expense_service.clone();
         let id = expense_id;
@@ -150,7 +166,13 @@ impl ExpenseReviewView {
             this.update(cx, |this, cx| {
                 this.loading = false;
                 match result {
-                    Ok(expense) => this.populate_from_expense(&expense, cx),
+                    Ok(expense) => {
+                        this.populate_from_expense(&expense, cx);
+                        // Apply OCR result after populating from expense
+                        if let Some(ocr) = this.pending_ocr_result.take() {
+                            this.apply_ocr_result(&ocr, cx);
+                        }
+                    }
                     Err(e) => this.error = Some(format!("Chyba pri nacitani nakladu: {e}")),
                 }
                 cx.notify();
@@ -170,6 +192,8 @@ impl ExpenseReviewView {
             vat_amount,
             vat_rate,
             currency,
+            items_editor,
+            pending_ocr_result: ocr_result,
             saving: false,
             error: None,
             confirm_dialog: None,
@@ -199,6 +223,62 @@ impl ExpenseReviewView {
         self.currency.update(cx, |s, cx| {
             s.set_selected_value(&exp.currency_code, cx);
         });
+    }
+
+    /// Apply OCR result to form fields and items editor.
+    fn apply_ocr_result(&mut self, result: &OCRResult, cx: &mut Context<Self>) {
+        if !result.description.is_empty() {
+            self.description
+                .update(cx, |t, cx| t.set_value(&result.description, cx));
+        }
+        if !result.invoice_number.is_empty() {
+            self.invoice_number
+                .update(cx, |t, cx| t.set_value(&result.invoice_number, cx));
+        }
+        if !result.issue_date.is_empty() {
+            self.issue_date
+                .update(cx, |d, cx| d.set_iso_value(&result.issue_date, cx));
+        }
+        if result.total_amount != Amount::ZERO {
+            self.total_amount
+                .update(cx, |n, cx| n.set_amount(result.total_amount, cx));
+        }
+        if result.vat_amount != Amount::ZERO {
+            self.vat_amount
+                .update(cx, |n, cx| n.set_amount(result.vat_amount, cx));
+        }
+        if result.vat_rate_percent != 0 {
+            self.vat_rate.update(cx, |s, cx| {
+                s.set_selected_value(&result.vat_rate_percent.to_string(), cx);
+            });
+        }
+        if !result.currency_code.is_empty() {
+            self.currency.update(cx, |s, cx| {
+                s.set_selected_value(&result.currency_code, cx);
+            });
+        }
+        // Apply line items from OCR
+        if !result.items.is_empty() {
+            let items: Vec<ExpenseItem> = result
+                .items
+                .iter()
+                .enumerate()
+                .map(|(i, ocr_item)| ExpenseItem {
+                    id: 0,
+                    expense_id: 0,
+                    description: ocr_item.description.clone(),
+                    quantity: ocr_item.quantity,
+                    unit: "ks".to_string(),
+                    unit_price: ocr_item.unit_price,
+                    vat_rate_percent: ocr_item.vat_rate_percent,
+                    vat_amount: Amount::ZERO,
+                    total_amount: Amount::ZERO,
+                    sort_order: (i + 1) as i32,
+                })
+                .collect();
+            self.items_editor
+                .update(cx, |editor, cx| editor.set_items(&items, cx));
+        }
     }
 
     /// Validate and save the reviewed expense data.
@@ -252,6 +332,9 @@ impl ExpenseReviewView {
             .and_then(|v| v.parse().ok())
             .unwrap_or(21);
 
+        // Read items from editor
+        let items = self.items_editor.read(cx).to_expense_items(cx);
+
         let now = chrono::Local::now().naive_local();
         let expense_id = self.expense_id;
 
@@ -274,7 +357,7 @@ impl ExpenseReviewView {
             document_path: String::new(),
             notes: String::new(),
             tax_reviewed_at: None,
-            items: Vec::new(),
+            items,
             created_at: now,
             updated_at: now,
             deleted_at: None,
@@ -466,6 +549,12 @@ impl Render for ExpenseReviewView {
                             .child(render_labeled_field("DPH castka", self.vat_amount.clone())),
                     ),
                 ),
+        ));
+
+        // Card 3: Items
+        outer = outer.child(render_card(
+            "Polozky",
+            div().child(self.items_editor.clone()),
         ));
 
         // Action buttons

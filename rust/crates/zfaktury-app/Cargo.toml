@@ -13,5 +13,7 @@ zfaktury-domain = { path = "../zfaktury-domain" }
 zfaktury-gen = { path = "../zfaktury-gen" }
 zfaktury-db = { path = "../zfaktury-db" }
 zfaktury-config = { path = "../zfaktury-config" }
+zfaktury-api = { path = "../zfaktury-api" }
+rfd = "0.15"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 log = "0.4"

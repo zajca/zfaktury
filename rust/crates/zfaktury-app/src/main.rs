@@ -1,5 +1,7 @@
 mod app;
+mod assets;
 mod components;
+mod icons;
 mod navigation;
 mod root;
 mod sidebar;
@@ -166,34 +168,42 @@ fn cmd_gui(cli: Cli) {
         .and_then(Route::from_path)
         .unwrap_or(Route::Dashboard);
 
-    gpui_platform::application().run(move |cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
-        let services = services.clone();
-        let initial_route = initial_route.clone();
+    gpui_platform::application()
+        .with_assets(assets::EmbeddedAssets)
+        .run(move |cx: &mut App| {
+            cx.bind_keys([KeyBinding::new(
+                "ctrl-shift-l",
+                root::ToggleSidebar,
+                Some("RootView"),
+            )]);
 
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                titlebar: Some(TitlebarOptions {
-                    title: Some("ZFaktury".into()),
+            let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
+            let services = services.clone();
+            let initial_route = initial_route.clone();
+
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    titlebar: Some(TitlebarOptions {
+                        title: Some("ZFaktury".into()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |_window, cx| cx.new(|cx| RootView::new(services, initial_route, cx)),
-        )
-        .unwrap();
+                },
+                |_window, cx| cx.new(|cx| RootView::new(services, initial_route, cx)),
+            )
+            .unwrap();
 
-        if let Some(seconds) = cli.exit_after {
-            cx.spawn(async move |cx| {
-                cx.background_executor()
-                    .timer(Duration::from_secs(seconds))
-                    .await;
-                cx.update(|cx| cx.quit());
-            })
-            .detach();
-        }
-    });
+            if let Some(seconds) = cli.exit_after {
+                cx.spawn(async move |cx| {
+                    cx.background_executor()
+                        .timer(Duration::from_secs(seconds))
+                        .await;
+                    cx.update(|cx| cx.quit());
+                })
+                .detach();
+            }
+        });
 }
 
 /// Resolve the database path from CLI args or config.

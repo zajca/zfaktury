@@ -13,11 +13,16 @@ impl ZfColors {
     pub const ACCENT: u32 = 0x5e6ad2;
     pub const ACCENT_HOVER: u32 = 0x6e7ae2;
     pub const ACCENT_MUTED: u32 = 0x2a2d4a;
+    /// Lighter accent for text on active items (matches SvelteKit --color-accent-text)
+    pub const ACCENT_TEXT: u32 = 0x8e96e3;
 
     // Text
     pub const TEXT_PRIMARY: u32 = 0xececef;
     pub const TEXT_SECONDARY: u32 = 0xa0a0a8;
+    /// Tertiary text (matches SvelteKit --color-tertiary)
     pub const TEXT_MUTED: u32 = 0x6b6b73;
+    /// Section header / very subtle text (matches SvelteKit --color-muted)
+    pub const TEXT_SECTION: u32 = 0x4a4a52;
 
     // Border
     pub const BORDER: u32 = 0x2e2e33;

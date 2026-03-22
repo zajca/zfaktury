@@ -3,6 +3,8 @@ use std::sync::Arc;
 use gpui::*;
 
 use crate::app::AppServices;
+
+actions!(zfaktury, [ToggleSidebar]);
 use crate::navigation::{NavigateEvent, NavigationState, Route};
 use crate::sidebar::SidebarView;
 use crate::theme::ZfColors;
@@ -59,6 +61,7 @@ pub struct RootView {
     nav: NavigationState,
     sidebar: Entity<SidebarView>,
     content: ContentView,
+    focus_handle: FocusHandle,
 }
 
 /// Wrapper for the current content view entity.
@@ -126,13 +129,22 @@ impl RootView {
         let content = Self::create_content_view(&services, &initial_route, cx);
         Self::subscribe_to_content(&content, cx);
         let nav = NavigationState::new(initial_route);
+        let focus_handle = cx.focus_handle();
 
         Self {
             services,
             nav,
             sidebar,
             content,
+            focus_handle,
         }
+    }
+
+    fn toggle_sidebar(&mut self, _: &ToggleSidebar, _window: &mut Window, cx: &mut Context<Self>) {
+        self.sidebar.update(cx, |sidebar, _cx| {
+            sidebar.toggle_collapse();
+        });
+        cx.notify();
     }
 
     /// Navigate to a new route, updating sidebar and content.
@@ -494,6 +506,12 @@ impl RootView {
     }
 }
 
+impl Focusable for RootView {
+    fn focus_handle(&self, _: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
 impl Render for RootView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let content_element: AnyElement = match &self.content {
@@ -545,6 +563,9 @@ impl Render for RootView {
         };
 
         div()
+            .key_context("RootView")
+            .track_focus(&self.focus_handle)
+            .on_action(_cx.listener(Self::toggle_sidebar))
             .flex()
             .size_full()
             .bg(rgb(ZfColors::BG))

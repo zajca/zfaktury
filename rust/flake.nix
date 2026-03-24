@@ -157,17 +157,16 @@
             mold
           ];
 
+          # Static musl libraries in buildInputs so Nix pkg-config hook finds their .pc files
+          buildInputs = staticLibs;
+
           env = {
             ZSTD_SYS_USE_PKG_CONFIG = "true";
             # Use musl cross-compiler (by path to avoid polluting host includes)
             CC_x86_64_unknown_linux_musl = "${crossCC}/bin/x86_64-unknown-linux-musl-cc";
             CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = "${crossCC}/bin/x86_64-unknown-linux-musl-cc";
-            # Point pkg-config at static musl libraries
-            PKG_CONFIG_PATH = mkPkgConfigPath staticLibs;
             PKG_CONFIG_ALLOW_CROSS = "1";
             PKG_CONFIG_ALL_STATIC = "1";
-            # Add static lib paths for linker (LIBRARY_PATH for cc, RUSTFLAGS for rustc)
-            LIBRARY_PATH = mkLibPath staticLibs;
             # -L flags for libraries not found via pkg-config, plus extra -l for xcb extensions
             CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = "${mkRustLinkFlags staticLibs} -l static=xcb-xkb -l static=xcb-render -l static=xcb-shape -l static=xcb-xfixes -l static=xcb-randr -l static=xcb-shm -l static=xcb-xinput -l static=Xau -l static=Xdmcp";
           };

@@ -1,0 +1,117 @@
+name: Rust Dev Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rust/**'
+      - '.github/workflows/rust-dev-release.yml'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+jobs:
+  check:
+    name: Clippy + Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Cache cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: rust-check-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            rust-check-
+
+      - name: Clippy
+        working-directory: rust
+        run: nix develop --command bash -c "cargo clippy --workspace -- -D warnings"
+
+      - name: Test
+        working-directory: rust
+        run: nix develop --command bash -c "cargo test --workspace"
+
+  build:
+    name: Build Release Binary
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Cache cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: rust-release-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            rust-release-
+
+      - name: Build release binary
+        working-directory: rust
+        run: nix develop --command bash -c "cargo build --release -p zfaktury-app"
+
+      - name: Package binary
+        run: tar czf zfaktury-rust-dev-linux-amd64.tar.gz -C rust/target/release zfaktury-app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zfaktury-rust-dev-linux-amd64
+          path: zfaktury-rust-dev-linux-amd64.tar.gz
+          retention-days: 5
+
+  release:
+    name: Update Dev Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: zfaktury-rust-dev-linux-amd64
+
+      - name: Generate checksums
+        run: sha256sum zfaktury-rust-dev-linux-amd64.tar.gz > checksums.txt
+
+      - name: Delete existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete rust-dev-latest --yes --cleanup-tag 2>/dev/null || true
+
+      - name: Create dev release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rust-dev-latest
+          name: "Rust Dev Build (latest)"
+          body: |
+            Automated dev build from `main` branch.
+
+            **Commit:** ${{ github.sha }}
+            **Date:** ${{ github.event.head_commit.timestamp }}
+            **Message:** ${{ github.event.head_commit.message }}
+
+            > This is a pre-release build for testing. It is replaced on every push to main.
+          prerelease: true
+          files: |
+            zfaktury-rust-dev-linux-amd64.tar.gz
+            checksums.txt

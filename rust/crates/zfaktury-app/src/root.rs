@@ -493,7 +493,8 @@ impl RootView {
                 ContentView::SettingsBackup(cx.new(|_cx| SettingsBackupView::new()))
             }
             Route::ImportFakturoid => {
-                ContentView::ImportFakturoid(cx.new(|_cx| ImportFakturoidView::new()))
+                let svc = services.fakturoid_import.clone();
+                ContentView::ImportFakturoid(cx.new(|cx| ImportFakturoidView::new(svc, cx)))
             }
             // All routes have dedicated views now; this arm is kept
             // for any future routes added to the Route enum.

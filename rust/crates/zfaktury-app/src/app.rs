@@ -4,15 +4,16 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use zfaktury_api::ocr::{AnthropicProvider, OcrProvider as ApiOcrProvider, OpenAIProvider};
 use zfaktury_config::{Config, OcrConfig};
+use zfaktury_core::service::fakturoid_import_svc::FakturoidImportDeps;
 use zfaktury_core::service::ocr_svc::OCRProvider;
 use zfaktury_core::service::{
     AuditService, BackupService, CategoryService, ContactService, DashboardService,
-    DocumentService, ExpenseService, HealthInsuranceService, ImportService, IncomeTaxReturnService,
-    InvestmentDocumentService, InvestmentIncomeService, InvoiceDocumentService, InvoiceService,
-    OCRService, OverdueService, RecurringExpenseService, RecurringInvoiceService, ReminderService,
-    ReportService, SequenceService, SettingsService, SocialInsuranceService, TaxCalendarService,
-    TaxCreditsService, TaxDeductionDocumentService, TaxYearSettingsService,
-    VATControlStatementService, VATReturnService, VIESSummaryService,
+    DocumentService, ExpenseService, FakturoidImportService, HealthInsuranceService, ImportService,
+    IncomeTaxReturnService, InvestmentDocumentService, InvestmentIncomeService,
+    InvoiceDocumentService, InvoiceService, OCRService, OverdueService, RecurringExpenseService,
+    RecurringInvoiceService, ReminderService, ReportService, SequenceService, SettingsService,
+    SocialInsuranceService, TaxCalendarService, TaxCreditsService, TaxDeductionDocumentService,
+    TaxYearSettingsService, VATControlStatementService, VATReturnService, VIESSummaryService,
 };
 use zfaktury_db::connection::open_connection;
 use zfaktury_db::migrate::run_migrations;
@@ -24,6 +25,7 @@ use zfaktury_db::repos::contact_repo::SqliteContactRepo;
 use zfaktury_db::repos::dashboard_repo::SqliteDashboardRepo;
 use zfaktury_db::repos::document_repo::SqliteDocumentRepo;
 use zfaktury_db::repos::expense_repo::SqliteExpenseRepo;
+use zfaktury_db::repos::fakturoid_import_repo::SqliteFakturoidImportRepo;
 use zfaktury_db::repos::health_insurance_repo::SqliteHealthInsuranceRepo;
 use zfaktury_db::repos::income_tax_return_repo::SqliteIncomeTaxReturnRepo;
 use zfaktury_db::repos::investment_document_repo::SqliteInvestmentDocumentRepo;
@@ -85,6 +87,7 @@ pub struct AppServices {
     pub vat_control: Arc<VATControlStatementService>,
     pub vies: Arc<VIESSummaryService>,
     pub import: Arc<ImportService>,
+    pub fakturoid_import: Arc<FakturoidImportService>,
 
     // --- OCR (optional) ---
     pub ocr_service: Option<Arc<OCRService>>,
@@ -376,6 +379,24 @@ impl AppServices {
             ocr_service.clone(),
         ));
 
+        // FakturoidImportService
+        let fakturoid_import_repo =
+            Arc::new(SqliteFakturoidImportRepo::new(conn!("fakturoid_import")));
+        let fak_contact_repo = Arc::new(SqliteContactRepo::new(conn!("fak_contacts")));
+        let fak_invoice_repo = Arc::new(SqliteInvoiceRepo::new(conn!("fak_invoices")));
+        let fak_expense_repo = Arc::new(SqliteExpenseRepo::new(conn!("fak_expenses")));
+        let fakturoid_import = Arc::new(FakturoidImportService::new(FakturoidImportDeps {
+            import_repo: fakturoid_import_repo,
+            contact_repo: fak_contact_repo,
+            invoice_repo: fak_invoice_repo,
+            expense_repo: fak_expense_repo,
+            contact_svc: contacts.clone(),
+            invoice_svc: invoices.clone(),
+            expense_svc: expenses.clone(),
+            document_svc: documents.clone(),
+            invoice_document_svc: invoice_documents.clone(),
+        }));
+
         Ok(Self {
             // Core (existing)
             dashboard,
@@ -408,6 +429,7 @@ impl AppServices {
             vat_control,
             vies,
             import,
+            fakturoid_import,
             ocr_service,
             pending_ocr_result: Arc::new(std::sync::Mutex::new(None)),
         })

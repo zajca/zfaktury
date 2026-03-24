@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 zfaktury-domain = { path = "../zfaktury-domain" }
+zfaktury-api = { path = "../zfaktury-api" }
 thiserror = "2"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 anyhow = "1"

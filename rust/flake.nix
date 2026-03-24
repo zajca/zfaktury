@@ -18,6 +18,12 @@
           extensions = [ "rust-src" "rust-analyzer" ];
         };
 
+        # Toolchain with musl target for static CI builds
+        rustToolchainMusl = pkgs.rust-bin.beta.latest.default.override {
+          extensions = [ "rust-src" ];
+          targets = [ "x86_64-unknown-linux-musl" ];
+        };
+
         nativeBuildInputs = with pkgs; [
           rustToolchain
           pkg-config
@@ -97,6 +103,77 @@
 
           shellHook = ''
             echo "ZFaktury Rust devshell ready (Rust $(rustc --version | cut -d' ' -f2))"
+          '';
+        };
+
+        # CI devshell for static musl builds (Linux x86_64)
+        # Uses pkgsStatic (musl-based, produces .a static libs) for all linked C libraries
+        devShells.ci = let
+          s = pkgs.pkgsStatic;
+          crossCC = s.stdenv.cc;
+
+          # Static musl libraries needed at link time
+          staticLibs = [
+            s.fontconfig
+            s.freetype
+            s.libxcb
+            s.libxkbcommon
+            s.zstd
+            s.zlib
+            s.expat
+            s.libpng
+            s.bzip2
+            s.brotli
+            s.libffi
+            s.pcre2
+            s.util-linux  # libuuid
+            s.glib
+            s.alsa-lib
+            s.wayland
+            s.libx11
+            s.xorgproto
+            s.libxau
+            s.libxdmcp
+          ];
+
+          # Build library search path and pkg-config path from static packages
+          mkLibPath = libs: pkgs.lib.concatMapStringsSep ":" (pkg:
+            let lib = pkg.lib or pkg; in "${lib}/lib"
+          ) libs;
+          mkPkgConfigPath = libs: pkgs.lib.concatMapStringsSep ":" (pkg:
+            let dev = pkg.dev or pkg; in "${dev}/lib/pkgconfig"
+          ) libs;
+          # Build -L flags for RUSTFLAGS (some -sys crates don't use pkg-config)
+          mkRustLinkFlags = libs: pkgs.lib.concatMapStringsSep " " (pkg:
+            let lib = pkg.lib or pkg; in "-L native=${lib}/lib"
+          ) libs;
+        in pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [
+            rustToolchainMusl
+            pkg-config
+            cmake
+            perl
+            clang
+            mold
+          ];
+
+          env = {
+            ZSTD_SYS_USE_PKG_CONFIG = "true";
+            # Use musl cross-compiler (by path to avoid polluting host includes)
+            CC_x86_64_unknown_linux_musl = "${crossCC}/bin/x86_64-unknown-linux-musl-cc";
+            CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = "${crossCC}/bin/x86_64-unknown-linux-musl-cc";
+            # Point pkg-config at static musl libraries
+            PKG_CONFIG_PATH = mkPkgConfigPath staticLibs;
+            PKG_CONFIG_ALLOW_CROSS = "1";
+            PKG_CONFIG_ALL_STATIC = "1";
+            # Add static lib paths for linker (LIBRARY_PATH for cc, RUSTFLAGS for rustc)
+            LIBRARY_PATH = mkLibPath staticLibs;
+            # -L flags for libraries not found via pkg-config, plus extra -l for xcb extensions
+            CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = "${mkRustLinkFlags staticLibs} -l static=xcb-xkb -l static=xcb-render -l static=xcb-shape -l static=xcb-xfixes -l static=xcb-randr -l static=xcb-shm -l static=xcb-xinput -l static=Xau -l static=Xdmcp";
+          };
+
+          shellHook = ''
+            echo "ZFaktury CI devshell ready (musl static, Rust $(rustc --version | cut -d' ' -f2))"
           '';
         };
       }

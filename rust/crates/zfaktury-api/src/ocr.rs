@@ -8,42 +8,42 @@ use zfaktury_domain::{Amount, OCRItem, OCRResult};
 use crate::error::{ApiError, Result};
 
 /// System prompt for OCR invoice extraction (Czech).
-const SYSTEM_PROMPT: &str = r#"Jsi OCR asistent pro zpracovani faktur a uctenek. Analyzuj obrazek a extrahuj strukturovana data.
+const SYSTEM_PROMPT: &str = r#"Jsi OCR asistent pro zpracování faktur a účtenek. Analyzuj obrázek a extrahuj strukturovaná data.
 
-Vrat POUZE platny JSON objekt (bez markdown, bez komentaru) s nasledujici strukturou:
+Vrať POUZE platný JSON objekt (bez markdown, bez komentářů) s následující strukturou:
 {
-  "vendor_name": "nazev dodavatele",
-  "vendor_ico": "ICO dodavatele",
-  "vendor_dic": "DIC dodavatele",
-  "invoice_number": "cislo faktury/dokladu",
-  "issue_date": "datum vystaveni ve formatu YYYY-MM-DD",
-  "due_date": "datum splatnosti ve formatu YYYY-MM-DD",
-  "total_amount": celkova castka v CZK (cislo, napr. 1234.56),
-  "vat_amount": castka DPH v CZK (cislo),
-  "vat_rate_percent": sazba DPH v procentech (cele cislo, napr. 21),
-  "currency_code": "kod meny (CZK, EUR, USD)",
-  "description": "kratky popis dokladu",
+  "vendor_name": "název dodavatele",
+  "vendor_ico": "IČO dodavatele",
+  "vendor_dic": "DIČ dodavatele",
+  "invoice_number": "číslo faktury/dokladu",
+  "issue_date": "datum vystavení ve formátu YYYY-MM-DD",
+  "due_date": "datum splatnosti ve formátu YYYY-MM-DD",
+  "total_amount": celková částka v CZK (číslo, např. 1234.56),
+  "vat_amount": částka DPH v CZK (číslo),
+  "vat_rate_percent": sazba DPH v procentech (celé číslo, např. 21),
+  "currency_code": "kód měny (CZK, EUR, USD)",
+  "description": "krátký popis dokladu",
   "items": [
     {
-      "description": "popis polozky",
-      "quantity": mnozstvi (cislo, napr. 1.5),
-      "unit_price": jednotkova cena v CZK (cislo),
-      "vat_rate_percent": sazba DPH polozky (cele cislo),
-      "total_amount": celkova cena polozky v CZK (cislo)
+      "description": "popis položky",
+      "quantity": množství (číslo, např. 1.5),
+      "unit_price": jednotková cena v CZK (číslo),
+      "vat_rate_percent": sazba DPH položky (celé číslo),
+      "total_amount": celková cena položky v CZK (číslo)
     }
   ],
-  "raw_text": "neupraveny text z dokladu",
-  "confidence": mira jistoty 0.0-1.0
+  "raw_text": "neupravený text z dokladu",
+  "confidence": míra jistoty 0.0-1.0
 }
 
-Dulezite:
-- Castky jsou v korunach (CZK) jako desetinna cisla (napr. 1234.56 = 1234 Kc a 56 haleru)
-- Pokud udaj neni na dokladu, pouzij prazdny retezec pro textova pole, 0 pro cisla
-- Datum vzdy ve formatu YYYY-MM-DD
-- Pro confidence pouzij hodnotu podle toho, jak jsi si jisty spravnosti extrakce"#;
+Důležité:
+- Částky jsou v korunách (CZK) jako desetinná čísla (např. 1234.56 = 1234 Kč a 56 haléřů)
+- Pokud údaj není na dokladu, použij prázdný řetězec pro textová pole, 0 pro čísla
+- Datum vždy ve formátu YYYY-MM-DD
+- Pro confidence použij hodnotu podle toho, jak jsi si jistý správností extrakce"#;
 
 /// User prompt for OCR invoice extraction.
-const USER_PROMPT: &str = "Analyzuj tento doklad (faktura/uctenka) a extrahuj vsechna dostupna data do JSON formatu podle zadane struktury.";
+const USER_PROMPT: &str = "Analyzuj tento doklad (faktura/účtenka) a extrahuj všechna dostupná data do JSON formátu podle zadané struktury.";
 
 const SUPPORTED_CONTENT_TYPES: &[&str] = &["image/jpeg", "image/png", "application/pdf"];
 

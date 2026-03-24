@@ -24,19 +24,19 @@ fn quarter_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "1".to_string(),
-            label: "Q1 (leden-brezen)".to_string(),
+            label: "Q1 (leden-březen)".to_string(),
         },
         SelectOption {
             value: "2".to_string(),
-            label: "Q2 (duben-cerven)".to_string(),
+            label: "Q2 (duben-červen)".to_string(),
         },
         SelectOption {
             value: "3".to_string(),
-            label: "Q3 (cervenec-zari)".to_string(),
+            label: "Q3 (červenec-září)".to_string(),
         },
         SelectOption {
             value: "4".to_string(),
-            label: "Q4 (rijen-prosinec)".to_string(),
+            label: "Q4 (říjen-prosinec)".to_string(),
         },
     ]
 }
@@ -45,15 +45,15 @@ fn filing_type_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "regular".to_string(),
-            label: "Radne".to_string(),
+            label: "Řádné".to_string(),
         },
         SelectOption {
             value: "corrective".to_string(),
-            label: "Opravne".to_string(),
+            label: "Opravné".to_string(),
         },
         SelectOption {
             value: "supplementary".to_string(),
-            label: "Dodatecne".to_string(),
+            label: "Dodatečné".to_string(),
         },
     ]
 }
@@ -86,13 +86,13 @@ impl ViesFormView {
 
         let quarter_select = cx.new(|cx| {
             let current_quarter = (chrono::Local::now().date_naive().month() as i32 - 1) / 3 + 1;
-            let mut s = Select::new("quarter-select", "Ctvrtleti", quarter_options());
+            let mut s = Select::new("quarter-select", "Čtvrtletí", quarter_options());
             s.set_selected_value(&current_quarter.to_string(), cx);
             s
         });
 
         let filing_type_select = cx.new(|cx| {
-            let mut s = Select::new("filing-type-select", "Typ podani", filing_type_options());
+            let mut s = Select::new("filing-type-select", "Typ podání", filing_type_options());
             s.set_selected_value("regular", cx);
             s
         });
@@ -116,7 +116,7 @@ impl ViesFormView {
         let year: i32 = match year_str.parse() {
             Ok(y) => y,
             Err(_) => {
-                self.error = Some("Zadejte platny rok".into());
+                self.error = Some("Zadejte platný rok".into());
                 cx.notify();
                 return;
             }
@@ -205,7 +205,7 @@ impl Render for ViesFormView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Nove souhrnne hlaseni"),
+                .child("Nové souhrnné hlášení"),
         );
 
         // Error
@@ -238,7 +238,7 @@ impl Render for ViesFormView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Obdobi"),
+                        .child("Období"),
                 )
                 .child(
                     div()
@@ -250,11 +250,11 @@ impl Render for ViesFormView {
                                 .child(render_labeled_field("Rok", self.year_input.clone())),
                         )
                         .child(div().w(px(220.0)).child(render_labeled_field(
-                            "Ctvrtleti",
+                            "Čtvrtletí",
                             self.quarter_select.clone(),
                         )))
                         .child(div().w(px(220.0)).child(render_labeled_field(
-                            "Typ podani",
+                            "Typ podání",
                             self.filing_type_select.clone(),
                         ))),
                 ),
@@ -270,13 +270,13 @@ impl Render for ViesFormView {
                 .border_color(rgb(ZfColors::BORDER))
                 .text_sm()
                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                .child("Souhrnne hlaseni (VIES) se podava ctvrtletne. Obsahuje dodani zbozi a sluzeb do EU."),
+                .child("Souhrnné hlášení (VIES) se podává čtvrtletně. Obsahuje dodání zboží a služeb do EU."),
         );
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -287,7 +287,7 @@ impl Render for ViesFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Vytvorit",
+            "Vytvořit",
             ButtonVariant::Primary,
             false,
             self.saving,

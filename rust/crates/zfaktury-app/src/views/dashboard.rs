@@ -71,7 +71,7 @@ impl DashboardView {
                         this.recent_expenses = data.recent_expenses;
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani: {e}"));
+                        this.error = Some(format!("Chyba při načítání: {e}"));
                     }
                 }
                 cx.notify();
@@ -149,7 +149,7 @@ impl DashboardView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Posledni faktury"),
+                        .child("Poslední faktury"),
                 ),
         );
 
@@ -160,7 +160,7 @@ impl DashboardView {
                     .py_6()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne faktury"),
+                    .child("Žádné faktury"),
             );
         } else {
             // Column headers
@@ -171,10 +171,10 @@ impl DashboardView {
                     .py_2()
                     .text_xs()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child(div().w_24().child("Cislo"))
-                    .child(div().flex_1().child("Zakaznik"))
+                    .child(div().w_24().child("Číslo"))
+                    .child(div().flex_1().child("Zákazník"))
                     .child(div().w_24().child("Datum"))
-                    .child(div().w(px(112.0)).text_right().child("Castka"))
+                    .child(div().w(px(112.0)).text_right().child("Částka"))
                     .child(div().w_24().text_right().child("Stav")),
             );
 
@@ -258,7 +258,7 @@ impl DashboardView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Posledni naklady"),
+                        .child("Poslední náklady"),
                 ),
         );
 
@@ -269,7 +269,7 @@ impl DashboardView {
                     .py_6()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne naklady"),
+                    .child("Žádné náklady"),
             );
         } else {
             table = table.child(
@@ -282,7 +282,7 @@ impl DashboardView {
                     .child(div().flex_1().child("Popis"))
                     .child(div().w(px(112.0)).child("Kategorie"))
                     .child(div().w_24().child("Datum"))
-                    .child(div().w(px(112.0)).text_right().child("Castka")),
+                    .child(div().w(px(112.0)).text_right().child("Částka")),
             );
 
             for exp in &self.recent_expenses {
@@ -363,7 +363,7 @@ impl Render for DashboardView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
+                    .child("Načítání..."),
             );
             return content;
         }
@@ -389,7 +389,7 @@ impl Render for DashboardView {
                 .gap_3()
                 .child(render_button(
                     "dash-new-invoice",
-                    "Nova faktura",
+                    "Nová faktura",
                     ButtonVariant::Primary,
                     false,
                     false,
@@ -399,7 +399,7 @@ impl Render for DashboardView {
                 ))
                 .child(render_button(
                     "dash-new-expense",
-                    "Novy naklad",
+                    "Nový náklad",
                     ButtonVariant::Secondary,
                     false,
                     false,
@@ -409,7 +409,7 @@ impl Render for DashboardView {
                 ))
                 .child(render_button(
                     "dash-new-contact",
-                    "Novy kontakt",
+                    "Nový kontakt",
                     ButtonVariant::Secondary,
                     false,
                     false,
@@ -425,19 +425,19 @@ impl Render for DashboardView {
                 .flex()
                 .gap_4()
                 .child(self.render_stat_card(
-                    "Prijmy tento mesic",
+                    "Příjmy tento měsíc",
                     &format_amount(self.revenue),
                     None,
                     ZfColors::STATUS_GREEN,
                 ))
                 .child(self.render_stat_card(
-                    "Naklady tento mesic",
+                    "Náklady tento měsíc",
                     &format_amount(self.expenses_amount),
                     None,
                     ZfColors::STATUS_RED,
                 ))
                 .child(self.render_stat_card(
-                    "Neuhrazene faktury",
+                    "Neuhrazené faktury",
                     &format_amount(self.unpaid_total),
                     Some(format!("{} faktur", self.unpaid_count)),
                     ZfColors::STATUS_YELLOW,

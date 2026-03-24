@@ -66,7 +66,7 @@ impl VatControlDetailView {
                         this.lines = lines;
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani kontrolniho hlaseni: {e}"));
+                        this.error = Some(format!("Chyba při načítání kontrolního hlášení: {e}"));
                     }
                 }
                 cx.notify();
@@ -128,8 +128,8 @@ impl VatControlDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat kontrolni hlaseni?",
-                "Tato akce je nevratna. Kontrolni hlaseni bude trvale smazano.",
+                "Smazat kontrolní hlášení?",
+                "Tato akce je nevratná. Kontrolní hlášení bude trvale smazáno.",
                 "Smazat",
             )
         });
@@ -157,7 +157,7 @@ impl VatControlDetailView {
         // Back button
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -170,7 +170,7 @@ impl VatControlDetailView {
             // Mark filed
             bar = bar.child(render_button(
                 "btn-mark-filed",
-                "Oznacit jako podane",
+                "Označit jako podané",
                 ButtonVariant::Primary,
                 disabled,
                 self.action_loading,
@@ -218,7 +218,7 @@ impl VatControlDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("Kontrolni hlaseni {}", period_label)),
+                            .child(format!("Kontrolní hlášení {}", period_label)),
                     )
                     .child(
                         div()
@@ -268,7 +268,7 @@ impl VatControlDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Obdobi"),
+                                .child("Období"),
                         )
                         .child(
                             div()
@@ -286,7 +286,7 @@ impl VatControlDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Typ podani"),
+                                .child("Typ podání"),
                         )
                         .child(
                             div()
@@ -304,7 +304,7 @@ impl VatControlDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Pocet radku"),
+                                .child("Počet řádků"),
                         )
                         .child(
                             div()
@@ -334,7 +334,7 @@ impl VatControlDetailView {
                 .text_sm()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Radky kontrolniho hlaseni"),
+                .child("Řádky kontrolního hlášení"),
         );
 
         // Column headers
@@ -349,9 +349,9 @@ impl VatControlDetailView {
                 .border_color(rgb(ZfColors::BORDER_SUBTLE))
                 .child(div().w(px(60.0)).child("Sekce"))
                 .child(div().w(px(120.0)).child("DIC partnera"))
-                .child(div().flex_1().child("Cislo dokladu"))
+                .child(div().flex_1().child("Číslo dokladu"))
                 .child(div().w(px(100.0)).child("DPPD"))
-                .child(div().w(px(112.0)).text_right().child("Zaklad"))
+                .child(div().w(px(112.0)).text_right().child("Základ"))
                 .child(div().w(px(112.0)).text_right().child("DPH"))
                 .child(div().w(px(60.0)).text_right().child("Sazba")),
         );
@@ -363,7 +363,7 @@ impl VatControlDetailView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne radky."),
+                    .child("Žádné řádky."),
             );
         } else {
             for line in &self.lines {
@@ -447,7 +447,7 @@ impl Render for VatControlDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani kontrolniho hlaseni..."),
+                    .child("Načítání kontrolního hlášení..."),
             );
         }
 

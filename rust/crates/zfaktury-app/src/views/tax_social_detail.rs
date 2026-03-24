@@ -54,7 +54,7 @@ impl TaxSocialDetailView {
                 match result {
                     Ok(sio) => this.overview = Some(sio),
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani prehledu OSSZ: {e}"));
+                        this.error = Some(format!("Chyba při načítání přehledu OSSZ: {e}"));
                     }
                 }
                 cx.notify();
@@ -116,8 +116,8 @@ impl TaxSocialDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat prehled OSSZ?",
-                "Tato akce je nevratna. Prehled bude trvale smazan.",
+                "Smazat přehled OSSZ?",
+                "Tato akce je nevratná. Přehled bude trvale smazán.",
                 "Smazat",
             )
         });
@@ -144,7 +144,7 @@ impl TaxSocialDetailView {
 
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -156,7 +156,7 @@ impl TaxSocialDetailView {
         if sio.status != FilingStatus::Filed {
             bar = bar.child(render_button(
                 "btn-mark-filed",
-                "Oznacit jako podane",
+                "Označit jako podané",
                 ButtonVariant::Primary,
                 disabled,
                 self.action_loading,
@@ -222,7 +222,7 @@ impl TaxSocialDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("Socialni pojisteni {}", sio.year)),
+                            .child(format!("Sociální pojištění {}", sio.year)),
                     )
                     .child(
                         div()
@@ -269,11 +269,11 @@ impl TaxSocialDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Prijmy a vydaje"),
+                        .child("Příjmy a výdaje"),
                 )
-                .child(self.render_amount_row("Celkove prijmy", sio.total_revenue))
-                .child(self.render_amount_row("Celkove vydaje", sio.total_expenses))
-                .child(self.render_amount_row("Zaklad dane", sio.tax_base)),
+                .child(self.render_amount_row("Celkové příjmy", sio.total_revenue))
+                .child(self.render_amount_row("Celkové výdaje", sio.total_expenses))
+                .child(self.render_amount_row("Základ daně", sio.tax_base)),
         );
 
         // Assessment
@@ -292,11 +292,11 @@ impl TaxSocialDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vymrovaci zaklad"),
+                        .child("Vyměřovací základ"),
                 )
-                .child(self.render_amount_row("Vymrovaci zaklad", sio.assessment_base))
-                .child(self.render_amount_row("Minimalni vym. zaklad", sio.min_assessment_base))
-                .child(self.render_amount_row("Konecny vym. zaklad", sio.final_assessment_base))
+                .child(self.render_amount_row("Vyměřovací základ", sio.assessment_base))
+                .child(self.render_amount_row("Minimální vym. základ", sio.min_assessment_base))
+                .child(self.render_amount_row("Konečný vym. základ", sio.final_assessment_base))
                 .child(
                     div()
                         .flex()
@@ -305,7 +305,7 @@ impl TaxSocialDetailView {
                         .child(
                             div()
                                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                                .child("Sazba pojistneho"),
+                                .child("Sazba pojistného"),
                         )
                         .child(
                             div()
@@ -331,10 +331,10 @@ impl TaxSocialDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vysledek"),
+                        .child("Výsledek"),
                 )
-                .child(self.render_amount_row("Pojistne celkem", sio.total_insurance))
-                .child(self.render_amount_row("Zaplacene zalohy", sio.prepayments))
+                .child(self.render_amount_row("Pojistné celkem", sio.total_insurance))
+                .child(self.render_amount_row("Zaplacené zálohy", sio.prepayments))
                 .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
                     div()
@@ -345,7 +345,7 @@ impl TaxSocialDetailView {
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Doplatek / Preplatek"),
+                                .child("Doplatek / Přeplatek"),
                         )
                         .child(
                             div()
@@ -355,7 +355,7 @@ impl TaxSocialDetailView {
                                 .child(format_amount(sio.difference)),
                         ),
                 )
-                .child(self.render_amount_row("Nova mesicni zaloha", sio.new_monthly_prepay)),
+                .child(self.render_amount_row("Nová měsíční záloha", sio.new_monthly_prepay)),
         );
 
         content
@@ -379,7 +379,7 @@ impl Render for TaxSocialDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani prehledu OSSZ..."),
+                    .child("Načítání přehledu OSSZ..."),
             );
         }
 

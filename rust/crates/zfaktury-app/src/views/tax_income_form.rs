@@ -23,15 +23,15 @@ fn filing_type_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "regular".to_string(),
-            label: "Radne".to_string(),
+            label: "Řádné".to_string(),
         },
         SelectOption {
             value: "corrective".to_string(),
-            label: "Opravne".to_string(),
+            label: "Opravné".to_string(),
         },
         SelectOption {
             value: "supplementary".to_string(),
-            label: "Dodatecne".to_string(),
+            label: "Dodatečné".to_string(),
         },
     ]
 }
@@ -65,7 +65,7 @@ impl TaxIncomeFormView {
         });
 
         let filing_type_select = cx.new(|cx| {
-            let mut s = Select::new("filing-type-select", "Typ podani", filing_type_options());
+            let mut s = Select::new("filing-type-select", "Typ podání", filing_type_options());
             s.set_selected_value("regular", cx);
             s
         });
@@ -88,7 +88,7 @@ impl TaxIncomeFormView {
         let year: i32 = match year_str.parse() {
             Ok(y) => y,
             Err(_) => {
-                self.error = Some("Zadejte platny rok".into());
+                self.error = Some("Zadejte platný rok".into());
                 cx.notify();
                 return;
             }
@@ -194,7 +194,7 @@ impl Render for TaxIncomeFormView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Nove danove priznani"),
+                .child("Nové daňové přiznání"),
         );
 
         // Error
@@ -227,7 +227,7 @@ impl Render for TaxIncomeFormView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Danove priznani fyzickych osob (DPFO)"),
+                        .child("Daňové přiznání fyzických osob (DPFO)"),
                 )
                 .child(
                     div()
@@ -239,7 +239,7 @@ impl Render for TaxIncomeFormView {
                                 .child(render_labeled_field("Rok", self.year_input.clone())),
                         )
                         .child(div().w(px(220.0)).child(render_labeled_field(
-                            "Typ podani",
+                            "Typ podání",
                             self.filing_type_select.clone(),
                         ))),
                 ),
@@ -255,13 +255,13 @@ impl Render for TaxIncomeFormView {
                 .border_color(rgb(ZfColors::BORDER))
                 .text_sm()
                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                .child("Po vytvoreni bude danove priznani automaticky vypocteno z vasich faktur, nakladu, slev a odpoctu."),
+                .child("Po vytvoření bude daňové přiznání automaticky vypočteno z vašich faktur, nákladů, slev a odpočtů."),
         );
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -272,7 +272,7 @@ impl Render for TaxIncomeFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Vytvorit",
+            "Vytvořit",
             ButtonVariant::Primary,
             false,
             self.saving,

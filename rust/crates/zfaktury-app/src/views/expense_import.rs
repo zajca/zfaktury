@@ -104,7 +104,7 @@ impl ExpenseImportView {
         if !SUPPORTED_EXTENSIONS.contains(&extension.as_str()) {
             self.processing = false;
             self.error = Some(format!(
-                "Nepodporovany format souboru: .{}. Podporovane: PDF, JPG, PNG, WebP",
+                "Nepodporovaný formát souboru: .{}. Podporované: PDF, JPG, PNG, WebP",
                 extension
             ));
             cx.notify();
@@ -119,7 +119,7 @@ impl ExpenseImportView {
             "webp" => "image/webp",
             _ => {
                 self.processing = false;
-                self.error = Some("Nepodporovany format souboru".to_string());
+                self.error = Some("Nepodporovaný formát souboru".to_string());
                 cx.notify();
                 return;
             }
@@ -142,12 +142,12 @@ impl ExpenseImportView {
                 .spawn(async move {
                     // 1. Read file bytes from disk
                     let data =
-                        std::fs::read(&path).map_err(|e| format!("Nelze precist soubor: {e}"))?;
+                        std::fs::read(&path).map_err(|e| format!("Nelze přečíst soubor: {e}"))?;
 
                     // 2. Validate file size
                     if data.len() as u64 > MAX_FILE_SIZE {
                         return Err(format!(
-                            "Soubor je prilis velky ({:.1} MB). Maximum je 20 MB.",
+                            "Soubor je příliš velký ({:.1} MB). Maximum je 20 MB.",
                             data.len() as f64 / (1024.0 * 1024.0)
                         ));
                     }
@@ -155,18 +155,18 @@ impl ExpenseImportView {
                     // 3. Create skeleton expense
                     let expense = import_svc
                         .create_skeleton_expense(&filename)
-                        .map_err(|e| format!("Chyba pri vytvareni nakladu: {e}"))?;
+                        .map_err(|e| format!("Chyba při vytváření nákladu: {e}"))?;
 
                     // 4. Store document record
                     let data_dir = doc_svc.data_dir();
                     let docs_dir = std::path::Path::new(data_dir).join("documents");
                     std::fs::create_dir_all(&docs_dir)
-                        .map_err(|e| format!("Nelze vytvorit adresar pro dokumenty: {e}"))?;
+                        .map_err(|e| format!("Nelze vytvořit adresář pro dokumenty: {e}"))?;
 
                     let storage_filename = format!("{}_{}", expense.id, filename);
                     let storage_path = docs_dir.join(&storage_filename);
                     std::fs::write(&storage_path, &data)
-                        .map_err(|e| format!("Nelze ulozit soubor: {e}"))?;
+                        .map_err(|e| format!("Nelze uložit soubor: {e}"))?;
 
                     let now = chrono::Local::now().naive_local();
                     let mut doc = ExpenseDocument {
@@ -182,7 +182,7 @@ impl ExpenseImportView {
 
                     doc_svc
                         .create_record(&mut doc)
-                        .map_err(|e| format!("Chyba pri ukladani dokumentu: {e}"))?;
+                        .map_err(|e| format!("Chyba při ukládání dokumentu: {e}"))?;
 
                     // 5. Optionally run OCR
                     let mut ocr_result_out = None;
@@ -247,7 +247,7 @@ impl ExpenseImportView {
             div()
                 .text_color(rgb(ZfColors::TEXT_MUTED))
                 .text_xl()
-                .child("Nahrani dokladu"),
+                .child("Nahrání dokladu"),
         );
 
         // Description
@@ -257,7 +257,7 @@ impl ExpenseImportView {
                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
                 .text_center()
                 .child(
-                    "Vyberte soubor pro import. Podporovane formaty: PDF, JPG, PNG, WebP (max 20 MB)",
+                    "Vyberte soubor pro import. Podporované formáty: PDF, JPG, PNG, WebP (max 20 MB)",
                 ),
         );
 
@@ -273,7 +273,7 @@ impl ExpenseImportView {
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(rgb(0xffffff))
                     .opacity(0.5)
-                    .child("Zpracovani..."),
+                    .child("Zpracování..."),
             );
         } else {
             area = area.child(render_button(
@@ -295,12 +295,12 @@ impl ExpenseImportView {
         let (dot_color, message) = if self.ocr_service.is_some() {
             (
                 ZfColors::STATUS_GREEN,
-                "OCR je aktivni - data budou automaticky rozpoznana",
+                "OCR je aktivní - data budou automaticky rozpoznána",
             )
         } else {
             (
                 ZfColors::STATUS_YELLOW,
-                "OCR neni nastaveno - doklad bude importovan bez rozpoznani",
+                "OCR není nastaveno - doklad bude importován bez rozpoznání",
             )
         };
 
@@ -355,25 +355,25 @@ impl ExpenseImportView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("1. Vyberte soubor s dokladem (uctenka, faktura)"),
+                    .child("1. Vyberte soubor s dokladem (účtenka, faktura)"),
             )
             .child(
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("2. System vytvori naklad a ulozi dokument"),
+                    .child("2. Systém vytvoří náklad a uloží dokument"),
             )
             .child(
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("3. Pokud je OCR aktivni, data budou automaticky rozpoznana"),
+                    .child("3. Pokud je OCR aktivní, data budou automaticky rozpoznána"),
             )
             .child(
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("4. Zkontrolujte a upravte udaje nakladu"),
+                    .child("4. Zkontrolujte a upravte údaje nákladu"),
             )
     }
 }
@@ -439,7 +439,7 @@ impl Render for ExpenseImportView {
         // Back button
         outer = outer.child(div().flex().child(render_button(
             "back-btn",
-            "Zpet na naklady",
+            "Zpět na náklady",
             ButtonVariant::Secondary,
             self.processing,
             false,

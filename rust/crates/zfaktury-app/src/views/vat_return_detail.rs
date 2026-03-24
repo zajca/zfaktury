@@ -50,7 +50,7 @@ impl VatReturnDetailView {
                 match result {
                     Ok(vr) => this.vat_return = Some(vr),
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani DPH priznani: {e}"));
+                        this.error = Some(format!("Chyba při načítání DPH přiznání: {e}"));
                     }
                 }
                 cx.notify();
@@ -136,8 +136,8 @@ impl VatReturnDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat DPH priznani?",
-                "Tato akce je nevratna. DPH priznani bude trvale smazano.",
+                "Smazat DPH přiznání?",
+                "Tato akce je nevratná. DPH přiznání bude trvale smazáno.",
                 "Smazat",
             )
         });
@@ -165,7 +165,7 @@ impl VatReturnDetailView {
         // Back button
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -178,7 +178,7 @@ impl VatReturnDetailView {
             // Recalculate
             bar = bar.child(render_button(
                 "btn-recalculate",
-                "Prepocitat",
+                "Přepočítat",
                 ButtonVariant::Primary,
                 disabled,
                 self.action_loading,
@@ -190,7 +190,7 @@ impl VatReturnDetailView {
             // Mark filed
             bar = bar.child(render_button(
                 "btn-mark-filed",
-                "Oznacit jako podane",
+                "Označit jako podané",
                 ButtonVariant::Secondary,
                 disabled,
                 false,
@@ -260,7 +260,7 @@ impl VatReturnDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("DPH priznani {}", period_label)),
+                            .child(format!("DPH přiznání {}", period_label)),
                     )
                     .child(
                         div()
@@ -310,7 +310,7 @@ impl VatReturnDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Obdobi"),
+                                .child("Období"),
                         )
                         .child(
                             div()
@@ -328,7 +328,7 @@ impl VatReturnDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Typ podani"),
+                                .child("Typ podání"),
                         )
                         .child(
                             div()
@@ -355,13 +355,13 @@ impl VatReturnDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vystupni DPH (dan na vystupu)"),
+                        .child("Výstupní DPH (daň na výstupu)"),
                 )
-                .child(self.render_amount_row("Zaklad 21%", vr.output_vat_base_21))
+                .child(self.render_amount_row("Základ 21%", vr.output_vat_base_21))
                 .child(self.render_amount_row("DPH 21%", vr.output_vat_amount_21))
-                .child(self.render_amount_row("Zaklad 12%", vr.output_vat_base_12))
+                .child(self.render_amount_row("Základ 12%", vr.output_vat_base_12))
                 .child(self.render_amount_row("DPH 12%", vr.output_vat_amount_12))
-                .child(self.render_amount_row("Zaklad 0%", vr.output_vat_base_0))
+                .child(self.render_amount_row("Základ 0%", vr.output_vat_base_0))
                 .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
                     div()
@@ -372,7 +372,7 @@ impl VatReturnDetailView {
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Celkem vystupni DPH"),
+                                .child("Celkem výstupní DPH"),
                         )
                         .child(
                             div()
@@ -400,11 +400,11 @@ impl VatReturnDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vstupni DPH (dan na vstupu)"),
+                        .child("Vstupní DPH (daň na vstupu)"),
                 )
-                .child(self.render_amount_row("Zaklad 21%", vr.input_vat_base_21))
+                .child(self.render_amount_row("Základ 21%", vr.input_vat_base_21))
                 .child(self.render_amount_row("DPH 21%", vr.input_vat_amount_21))
-                .child(self.render_amount_row("Zaklad 12%", vr.input_vat_base_12))
+                .child(self.render_amount_row("Základ 12%", vr.input_vat_base_12))
                 .child(self.render_amount_row("DPH 12%", vr.input_vat_amount_12))
                 .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
@@ -416,7 +416,7 @@ impl VatReturnDetailView {
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Celkem vstupni DPH"),
+                                .child("Celkem vstupní DPH"),
                         )
                         .child(
                             div()
@@ -446,8 +446,8 @@ impl VatReturnDetailView {
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
                         .child("Souhrn"),
                 )
-                .child(self.render_amount_row("Vystupni DPH", vr.total_output_vat))
-                .child(self.render_amount_row("Vstupni DPH", vr.total_input_vat))
+                .child(self.render_amount_row("Výstupní DPH", vr.total_output_vat))
+                .child(self.render_amount_row("Vstupní DPH", vr.total_input_vat))
                 .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
                     div()
@@ -458,7 +458,7 @@ impl VatReturnDetailView {
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Vysledna danova povinnost"),
+                                .child("Výsledná daňová povinnost"),
                         )
                         .child(
                             div()
@@ -491,7 +491,7 @@ impl Render for VatReturnDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani DPH priznani..."),
+                    .child("Načítání DPH přiznání..."),
             );
         }
 

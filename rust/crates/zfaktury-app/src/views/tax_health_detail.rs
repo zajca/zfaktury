@@ -54,7 +54,7 @@ impl TaxHealthDetailView {
                 match result {
                     Ok(hi) => this.overview = Some(hi),
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani prehledu ZP: {e}"));
+                        this.error = Some(format!("Chyba při načítání přehledu ZP: {e}"));
                     }
                 }
                 cx.notify();
@@ -116,8 +116,8 @@ impl TaxHealthDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat prehled ZP?",
-                "Tato akce je nevratna. Prehled bude trvale smazan.",
+                "Smazat přehled ZP?",
+                "Tato akce je nevratná. Přehled bude trvale smazán.",
                 "Smazat",
             )
         });
@@ -144,7 +144,7 @@ impl TaxHealthDetailView {
 
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -156,7 +156,7 @@ impl TaxHealthDetailView {
         if hi.status != FilingStatus::Filed {
             bar = bar.child(render_button(
                 "btn-mark-filed",
-                "Oznacit jako podane",
+                "Označit jako podané",
                 ButtonVariant::Primary,
                 disabled,
                 self.action_loading,
@@ -222,7 +222,7 @@ impl TaxHealthDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("Zdravotni pojisteni {}", hi.year)),
+                            .child(format!("Zdravotní pojištění {}", hi.year)),
                     )
                     .child(
                         div()
@@ -269,11 +269,11 @@ impl TaxHealthDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Prijmy a vydaje"),
+                        .child("Příjmy a výdaje"),
                 )
-                .child(self.render_amount_row("Celkove prijmy", hi.total_revenue))
-                .child(self.render_amount_row("Celkove vydaje", hi.total_expenses))
-                .child(self.render_amount_row("Zaklad dane", hi.tax_base)),
+                .child(self.render_amount_row("Celkové příjmy", hi.total_revenue))
+                .child(self.render_amount_row("Celkové výdaje", hi.total_expenses))
+                .child(self.render_amount_row("Základ daně", hi.tax_base)),
         );
 
         // Assessment
@@ -292,11 +292,11 @@ impl TaxHealthDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vymrovaci zaklad"),
+                        .child("Vyměřovací základ"),
                 )
-                .child(self.render_amount_row("Vymrovaci zaklad", hi.assessment_base))
-                .child(self.render_amount_row("Minimalni vym. zaklad", hi.min_assessment_base))
-                .child(self.render_amount_row("Konecny vym. zaklad", hi.final_assessment_base))
+                .child(self.render_amount_row("Vyměřovací základ", hi.assessment_base))
+                .child(self.render_amount_row("Minimální vym. základ", hi.min_assessment_base))
+                .child(self.render_amount_row("Konečný vym. základ", hi.final_assessment_base))
                 .child(
                     div()
                         .flex()
@@ -305,7 +305,7 @@ impl TaxHealthDetailView {
                         .child(
                             div()
                                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                                .child("Sazba pojistneho"),
+                                .child("Sazba pojistného"),
                         )
                         .child(
                             div()
@@ -331,10 +331,10 @@ impl TaxHealthDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Vysledek"),
+                        .child("Výsledek"),
                 )
-                .child(self.render_amount_row("Pojistne celkem", hi.total_insurance))
-                .child(self.render_amount_row("Zaplacene zalohy", hi.prepayments))
+                .child(self.render_amount_row("Pojistné celkem", hi.total_insurance))
+                .child(self.render_amount_row("Zaplacené zálohy", hi.prepayments))
                 .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
                     div()
@@ -345,7 +345,7 @@ impl TaxHealthDetailView {
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Doplatek / Preplatek"),
+                                .child("Doplatek / Přeplatek"),
                         )
                         .child(
                             div()
@@ -355,7 +355,7 @@ impl TaxHealthDetailView {
                                 .child(format_amount(hi.difference)),
                         ),
                 )
-                .child(self.render_amount_row("Nova mesicni zaloha", hi.new_monthly_prepay)),
+                .child(self.render_amount_row("Nová měsíční záloha", hi.new_monthly_prepay)),
         );
 
         content
@@ -379,7 +379,7 @@ impl Render for TaxHealthDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani prehledu ZP..."),
+                    .child("Načítání přehledu ZP..."),
             );
         }
 

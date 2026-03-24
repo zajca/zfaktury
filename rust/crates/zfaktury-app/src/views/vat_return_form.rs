@@ -26,19 +26,29 @@ fn period_type_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "monthly".to_string(),
-            label: "Mesicni".to_string(),
+            label: "Měsíční".to_string(),
         },
         SelectOption {
             value: "quarterly".to_string(),
-            label: "Ctvrtletni".to_string(),
+            label: "Čtvrtletní".to_string(),
         },
     ]
 }
 
 fn month_options() -> Vec<SelectOption> {
     let labels = [
-        "Leden", "Unor", "Brezen", "Duben", "Kveten", "Cerven", "Cervenec", "Srpen", "Zari",
-        "Rijen", "Listopad", "Prosinec",
+        "Leden",
+        "Únor",
+        "Březen",
+        "Duben",
+        "Květen",
+        "Červen",
+        "Červenec",
+        "Srpen",
+        "Září",
+        "Říjen",
+        "Listopad",
+        "Prosinec",
     ];
     labels
         .iter()
@@ -54,19 +64,19 @@ fn quarter_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "1".to_string(),
-            label: "Q1 (leden-brezen)".to_string(),
+            label: "Q1 (leden-březen)".to_string(),
         },
         SelectOption {
             value: "2".to_string(),
-            label: "Q2 (duben-cerven)".to_string(),
+            label: "Q2 (duben-červen)".to_string(),
         },
         SelectOption {
             value: "3".to_string(),
-            label: "Q3 (cervenec-zari)".to_string(),
+            label: "Q3 (červenec-září)".to_string(),
         },
         SelectOption {
             value: "4".to_string(),
-            label: "Q4 (rijen-prosinec)".to_string(),
+            label: "Q4 (říjen-prosinec)".to_string(),
         },
     ]
 }
@@ -75,15 +85,15 @@ fn filing_type_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "regular".to_string(),
-            label: "Radne".to_string(),
+            label: "Řádné".to_string(),
         },
         SelectOption {
             value: "corrective".to_string(),
-            label: "Opravne".to_string(),
+            label: "Opravné".to_string(),
         },
         SelectOption {
             value: "supplementary".to_string(),
-            label: "Dodatecne".to_string(),
+            label: "Dodatečné".to_string(),
         },
     ]
 }
@@ -115,27 +125,27 @@ impl VatReturnFormView {
         });
 
         let period_type_select = cx.new(|cx| {
-            let mut s = Select::new("period-type-select", "Typ obdobi", period_type_options());
+            let mut s = Select::new("period-type-select", "Typ období", period_type_options());
             s.set_selected_value("monthly", cx);
             s
         });
 
         let month_select = cx.new(|cx| {
             let current_month = chrono::Local::now().date_naive().month();
-            let mut s = Select::new("month-select", "Mesic", month_options());
+            let mut s = Select::new("month-select", "Měsíc", month_options());
             s.set_selected_value(&current_month.to_string(), cx);
             s
         });
 
         let quarter_select = cx.new(|cx| {
             let current_quarter = (chrono::Local::now().date_naive().month() as i32 - 1) / 3 + 1;
-            let mut s = Select::new("quarter-select", "Ctvrtleti", quarter_options());
+            let mut s = Select::new("quarter-select", "Čtvrtletí", quarter_options());
             s.set_selected_value(&current_quarter.to_string(), cx);
             s
         });
 
         let filing_type_select = cx.new(|cx| {
-            let mut s = Select::new("filing-type-select", "Typ podani", filing_type_options());
+            let mut s = Select::new("filing-type-select", "Typ podání", filing_type_options());
             s.set_selected_value("regular", cx);
             s
         });
@@ -161,7 +171,7 @@ impl VatReturnFormView {
         let year: i32 = match year_str.parse() {
             Ok(y) => y,
             Err(_) => {
-                self.error = Some("Zadejte platny rok".into());
+                self.error = Some("Zadejte platný rok".into());
                 cx.notify();
                 return;
             }
@@ -286,7 +296,7 @@ impl Render for VatReturnFormView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Nove DPH priznani"),
+                .child("Nové DPH přiznání"),
         );
 
         // Error
@@ -320,7 +330,7 @@ impl Render for VatReturnFormView {
                             .text_sm()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child("Obdobi"),
+                            .child("Období"),
                     )
                     .child(
                         div()
@@ -332,22 +342,22 @@ impl Render for VatReturnFormView {
                                     .child(render_labeled_field("Rok", self.year_input.clone())),
                             )
                             .child(div().w(px(192.0)).child(render_labeled_field(
-                                "Typ obdobi",
+                                "Typ období",
                                 self.period_type_select.clone(),
                             )))
                             .child(
                                 div().w(px(220.0)).child(render_labeled_field(
-                                    "Mesic",
+                                    "Měsíc",
                                     self.month_select.clone(),
                                 )),
                             )
                             .child(div().w(px(220.0)).child(render_labeled_field(
-                                "Ctvrtleti",
+                                "Čtvrtletí",
                                 self.quarter_select.clone(),
                             ))),
                     )
                     .child(div().flex().gap_4().child(div().w(px(220.0)).child(
-                        render_labeled_field("Typ podani", self.filing_type_select.clone()),
+                        render_labeled_field("Typ podání", self.filing_type_select.clone()),
                     ))),
             );
 
@@ -361,13 +371,13 @@ impl Render for VatReturnFormView {
                 .border_color(rgb(ZfColors::BORDER))
                 .text_sm()
                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                .child("Po vytvoreni bude DPH priznani automaticky prepocitano z faktur a nakladu za dane obdobi."),
+                .child("Po vytvoření bude DPH přiznání automaticky přepočítáno z faktur a nákladů za dané období."),
         );
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -378,7 +388,7 @@ impl Render for VatReturnFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Vytvorit a prepocitat",
+            "Vytvořit a přepočítat",
             ButtonVariant::Primary,
             false,
             self.saving,

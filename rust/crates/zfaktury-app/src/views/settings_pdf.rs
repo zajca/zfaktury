@@ -68,7 +68,7 @@ impl SettingsPdfView {
                 match result {
                     Ok(settings) => this.current_settings = settings,
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani nastaveni PDF: {e}"));
+                        this.error = Some(format!("Chyba při načítání nastavení PDF: {e}"));
                     }
                 }
                 cx.notify();
@@ -109,7 +109,7 @@ impl SettingsPdfView {
         }));
 
         self.font_size_input = Some(cx.new(|cx| {
-            let mut t = TextInput::new("pdf-font-size", "Velikost pisma (napr. 10.0)...", cx);
+            let mut t = TextInput::new("pdf-font-size", "Velikost písma (např. 10.0)...", cx);
             t.set_value(font_size_val, cx);
             t
         }));
@@ -122,13 +122,13 @@ impl SettingsPdfView {
 
         self.show_qr_input =
             Some(cx.new(|_cx| {
-                Checkbox::new("pdf-show-qr", "Zobrazit QR platebni kod", settings.show_qr)
+                Checkbox::new("pdf-show-qr", "Zobrazit QR platební kód", settings.show_qr)
             }));
 
         self.show_bank_details_input = Some(cx.new(|_cx| {
             Checkbox::new(
                 "pdf-show-bank-details",
-                "Zobrazit bankovni udaje",
+                "Zobrazit bankovní údaje",
                 settings.show_bank_details,
             )
         }));
@@ -192,7 +192,7 @@ impl SettingsPdfView {
         // Validate hex color format if provided.
         if !accent_color.is_empty() && !is_valid_hex_color(&accent_color) {
             self.error =
-                Some("Neplatny format barvy. Pouzijte hex format, napr. #2563eb".to_string());
+                Some("Neplatný formát barvy. Použijte hex formát, např. #2563eb".to_string());
             cx.notify();
             return;
         }
@@ -204,7 +204,7 @@ impl SettingsPdfView {
             match font_size_str.parse::<f32>() {
                 Ok(f) if f > 0.0 => Some(f),
                 _ => {
-                    self.error = Some("Neplatna velikost pisma. Zadejte kladne cislo.".to_string());
+                    self.error = Some("Neplatná velikost písma. Zadejte kladné číslo.".to_string());
                     cx.notify();
                     return;
                 }
@@ -250,10 +250,10 @@ impl SettingsPdfView {
                     Ok(()) => {
                         this.current_settings = pdf_settings;
                         this.editing = false;
-                        this.success = Some("Nastaveni PDF ulozeno".to_string());
+                        this.success = Some("Nastavení PDF uloženo".to_string());
                         this.clear_inputs();
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při ukládání: {e}")),
                 }
                 cx.notify();
             })
@@ -398,7 +398,7 @@ impl Render for SettingsPdfView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Nastaveni PDF sablony"),
+                .child("Nastavení PDF šablony"),
         );
 
         if !self.loading {
@@ -409,7 +409,7 @@ impl Render for SettingsPdfView {
                         .gap_2()
                         .child(render_button(
                             "pdf-cancel-btn",
-                            "Zrusit",
+                            "Zrušit",
                             ButtonVariant::Secondary,
                             self.saving,
                             false,
@@ -419,7 +419,7 @@ impl Render for SettingsPdfView {
                         ))
                         .child(render_button(
                             "pdf-save-btn",
-                            "Ulozit",
+                            "Uložit",
                             ButtonVariant::Primary,
                             false,
                             self.saving,
@@ -450,7 +450,7 @@ impl Render for SettingsPdfView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
+                    .child("Načítání..."),
             );
         }
 
@@ -507,7 +507,7 @@ impl Render for SettingsPdfView {
             section = section
                 .child(self.render_edit_field_row("Text v patce", self.footer_text_input.as_ref()));
             section = section
-                .child(self.render_edit_field_row("Velikost pisma", self.font_size_input.as_ref()));
+                .child(self.render_edit_field_row("Velikost písma", self.font_size_input.as_ref()));
             section = section
                 .child(self.render_edit_field_row("Cesta k logu", self.logo_path_input.as_ref()));
 
@@ -579,7 +579,7 @@ impl Render for SettingsPdfView {
             ));
             section = section.child(
                 self.render_field_row(
-                    "Velikost pisma",
+                    "Velikost písma",
                     &settings
                         .font_size
                         .map(|f| f.to_string())
@@ -611,11 +611,11 @@ impl Render for SettingsPdfView {
                 );
 
             bool_section = bool_section.child(self.render_field_row(
-                "QR platebni kod",
+                "QR platební kód",
                 if settings.show_qr { "Ano" } else { "Ne" },
             ));
             bool_section = bool_section.child(self.render_field_row(
-                "Bankovni udaje",
+                "Bankovní údaje",
                 if settings.show_bank_details {
                     "Ano"
                 } else {

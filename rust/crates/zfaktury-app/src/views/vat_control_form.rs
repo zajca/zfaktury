@@ -22,8 +22,18 @@ pub struct VatControlFormView {
 
 fn month_options() -> Vec<SelectOption> {
     let labels = [
-        "Leden", "Unor", "Brezen", "Duben", "Kveten", "Cerven", "Cervenec", "Srpen", "Zari",
-        "Rijen", "Listopad", "Prosinec",
+        "Leden",
+        "Únor",
+        "Březen",
+        "Duben",
+        "Květen",
+        "Červen",
+        "Červenec",
+        "Srpen",
+        "Září",
+        "Říjen",
+        "Listopad",
+        "Prosinec",
     ];
     labels
         .iter()
@@ -39,15 +49,15 @@ fn filing_type_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "regular".to_string(),
-            label: "Radne".to_string(),
+            label: "Řádné".to_string(),
         },
         SelectOption {
             value: "corrective".to_string(),
-            label: "Opravne".to_string(),
+            label: "Opravné".to_string(),
         },
         SelectOption {
             value: "supplementary".to_string(),
-            label: "Dodatecne".to_string(),
+            label: "Dodatečné".to_string(),
         },
     ]
 }
@@ -80,13 +90,13 @@ impl VatControlFormView {
 
         let month_select = cx.new(|cx| {
             let current_month = chrono::Local::now().date_naive().month();
-            let mut s = Select::new("month-select", "Mesic", month_options());
+            let mut s = Select::new("month-select", "Měsíc", month_options());
             s.set_selected_value(&current_month.to_string(), cx);
             s
         });
 
         let filing_type_select = cx.new(|cx| {
-            let mut s = Select::new("filing-type-select", "Typ podani", filing_type_options());
+            let mut s = Select::new("filing-type-select", "Typ podání", filing_type_options());
             s.set_selected_value("regular", cx);
             s
         });
@@ -110,7 +120,7 @@ impl VatControlFormView {
         let year: i32 = match year_str.parse() {
             Ok(y) => y,
             Err(_) => {
-                self.error = Some("Zadejte platny rok".into());
+                self.error = Some("Zadejte platný rok".into());
                 cx.notify();
                 return;
             }
@@ -199,7 +209,7 @@ impl Render for VatControlFormView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Nove kontrolni hlaseni"),
+                .child("Nové kontrolní hlášení"),
         );
 
         // Error
@@ -232,7 +242,7 @@ impl Render for VatControlFormView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Obdobi"),
+                        .child("Období"),
                 )
                 .child(
                     div()
@@ -246,10 +256,10 @@ impl Render for VatControlFormView {
                         .child(
                             div()
                                 .w(px(220.0))
-                                .child(render_labeled_field("Mesic", self.month_select.clone())),
+                                .child(render_labeled_field("Měsíc", self.month_select.clone())),
                         )
                         .child(div().w(px(220.0)).child(render_labeled_field(
-                            "Typ podani",
+                            "Typ podání",
                             self.filing_type_select.clone(),
                         ))),
                 ),
@@ -265,13 +275,13 @@ impl Render for VatControlFormView {
                 .border_color(rgb(ZfColors::BORDER))
                 .text_sm()
                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                .child("Kontrolni hlaseni se podava mesicne. Radky budou vygenerovany z faktur a nakladu."),
+                .child("Kontrolní hlášení se podává měsíčně. Řádky budou vygenerovány z faktur a nákladů."),
         );
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -282,7 +292,7 @@ impl Render for VatControlFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Vytvorit",
+            "Vytvořit",
             ButtonVariant::Primary,
             false,
             self.saving,

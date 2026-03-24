@@ -49,7 +49,7 @@ impl ExpenseDetailView {
                 this.loading = false;
                 match result {
                     Ok(expense) => this.expense = Some(expense),
-                    Err(e) => this.error = Some(format!("Chyba pri nacitani nakladu: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při načítání nákladu: {e}")),
                 }
                 cx.notify();
             })
@@ -61,8 +61,8 @@ impl ExpenseDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat naklad?",
-                "Tato akce je nevratna. Naklad bude trvale smazan.",
+                "Smazat náklad?",
+                "Tato akce je nevratná. Náklad bude trvale smazán.",
                 "Smazat",
             )
         });
@@ -114,7 +114,7 @@ impl ExpenseDetailView {
         // Back button
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet na seznam",
+            "Zpět na seznam",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -223,7 +223,7 @@ impl ExpenseDetailView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child(format!("Naklad {}", exp.expense_number)),
+                .child(format!("Náklad {}", exp.expense_number)),
         );
 
         // Action buttons
@@ -245,21 +245,21 @@ impl ExpenseDetailView {
 
         // Basic info
         content = content.child(self.render_section(
-            "Zakladni udaje",
+            "Základní údaje",
             vec![
-                ("Cislo", exp.expense_number.clone()),
+                ("Číslo", exp.expense_number.clone()),
                 ("Popis", exp.description.clone()),
                 ("Kategorie", exp.category.clone()),
                 ("Dodavatel", vendor_name),
                 ("Datum", format_date(exp.issue_date)),
-                ("Castka", format_amount(exp.amount)),
-                ("Mena", exp.currency_code.clone()),
-                ("Zpusob platby", exp.payment_method.clone()),
+                ("Částka", format_amount(exp.amount)),
+                ("Měna", exp.currency_code.clone()),
+                ("Způsob platby", exp.payment_method.clone()),
                 (
-                    "Danove uznatelny",
+                    "Daňově uznatelný",
                     if exp.is_tax_deductible { "Ano" } else { "Ne" }.to_string(),
                 ),
-                ("Obchodni podil", format!("{}%", exp.business_percent)),
+                ("Obchodní podíl", format!("{}%", exp.business_percent)),
             ],
         ));
 
@@ -290,7 +290,7 @@ impl ExpenseDetailView {
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                    .child("Polozky"),
+                    .child("Položky"),
             );
 
             // Column headers
@@ -315,7 +315,7 @@ impl ExpenseDetailView {
                             .text_xs()
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                            .child("Mnozstvi"),
+                            .child("Množství"),
                     )
                     .child(
                         div()
@@ -447,7 +447,7 @@ impl ExpenseDetailView {
                         div()
                             .text_xs()
                             .text_color(rgb(ZfColors::TEXT_MUTED))
-                            .child("Poznamky"),
+                            .child("Poznámky"),
                     )
                     .child(
                         div()
@@ -479,7 +479,7 @@ impl Render for ExpenseDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani nakladu..."),
+                    .child("Načítání nákladu..."),
             );
         }
 

@@ -53,7 +53,7 @@ impl RecurringInvoiceDetailView {
                 this.loading = false;
                 match result {
                     Ok(template) => this.template = Some(template),
-                    Err(e) => this.error = Some(format!("Chyba pri nacitani sablony faktury: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při načítání šablony faktury: {e}")),
                 }
                 cx.notify();
             })
@@ -114,8 +114,8 @@ impl RecurringInvoiceDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat sablonu faktury?",
-                "Tato akce je nevratna. Sablona bude trvale smazana.",
+                "Smazat šablonu faktury?",
+                "Tato akce je nevratná. Šablona bude trvale smazána.",
                 "Smazat",
             )
         });
@@ -143,7 +143,7 @@ impl RecurringInvoiceDetailView {
         // Back button
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -200,10 +200,10 @@ impl RecurringInvoiceDetailView {
 
     fn frequency_label(freq: &Frequency) -> &'static str {
         match freq {
-            Frequency::Weekly => "Tydenni",
-            Frequency::Monthly => "Mesicni",
-            Frequency::Quarterly => "Ctvrtletni",
-            Frequency::Yearly => "Rocni",
+            Frequency::Weekly => "Týdenní",
+            Frequency::Monthly => "Měsíční",
+            Frequency::Quarterly => "Čtvrtletní",
+            Frequency::Yearly => "Roční",
         }
     }
 
@@ -224,7 +224,11 @@ impl RecurringInvoiceDetailView {
             .map(|c| c.name.clone())
             .unwrap_or_else(|| format!("ID {}", ri.customer_id));
 
-        let status_text = if ri.is_active { "Aktivni" } else { "Neaktivni" };
+        let status_text = if ri.is_active {
+            "Aktivní"
+        } else {
+            "Neaktivní"
+        };
         let status_color = if ri.is_active {
             ZfColors::STATUS_GREEN
         } else {
@@ -244,7 +248,7 @@ impl RecurringInvoiceDetailView {
                         .text_xl()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child(format!("Sablona: {}", ri.name)),
+                        .child(format!("Šablona: {}", ri.name)),
                 )
                 .child(
                     div()
@@ -295,29 +299,29 @@ impl RecurringInvoiceDetailView {
                     div()
                         .flex()
                         .gap_8()
-                        .child(self.render_field("Zakaznik", customer_name))
+                        .child(self.render_field("Zákazník", customer_name))
                         .child(self.render_field(
                             "Frekvence",
                             Self::frequency_label(&ri.frequency).to_string(),
                         ))
-                        .child(self.render_field("Mena", ri.currency_code.clone())),
+                        .child(self.render_field("Měna", ri.currency_code.clone())),
                 )
                 .child(
                     div()
                         .flex()
                         .gap_8()
                         .child(
-                            self.render_field("Dalsi vystaveni", format_date(ri.next_issue_date)),
+                            self.render_field("Další vystavení", format_date(ri.next_issue_date)),
                         )
                         .child(self.render_field("Konec", end_date_str))
-                        .child(self.render_field("Zpusob platby", ri.payment_method.clone())),
+                        .child(self.render_field("Způsob platby", ri.payment_method.clone())),
                 )
                 .child(
                     div()
                         .flex()
                         .gap_8()
-                        .child(self.render_field("Ucet", ri.bank_account.clone()))
-                        .child(self.render_field("Kod banky", ri.bank_code.clone()))
+                        .child(self.render_field("Účet", ri.bank_account.clone()))
+                        .child(self.render_field("Kód banky", ri.bank_code.clone()))
                         .child(self.render_field("IBAN", ri.iban.clone())),
                 ),
         );
@@ -342,7 +346,7 @@ impl RecurringInvoiceDetailView {
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                    .child("Polozky"),
+                    .child("Položky"),
             );
 
             // Column headers
@@ -356,7 +360,7 @@ impl RecurringInvoiceDetailView {
                     .border_b_1()
                     .border_color(rgb(ZfColors::BORDER_SUBTLE))
                     .child(div().flex_1().child("Popis"))
-                    .child(div().w_20().text_right().child("Mnozstvi"))
+                    .child(div().w_20().text_right().child("Množství"))
                     .child(div().w_16().text_right().child("Jednotka"))
                     .child(div().w_24().text_right().child("Cena/ks"))
                     .child(div().w_16().text_right().child("DPH %")),
@@ -428,7 +432,7 @@ impl RecurringInvoiceDetailView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Odhadovana celkova castka"),
+                        .child("Odhadovaná celková částka"),
                 )
                 .child(
                     div()
@@ -455,7 +459,7 @@ impl RecurringInvoiceDetailView {
                         div()
                             .text_xs()
                             .text_color(rgb(ZfColors::TEXT_MUTED))
-                            .child("Poznamky"),
+                            .child("Poznámky"),
                     )
                     .child(
                         div()
@@ -487,7 +491,7 @@ impl Render for RecurringInvoiceDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani sablony faktury..."),
+                    .child("Načítání šablony faktury..."),
             );
         }
 

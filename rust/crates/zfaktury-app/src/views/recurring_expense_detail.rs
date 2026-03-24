@@ -53,7 +53,7 @@ impl RecurringExpenseDetailView {
                 this.loading = false;
                 match result {
                     Ok(template) => this.template = Some(template),
-                    Err(e) => this.error = Some(format!("Chyba pri nacitani opak. nakladu: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při načítání opak. nákladů: {e}")),
                 }
                 cx.notify();
             })
@@ -138,8 +138,8 @@ impl RecurringExpenseDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat opakovany naklad?",
-                "Tato akce je nevratna. Sablona bude trvale smazana.",
+                "Smazat opakovaný náklad?",
+                "Tato akce je nevratná. Šablona bude trvale smazána.",
                 "Smazat",
             )
         });
@@ -167,7 +167,7 @@ impl RecurringExpenseDetailView {
         // Back button
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -272,10 +272,10 @@ impl RecurringExpenseDetailView {
 
     fn frequency_label(freq: &Frequency) -> &'static str {
         match freq {
-            Frequency::Weekly => "Tydenni",
-            Frequency::Monthly => "Mesicni",
-            Frequency::Quarterly => "Ctvrtletni",
-            Frequency::Yearly => "Rocni",
+            Frequency::Weekly => "Týdenní",
+            Frequency::Monthly => "Měsíční",
+            Frequency::Quarterly => "Čtvrtletní",
+            Frequency::Yearly => "Roční",
         }
     }
 
@@ -290,7 +290,11 @@ impl RecurringExpenseDetailView {
                     .unwrap_or_else(|| "-".to_string())
             });
 
-        let status_text = if re.is_active { "Aktivni" } else { "Neaktivni" };
+        let status_text = if re.is_active {
+            "Aktivní"
+        } else {
+            "Neaktivní"
+        };
         let status_color = if re.is_active {
             ZfColors::STATUS_GREEN
         } else {
@@ -315,7 +319,7 @@ impl RecurringExpenseDetailView {
                         .text_xl()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child(format!("Opakovany naklad: {}", re.name)),
+                        .child(format!("Opakovaný náklad: {}", re.name)),
                 )
                 .child(
                     div()
@@ -348,19 +352,19 @@ impl RecurringExpenseDetailView {
 
         // Basic info
         content = content.child(self.render_section(
-            "Zakladni udaje",
+            "Základní údaje",
             vec![
                 ("Popis", re.description.clone()),
                 ("Kategorie", re.category.clone()),
                 ("Dodavatel", vendor_name),
-                ("Castka", format_amount(re.amount)),
-                ("Mena", re.currency_code.clone()),
-                ("Zpusob platby", re.payment_method.clone()),
+                ("Částka", format_amount(re.amount)),
+                ("Měna", re.currency_code.clone()),
+                ("Způsob platby", re.payment_method.clone()),
                 (
-                    "Danove uznatelny",
+                    "Daňově uznatelný",
                     if re.is_tax_deductible { "Ano" } else { "Ne" }.to_string(),
                 ),
-                ("Obchodni podil", format!("{}%", re.business_percent)),
+                ("Obchodní podíl", format!("{}%", re.business_percent)),
             ],
         ));
 
@@ -375,13 +379,13 @@ impl RecurringExpenseDetailView {
 
         // Schedule section
         content = content.child(self.render_section(
-            "Opakovani",
+            "Opakování",
             vec![
                 (
                     "Frekvence",
                     Self::frequency_label(&re.frequency).to_string(),
                 ),
-                ("Dalsi vystaveni", format_date(re.next_issue_date)),
+                ("Další vystavení", format_date(re.next_issue_date)),
                 ("Konec", end_date_str),
             ],
         ));
@@ -402,7 +406,7 @@ impl RecurringExpenseDetailView {
                         div()
                             .text_xs()
                             .text_color(rgb(ZfColors::TEXT_MUTED))
-                            .child("Poznamky"),
+                            .child("Poznámky"),
                     )
                     .child(
                         div()
@@ -434,7 +438,7 @@ impl Render for RecurringExpenseDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani opak. nakladu..."),
+                    .child("Načítání opak. nákladů..."),
             );
         }
 

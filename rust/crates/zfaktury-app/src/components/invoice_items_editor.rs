@@ -141,7 +141,7 @@ impl InvoiceItemsEditor {
         let description = cx.new(|cx| {
             TextInput::new(
                 SharedString::from(format!("item-desc-{idx}")),
-                "Popis polozky...",
+                "Popis položky...",
                 cx,
             )
         });
@@ -263,7 +263,7 @@ impl InvoiceItemsEditor {
                     .text_xs()
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("Mnozstvi"),
+                    .child("Množství"),
             )
             .child(
                 div()
@@ -317,7 +317,7 @@ impl InvoiceItemsEditor {
                         div()
                             .text_sm()
                             .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                            .child("Zaklad dane:"),
+                            .child("Základ daně:"),
                     )
                     .child(
                         div()
@@ -421,7 +421,7 @@ impl Render for InvoiceItemsEditor {
         // Add button
         let add_btn = render_button(
             "add-item-btn",
-            "+ Pridat polozku",
+            "+ Přidat položku",
             ButtonVariant::Secondary,
             false,
             false,

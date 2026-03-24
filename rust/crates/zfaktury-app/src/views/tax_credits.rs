@@ -25,15 +25,15 @@ fn child_order_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "1".into(),
-            label: "1. dite".into(),
+            label: "1. dítě".into(),
         },
         SelectOption {
             value: "2".into(),
-            label: "2. dite".into(),
+            label: "2. dítě".into(),
         },
         SelectOption {
             value: "3".into(),
-            label: "3.+ dite".into(),
+            label: "3.+ dítě".into(),
         },
     ]
 }
@@ -42,15 +42,15 @@ fn disability_level_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "0".into(),
-            label: "Zadny".into(),
+            label: "Žádný".into(),
         },
         SelectOption {
             value: "1".into(),
-            label: "I./II. stupen".into(),
+            label: "I./II. stupeň".into(),
         },
         SelectOption {
             value: "2".into(),
-            label: "III. stupen".into(),
+            label: "III. stupeň".into(),
         },
         SelectOption {
             value: "3".into(),
@@ -63,15 +63,15 @@ fn deduction_category_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "mortgage".into(),
-            label: "Hypoteka".into(),
+            label: "Hypotéka".into(),
         },
         SelectOption {
             value: "life_insurance".into(),
-            label: "Zivotni pojisteni".into(),
+            label: "Životní pojištění".into(),
         },
         SelectOption {
             value: "pension".into(),
-            label: "Penzijni pripojisteni".into(),
+            label: "Penzijní připojištění".into(),
         },
         SelectOption {
             value: "donation".into(),
@@ -248,7 +248,7 @@ impl TaxCreditsView {
                         this.deductions = deductions;
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani slev: {e}"));
+                        this.error = Some(format!("Chyba při načítání slev: {e}"));
                     }
                 }
                 cx.notify();
@@ -272,10 +272,10 @@ impl TaxCreditsView {
     // --- Spouse CRUD ---
 
     fn start_add_spouse(&mut self, cx: &mut Context<Self>) {
-        let name = cx.new(|cx| TextInput::new("spouse-name", "Jmeno manzelky/manzela...", cx));
+        let name = cx.new(|cx| TextInput::new("spouse-name", "Jméno manželky/manžela...", cx));
         let birth_number = cx.new(|cx| TextInput::new("spouse-bn", "XXXXXX/XXXX", cx));
         let income = cx.new(|cx| NumberInput::new("spouse-income", "0.00", cx));
-        let ztp = cx.new(|_cx| Checkbox::new("spouse-ztp", "Drzitel ZTP/P", false));
+        let ztp = cx.new(|_cx| Checkbox::new("spouse-ztp", "Držitel ZTP/P", false));
         let months = cx.new(|cx| {
             NumberInput::new("spouse-months", "12", cx)
                 .integer_only()
@@ -298,7 +298,7 @@ impl TaxCreditsView {
             None => return,
         };
         let name = cx.new(|cx| {
-            let mut t = TextInput::new("spouse-name-edit", "Jmeno manzelky/manzela...", cx);
+            let mut t = TextInput::new("spouse-name-edit", "Jméno manželky/manžela...", cx);
             t.set_value(&sc.spouse_name, cx);
             t
         });
@@ -312,7 +312,7 @@ impl TaxCreditsView {
             n.set_amount(sc.spouse_income, cx);
             n
         });
-        let ztp = cx.new(|_cx| Checkbox::new("spouse-ztp-edit", "Drzitel ZTP/P", sc.spouse_ztp));
+        let ztp = cx.new(|_cx| Checkbox::new("spouse-ztp-edit", "Držitel ZTP/P", sc.spouse_ztp));
         let months = cx.new(|cx| {
             NumberInput::new("spouse-months-edit", "12", cx)
                 .integer_only()
@@ -345,12 +345,12 @@ impl TaxCreditsView {
         let months: i32 = state.months.read(cx).value().parse().unwrap_or(12);
 
         if name.trim().is_empty() || birth_number.trim().is_empty() {
-            self.error = Some("Jmeno a rodne cislo jsou povinne.".into());
+            self.error = Some("Jméno a rodné číslo jsou povinné.".into());
             cx.notify();
             return;
         }
         if !(1..=12).contains(&months) {
-            self.error = Some("Pocet mesicu musi byt 1-12.".into());
+            self.error = Some("Počet měsíců musí být 1-12.".into());
             cx.notify();
             return;
         }
@@ -391,7 +391,7 @@ impl TaxCreditsView {
                         this.load_data(cx);
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri ukladani: {e}"));
+                        this.error = Some(format!("Chyba při ukládání: {e}"));
                     }
                 }
                 cx.notify();
@@ -405,8 +405,8 @@ impl TaxCreditsView {
         self.pending_delete = Some(DeleteTarget::Spouse);
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat slevu na manzela/ku",
-                "Opravdu chcete smazat slevu na manzela/ku?",
+                "Smazat slevu na manžela/ku",
+                "Opravdu chcete smazat slevu na manžela/ku?",
                 "Smazat",
             )
         });
@@ -434,7 +434,7 @@ impl TaxCreditsView {
                         this.editing = None;
                         this.load_data(cx);
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri mazani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při mazání: {e}")),
                 }
                 cx.notify();
             })
@@ -446,16 +446,16 @@ impl TaxCreditsView {
     // --- Child CRUD ---
 
     fn start_add_child(&mut self, cx: &mut Context<Self>) {
-        let name = cx.new(|cx| TextInput::new("child-name-new", "Jmeno ditete...", cx));
+        let name = cx.new(|cx| TextInput::new("child-name-new", "Jméno dítěte...", cx));
         let birth_number = cx.new(|cx| TextInput::new("child-bn-new", "XXXXXX/XXXX", cx));
         let order =
-            cx.new(|_cx| Select::new("child-order-new", "Poradi...", child_order_options()));
+            cx.new(|_cx| Select::new("child-order-new", "Pořadí...", child_order_options()));
         let months = cx.new(|cx| {
             NumberInput::new("child-months-new", "12", cx)
                 .integer_only()
                 .with_value("12")
         });
-        let ztp = cx.new(|_cx| Checkbox::new("child-ztp-new", "Drzitel ZTP/P", false));
+        let ztp = cx.new(|_cx| Checkbox::new("child-ztp-new", "Držitel ZTP/P", false));
 
         self.editing = Some(EditingSection::Child(ChildEditState {
             editing_id: None,
@@ -474,7 +474,7 @@ impl TaxCreditsView {
         let name = cx.new(|cx| {
             let mut t = TextInput::new(
                 SharedString::from(format!("child-name-{}", child_id)),
-                "Jmeno ditete...",
+                "Jméno dítěte...",
                 cx,
             );
             t.set_value(&child.child_name, cx);
@@ -492,7 +492,7 @@ impl TaxCreditsView {
         let order = cx.new(|cx| {
             let mut sel = Select::new(
                 SharedString::from(format!("child-order-{}", child_id)),
-                "Poradi...",
+                "Pořadí...",
                 child_order_options(),
             );
             sel.set_selected_value(&child.child_order.to_string(), cx);
@@ -510,7 +510,7 @@ impl TaxCreditsView {
         let ztp = cx.new(|_cx| {
             Checkbox::new(
                 SharedString::from(format!("child-ztp-{}", child_id)),
-                "Drzitel ZTP/P",
+                "Držitel ZTP/P",
                 child.ztp,
             )
         });
@@ -549,17 +549,17 @@ impl TaxCreditsView {
         let editing_id = state.editing_id;
 
         if name.trim().is_empty() || birth_number.trim().is_empty() {
-            self.error = Some("Jmeno a rodne cislo jsou povinne.".into());
+            self.error = Some("Jméno a rodné číslo jsou povinné.".into());
             cx.notify();
             return;
         }
         if !(1..=3).contains(&order) {
-            self.error = Some("Vyberte poradi ditete.".into());
+            self.error = Some("Vyberte pořadí dítěte.".into());
             cx.notify();
             return;
         }
         if !(1..=12).contains(&months) {
-            self.error = Some("Pocet mesicu musi byt 1-12.".into());
+            self.error = Some("Počet měsíců musí být 1-12.".into());
             cx.notify();
             return;
         }
@@ -605,7 +605,7 @@ impl TaxCreditsView {
                         this.editing = None;
                         this.load_data(cx);
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při ukládání: {e}")),
                 }
                 cx.notify();
             })
@@ -617,7 +617,7 @@ impl TaxCreditsView {
     fn request_delete_child(&mut self, id: i64, cx: &mut Context<Self>) {
         self.pending_delete = Some(DeleteTarget::Child(id));
         let dialog = cx.new(|_cx| {
-            ConfirmDialog::new("Smazat dite", "Opravdu chcete smazat toto dite?", "Smazat")
+            ConfirmDialog::new("Smazat dítě", "Opravdu chcete smazat toto dítě?", "Smazat")
         });
         cx.subscribe(&dialog, Self::on_confirm_result).detach();
         self.confirm_dialog = Some(dialog);
@@ -646,7 +646,7 @@ impl TaxCreditsView {
                         }
                         this.load_data(cx);
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri mazani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při mazání: {e}")),
                 }
                 cx.notify();
             })
@@ -672,7 +672,7 @@ impl TaxCreditsView {
         let disability_level = cx.new(|cx| {
             let mut sel = Select::new(
                 "personal-disability",
-                "Stupen invalidity...",
+                "Stupeň invalidity...",
                 disability_level_options(),
             );
             sel.set_selected_value(&disability_val.to_string(), cx);
@@ -711,7 +711,7 @@ impl TaxCreditsView {
             .unwrap_or(0);
 
         if is_student && !(0..=12).contains(&student_months) {
-            self.error = Some("Pocet mesicu studia musi byt 0-12.".into());
+            self.error = Some("Počet měsíců studia musí být 0-12.".into());
             cx.notify();
             return;
         }
@@ -746,7 +746,7 @@ impl TaxCreditsView {
                         this.editing = None;
                         this.load_data(cx);
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při ukládání: {e}")),
                 }
                 cx.notify();
             })
@@ -765,7 +765,7 @@ impl TaxCreditsView {
                 deduction_category_options(),
             )
         });
-        let description = cx.new(|cx| TextInput::new("ded-desc-new", "Popis odpoctu...", cx));
+        let description = cx.new(|cx| TextInput::new("ded-desc-new", "Popis odpočtu...", cx));
         let amount = cx.new(|cx| NumberInput::new("ded-amount-new", "0.00", cx));
 
         self.editing = Some(EditingSection::Deduction(DeductionEditState {
@@ -792,7 +792,7 @@ impl TaxCreditsView {
         let description = cx.new(|cx| {
             let mut t = TextInput::new(
                 SharedString::from(format!("ded-desc-{}", ded_id)),
-                "Popis odpoctu...",
+                "Popis odpočtu...",
                 cx,
             );
             t.set_value(&ded.description, cx);
@@ -840,19 +840,19 @@ impl TaxCreditsView {
         let category = match parse_deduction_category(&category_str) {
             Some(c) => c,
             None => {
-                self.error = Some("Vyberte kategorii odpoctu.".into());
+                self.error = Some("Vyberte kategorii odpočtu.".into());
                 cx.notify();
                 return;
             }
         };
 
         if description.trim().is_empty() {
-            self.error = Some("Popis odpoctu je povinny.".into());
+            self.error = Some("Popis odpočtu je povinný.".into());
             cx.notify();
             return;
         }
         if claimed_amount.halere() <= 0 {
-            self.error = Some("Castka musi byt vetsi nez 0.".into());
+            self.error = Some("Částka musí být větší než 0.".into());
             cx.notify();
             return;
         }
@@ -897,7 +897,7 @@ impl TaxCreditsView {
                         this.editing = None;
                         this.load_data(cx);
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při ukládání: {e}")),
                 }
                 cx.notify();
             })
@@ -910,8 +910,8 @@ impl TaxCreditsView {
         self.pending_delete = Some(DeleteTarget::Deduction(id));
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat odpocet",
-                "Opravdu chcete smazat tento odpocet?",
+                "Smazat odpočet",
+                "Opravdu chcete smazat tento odpočet?",
                 "Smazat",
             )
         });
@@ -942,7 +942,7 @@ impl TaxCreditsView {
                         }
                         this.load_data(cx);
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri mazani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při mazání: {e}")),
                 }
                 cx.notify();
             })
@@ -958,12 +958,12 @@ impl TaxCreditsView {
         self.pending_delete = Some(DeleteTarget::CopyFromYear);
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                format!("Kopirovat z roku {}", source_year),
+                format!("Kopírovat z roku {}", source_year),
                 format!(
-                    "Kopirovat slevy a odpocty z roku {}? Existujici data pro rok {} budou nahrazena.",
+                    "Kopírovat slevy a odpočty z roku {}? Existující data pro rok {} budou nahrazena.",
                     source_year, source_year + 1
                 ),
-                "Kopirovat",
+                "Kopírovat",
             )
         });
         cx.subscribe(&dialog, Self::on_confirm_result).detach();
@@ -1025,7 +1025,7 @@ impl TaxCreditsView {
                 match result {
                     Ok(()) => this.load_data(cx),
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri kopirovani: {e}"));
+                        this.error = Some(format!("Chyba při kopírování: {e}"));
                         cx.notify();
                     }
                 }
@@ -1096,13 +1096,13 @@ impl TaxCreditsView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Sleva na manzelku/manzela"),
+                        .child("Sleva na manželku/manžela"),
                 )
                 .child(
                     div()
                         .text_xs()
                         .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child("Prijem manzelky/manzela do 68 000 Kc. ZTP/P = dvojnasobek."),
+                        .child("Příjem manželky/manžela do 68 000 Kč. ZTP/P = dvojnásobek."),
                 ),
         );
 
@@ -1133,7 +1133,7 @@ impl TaxCreditsView {
             } else {
                 buttons = buttons.child(render_button(
                     "spouse-add-btn",
-                    "Pridat",
+                    "Přidat",
                     ButtonVariant::Primary,
                     has_editing || self.saving,
                     false,
@@ -1151,14 +1151,14 @@ impl TaxCreditsView {
         if is_editing_spouse {
             if let Some(EditingSection::Spouse(ref state)) = self.editing {
                 card = card
-                    .child(render_labeled_field("Jmeno", state.name.clone()))
+                    .child(render_labeled_field("Jméno", state.name.clone()))
                     .child(render_labeled_field(
-                        "Rodne cislo",
+                        "Rodné číslo",
                         state.birth_number.clone(),
                     ))
-                    .child(render_labeled_field("Prijem", state.income.clone()))
+                    .child(render_labeled_field("Příjem", state.income.clone()))
                     .child(state.ztp.clone())
-                    .child(render_labeled_field("Mesicu", state.months.clone()))
+                    .child(render_labeled_field("Měsíců", state.months.clone()))
                     .child(
                         div()
                             .flex()
@@ -1167,7 +1167,7 @@ impl TaxCreditsView {
                             .pt_2()
                             .child(render_button(
                                 "spouse-cancel",
-                                "Zrusit",
+                                "Zrušit",
                                 ButtonVariant::Secondary,
                                 self.saving,
                                 false,
@@ -1177,7 +1177,7 @@ impl TaxCreditsView {
                             ))
                             .child(render_button(
                                 "spouse-save",
-                                "Ulozit",
+                                "Uložit",
                                 ButtonVariant::Primary,
                                 false,
                                 self.saving,
@@ -1197,7 +1197,7 @@ impl TaxCreditsView {
                         .child(
                             div()
                                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                                .child("Jmeno"),
+                                .child("Jméno"),
                         )
                         .child(
                             div()
@@ -1213,7 +1213,7 @@ impl TaxCreditsView {
                         .child(
                             div()
                                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                                .child("Prijem"),
+                                .child("Příjem"),
                         )
                         .child(
                             div()
@@ -1245,7 +1245,7 @@ impl TaxCreditsView {
                         .child(
                             div()
                                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                                .child("Mesicu"),
+                                .child("Měsíců"),
                         )
                         .child(
                             div()
@@ -1275,7 +1275,7 @@ impl TaxCreditsView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadna sleva na manzela/ku pro tento rok."),
+                    .child("Žádná sleva na manžela/ku pro tento rok."),
             );
         }
 
@@ -1307,20 +1307,20 @@ impl TaxCreditsView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Deti"),
+                        .child("Děti"),
                 )
                 .child(
                     div()
                         .text_xs()
                         .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child("Danove zvyhodneni na vyzivanou deti. 1./2./3.+ dite."),
+                        .child("Daňové zvýhodnění na vyživované děti. 1./2./3.+ dítě."),
                 ),
         );
 
         if !is_editing_child {
             header = header.child(render_button(
                 "child-add-btn",
-                "Pridat dite",
+                "Přidat dítě",
                 ButtonVariant::Primary,
                 has_editing || self.saving,
                 false,
@@ -1338,7 +1338,7 @@ impl TaxCreditsView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne deti pro tento rok."),
+                    .child("Žádné děti pro tento rok."),
             );
         } else {
             // Clone children data to avoid borrow issues
@@ -1369,7 +1369,7 @@ impl TaxCreditsView {
                     .border_t_1()
                     .border_color(rgb(ZfColors::BORDER_SUBTLE))
                     .child(div().text_color(rgb(ZfColors::TEXT_PRIMARY)).child(format!(
-                        "{}. dite: {} ({}m{})",
+                        "{}. dítě: {} ({}m{})",
                         child_order,
                         child_name,
                         months_claimed,
@@ -1434,18 +1434,18 @@ impl TaxCreditsView {
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_SECONDARY))
                             .child(if state.editing_id.is_some() {
-                                "Upravit dite"
+                                "Upravit dítě"
                             } else {
-                                "Pridat dite"
+                                "Přidat dítě"
                             }),
                     )
-                    .child(render_labeled_field("Jmeno", state.name.clone()))
+                    .child(render_labeled_field("Jméno", state.name.clone()))
                     .child(render_labeled_field(
-                        "Rodne cislo",
+                        "Rodné číslo",
                         state.birth_number.clone(),
                     ))
-                    .child(render_labeled_field("Poradi", state.order.clone()))
-                    .child(render_labeled_field("Mesicu", state.months.clone()))
+                    .child(render_labeled_field("Pořadí", state.order.clone()))
+                    .child(render_labeled_field("Měsíců", state.months.clone()))
                     .child(state.ztp.clone())
                     .child(
                         div()
@@ -1455,7 +1455,7 @@ impl TaxCreditsView {
                             .pt_2()
                             .child(render_button(
                                 "child-cancel",
-                                "Zrusit",
+                                "Zrušit",
                                 ButtonVariant::Secondary,
                                 self.saving,
                                 false,
@@ -1465,7 +1465,7 @@ impl TaxCreditsView {
                             ))
                             .child(render_button(
                                 "child-save",
-                                "Ulozit",
+                                "Uložit",
                                 ButtonVariant::Primary,
                                 false,
                                 self.saving,
@@ -1505,13 +1505,13 @@ impl TaxCreditsView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Osobni slevy"),
+                        .child("Osobní slevy"),
                 )
                 .child(
                     div()
                         .text_xs()
                         .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child("Sleva na studenta, invalidni duchod."),
+                        .child("Sleva na studenta, invalidní důchod."),
                 ),
         );
 
@@ -1538,10 +1538,10 @@ impl TaxCreditsView {
                 card =
                     card.child(state.is_student.clone())
                         .child(div().when(!is_student, |d| d.opacity(0.5)).child(
-                            render_labeled_field("Mesicu studia", state.student_months.clone()),
+                            render_labeled_field("Měsíců studia", state.student_months.clone()),
                         ))
                         .child(render_labeled_field(
-                            "Stupen invalidity",
+                            "Stupeň invalidity",
                             state.disability_level.clone(),
                         ))
                         .child(
@@ -1552,7 +1552,7 @@ impl TaxCreditsView {
                                 .pt_2()
                                 .child(render_button(
                                     "personal-cancel",
-                                    "Zrusit",
+                                    "Zrušit",
                                     ButtonVariant::Secondary,
                                     self.saving,
                                     false,
@@ -1562,7 +1562,7 @@ impl TaxCreditsView {
                                 ))
                                 .child(render_button(
                                     "personal-save",
-                                    "Ulozit",
+                                    "Uložit",
                                     ButtonVariant::Primary,
                                     false,
                                     self.saving,
@@ -1593,10 +1593,10 @@ impl TaxCreditsView {
             }
             if pc.disability_level > 0 {
                 let level_text = match pc.disability_level {
-                    1 => "I./II. stupen",
-                    2 => "III. stupen",
+                    1 => "I./II. stupeň",
+                    2 => "III. stupeň",
                     3 => "ZTP/P",
-                    _ => "Nezname",
+                    _ => "Neznámé",
                 };
                 card = card.child(
                     div()
@@ -1620,7 +1620,7 @@ impl TaxCreditsView {
                     div()
                         .text_sm()
                         .text_color(rgb(ZfColors::TEXT_MUTED))
-                        .child("Zadne osobni slevy."),
+                        .child("Žádné osobní slevy."),
                 );
             }
         } else {
@@ -1628,7 +1628,7 @@ impl TaxCreditsView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne osobni slevy pro tento rok."),
+                    .child("Žádné osobní slevy pro tento rok."),
             );
         }
 
@@ -1661,17 +1661,17 @@ impl TaxCreditsView {
                             .text_sm()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child("Odpocty"),
+                            .child("Odpočty"),
                     )
                     .child(div().text_xs().text_color(rgb(ZfColors::TEXT_MUTED)).child(
-                        "Hypoteka, zivotni pojisteni, penzijni pripojisteni, dary, odbory.",
+                        "Hypotéka, životní pojištění, penzijní připojištění, dary, odbory.",
                     )),
             );
 
         if !is_editing_deduction {
             header = header.child(render_button(
                 "ded-add-btn",
-                "Pridat odpocet",
+                "Přidat odpočet",
                 ButtonVariant::Primary,
                 has_editing || self.saving,
                 false,
@@ -1689,7 +1689,7 @@ impl TaxCreditsView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne odpocty pro tento rok."),
+                    .child("Žádné odpočty pro tento rok."),
             );
         } else {
             // Clone deduction data to avoid borrow issues
@@ -1701,9 +1701,9 @@ impl TaxCreditsView {
 
             for (ded_id, category, description, allowed_amount) in deductions_data {
                 let category_label = match category {
-                    DeductionCategory::Mortgage => "Hypoteka",
-                    DeductionCategory::LifeInsurance => "Zivotni pojisteni",
-                    DeductionCategory::Pension => "Penzijni pripojisteni",
+                    DeductionCategory::Mortgage => "Hypotéka",
+                    DeductionCategory::LifeInsurance => "Životní pojištění",
+                    DeductionCategory::Pension => "Penzijní připojištění",
                     DeductionCategory::Donation => "Dar",
                     DeductionCategory::UnionDues => "Odbory",
                 };
@@ -1779,14 +1779,14 @@ impl TaxCreditsView {
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_SECONDARY))
                             .child(if state.editing_id.is_some() {
-                                "Upravit odpocet"
+                                "Upravit odpočet"
                             } else {
-                                "Pridat odpocet"
+                                "Přidat odpočet"
                             }),
                     )
                     .child(render_labeled_field("Kategorie", state.category.clone()))
                     .child(render_labeled_field("Popis", state.description.clone()))
-                    .child(render_labeled_field("Castka", state.amount.clone()))
+                    .child(render_labeled_field("Částka", state.amount.clone()))
                     .child(
                         div()
                             .flex()
@@ -1795,7 +1795,7 @@ impl TaxCreditsView {
                             .pt_2()
                             .child(render_button(
                                 "ded-cancel",
-                                "Zrusit",
+                                "Zrušit",
                                 ButtonVariant::Secondary,
                                 self.saving,
                                 false,
@@ -1805,7 +1805,7 @@ impl TaxCreditsView {
                             ))
                             .child(render_button(
                                 "ded-save",
-                                "Ulozit",
+                                "Uložit",
                                 ButtonVariant::Primary,
                                 false,
                                 self.saving,
@@ -1848,7 +1848,7 @@ impl Render for TaxCreditsView {
                         .text_xl()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Slevy a odpocty"),
+                        .child("Slevy a odpočty"),
                 )
                 .child(render_button(
                     "btn-year-prev",
@@ -1884,7 +1884,7 @@ impl Render for TaxCreditsView {
                 ))
                 .child(render_button(
                     "btn-copy-year",
-                    &format!("Kopirovat z roku {}", self.year - 1),
+                    &format!("Kopírovat z roku {}", self.year - 1),
                     ButtonVariant::Secondary,
                     has_editing || self.saving,
                     false,
@@ -1899,7 +1899,7 @@ impl Render for TaxCreditsView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
+                    .child("Načítání..."),
             );
         }
 

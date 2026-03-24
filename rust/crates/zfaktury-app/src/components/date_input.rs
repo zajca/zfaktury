@@ -65,7 +65,7 @@ impl DateInput {
                 cx.emit(DateChanged(iso));
             }
             None => {
-                self.error = Some("Neplatny format data".to_string());
+                self.error = Some("Neplatný formát data".to_string());
             }
         }
         cx.notify();

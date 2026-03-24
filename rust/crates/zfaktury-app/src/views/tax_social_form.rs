@@ -23,15 +23,15 @@ fn filing_type_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "regular".to_string(),
-            label: "Radne".to_string(),
+            label: "Řádné".to_string(),
         },
         SelectOption {
             value: "corrective".to_string(),
-            label: "Opravne".to_string(),
+            label: "Opravné".to_string(),
         },
         SelectOption {
             value: "supplementary".to_string(),
-            label: "Dodatecne".to_string(),
+            label: "Dodatečné".to_string(),
         },
     ]
 }
@@ -64,7 +64,7 @@ impl TaxSocialFormView {
         });
 
         let filing_type_select = cx.new(|cx| {
-            let mut s = Select::new("filing-type-select", "Typ podani", filing_type_options());
+            let mut s = Select::new("filing-type-select", "Typ podání", filing_type_options());
             s.set_selected_value("regular", cx);
             s
         });
@@ -87,7 +87,7 @@ impl TaxSocialFormView {
         let year: i32 = match year_str.parse() {
             Ok(y) => y,
             Err(_) => {
-                self.error = Some("Zadejte platny rok".into());
+                self.error = Some("Zadejte platný rok".into());
                 cx.notify();
                 return;
             }
@@ -176,7 +176,7 @@ impl Render for TaxSocialFormView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Novy prehled OSSZ"),
+                .child("Nový přehled OSSZ"),
         );
 
         // Error
@@ -209,7 +209,7 @@ impl Render for TaxSocialFormView {
                         .text_sm()
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                        .child("Prehled OSVC pro CSSZ"),
+                        .child("Přehled OSVČ pro ČSSZ"),
                 )
                 .child(
                     div()
@@ -221,7 +221,7 @@ impl Render for TaxSocialFormView {
                                 .child(render_labeled_field("Rok", self.year_input.clone())),
                         )
                         .child(div().w(px(220.0)).child(render_labeled_field(
-                            "Typ podani",
+                            "Typ podání",
                             self.filing_type_select.clone(),
                         ))),
                 ),
@@ -237,13 +237,13 @@ impl Render for TaxSocialFormView {
                 .border_color(rgb(ZfColors::BORDER))
                 .text_sm()
                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                .child("Prehled bude automaticky vypocitan z vasich prijmu a vydaju za dany rok."),
+                .child("Přehled bude automaticky vypočítán z vašich příjmů a výdajů za daný rok."),
         );
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -254,7 +254,7 @@ impl Render for TaxSocialFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Vytvorit",
+            "Vytvořit",
             ButtonVariant::Primary,
             false,
             self.saving,

@@ -7,18 +7,18 @@ use crate::theme::ZfColors;
 pub fn status_badge_style(status: &InvoiceStatus) -> (u32, u32, &'static str) {
     match status {
         InvoiceStatus::Draft => (ZfColors::STATUS_GRAY, ZfColors::STATUS_GRAY_BG, "Koncept"),
-        InvoiceStatus::Sent => (ZfColors::STATUS_BLUE, ZfColors::STATUS_BLUE_BG, "Odeslana"),
+        InvoiceStatus::Sent => (ZfColors::STATUS_BLUE, ZfColors::STATUS_BLUE_BG, "Odeslaná"),
         InvoiceStatus::Paid => (
             ZfColors::STATUS_GREEN,
             ZfColors::STATUS_GREEN_BG,
-            "Uhrazena",
+            "Uhrazená",
         ),
         InvoiceStatus::Overdue => (
             ZfColors::STATUS_RED,
             ZfColors::STATUS_RED_BG,
             "Po splatnosti",
         ),
-        InvoiceStatus::Cancelled => (ZfColors::TEXT_MUTED, ZfColors::SURFACE_HOVER, "Stornovana"),
+        InvoiceStatus::Cancelled => (ZfColors::TEXT_MUTED, ZfColors::SURFACE_HOVER, "Stornovaná"),
     }
 }
 

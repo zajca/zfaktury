@@ -65,7 +65,7 @@ impl InvoiceDetailView {
                 this.loading = false;
                 match result {
                     Ok(invoice) => this.invoice = Some(invoice),
-                    Err(e) => this.error = Some(format!("Chyba pri nacitani faktury: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při načítání faktury: {e}")),
                 }
                 cx.notify();
             })
@@ -230,7 +230,7 @@ impl InvoiceDetailView {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
                 "Smazat fakturu?",
-                "Tato akce je nevratna. Faktura bude trvale smazana.",
+                "Tato akce je nevratná. Faktura bude trvale smazána.",
                 "Smazat",
             )
         });
@@ -272,14 +272,14 @@ impl InvoiceDetailView {
                     // Load supplier info from settings.
                     let all_settings = settings_service
                         .get_all()
-                        .map_err(|e| format!("Chyba pri nacitani nastaveni: {e}"))?;
+                        .map_err(|e| format!("Chyba při načítání nastavení: {e}"))?;
 
                     let supplier = build_pdf_supplier_info(&all_settings);
 
                     // Load PDF settings.
                     let pdf_domain_settings = settings_service
                         .get_pdf_settings()
-                        .map_err(|e| format!("Chyba pri nacitani PDF nastaveni: {e}"))?;
+                        .map_err(|e| format!("Chyba při načítání PDF nastavení: {e}"))?;
                     let render_settings = zfaktury_gen::pdf::PdfRenderSettings {
                         accent_color: pdf_domain_settings
                             .accent_color
@@ -295,13 +295,13 @@ impl InvoiceDetailView {
                         &supplier,
                         &render_settings,
                     )
-                    .map_err(|e| format!("Chyba pri generovani PDF: {e}"))?;
+                    .map_err(|e| format!("Chyba při generování PDF: {e}"))?;
 
                     // Save to temp file.
                     let tmp_path =
                         std::env::temp_dir().join(format!("faktura-{}.pdf", invoice_number));
                     std::fs::write(&tmp_path, &pdf_bytes)
-                        .map_err(|e| format!("Chyba pri zapisu PDF: {e}"))?;
+                        .map_err(|e| format!("Chyba při zápisu PDF: {e}"))?;
 
                     // Open with system viewer.
                     let _ = std::process::Command::new("xdg-open")
@@ -316,7 +316,7 @@ impl InvoiceDetailView {
                 this.pdf_generating = false;
                 match result {
                     Ok(_path) => {
-                        this.success = Some("PDF vygenerovano a otevreno".to_string());
+                        this.success = Some("PDF vygenerováno a otevřeno".to_string());
                     }
                     Err(e) => {
                         this.error = Some(e);
@@ -350,7 +350,7 @@ impl InvoiceDetailView {
                     // Load supplier info from settings.
                     let all_settings = settings_service
                         .get_all()
-                        .map_err(|e| format!("Chyba pri nacitani nastaveni: {e}"))?;
+                        .map_err(|e| format!("Chyba při načítání nastavení: {e}"))?;
 
                     let supplier = zfaktury_gen::isdoc::SupplierInfo {
                         company_name: all_settings
@@ -405,13 +405,13 @@ impl InvoiceDetailView {
 
                     // Generate ISDOC XML.
                     let xml_bytes = zfaktury_gen::isdoc::generate_isdoc(&invoice, &supplier)
-                        .map_err(|e| format!("Chyba pri generovani ISDOC: {e}"))?;
+                        .map_err(|e| format!("Chyba při generování ISDOC: {e}"))?;
 
                     // Save to temp file.
                     let tmp_path =
                         std::env::temp_dir().join(format!("faktura-{}.isdoc", invoice_number));
                     std::fs::write(&tmp_path, &xml_bytes)
-                        .map_err(|e| format!("Chyba pri zapisu ISDOC: {e}"))?;
+                        .map_err(|e| format!("Chyba při zápisu ISDOC: {e}"))?;
 
                     // Open with system viewer.
                     let _ = std::process::Command::new("xdg-open")
@@ -426,7 +426,7 @@ impl InvoiceDetailView {
                 this.isdoc_generating = false;
                 match result {
                     Ok(_path) => {
-                        this.success = Some("ISDOC vygenerovano a otevreno".to_string());
+                        this.success = Some("ISDOC vygenerováno a otevřeno".to_string());
                     }
                     Err(e) => {
                         this.error = Some(e);
@@ -446,7 +446,7 @@ impl InvoiceDetailView {
         // Back button (always)
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -577,7 +577,7 @@ impl InvoiceDetailView {
                 if inv.invoice_type == InvoiceType::Proforma {
                     bar = bar.child(render_button(
                         "btn-settle",
-                        "Vyuctovat",
+                        "Vyúčtovat",
                         ButtonVariant::Primary,
                         disabled,
                         self.action_loading,
@@ -618,7 +618,7 @@ impl InvoiceDetailView {
         // PDF download button (available for all statuses)
         bar = bar.child(render_button(
             "btn-download-pdf",
-            "Stahnout PDF",
+            "Stáhnout PDF",
             ButtonVariant::Secondary,
             disabled || self.pdf_generating,
             self.pdf_generating,
@@ -732,18 +732,18 @@ impl InvoiceDetailView {
                     div()
                         .flex()
                         .gap_8()
-                        .child(self.render_field("Zakaznik", customer_name))
+                        .child(self.render_field("Zákazník", customer_name))
                         .child(self.render_field("Typ", inv.invoice_type.to_string()))
-                        .child(self.render_field("Mena", inv.currency_code.clone())),
+                        .child(self.render_field("Měna", inv.currency_code.clone())),
                 )
                 .child(
                     div()
                         .flex()
                         .gap_8()
-                        .child(self.render_field("Datum vystaveni", format_date(inv.issue_date)))
+                        .child(self.render_field("Datum vystavení", format_date(inv.issue_date)))
                         .child(self.render_field("Datum splatnosti", format_date(inv.due_date)))
                         .child(self.render_field(
-                            "Datum zdanitelneho plneni",
+                            "Datum zdanitelného plnění",
                             format_date(inv.delivery_date),
                         )),
                 )
@@ -751,8 +751,8 @@ impl InvoiceDetailView {
                     div()
                         .flex()
                         .gap_8()
-                        .child(self.render_field("Variabilni symbol", inv.variable_symbol.clone()))
-                        .child(self.render_field("Zpusob platby", inv.payment_method.clone())),
+                        .child(self.render_field("Variabilní symbol", inv.variable_symbol.clone()))
+                        .child(self.render_field("Způsob platby", inv.payment_method.clone())),
                 ),
         );
 
@@ -776,7 +776,7 @@ impl InvoiceDetailView {
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                    .child("Polozky"),
+                    .child("Položky"),
             );
 
             // Column headers
@@ -790,7 +790,7 @@ impl InvoiceDetailView {
                     .border_b_1()
                     .border_color(rgb(ZfColors::BORDER_SUBTLE))
                     .child(div().flex_1().child("Popis"))
-                    .child(div().w_20().text_right().child("Mnozstvi"))
+                    .child(div().w_20().text_right().child("Množství"))
                     .child(div().w_16().text_right().child("Jednotka"))
                     .child(div().w_24().text_right().child("Cena/ks"))
                     .child(div().w_16().text_right().child("DPH %"))
@@ -882,7 +882,7 @@ impl InvoiceDetailView {
                         .child(
                             div()
                                 .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                                .child("Zaklad dane"),
+                                .child("Základ daně"),
                         )
                         .child(
                             div()
@@ -940,7 +940,7 @@ impl InvoiceDetailView {
                         div()
                             .text_xs()
                             .text_color(rgb(ZfColors::TEXT_MUTED))
-                            .child("Poznamky"),
+                            .child("Poznámky"),
                     )
                     .child(
                         div()
@@ -1032,7 +1032,7 @@ impl Render for InvoiceDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani faktury..."),
+                    .child("Načítání faktury..."),
             );
         }
 

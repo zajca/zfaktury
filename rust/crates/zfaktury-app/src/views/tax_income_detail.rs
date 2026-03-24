@@ -54,7 +54,7 @@ impl TaxIncomeDetailView {
                 match result {
                     Ok(itr) => this.tax_return = Some(itr),
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani danoveho priznani: {e}"));
+                        this.error = Some(format!("Chyba při načítání daňového přiznání: {e}"));
                     }
                 }
                 cx.notify();
@@ -116,8 +116,8 @@ impl TaxIncomeDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat danove priznani?",
-                "Tato akce je nevratna. Danove priznani bude trvale smazano.",
+                "Smazat daňové přiznání?",
+                "Tato akce je nevratná. Daňové přiznání bude trvale smazáno.",
                 "Smazat",
             )
         });
@@ -144,7 +144,7 @@ impl TaxIncomeDetailView {
 
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -156,7 +156,7 @@ impl TaxIncomeDetailView {
         if itr.status != FilingStatus::Filed {
             bar = bar.child(render_button(
                 "btn-mark-filed",
-                "Oznacit jako podane",
+                "Označit jako podané",
                 ButtonVariant::Primary,
                 disabled,
                 self.action_loading,
@@ -246,7 +246,7 @@ impl TaxIncomeDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("Dan z prijmu {}", itr.year)),
+                            .child(format!("Daň z příjmů {}", itr.year)),
                     )
                     .child(
                         div()
@@ -279,35 +279,35 @@ impl TaxIncomeDetailView {
 
         // Section 7 - Business income
         content = content.child(self.render_card(
-            "Paragraf 7 - Prijmy z podnikani",
+            "Paragraf 7 - Příjmy z podnikání",
             vec![
-                self.render_amount_row("Celkove prijmy", itr.total_revenue),
-                self.render_amount_row("Skutecne vydaje", itr.actual_expenses),
+                self.render_amount_row("Celkové příjmy", itr.total_revenue),
+                self.render_amount_row("Skutečné výdaje", itr.actual_expenses),
                 self.render_amount_row(
-                    &format!("Pausalni vydaje ({}%)", itr.flat_rate_percent),
+                    &format!("Paušální výdaje ({}%)", itr.flat_rate_percent),
                     itr.flat_rate_amount,
                 ),
-                self.render_amount_row("Uplatnene vydaje", itr.used_expenses),
+                self.render_amount_row("Uplatněné výdaje", itr.used_expenses),
             ],
         ));
 
         // Tax base
         content = content.child(self.render_card(
-            "Zaklad dane",
+            "Základ daně",
             vec![
-                self.render_amount_row("Zaklad dane", itr.tax_base),
-                self.render_amount_row("Odpocty celkem", itr.total_deductions),
-                self.render_amount_row("Zaokrouhleny zaklad", itr.tax_base_rounded),
+                self.render_amount_row("Základ daně", itr.tax_base),
+                self.render_amount_row("Odpočty celkem", itr.total_deductions),
+                self.render_amount_row("Zaokrouhlený základ", itr.tax_base_rounded),
             ],
         ));
 
         // Tax calculation
         content = content.child(self.render_card(
-            "Vypocet dane",
+            "Výpočet daně",
             vec![
-                self.render_amount_row("Dan 15%", itr.tax_at_15),
-                self.render_amount_row("Dan 23%", itr.tax_at_23),
-                self.render_amount_row("Celkova dan", itr.total_tax),
+                self.render_amount_row("Daň 15%", itr.tax_at_15),
+                self.render_amount_row("Daň 23%", itr.tax_at_23),
+                self.render_amount_row("Celková daň", itr.total_tax),
             ],
         ));
 
@@ -315,22 +315,22 @@ impl TaxIncomeDetailView {
         content = content.child(self.render_card(
             "Slevy na dani",
             vec![
-                self.render_amount_row("Zakladni sleva", itr.credit_basic),
-                self.render_amount_row("Sleva na manzela/ku", itr.credit_spouse),
+                self.render_amount_row("Základní sleva", itr.credit_basic),
+                self.render_amount_row("Sleva na manžela/ku", itr.credit_spouse),
                 self.render_amount_row("Invalidita", itr.credit_disability),
                 self.render_amount_row("Student", itr.credit_student),
                 self.render_amount_row("Slevy celkem", itr.total_credits),
                 div().h(px(1.0)).bg(rgb(ZfColors::BORDER)),
-                self.render_amount_row("Dan po slevach", itr.tax_after_credits),
+                self.render_amount_row("Daň po slevách", itr.tax_after_credits),
             ],
         ));
 
         // Child benefit
         content = content.child(self.render_card(
-            "Danove zvyhodneni na deti",
+            "Daňové zvýhodnění na děti",
             vec![
-                self.render_amount_row("Zvyhodneni", itr.child_benefit),
-                self.render_amount_row("Dan po zvyhodneni", itr.tax_after_benefit),
+                self.render_amount_row("Zvýhodnění", itr.child_benefit),
+                self.render_amount_row("Daň po zvýhodnění", itr.tax_after_benefit),
             ],
         ));
 
@@ -339,16 +339,16 @@ impl TaxIncomeDetailView {
             || itr.other_income_gross != zfaktury_domain::Amount::ZERO
         {
             content = content.child(self.render_card(
-                "Investicni prijmy",
+                "Investiční příjmy",
                 vec![
                     self.render_amount_row(
-                        "Kapitalove prijmy (p.8) brutto",
+                        "Kapitálové příjmy (ř.8) brutto",
                         itr.capital_income_gross,
                     ),
-                    self.render_amount_row("Srazena dan (p.8)", itr.capital_income_tax),
-                    self.render_amount_row("Ostatni prijmy (p.10) brutto", itr.other_income_gross),
-                    self.render_amount_row("Vydaje (p.10)", itr.other_income_expenses),
-                    self.render_amount_row("Osvobozeno (p.10)", itr.other_income_exempt),
+                    self.render_amount_row("Sražená daň (ř.8)", itr.capital_income_tax),
+                    self.render_amount_row("Ostatní příjmy (ř.10) brutto", itr.other_income_gross),
+                    self.render_amount_row("Výdaje (ř.10)", itr.other_income_expenses),
+                    self.render_amount_row("Osvobozeno (ř.10)", itr.other_income_exempt),
                 ],
             ));
         }
@@ -364,8 +364,8 @@ impl TaxIncomeDetailView {
                 .flex()
                 .flex_col()
                 .gap_3()
-                .child(self.render_section_header("Vysledek"))
-                .child(self.render_amount_row("Zaplacene zalohy", itr.prepayments))
+                .child(self.render_section_header("Výsledek"))
+                .child(self.render_amount_row("Zaplacené zálohy", itr.prepayments))
                 .child(div().h(px(1.0)).bg(rgb(ZfColors::BORDER)))
                 .child(
                     div()
@@ -376,7 +376,7 @@ impl TaxIncomeDetailView {
                                 .text_sm()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Doplatek / Preplatek"),
+                                .child("Doplatek / Přeplatek"),
                         )
                         .child(
                             div()
@@ -409,7 +409,7 @@ impl Render for TaxIncomeDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani danoveho priznani..."),
+                    .child("Načítání daňového přiznání..."),
             );
         }
 

@@ -48,7 +48,7 @@ impl ContactDetailView {
                 this.loading = false;
                 match result {
                     Ok(contact) => this.contact = Some(contact),
-                    Err(e) => this.error = Some(format!("Chyba pri nacitani kontaktu: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při načítání kontaktu: {e}")),
                 }
                 cx.notify();
             })
@@ -61,7 +61,7 @@ impl ContactDetailView {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
                 "Smazat kontakt?",
-                "Tato akce je nevratna. Kontakt bude trvale smazan.",
+                "Tato akce je nevratná. Kontakt bude trvale smazán.",
                 "Smazat",
             )
         });
@@ -113,7 +113,7 @@ impl ContactDetailView {
         // Back button
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet na seznam",
+            "Zpět na seznam",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -234,16 +234,16 @@ impl ContactDetailView {
 
         // Basic info section
         content = content.child(self.render_section(
-            "Zakladni udaje",
+            "Základní údaje",
             vec![
-                ("Nazev", c.name.clone()),
+                ("Název", c.name.clone()),
                 ("Typ", c.contact_type.to_string()),
-                ("ICO", c.ico.clone()),
-                ("DIC", c.dic.clone()),
+                ("IČO", c.ico.clone()),
+                ("DIČ", c.dic.clone()),
                 ("Ulice", c.street.clone()),
-                ("Mesto", c.city.clone()),
-                ("PSC", c.zip.clone()),
-                ("Zeme", c.country.clone()),
+                ("Město", c.city.clone()),
+                ("PSČ", c.zip.clone()),
+                ("Země", c.country.clone()),
                 ("Email", c.email.clone()),
                 ("Telefon", c.phone.clone()),
                 ("Web", c.web.clone()),
@@ -252,10 +252,10 @@ impl ContactDetailView {
 
         // Bank details section
         content = content.child(self.render_section(
-            "Bankovni udaje",
+            "Bankovní údaje",
             vec![
-                ("Cislo uctu", c.bank_account.clone()),
-                ("Kod banky", c.bank_code.clone()),
+                ("Číslo účtu", c.bank_account.clone()),
+                ("Kód banky", c.bank_code.clone()),
                 ("IBAN", c.iban.clone()),
                 ("SWIFT/BIC", c.swift.clone()),
                 ("Splatnost (dny)", c.payment_terms_days.to_string()),
@@ -278,7 +278,7 @@ impl ContactDetailView {
                         div()
                             .text_xs()
                             .text_color(rgb(ZfColors::TEXT_MUTED))
-                            .child("Poznamky"),
+                            .child("Poznámky"),
                     )
                     .child(
                         div()
@@ -310,7 +310,7 @@ impl Render for ContactDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani kontaktu..."),
+                    .child("Načítání kontaktu..."),
             );
         }
 

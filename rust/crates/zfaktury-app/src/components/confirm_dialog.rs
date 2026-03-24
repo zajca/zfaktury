@@ -88,7 +88,7 @@ impl Render for ConfirmDialog {
                             .gap_3()
                             .child(render_button(
                                 "confirm-cancel",
-                                "Zrusit",
+                                "Zrušit",
                                 ButtonVariant::Secondary,
                                 false,
                                 false,

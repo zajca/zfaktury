@@ -124,9 +124,9 @@ impl ExpenseReviewView {
         ocr_result: Option<OCRResult>,
         cx: &mut Context<Self>,
     ) -> Self {
-        let description = cx.new(|cx| TextInput::new("review-description", "Popis nakladu...", cx));
+        let description = cx.new(|cx| TextInput::new("review-description", "Popis nákladu...", cx));
         let invoice_number =
-            cx.new(|cx| TextInput::new("review-invoice-number", "Cislo dokladu...", cx));
+            cx.new(|cx| TextInput::new("review-invoice-number", "Číslo dokladu...", cx));
         let issue_date = cx.new(|cx| {
             let mut d = DateInput::new("review-issue-date", cx);
             let today = Local::now().date_naive();
@@ -141,7 +141,7 @@ impl ExpenseReviewView {
             s
         });
         let currency = cx.new(|cx| {
-            let mut s = Select::new("review-currency", "Mena", currency_options());
+            let mut s = Select::new("review-currency", "Měna", currency_options());
             s.set_selected_value(CURRENCY_CZK, cx);
             s
         });
@@ -173,7 +173,7 @@ impl ExpenseReviewView {
                             this.apply_ocr_result(&ocr, cx);
                         }
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri nacitani nakladu: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při načítání nákladu: {e}")),
                 }
                 cx.notify();
             })
@@ -290,7 +290,7 @@ impl ExpenseReviewView {
         // Read and validate description
         let description = self.description.read(cx).value().to_string();
         if description.trim().is_empty() {
-            self.error = Some("Zadejte popis nakladu".into());
+            self.error = Some("Zadejte popis nákladu".into());
             cx.notify();
             return;
         }
@@ -299,7 +299,7 @@ impl ExpenseReviewView {
         let amount_val = match self.total_amount.read(cx).to_amount() {
             Some(a) => a,
             None => {
-                self.error = Some("Neplatna castka".into());
+                self.error = Some("Neplatná částka".into());
                 cx.notify();
                 return;
             }
@@ -393,8 +393,8 @@ impl ExpenseReviewView {
     fn show_discard_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Zahodit naklad?",
-                "Naklad a pripadne nahrane dokumenty budou smazany.",
+                "Zahodit náklad?",
+                "Náklad a případně nahrané dokumenty budou smazány.",
                 "Zahodit",
             )
         });
@@ -458,7 +458,7 @@ impl Render for ExpenseReviewView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Kontrola udaju nakladu"),
+                .child("Kontrola údajů nákladu"),
         );
 
         // Error message
@@ -481,13 +481,13 @@ impl Render for ExpenseReviewView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani nakladu..."),
+                    .child("Načítání nákladu..."),
             );
         }
 
         // Card 1: Basic info
         outer = outer.child(render_card(
-            "Zakladni udaje",
+            "Základní údaje",
             div()
                 .flex()
                 .flex_col()
@@ -498,7 +498,7 @@ impl Render for ExpenseReviewView {
                         .flex()
                         .gap_4()
                         .child(div().w(px(192.0)).child(render_form_field(
-                            "Cislo dokladu",
+                            "Číslo dokladu",
                             self.invoice_number.clone(),
                         )))
                         .child(
@@ -509,14 +509,14 @@ impl Render for ExpenseReviewView {
                 )
                 // Row 2: issue date
                 .child(div().flex().gap_4().child(render_labeled_field(
-                    "Datum vystaveni",
+                    "Datum vystavení",
                     self.issue_date.clone(),
                 ))),
         ));
 
         // Card 2: Amount and VAT
         outer = outer.child(render_card(
-            "Castka a DPH",
+            "Částka a DPH",
             div()
                 .flex()
                 .flex_col()
@@ -527,13 +527,13 @@ impl Render for ExpenseReviewView {
                         .flex()
                         .gap_4()
                         .child(div().flex_1().child(render_labeled_field(
-                            "Celkova castka",
+                            "Celková částka",
                             self.total_amount.clone(),
                         )))
                         .child(
                             div()
                                 .w(px(128.0))
-                                .child(render_labeled_field("Mena", self.currency.clone())),
+                                .child(render_labeled_field("Měna", self.currency.clone())),
                         )
                         .child(
                             div()
@@ -546,14 +546,14 @@ impl Render for ExpenseReviewView {
                     div().flex().gap_4().child(
                         div()
                             .w(px(192.0))
-                            .child(render_labeled_field("DPH castka", self.vat_amount.clone())),
+                            .child(render_labeled_field("DPH částka", self.vat_amount.clone())),
                     ),
                 ),
         ));
 
         // Card 3: Items
         outer = outer.child(render_card(
-            "Polozky",
+            "Položky",
             div().child(self.items_editor.clone()),
         ));
 
@@ -571,7 +571,7 @@ impl Render for ExpenseReviewView {
 
         let edit_btn = render_button(
             "edit-detail-btn",
-            "Upravit podrobne",
+            "Upravit podrobně",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -585,7 +585,7 @@ impl Render for ExpenseReviewView {
 
         let save_btn = render_button(
             "save-btn",
-            "Ulozit",
+            "Uložit",
             ButtonVariant::Primary,
             false,
             self.saving,

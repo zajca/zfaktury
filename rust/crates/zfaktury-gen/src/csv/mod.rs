@@ -13,7 +13,7 @@ const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
 
 /// Export invoices to CSV format.
 ///
-/// Columns: Cislo;Typ;Stav;Zakaznik;Datum vystaveni;Splatnost;Zaklad;DPH;Celkem;Mena
+/// Columns: Číslo;Typ;Stav;Zákazník;Datum vystavení;Splatnost;Základ;DPH;Celkem;Měna
 pub fn export_invoices_csv(invoices: &[Invoice]) -> Result<Vec<u8>> {
     let mut output = Vec::new();
     output.extend_from_slice(UTF8_BOM);
@@ -24,16 +24,16 @@ pub fn export_invoices_csv(invoices: &[Invoice]) -> Result<Vec<u8>> {
 
     // Header row.
     wtr.write_record([
-        "Cislo",
+        "Číslo",
         "Typ",
         "Stav",
-        "Zakaznik",
-        "Datum vystaveni",
+        "Zákazník",
+        "Datum vystavení",
         "Splatnost",
-        "Zaklad",
+        "Základ",
         "DPH",
         "Celkem",
-        "Mena",
+        "Měna",
     ])?;
 
     for inv in invoices {
@@ -61,7 +61,7 @@ pub fn export_invoices_csv(invoices: &[Invoice]) -> Result<Vec<u8>> {
 
 /// Export expenses to CSV format.
 ///
-/// Columns: Cislo;Kategorie;Popis;Dodavatel;Datum;Castka;DPH;Mena
+/// Columns: Číslo;Kategorie;Popis;Dodavatel;Datum;Částka;DPH;Měna
 pub fn export_expenses_csv(expenses: &[Expense]) -> Result<Vec<u8>> {
     let mut output = Vec::new();
     output.extend_from_slice(UTF8_BOM);
@@ -72,14 +72,14 @@ pub fn export_expenses_csv(expenses: &[Expense]) -> Result<Vec<u8>> {
 
     // Header row.
     wtr.write_record([
-        "Cislo",
+        "Číslo",
         "Kategorie",
         "Popis",
         "Dodavatel",
         "Datum",
-        "Castka",
+        "Částka",
         "DPH",
-        "Mena",
+        "Měna",
     ])?;
 
     for exp in expenses {
@@ -135,7 +135,7 @@ mod tests {
         let first_line = csv_str.lines().next().unwrap();
         assert_eq!(
             first_line,
-            "Cislo;Typ;Stav;Zakaznik;Datum vystaveni;Splatnost;Zaklad;DPH;Celkem;Mena"
+            "Číslo;Typ;Stav;Zákazník;Datum vystavení;Splatnost;Základ;DPH;Celkem;Měna"
         );
     }
 
@@ -207,7 +207,7 @@ mod tests {
         let first_line = csv_str.lines().next().unwrap();
         assert_eq!(
             first_line,
-            "Cislo;Kategorie;Popis;Dodavatel;Datum;Castka;DPH;Mena"
+            "Číslo;Kategorie;Popis;Dodavatel;Datum;Částka;DPH;Měna"
         );
     }
 

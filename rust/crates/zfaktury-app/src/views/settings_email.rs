@@ -23,28 +23,28 @@ struct FieldDef {
 const EMAIL_FIELDS: &[FieldDef] = &[
     FieldDef {
         key: SETTING_EMAIL,
-        label: "Email odesilatele",
+        label: "Email odesílatele",
         placeholder: "email@example.com...",
     },
     FieldDef {
         key: SETTING_EMAIL_ATTACH_PDF,
-        label: "Priloha PDF",
+        label: "Příloha PDF",
         placeholder: "true/false",
     },
     FieldDef {
         key: SETTING_EMAIL_ATTACH_ISDOC,
-        label: "Priloha ISDOC",
+        label: "Příloha ISDOC",
         placeholder: "true/false",
     },
     FieldDef {
         key: SETTING_EMAIL_SUBJECT_TPL,
-        label: "Sablona predmetu",
-        placeholder: "Faktura {{cislo}}...",
+        label: "Šablona předmětu",
+        placeholder: "Faktura {{číslo}}...",
     },
     FieldDef {
         key: SETTING_EMAIL_BODY_TPL,
-        label: "Sablona tela",
-        placeholder: "Dobry den, zasilam fakturu...",
+        label: "Šablona těla",
+        placeholder: "Dobrý den, zasílám fakturu...",
     },
 ];
 
@@ -90,7 +90,7 @@ impl SettingsEmailView {
                 match result {
                     Ok(settings) => this.settings = settings,
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani nastaveni: {e}"));
+                        this.error = Some(format!("Chyba při načítání nastavení: {e}"));
                     }
                 }
                 cx.notify();
@@ -171,7 +171,7 @@ impl SettingsEmailView {
                         this.editing = false;
                         this.inputs.clear();
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při ukládání: {e}")),
                 }
                 cx.notify();
             })
@@ -259,7 +259,7 @@ impl Render for SettingsEmailView {
                 .text_xl()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Nastaveni emailu"),
+                .child("Nastavení emailu"),
         );
 
         if !self.loading {
@@ -270,7 +270,7 @@ impl Render for SettingsEmailView {
                         .gap_2()
                         .child(render_button(
                             "email-cancel-btn",
-                            "Zrusit",
+                            "Zrušit",
                             ButtonVariant::Secondary,
                             self.saving,
                             false,
@@ -280,7 +280,7 @@ impl Render for SettingsEmailView {
                         ))
                         .child(render_button(
                             "email-save-btn",
-                            "Ulozit",
+                            "Uložit",
                             ButtonVariant::Primary,
                             false,
                             self.saving,
@@ -310,7 +310,7 @@ impl Render for SettingsEmailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
+                    .child("Načítání..."),
             );
         }
 
@@ -342,7 +342,7 @@ impl Render for SettingsEmailView {
                     .text_sm()
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                    .child("Odchozi email"),
+                    .child("Odchozí email"),
             );
 
         if self.editing {

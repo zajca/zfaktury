@@ -92,7 +92,7 @@ fn payment_method_options() -> Vec<SelectOption> {
     vec![
         SelectOption {
             value: "bank_transfer".to_string(),
-            label: "Bankovni prevod".to_string(),
+            label: "Bankovní převod".to_string(),
         },
         SelectOption {
             value: "cash".to_string(),
@@ -150,9 +150,9 @@ impl ExpenseFormView {
     ) -> Self {
         let today = Local::now().date_naive();
 
-        let expense_number = cx.new(|cx| TextInput::new("expense-number", "Napr. N2024001", cx));
+        let expense_number = cx.new(|cx| TextInput::new("expense-number", "Např. N2024001", cx));
         let description =
-            cx.new(|cx| TextInput::new("expense-description", "Popis nakladu...", cx));
+            cx.new(|cx| TextInput::new("expense-description", "Popis nákladu...", cx));
 
         let category_select =
             cx.new(|_cx| Select::new("category-select", "Vyberte kategorii...", vec![]));
@@ -169,7 +169,7 @@ impl ExpenseFormView {
         let amount_input = cx.new(|cx| NumberInput::new("amount-input", "0,00", cx));
 
         let currency_select = cx.new(|cx| {
-            let mut s = Select::new("currency-select", "Mena", currency_options());
+            let mut s = Select::new("currency-select", "Měna", currency_options());
             s.set_selected_value(CURRENCY_CZK, cx);
             s
         });
@@ -189,14 +189,14 @@ impl ExpenseFormView {
         let payment_method_select = cx.new(|cx| {
             let mut s = Select::new(
                 "payment-method-select",
-                "Zpusob platby",
+                "Způsob platby",
                 payment_method_options(),
             );
             s.set_selected_value("bank_transfer", cx);
             s
         });
 
-        let notes = cx.new(|cx| TextArea::new("notes", "Volitelne poznamky...", cx));
+        let notes = cx.new(|cx| TextArea::new("notes", "Volitelné poznámky...", cx));
 
         let items_editor = cx.new(ExpenseItemsEditor::new);
         cx.subscribe(
@@ -300,9 +300,9 @@ impl ExpenseFormView {
         id: i64,
         cx: &mut Context<Self>,
     ) -> Self {
-        let expense_number = cx.new(|cx| TextInput::new("expense-number", "Napr. N2024001", cx));
+        let expense_number = cx.new(|cx| TextInput::new("expense-number", "Např. N2024001", cx));
         let description =
-            cx.new(|cx| TextInput::new("expense-description", "Popis nakladu...", cx));
+            cx.new(|cx| TextInput::new("expense-description", "Popis nákladu...", cx));
 
         let category_select =
             cx.new(|_cx| Select::new("category-select", "Vyberte kategorii...", vec![]));
@@ -315,7 +315,7 @@ impl ExpenseFormView {
         let amount_input = cx.new(|cx| NumberInput::new("amount-input", "0,00", cx));
 
         let currency_select =
-            cx.new(|_cx| Select::new("currency-select", "Mena", currency_options()));
+            cx.new(|_cx| Select::new("currency-select", "Měna", currency_options()));
 
         let vat_rate_select =
             cx.new(|_cx| Select::new("vat-rate-select", "DPH sazba", vat_rate_options()));
@@ -326,12 +326,12 @@ impl ExpenseFormView {
         let payment_method_select = cx.new(|_cx| {
             Select::new(
                 "payment-method-select",
-                "Zpusob platby",
+                "Způsob platby",
                 payment_method_options(),
             )
         });
 
-        let notes = cx.new(|cx| TextArea::new("notes", "Volitelne poznamky...", cx));
+        let notes = cx.new(|cx| TextArea::new("notes", "Volitelné poznámky...", cx));
 
         let items_editor = cx.new(ExpenseItemsEditor::new);
         cx.subscribe(
@@ -500,7 +500,7 @@ impl ExpenseFormView {
         // Read and validate description
         let description = self.description.read(cx).value().to_string();
         if description.trim().is_empty() {
-            self.error = Some("Zadejte popis nakladu".into());
+            self.error = Some("Zadejte popis nákladu".into());
             cx.notify();
             return;
         }
@@ -510,7 +510,7 @@ impl ExpenseFormView {
             Some(a) => a,
             None => {
                 if !self.use_items {
-                    self.error = Some("Neplatna castka".into());
+                    self.error = Some("Neplatná částka".into());
                     cx.notify();
                     return;
                 }
@@ -518,7 +518,7 @@ impl ExpenseFormView {
             }
         };
         if !self.use_items && amount_val == Amount::ZERO {
-            self.error = Some("Zadejte castku".into());
+            self.error = Some("Zadejte částku".into());
             cx.notify();
             return;
         }
@@ -585,7 +585,7 @@ impl ExpenseFormView {
         let items = if self.use_items {
             let editor_items = self.items_editor.read(cx).to_expense_items(cx);
             if editor_items.is_empty() {
-                self.error = Some("Pridejte alespon jednu polozku".into());
+                self.error = Some("Přidejte alespoň jednu položku".into());
                 cx.notify();
                 return;
             }
@@ -655,9 +655,9 @@ impl ExpenseFormView {
 impl Render for ExpenseFormView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let title = if self.is_edit {
-            format!("Upravit naklad #{}", self.expense_id.unwrap_or_default())
+            format!("Upravit náklad #{}", self.expense_id.unwrap_or_default())
         } else {
-            "Novy naklad".to_string()
+            "Nový náklad".to_string()
         };
 
         let mut outer = div()
@@ -699,13 +699,13 @@ impl Render for ExpenseFormView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani nakladu..."),
+                    .child("Načítání nákladu..."),
             );
         }
 
         // Card 1: Basic info
         outer = outer.child(render_card(
-            "Zakladni udaje",
+            "Základní údaje",
             div()
                 .flex()
                 .flex_col()
@@ -716,7 +716,7 @@ impl Render for ExpenseFormView {
                         .flex()
                         .gap_4()
                         .child(div().w(px(192.0)).child(render_form_field(
-                            "Cislo dokladu",
+                            "Číslo dokladu",
                             self.expense_number.clone(),
                         )))
                         .child(
@@ -744,9 +744,9 @@ impl Render for ExpenseFormView {
 
         // Card 2: Amount and VAT
         let tax_label = if self.is_tax_deductible {
-            "Danove uznatelne: Ano"
+            "Daňově uznatelné: Ano"
         } else {
-            "Danove uznatelne: Ne"
+            "Daňově uznatelné: Ne"
         };
 
         let tax_bg = if self.is_tax_deductible {
@@ -756,7 +756,7 @@ impl Render for ExpenseFormView {
         };
 
         outer = outer.child(render_card(
-            "Castka a DPH",
+            "Částka a DPH",
             div()
                 .flex()
                 .flex_col()
@@ -769,12 +769,12 @@ impl Render for ExpenseFormView {
                         .child(
                             div()
                                 .flex_1()
-                                .child(render_labeled_field("Castka", self.amount_input.clone())),
+                                .child(render_labeled_field("Částka", self.amount_input.clone())),
                         )
                         .child(
                             div()
                                 .w(px(128.0))
-                                .child(render_labeled_field("Mena", self.currency_select.clone())),
+                                .child(render_labeled_field("Měna", self.currency_select.clone())),
                         )
                         .child(div().w(px(128.0)).child(render_labeled_field(
                             "DPH sazba",
@@ -788,11 +788,11 @@ impl Render for ExpenseFormView {
                         .gap_4()
                         .items_end()
                         .child(div().w(px(128.0)).child(render_labeled_field(
-                            "Obchodni podil %",
+                            "Obchodní podíl %",
                             self.business_percent.clone(),
                         )))
                         .child(div().flex_1().child(render_labeled_field(
-                            "Zpusob platby",
+                            "Způsob platby",
                             self.payment_method_select.clone(),
                         )))
                         .child(
@@ -818,9 +818,9 @@ impl Render for ExpenseFormView {
 
         // Items toggle button
         let toggle_label = if self.use_items {
-            "Prepnout na jednoduchou castku"
+            "Přepnout na jednoduchou částku"
         } else {
-            "Pridat polozky"
+            "Přidat položky"
         };
         outer = outer.child(
             div().flex().child(
@@ -846,21 +846,21 @@ impl Render for ExpenseFormView {
         // Items editor (shown only in items mode)
         if self.use_items {
             outer = outer.child(render_card(
-                "Polozky nakladu",
+                "Položky nákladu",
                 div().child(self.items_editor.clone()),
             ));
         }
 
         // Card 3: Notes
         outer = outer.child(render_card(
-            "Poznamky",
-            div().child(render_labeled_field("Poznamky", self.notes.clone())),
+            "Poznámky",
+            div().child(render_labeled_field("Poznámky", self.notes.clone())),
         ));
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -871,7 +871,7 @@ impl Render for ExpenseFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Ulozit naklad",
+            "Uložit náklad",
             ButtonVariant::Primary,
             false,
             self.saving,

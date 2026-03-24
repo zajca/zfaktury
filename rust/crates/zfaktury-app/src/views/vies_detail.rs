@@ -61,7 +61,7 @@ impl ViesDetailView {
                         this.lines = lines;
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani souhrnneho hlaseni: {e}"));
+                        this.error = Some(format!("Chyba při načítání souhrnného hlášení: {e}"));
                     }
                 }
                 cx.notify();
@@ -123,8 +123,8 @@ impl ViesDetailView {
     fn show_delete_dialog(&mut self, cx: &mut Context<Self>) {
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat souhrnne hlaseni?",
-                "Tato akce je nevratna. Souhrnne hlaseni bude trvale smazano.",
+                "Smazat souhrnné hlášení?",
+                "Tato akce je nevratná. Souhrnné hlášení bude trvale smazáno.",
                 "Smazat",
             )
         });
@@ -151,7 +151,7 @@ impl ViesDetailView {
 
         bar = bar.child(render_button(
             "btn-back",
-            "Zpet",
+            "Zpět",
             ButtonVariant::Secondary,
             disabled,
             false,
@@ -163,7 +163,7 @@ impl ViesDetailView {
         if vs.status != FilingStatus::Filed {
             bar = bar.child(render_button(
                 "btn-mark-filed",
-                "Oznacit jako podane",
+                "Označit jako podané",
                 ButtonVariant::Primary,
                 disabled,
                 self.action_loading,
@@ -210,7 +210,7 @@ impl ViesDetailView {
                             .text_xl()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                            .child(format!("Souhrnne hlaseni {}", period_label)),
+                            .child(format!("Souhrnné hlášení {}", period_label)),
                     )
                     .child(
                         div()
@@ -260,7 +260,7 @@ impl ViesDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Obdobi"),
+                                .child("Období"),
                         )
                         .child(
                             div()
@@ -278,7 +278,7 @@ impl ViesDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Typ podani"),
+                                .child("Typ podání"),
                         )
                         .child(
                             div()
@@ -296,7 +296,7 @@ impl ViesDetailView {
                             div()
                                 .text_xs()
                                 .text_color(rgb(ZfColors::TEXT_MUTED))
-                                .child("Partneri"),
+                                .child("Partneři"),
                         )
                         .child(
                             div()
@@ -326,7 +326,7 @@ impl ViesDetailView {
                 .text_sm()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                .child("Partneri EU"),
+                .child("Partneři EU"),
         );
 
         // Column headers
@@ -339,10 +339,10 @@ impl ViesDetailView {
                 .text_color(rgb(ZfColors::TEXT_MUTED))
                 .border_b_1()
                 .border_color(rgb(ZfColors::BORDER_SUBTLE))
-                .child(div().w(px(80.0)).child("Zeme"))
+                .child(div().w(px(80.0)).child("Země"))
                 .child(div().w(px(160.0)).child("DIC partnera"))
-                .child(div().w(px(80.0)).child("Kod sluzby"))
-                .child(div().flex_1().text_right().child("Celkova castka")),
+                .child(div().w(px(80.0)).child("Kód služby"))
+                .child(div().flex_1().text_right().child("Celková částka")),
         );
 
         if self.lines.is_empty() {
@@ -352,7 +352,7 @@ impl ViesDetailView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadni partneri."),
+                    .child("Žádní partneři."),
             );
         } else {
             for line in &self.lines {
@@ -417,7 +417,7 @@ impl Render for ViesDetailView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani souhrnneho hlaseni..."),
+                    .child("Načítání souhrnného hlášení..."),
             );
         }
 

@@ -33,7 +33,7 @@ pub fn render_button(
     };
 
     let display_label = if loading {
-        "Nacitani...".to_string()
+        "Načítání...".to_string()
     } else {
         label.to_string()
     };

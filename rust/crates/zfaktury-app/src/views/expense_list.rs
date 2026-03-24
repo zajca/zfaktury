@@ -24,7 +24,7 @@ pub struct ExpenseListView {
 
 impl ExpenseListView {
     pub fn new(service: Arc<ExpenseService>, cx: &mut Context<Self>) -> Self {
-        let search_input = cx.new(|cx| TextInput::new("expense-search", "Hledat naklady...", cx));
+        let search_input = cx.new(|cx| TextInput::new("expense-search", "Hledat náklady...", cx));
 
         // Subscribe to search changes
         cx.subscribe(
@@ -80,7 +80,7 @@ impl ExpenseListView {
                         this.total = total;
                     }
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani nakladu: {e}"));
+                        this.error = Some(format!("Chyba při načítání nákladů: {e}"));
                     }
                 }
                 cx.notify();
@@ -129,7 +129,7 @@ impl Render for ExpenseListView {
                                 .text_xl()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Naklady"),
+                                .child("Náklady"),
                         )
                         .child(
                             div()
@@ -154,7 +154,7 @@ impl Render for ExpenseListView {
                         ))
                         .child(render_button(
                             "new-expense-btn",
-                            "Novy naklad",
+                            "Nový náklad",
                             ButtonVariant::Primary,
                             false,
                             false,
@@ -192,7 +192,7 @@ impl Render for ExpenseListView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
+                    .child("Načítání..."),
             );
         }
 
@@ -217,12 +217,12 @@ impl Render for ExpenseListView {
                 .text_color(rgb(ZfColors::TEXT_MUTED))
                 .border_b_1()
                 .border_color(rgb(ZfColors::BORDER))
-                .child(div().w_24().child("Cislo"))
+                .child(div().w_24().child("Číslo"))
                 .child(div().flex_1().child("Popis"))
                 .child(div().w(px(112.0)).child("Kategorie"))
                 .child(div().w(px(112.0)).child("Datum"))
                 .child(div().w_16().text_right().child("DPH %"))
-                .child(div().w(px(112.0)).text_right().child("Castka")),
+                .child(div().w(px(112.0)).text_right().child("Částka")),
         );
 
         if self.expenses.is_empty() {
@@ -232,7 +232,7 @@ impl Render for ExpenseListView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne naklady. Vytvorte novy naklad."),
+                    .child("Žádné náklady. Vytvořte nový náklad."),
             );
         } else {
             for exp in &self.expenses {
@@ -310,7 +310,7 @@ impl Render for ExpenseListView {
                     .py_2()
                     .child(render_button(
                         "btn-prev-page",
-                        "Predchozi",
+                        "Předchozí",
                         ButtonVariant::Secondary,
                         current == 0,
                         false,
@@ -329,7 +329,7 @@ impl Render for ExpenseListView {
                     )
                     .child(render_button(
                         "btn-next-page",
-                        "Dalsi",
+                        "Další",
                         ButtonVariant::Secondary,
                         current >= total_pages - 1,
                         false,

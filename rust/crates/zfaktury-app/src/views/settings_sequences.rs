@@ -62,7 +62,7 @@ impl SettingsSequencesView {
                 match result {
                     Ok(sequences) => this.sequences = sequences,
                     Err(e) => {
-                        this.error = Some(format!("Chyba pri nacitani ciselnych rad: {e}"));
+                        this.error = Some(format!("Chyba při načítání číselných řad: {e}"));
                     }
                 }
                 cx.notify();
@@ -171,12 +171,12 @@ impl SettingsSequencesView {
         let edit_id = editing.id;
 
         if prefix_val.trim().is_empty() {
-            self.error = Some("Prefix je povinny.".into());
+            self.error = Some("Prefix je povinný.".into());
             cx.notify();
             return;
         }
         if year_val == 0 {
-            self.error = Some("Rok je povinny.".into());
+            self.error = Some("Rok je povinný.".into());
             cx.notify();
             return;
         }
@@ -214,7 +214,7 @@ impl SettingsSequencesView {
                         this.sequences = sequences;
                         this.editing = None;
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri ukladani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při ukládání: {e}")),
                 }
                 cx.notify();
             })
@@ -227,8 +227,8 @@ impl SettingsSequencesView {
         self.delete_id = Some(id);
         let dialog = cx.new(|_cx| {
             ConfirmDialog::new(
-                "Smazat ciselnou radu",
-                "Opravdu chcete smazat tuto ciselnou radu?",
+                "Smazat číselnou řadu",
+                "Opravdu chcete smazat tuto číselnou řadu?",
                 "Smazat",
             )
         });
@@ -284,7 +284,7 @@ impl SettingsSequencesView {
                             this.editing = None;
                         }
                     }
-                    Err(e) => this.error = Some(format!("Chyba pri mazani: {e}")),
+                    Err(e) => this.error = Some(format!("Chyba při mazání: {e}")),
                 }
                 cx.notify();
             })
@@ -342,7 +342,7 @@ impl Render for SettingsSequencesView {
                                 .text_xl()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(rgb(ZfColors::TEXT_PRIMARY))
-                                .child("Ciselne rady"),
+                                .child("Číselné řady"),
                         )
                         .child(
                             div()
@@ -353,7 +353,7 @@ impl Render for SettingsSequencesView {
                 )
                 .child(render_button(
                     "seq-new-btn",
-                    "Nova ciselna rada",
+                    "Nová číselná řada",
                     ButtonVariant::Primary,
                     is_new_row || self.saving,
                     false,
@@ -368,7 +368,7 @@ impl Render for SettingsSequencesView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani..."),
+                    .child("Načítání..."),
             );
         }
 
@@ -408,9 +408,9 @@ impl Render for SettingsSequencesView {
                 .border_color(rgb(ZfColors::BORDER))
                 .child(div().w(px(112.0)).child("Prefix"))
                 .child(div().w_20().child("Rok"))
-                .child(div().w(px(112.0)).child("Dalsi cislo"))
+                .child(div().w(px(112.0)).child("Další číslo"))
                 .child(div().flex_1().child("Format"))
-                .child(div().w(px(150.0)).child("Nahled"))
+                .child(div().w(px(150.0)).child("Náhled"))
                 .child(div().w(px(80.0)).text_right().child("Akce")),
         );
 
@@ -435,7 +435,7 @@ impl Render for SettingsSequencesView {
                             .border_color(rgb(ZfColors::BORDER_SUBTLE))
                             .child(render_button(
                                 "seq-new-cancel",
-                                "Zrusit",
+                                "Zrušit",
                                 ButtonVariant::Secondary,
                                 self.saving,
                                 false,
@@ -445,7 +445,7 @@ impl Render for SettingsSequencesView {
                             ))
                             .child(render_button(
                                 "seq-new-save",
-                                "Ulozit",
+                                "Uložit",
                                 ButtonVariant::Primary,
                                 false,
                                 self.saving,
@@ -464,7 +464,7 @@ impl Render for SettingsSequencesView {
                     .py_8()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Zadne ciselne rady."),
+                    .child("Žádné číselné řady."),
             );
         } else {
             for seq in &self.sequences {
@@ -497,7 +497,7 @@ impl Render for SettingsSequencesView {
                                                 "seq-edit-cancel-{}",
                                                 seq_id
                                             )),
-                                            "Zrusit",
+                                            "Zrušit",
                                             ButtonVariant::Secondary,
                                             self.saving,
                                             false,
@@ -509,7 +509,7 @@ impl Render for SettingsSequencesView {
                                         ))
                                         .child(render_button(
                                             SharedString::from(format!("seq-edit-save-{}", seq_id)),
-                                            "Ulozit",
+                                            "Uložit",
                                             ButtonVariant::Primary,
                                             false,
                                             self.saving,

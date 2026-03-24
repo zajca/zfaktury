@@ -55,7 +55,7 @@ fn contact_type_options() -> Vec<SelectOption> {
         },
         SelectOption {
             value: "individual".to_string(),
-            label: "Fyzicka osoba".to_string(),
+            label: "Fyzická osoba".to_string(),
         },
     ]
 }
@@ -98,27 +98,27 @@ fn render_card(title: &str, content: Div) -> Div {
 impl ContactFormView {
     /// Create a new contact form (create mode).
     pub fn new_create(service: Arc<ContactService>, cx: &mut Context<Self>) -> Self {
-        let name = cx.new(|cx| TextInput::new("name", "Nazev kontaktu...", cx));
+        let name = cx.new(|cx| TextInput::new("name", "Název kontaktu...", cx));
         let contact_type = cx.new(|cx| {
             let mut s = Select::new("contact-type", "Typ kontaktu", contact_type_options());
             s.set_selected_value("company", cx);
             s
         });
-        let ico = cx.new(|cx| TextInput::new("ico", "ICO...", cx));
-        let dic = cx.new(|cx| TextInput::new("dic", "DIC...", cx));
-        let street = cx.new(|cx| TextInput::new("street", "Ulice a cislo popisne...", cx));
-        let city = cx.new(|cx| TextInput::new("city", "Mesto...", cx));
-        let zip = cx.new(|cx| TextInput::new("zip", "PSC...", cx));
+        let ico = cx.new(|cx| TextInput::new("ico", "IČO...", cx));
+        let dic = cx.new(|cx| TextInput::new("dic", "DIČ...", cx));
+        let street = cx.new(|cx| TextInput::new("street", "Ulice a číslo popisné...", cx));
+        let city = cx.new(|cx| TextInput::new("city", "Město...", cx));
+        let zip = cx.new(|cx| TextInput::new("zip", "PSČ...", cx));
         let country = cx.new(|cx| {
-            let mut t = TextInput::new("country", "Zeme...", cx);
+            let mut t = TextInput::new("country", "Země...", cx);
             t.set_value("CZ", cx);
             t
         });
         let email = cx.new(|cx| TextInput::new("email", "Email...", cx));
         let phone = cx.new(|cx| TextInput::new("phone", "Telefon...", cx));
         let web = cx.new(|cx| TextInput::new("web", "Web...", cx));
-        let bank_account = cx.new(|cx| TextInput::new("bank-account", "Cislo uctu...", cx));
-        let bank_code = cx.new(|cx| TextInput::new("bank-code", "Kod banky...", cx));
+        let bank_account = cx.new(|cx| TextInput::new("bank-account", "Číslo účtu...", cx));
+        let bank_code = cx.new(|cx| TextInput::new("bank-code", "Kód banky...", cx));
         let iban = cx.new(|cx| TextInput::new("iban", "IBAN...", cx));
         let swift = cx.new(|cx| TextInput::new("swift", "SWIFT/BIC...", cx));
         let payment_terms = cx.new(|cx| {
@@ -126,8 +126,8 @@ impl ContactFormView {
                 .integer_only()
                 .with_value("14")
         });
-        let notes = cx.new(|cx| TextArea::new("notes", "Poznamky...", cx).with_rows(4));
-        let is_favorite = cx.new(|_cx| Checkbox::new("is-favorite", "Oblibeny kontakt", false));
+        let notes = cx.new(|cx| TextArea::new("notes", "Poznámky...", cx).with_rows(4));
+        let is_favorite = cx.new(|_cx| Checkbox::new("is-favorite", "Oblíbený kontakt", false));
 
         Self {
             service,
@@ -159,25 +159,25 @@ impl ContactFormView {
 
     /// Create a contact form in edit mode (loads existing contact by ID).
     pub fn new_edit(service: Arc<ContactService>, id: i64, cx: &mut Context<Self>) -> Self {
-        let name = cx.new(|cx| TextInput::new("name", "Nazev kontaktu...", cx));
+        let name = cx.new(|cx| TextInput::new("name", "Název kontaktu...", cx));
         let contact_type =
             cx.new(|_cx| Select::new("contact-type", "Typ kontaktu", contact_type_options()));
-        let ico = cx.new(|cx| TextInput::new("ico", "ICO...", cx));
-        let dic = cx.new(|cx| TextInput::new("dic", "DIC...", cx));
-        let street = cx.new(|cx| TextInput::new("street", "Ulice a cislo popisne...", cx));
-        let city = cx.new(|cx| TextInput::new("city", "Mesto...", cx));
-        let zip = cx.new(|cx| TextInput::new("zip", "PSC...", cx));
-        let country = cx.new(|cx| TextInput::new("country", "Zeme...", cx));
+        let ico = cx.new(|cx| TextInput::new("ico", "IČO...", cx));
+        let dic = cx.new(|cx| TextInput::new("dic", "DIČ...", cx));
+        let street = cx.new(|cx| TextInput::new("street", "Ulice a číslo popisné...", cx));
+        let city = cx.new(|cx| TextInput::new("city", "Město...", cx));
+        let zip = cx.new(|cx| TextInput::new("zip", "PSČ...", cx));
+        let country = cx.new(|cx| TextInput::new("country", "Země...", cx));
         let email = cx.new(|cx| TextInput::new("email", "Email...", cx));
         let phone = cx.new(|cx| TextInput::new("phone", "Telefon...", cx));
         let web = cx.new(|cx| TextInput::new("web", "Web...", cx));
-        let bank_account = cx.new(|cx| TextInput::new("bank-account", "Cislo uctu...", cx));
-        let bank_code = cx.new(|cx| TextInput::new("bank-code", "Kod banky...", cx));
+        let bank_account = cx.new(|cx| TextInput::new("bank-account", "Číslo účtu...", cx));
+        let bank_code = cx.new(|cx| TextInput::new("bank-code", "Kód banky...", cx));
         let iban = cx.new(|cx| TextInput::new("iban", "IBAN...", cx));
         let swift = cx.new(|cx| TextInput::new("swift", "SWIFT/BIC...", cx));
         let payment_terms = cx.new(|cx| NumberInput::new("payment-terms", "14", cx).integer_only());
-        let notes = cx.new(|cx| TextArea::new("notes", "Poznamky...", cx).with_rows(4));
-        let is_favorite = cx.new(|_cx| Checkbox::new("is-favorite", "Oblibeny kontakt", false));
+        let notes = cx.new(|cx| TextArea::new("notes", "Poznámky...", cx).with_rows(4));
+        let is_favorite = cx.new(|_cx| Checkbox::new("is-favorite", "Oblíbený kontakt", false));
 
         // Load the contact data
         let svc = service.clone();
@@ -271,7 +271,7 @@ impl ContactFormView {
         // Validate name
         let name = self.name.read(cx).value().to_string();
         if name.trim().is_empty() {
-            self.error = Some("Zadejte nazev kontaktu".into());
+            self.error = Some("Zadejte název kontaktu".into());
             cx.notify();
             return;
         }
@@ -372,7 +372,7 @@ impl Render for ContactFormView {
         let title = if self.is_edit {
             "Upravit kontakt".to_string()
         } else {
-            "Novy kontakt".to_string()
+            "Nový kontakt".to_string()
         };
 
         let mut outer = div()
@@ -414,13 +414,13 @@ impl Render for ContactFormView {
                 div()
                     .text_sm()
                     .text_color(rgb(ZfColors::TEXT_MUTED))
-                    .child("Nacitani kontaktu..."),
+                    .child("Načítání kontaktu..."),
             );
         }
 
         // Card 1: Zakladni udaje (name, type, ico, dic)
         outer = outer.child(render_card(
-            "Zakladni udaje",
+            "Základní údaje",
             div()
                 .flex()
                 .flex_col()
@@ -433,7 +433,7 @@ impl Render for ContactFormView {
                         .child(
                             div()
                                 .flex_1()
-                                .child(render_form_field("Nazev", self.name.clone())),
+                                .child(render_form_field("Název", self.name.clone())),
                         )
                         .child(div().w(px(192.0)).child(render_labeled_field(
                             "Typ kontaktu",
@@ -445,8 +445,8 @@ impl Render for ContactFormView {
                     div()
                         .flex()
                         .gap_4()
-                        .child(render_form_field("ICO", self.ico.clone()))
-                        .child(render_form_field("DIC", self.dic.clone())),
+                        .child(render_form_field("IČO", self.ico.clone()))
+                        .child(render_form_field("DIČ", self.dic.clone())),
                 ),
         ));
 
@@ -473,16 +473,16 @@ impl Render for ContactFormView {
                         .child(
                             div()
                                 .flex_1()
-                                .child(render_form_field("Mesto", self.city.clone())),
+                                .child(render_form_field("Město", self.city.clone())),
                         )
-                        .child(render_form_field("PSC", self.zip.clone()))
-                        .child(render_form_field("Zeme", self.country.clone())),
+                        .child(render_form_field("PSČ", self.zip.clone()))
+                        .child(render_form_field("Země", self.country.clone())),
                 ),
         ));
 
         // Card 3: Kontaktni udaje (email, phone, web)
         outer = outer.child(render_card(
-            "Kontaktni udaje",
+            "Kontaktní údaje",
             div().flex().gap_4().child(
                 div()
                     .flex()
@@ -508,7 +508,7 @@ impl Render for ContactFormView {
 
         // Card 4: Bankovni udaje (bank_account, bank_code, iban, swift)
         outer = outer.child(render_card(
-            "Bankovni udaje",
+            "Bankovní údaje",
             div()
                 .flex()
                 .flex_col()
@@ -521,9 +521,9 @@ impl Render for ContactFormView {
                         .child(
                             div()
                                 .flex_1()
-                                .child(render_form_field("Cislo uctu", self.bank_account.clone())),
+                                .child(render_form_field("Číslo účtu", self.bank_account.clone())),
                         )
-                        .child(render_form_field("Kod banky", self.bank_code.clone())),
+                        .child(render_form_field("Kód banky", self.bank_code.clone())),
                 )
                 // Row 2: iban, swift
                 .child(
@@ -541,7 +541,7 @@ impl Render for ContactFormView {
 
         // Card 5: Dalsi (payment_terms, is_favorite, notes)
         outer = outer.child(render_card(
-            "Dalsi",
+            "Další",
             div()
                 .flex()
                 .flex_col()
@@ -559,13 +559,13 @@ impl Render for ContactFormView {
                         .child(div().pb_2().child(self.is_favorite.clone())),
                 )
                 // Row 2: notes
-                .child(render_labeled_field("Poznamky", self.notes.clone())),
+                .child(render_labeled_field("Poznámky", self.notes.clone())),
         ));
 
         // Button bar
         let cancel_btn = render_button(
             "cancel-btn",
-            "Zrusit",
+            "Zrušit",
             ButtonVariant::Secondary,
             self.saving,
             false,
@@ -576,7 +576,7 @@ impl Render for ContactFormView {
 
         let save_btn = render_button(
             "save-btn",
-            "Ulozit",
+            "Uložit",
             ButtonVariant::Primary,
             false,
             self.saving,

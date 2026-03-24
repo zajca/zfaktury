@@ -141,7 +141,7 @@ impl ExpenseItemsEditor {
         let description = cx.new(|cx| {
             TextInput::new(
                 SharedString::from(format!("exp-item-desc-{idx}")),
-                "Popis polozky...",
+                "Popis položky...",
                 cx,
             )
         });
@@ -268,7 +268,7 @@ impl ExpenseItemsEditor {
                     .text_xs()
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                    .child("Mnozstvi"),
+                    .child("Množství"),
             )
             .child(
                 div()
@@ -322,7 +322,7 @@ impl ExpenseItemsEditor {
                         div()
                             .text_sm()
                             .text_color(rgb(ZfColors::TEXT_SECONDARY))
-                            .child("Zaklad dane:"),
+                            .child("Základ daně:"),
                     )
                     .child(
                         div()
@@ -426,7 +426,7 @@ impl Render for ExpenseItemsEditor {
         // Add button
         let add_btn = render_button(
             "add-exp-item-btn",
-            "+ Pridat polozku",
+            "+ Přidat položku",
             ButtonVariant::Secondary,
             false,
             false,

@@ -112,12 +112,26 @@
           s = pkgs.pkgsStatic;
           crossCC = s.stdenv.cc;
 
+          # Override libs that hardcode Nix store paths into the binary.
+          # Use standard FHS paths so the binary works on any Linux distro.
+          libxkbcommonPortable = s.libxkbcommon.overrideAttrs (old: {
+            mesonFlags = (old.mesonFlags or []) ++ [
+              "-Dxkb-config-root=/usr/share/X11/xkb"
+              "-Dx-locale-root=/usr/share/X11/locale"
+            ];
+          });
+          libx11Portable = s.libx11.overrideAttrs (old: {
+            configureFlags = (old.configureFlags or []) ++ [
+              "--with-locale-dir-path=/usr/share/X11/locale"
+            ];
+          });
+
           # Static musl libraries needed at link time
           staticLibs = [
             s.fontconfig
             s.freetype
             s.libxcb
-            s.libxkbcommon
+            libxkbcommonPortable
             s.zstd
             s.zlib
             s.expat
@@ -130,7 +144,7 @@
             s.glib
             s.alsa-lib
             s.wayland
-            s.libx11
+            libx11Portable
             s.xorgproto
             s.libxau
             s.libxdmcp

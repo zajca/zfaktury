@@ -2,10 +2,10 @@
 <Pisemnost nazevSW="ZFaktury">
   <DPHDP3 verzePis="01.02.16">
     <VetaD dokument="DP3" k_uladis="DPH" dapdph_forma="B" typ_platce="P" trans="A" c_okec="582900" d_poddp="25.04.2025" rok="2025" mesic="1"></VetaD>
-    <VetaP c_pracufo="3305" c_ufo="464" dic="8905244997" email="ja@mzajic.cz" c_telef="776598983" ulice="Ludkovice" naz_obce="Ludkovice" psc="76341" stat="CESKA REPUBLIKA" c_pop="189" jmeno="Martin" prijmeni="Zajic" typ_ds="F"></VetaP>
-    <Veta1 obrat23="125598" dan23="26376" obrat5="45000" dan5="5400" p_sl23_e="0" dan_psl23_e="0" p_sl5_e="0" dan_psl5_e="0" p_sl23_z="0" dan_psl23_z="0" p_sl5_z="0" dan_psl5_z="0" rez_pren23="0" dan_rpren23="0" rez_pren5="0" dan_rpren5="0"></Veta1>
-    <Veta2 dod_zb="0" pln_sluzby="0" pln_rez_pren="0" pln_zaslani="0" pln_ost="0"></Veta2>
-    <Veta4 pln23="7671" odp_tuz23_nar="1611" pln5="3200" odp_tuz5_nar="384" nar_zdp23="0" od_zdp23="0" nar_zdp5="0" od_zdp5="0" odp_sum_kr="0" odp_sum_nar="1995"></Veta4>
-    <Veta6 dano="0" dano_no="0" dano_da="29781" dan_zocelk="31776" odp_zocelk="1995"></Veta6>
+    <VetaP c_pracufo="3305" c_ufo="464" dic="8905244997" email="ja@mzajic.cz" c_telef="776598983" ulice="Ludkovice" naz_obce="Ludkovice" psc="76341" stat="ČESKÁ REPUBLIKA" c_pop="189" c_orient="" jmeno="Martin" prijmeni="Zajic" titul="" typ_ds="F"></VetaP>
+    <Veta1 obrat23="125598.0" dan23="26376.0" obrat5="45000.0" dan5="5400.0" p_sl23_e="0.0" dan_psl23_e="0.0" p_sl5_e="0.0" dan_psl5_e="0.0" p_sl23_z="0.0" dan_psl23_z="0.0" p_sl5_z="0.0" dan_psl5_z="0.0" rez_pren23="0.0" dan_rpren23="0.0" rez_pren5="0.0" dan_rpren5="0.0"></Veta1>
+    <Veta2 dod_zb="0.0" pln_sluzby="0.0" pln_rez_pren="0.0" pln_zaslani="0.0" pln_ost="0.0"></Veta2>
+    <Veta4 pln23="7671.0" odp_tuz23_nar="1611.0" pln5="3200.0" odp_tuz5_nar="384.0" nar_zdp23="0.0" od_zdp23="0.0" nar_zdp5="0.0" od_zdp5="0.0" odp_sum_kr="0" odp_sum_nar="1995.0"></Veta4>
+    <Veta6 dano="0" dano_no="0" dano_da="29781.0" dan_zocelk="31776.0" odp_zocelk="1995.0"></Veta6>
   </DPHDP3>
 </Pisemnost>

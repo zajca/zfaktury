@@ -52,63 +52,63 @@ type VetaP struct {
 	PSC      string `xml:"psc,attr,omitempty"`
 	Stat     string `xml:"stat,attr,omitempty"`
 	CPop     string `xml:"c_pop,attr,omitempty"`
-	COrient  string `xml:"c_orient,attr,omitempty"`
+	COrient  string `xml:"c_orient,attr"`
 	Jmeno    string `xml:"jmeno,attr,omitempty"`
 	Prijmeni string `xml:"prijmeni,attr,omitempty"`
-	Titul    string `xml:"titul,attr,omitempty"`
+	Titul    string `xml:"titul,attr"`
 	TypDS    string `xml:"typ_ds,attr"`
 }
 
 // Veta1 contains output VAT (dan na vystupu) - section I.
 type Veta1 struct {
-	Obrat23    float64 `xml:"obrat23,attr"`
-	Dan23      float64 `xml:"dan23,attr"`
-	Obrat5     float64 `xml:"obrat5,attr"`
-	Dan5       float64 `xml:"dan5,attr"`
-	PSl23E     float64 `xml:"p_sl23_e,attr"`
-	DanPsl23E  float64 `xml:"dan_psl23_e,attr"`
-	PSl5E      float64 `xml:"p_sl5_e,attr"`
-	DanPsl5E   float64 `xml:"dan_psl5_e,attr"`
-	PSl23Z     float64 `xml:"p_sl23_z,attr"`
-	DanPsl23Z  float64 `xml:"dan_psl23_z,attr"`
-	PSl5Z      float64 `xml:"p_sl5_z,attr"`
-	DanPsl5Z   float64 `xml:"dan_psl5_z,attr"`
-	RezPren23  float64 `xml:"rez_pren23,attr"`
-	DanRpren23 float64 `xml:"dan_rpren23,attr"`
-	RezPren5   float64 `xml:"rez_pren5,attr"`
-	DanRpren5  float64 `xml:"dan_rpren5,attr"`
+	Obrat23    XMLFloat `xml:"obrat23,attr"`
+	Dan23      XMLFloat `xml:"dan23,attr"`
+	Obrat5     XMLFloat `xml:"obrat5,attr"`
+	Dan5       XMLFloat `xml:"dan5,attr"`
+	PSl23E     XMLFloat `xml:"p_sl23_e,attr"`
+	DanPsl23E  XMLFloat `xml:"dan_psl23_e,attr"`
+	PSl5E      XMLFloat `xml:"p_sl5_e,attr"`
+	DanPsl5E   XMLFloat `xml:"dan_psl5_e,attr"`
+	PSl23Z     XMLFloat `xml:"p_sl23_z,attr"`
+	DanPsl23Z  XMLFloat `xml:"dan_psl23_z,attr"`
+	PSl5Z      XMLFloat `xml:"p_sl5_z,attr"`
+	DanPsl5Z   XMLFloat `xml:"dan_psl5_z,attr"`
+	RezPren23  XMLFloat `xml:"rez_pren23,attr"`
+	DanRpren23 XMLFloat `xml:"dan_rpren23,attr"`
+	RezPren5   XMLFloat `xml:"rez_pren5,attr"`
+	DanRpren5  XMLFloat `xml:"dan_rpren5,attr"`
 }
 
 // Veta2 contains EU acquisitions and services - section II.
 type Veta2 struct {
-	DodZb      float64 `xml:"dod_zb,attr"`
-	PlnSluzby  float64 `xml:"pln_sluzby,attr"`
-	PlnRezPren float64 `xml:"pln_rez_pren,attr"`
-	PlnZaslani float64 `xml:"pln_zaslani,attr"`
-	PlnOst     float64 `xml:"pln_ost,attr"`
+	DodZb      XMLFloat `xml:"dod_zb,attr"`
+	PlnSluzby  XMLFloat `xml:"pln_sluzby,attr"`
+	PlnRezPren XMLFloat `xml:"pln_rez_pren,attr"`
+	PlnZaslani XMLFloat `xml:"pln_zaslani,attr"`
+	PlnOst     XMLFloat `xml:"pln_ost,attr"`
 }
 
 // Veta4 contains input VAT (dan na vstupu) - section IV.
 type Veta4 struct {
-	Pln23       float64 `xml:"pln23,attr"`
-	OdpTuz23Nar float64 `xml:"odp_tuz23_nar,attr"`
-	Pln5        float64 `xml:"pln5,attr"`
-	OdpTuz5Nar  float64 `xml:"odp_tuz5_nar,attr"`
-	NarZdp23    float64 `xml:"nar_zdp23,attr"`
-	OdZdp23     float64 `xml:"od_zdp23,attr"`
-	NarZdp5     float64 `xml:"nar_zdp5,attr"`
-	OdZdp5      float64 `xml:"od_zdp5,attr"`
-	OdpSumKr    string  `xml:"odp_sum_kr,attr"`
-	OdpSumNar   float64 `xml:"odp_sum_nar,attr"`
+	Pln23       XMLFloat `xml:"pln23,attr"`
+	OdpTuz23Nar XMLFloat `xml:"odp_tuz23_nar,attr"`
+	Pln5        XMLFloat `xml:"pln5,attr"`
+	OdpTuz5Nar  XMLFloat `xml:"odp_tuz5_nar,attr"`
+	NarZdp23    XMLFloat `xml:"nar_zdp23,attr"`
+	OdZdp23     XMLFloat `xml:"od_zdp23,attr"`
+	NarZdp5     XMLFloat `xml:"nar_zdp5,attr"`
+	OdZdp5      XMLFloat `xml:"od_zdp5,attr"`
+	OdpSumKr    string   `xml:"odp_sum_kr,attr"`
+	OdpSumNar   XMLFloat `xml:"odp_sum_nar,attr"`
 }
 
 // Veta6 contains final VAT calculation summary - section VI.
 type Veta6 struct {
-	Dano      string  `xml:"dano,attr"`
-	DanoNo    string  `xml:"dano_no,attr"`
-	DanoDa    float64 `xml:"dano_da,attr"`
-	DanZocelk float64 `xml:"dan_zocelk,attr"`
-	OdpZocelk float64 `xml:"odp_zocelk,attr"`
+	Dano      string   `xml:"dano,attr"`
+	DanoNo    string   `xml:"dano_no,attr"`
+	DanoDa    XMLFloat `xml:"dano_da,attr"`
+	DanZocelk XMLFloat `xml:"dan_zocelk,attr"`
+	OdpZocelk XMLFloat `xml:"odp_zocelk,attr"`
 }
 
 // TaxpayerInfo contains taxpayer details needed for DPHDP3 XML generation.

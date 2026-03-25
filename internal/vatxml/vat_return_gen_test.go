@@ -174,8 +174,8 @@ func TestVATReturnGenerator_Generate(t *testing.T) {
 	if p.Prijmeni != "Zajic" {
 		t.Errorf("VetaP.prijmeni = %q, want %q", p.Prijmeni, "Zajic")
 	}
-	if p.Stat != "CESKA REPUBLIKA" {
-		t.Errorf("VetaP.stat = %q, want %q", p.Stat, "CESKA REPUBLIKA")
+	if p.Stat != "ČESKÁ REPUBLIKA" {
+		t.Errorf("VetaP.stat = %q, want %q", p.Stat, "ČESKÁ REPUBLIKA")
 	}
 
 	// Verify Veta1 - output VAT with correct rounding.

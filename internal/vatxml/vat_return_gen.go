@@ -31,32 +31,32 @@ func (g *VATReturnGenerator) Generate(vr *domain.VATReturn, info TaxpayerInfo) (
 	filingCode := DPHFilingTypeCode(vr.FilingType)
 
 	// Compute rounded values.
-	obrat23 := float64(ToWholeCZK(vr.OutputVATBase21))
-	dan23 := float64(ToWholeCZK(vr.OutputVATAmount21))
-	obrat5 := float64(ToWholeCZK(vr.OutputVATBase12))
-	dan5 := float64(ToWholeCZK(vr.OutputVATAmount12))
+	obrat23 := XMLFloat(ToWholeCZK(vr.OutputVATBase21))
+	dan23 := XMLFloat(ToWholeCZK(vr.OutputVATAmount21))
+	obrat5 := XMLFloat(ToWholeCZK(vr.OutputVATBase12))
+	dan5 := XMLFloat(ToWholeCZK(vr.OutputVATAmount12))
 
-	pln23 := float64(ToWholeCZK(vr.InputVATBase21))
-	odpTuz23Nar := float64(ToWholeCZK(vr.InputVATAmount21))
-	pln5 := float64(ToWholeCZK(vr.InputVATBase12))
-	odpTuz5Nar := float64(ToWholeCZK(vr.InputVATAmount12))
+	pln23 := XMLFloat(ToWholeCZK(vr.InputVATBase21))
+	odpTuz23Nar := XMLFloat(ToWholeCZK(vr.InputVATAmount21))
+	pln5 := XMLFloat(ToWholeCZK(vr.InputVATBase12))
+	odpTuz5Nar := XMLFloat(ToWholeCZK(vr.InputVATAmount12))
 
 	// Total deductions.
-	odpSumNar := odpTuz23Nar + odpTuz5Nar
+	odpSumNar := XMLFloat(float64(odpTuz23Nar) + float64(odpTuz5Nar))
 
 	// Total output tax.
-	danZocelk := dan23 + dan5
+	danZocelk := XMLFloat(float64(dan23) + float64(dan5))
 
 	// Total input deductions.
 	odpZocelk := odpSumNar
 
 	// Net VAT.
-	netVAT := danZocelk - odpZocelk
+	netVAT := float64(danZocelk) - float64(odpZocelk)
 
 	// Determine trans: "A" if any amounts, "N" otherwise.
 	trans := "N"
-	if obrat23 != 0 || dan23 != 0 || obrat5 != 0 || dan5 != 0 ||
-		pln23 != 0 || odpTuz23Nar != 0 || pln5 != 0 || odpTuz5Nar != 0 {
+	if float64(obrat23) != 0 || float64(dan23) != 0 || float64(obrat5) != 0 || float64(dan5) != 0 ||
+		float64(pln23) != 0 || float64(odpTuz23Nar) != 0 || float64(pln5) != 0 || float64(odpTuz5Nar) != 0 {
 		trans = "A"
 	}
 
@@ -85,7 +85,7 @@ func (g *VATReturnGenerator) Generate(vr *domain.VATReturn, info TaxpayerInfo) (
 				Ulice:    info.Street,
 				NazObce:  info.City,
 				PSC:      info.ZIP,
-				Stat:     "CESKA REPUBLIKA",
+				Stat:     "ČESKÁ REPUBLIKA",
 				CPop:     info.HouseNum,
 				Jmeno:    info.FirstName,
 				Prijmeni: info.LastName,
@@ -117,7 +117,7 @@ func (g *VATReturnGenerator) Generate(vr *domain.VATReturn, info TaxpayerInfo) (
 	// Set dano_da or dano_no based on net VAT.
 	switch {
 	case netVAT > 0:
-		doc.DPHDP3.Veta6.DanoDa = netVAT
+		doc.DPHDP3.Veta6.DanoDa = XMLFloat(netVAT)
 		doc.DPHDP3.Veta6.DanoNo = "0"
 	case netVAT < 0:
 		doc.DPHDP3.Veta6.DanoNo = fmt.Sprintf("%.1f", -netVAT)

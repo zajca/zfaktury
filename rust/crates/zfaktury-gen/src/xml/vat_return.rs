@@ -132,16 +132,18 @@ pub fn generate_vat_return_xml(vr: &VATReturn, taxpayer: &TaxpayerInfo) -> Resul
     if !taxpayer.zip.is_empty() {
         veta_p.push_attribute(("psc", taxpayer.zip.as_str()));
     }
-    veta_p.push_attribute(("stat", "CESKA REPUBLIKA"));
+    veta_p.push_attribute(("stat", "ČESKÁ REPUBLIKA"));
     if !taxpayer.house_num.is_empty() {
         veta_p.push_attribute(("c_pop", taxpayer.house_num.as_str()));
     }
+    veta_p.push_attribute(("c_orient", ""));
     if !taxpayer.first_name.is_empty() {
         veta_p.push_attribute(("jmeno", taxpayer.first_name.as_str()));
     }
     if !taxpayer.last_name.is_empty() {
         veta_p.push_attribute(("prijmeni", taxpayer.last_name.as_str()));
     }
+    veta_p.push_attribute(("titul", ""));
     veta_p.push_attribute(("typ_ds", "F"));
     writer.write_event(Event::Empty(veta_p))?;
 
@@ -151,10 +153,28 @@ pub fn generate_vat_return_xml(vr: &VATReturn, taxpayer: &TaxpayerInfo) -> Resul
     veta1.push_attribute(("dan23", format_f64(dan23 as f64).as_str()));
     veta1.push_attribute(("obrat5", format_f64(obrat5 as f64).as_str()));
     veta1.push_attribute(("dan5", format_f64(dan5 as f64).as_str()));
+    veta1.push_attribute(("p_sl23_e", format_f64(0.0).as_str()));
+    veta1.push_attribute(("dan_psl23_e", format_f64(0.0).as_str()));
+    veta1.push_attribute(("p_sl5_e", format_f64(0.0).as_str()));
+    veta1.push_attribute(("dan_psl5_e", format_f64(0.0).as_str()));
+    veta1.push_attribute(("p_sl23_z", format_f64(0.0).as_str()));
+    veta1.push_attribute(("dan_psl23_z", format_f64(0.0).as_str()));
+    veta1.push_attribute(("p_sl5_z", format_f64(0.0).as_str()));
+    veta1.push_attribute(("dan_psl5_z", format_f64(0.0).as_str()));
+    veta1.push_attribute(("rez_pren23", format_f64(0.0).as_str()));
+    veta1.push_attribute(("dan_rpren23", format_f64(0.0).as_str()));
+    veta1.push_attribute(("rez_pren5", format_f64(0.0).as_str()));
+    veta1.push_attribute(("dan_rpren5", format_f64(0.0).as_str()));
     writer.write_event(Event::Empty(veta1))?;
 
-    // <Veta2/>
-    writer.write_event(Event::Empty(BytesStart::new("Veta2")))?;
+    // <Veta2 .../>
+    let mut veta2 = BytesStart::new("Veta2");
+    veta2.push_attribute(("dod_zb", format_f64(0.0).as_str()));
+    veta2.push_attribute(("pln_sluzby", format_f64(0.0).as_str()));
+    veta2.push_attribute(("pln_rez_pren", format_f64(0.0).as_str()));
+    veta2.push_attribute(("pln_zaslani", format_f64(0.0).as_str()));
+    veta2.push_attribute(("pln_ost", format_f64(0.0).as_str()));
+    writer.write_event(Event::Empty(veta2))?;
 
     // <Veta4 .../>
     let mut veta4 = BytesStart::new("Veta4");
@@ -162,6 +182,10 @@ pub fn generate_vat_return_xml(vr: &VATReturn, taxpayer: &TaxpayerInfo) -> Resul
     veta4.push_attribute(("odp_tuz23_nar", format_f64(odp_tuz23_nar as f64).as_str()));
     veta4.push_attribute(("pln5", format_f64(pln5 as f64).as_str()));
     veta4.push_attribute(("odp_tuz5_nar", format_f64(odp_tuz5_nar as f64).as_str()));
+    veta4.push_attribute(("nar_zdp23", format_f64(0.0).as_str()));
+    veta4.push_attribute(("od_zdp23", format_f64(0.0).as_str()));
+    veta4.push_attribute(("nar_zdp5", format_f64(0.0).as_str()));
+    veta4.push_attribute(("od_zdp5", format_f64(0.0).as_str()));
     veta4.push_attribute(("odp_sum_kr", "0"));
     veta4.push_attribute(("odp_sum_nar", format_f64(odp_sum_nar as f64).as_str()));
     writer.write_event(Event::Empty(veta4))?;
@@ -184,16 +208,9 @@ pub fn generate_vat_return_xml(vr: &VATReturn, taxpayer: &TaxpayerInfo) -> Resul
     Ok(writer.into_inner().into_inner())
 }
 
-/// Format a float for XML attribute output (no trailing decimals when whole number).
+/// Format a float for XML attribute output (always one decimal place to match EPO/Fakturoid format).
 fn format_f64(v: f64) -> String {
-    if v == v.trunc() {
-        // Go's encoding/xml marshals float64(100) as "100" (no decimal).
-        // But for consistency with the Go output that uses %f formatting in some places,
-        // we keep the integer representation.
-        format!("{}", v as i64)
-    } else {
-        format!("{v}")
-    }
+    format!("{:.1}", v)
 }
 
 #[cfg(test)]
@@ -291,9 +308,9 @@ mod tests {
         let xml_str = String::from_utf8(result).unwrap();
 
         // Output VAT base 21% = 100000 CZK.
-        assert!(xml_str.contains("obrat23=\"100000\""));
+        assert!(xml_str.contains("obrat23=\"100000.0\""));
         // Output VAT amount 21% = 21000 CZK.
-        assert!(xml_str.contains("dan23=\"21000\""));
+        assert!(xml_str.contains("dan23=\"21000.0\""));
     }
 
     #[test]
@@ -355,7 +372,7 @@ mod tests {
         let xml_str = String::from_utf8(result).unwrap();
         // Net VAT = (21000 + 6000) - (50000 + 10000) = -33000
         // dano_da should be 0, dano_no should be "33000.0".
-        assert!(xml_str.contains("dano_da=\"0\""));
+        assert!(xml_str.contains("dano_da=\"0.0\""));
         assert!(xml_str.contains("dano_no=\"33000.0\""));
     }
 }

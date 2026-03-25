@@ -146,8 +146,8 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
 	for i := range dueList {
 		ri := &dueList[i]
 
-		// Check if past end_date - deactivate instead of generating.
-		if ri.EndDate != nil && today.After(*ri.EndDate) {
+		// Check if next_issue_date is past end_date - deactivate without generating.
+		if ri.EndDate != nil && ri.NextIssueDate.After(*ri.EndDate) {
 			if err := s.repo.Deactivate(ctx, ri.ID); err != nil {
 				return count, fmt.Errorf("deactivating expired recurring invoice %d: %w", ri.ID, err)
 			}

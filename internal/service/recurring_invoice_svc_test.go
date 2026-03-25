@@ -192,7 +192,7 @@ func TestRecurringInvoiceService_ProcessDue_PastEndDate(t *testing.T) {
 	ctx := context.Background()
 	customerID := createCustomer()
 
-	endDate := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	endDate := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
 	ri := makeTestRecurringInvoice(customerID)
 	ri.NextIssueDate = time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
 	ri.EndDate = &endDate

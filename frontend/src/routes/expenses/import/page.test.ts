@@ -187,9 +187,28 @@ describe('Expenses import page', () => {
 
 	it('OCR confirm saves data and redirects', async () => {
 		// First call: import document (returns OCR)
-		// Second call: update expense with OCR data
+		// Second call: fetch existing skeleton expense
+		// Third call: update expense with merged OCR data
 		mockFetch
 			.mockResolvedValueOnce(jsonResponse(sampleImportResponseWithOCR))
+			.mockResolvedValueOnce(
+				jsonResponse({
+					id: 42,
+					description: '',
+					amount: 0,
+					currency_code: 'CZK',
+					issue_date: '2026-03-10',
+					payment_method: 'bank_transfer',
+					business_percent: 100,
+					exchange_rate: 100,
+					vat_rate_percent: 0,
+					vat_amount: 0,
+					is_tax_deductible: false,
+					expense_number: '',
+					category: '',
+					notes: ''
+				})
+			)
 			.mockResolvedValueOnce(jsonResponse({ id: 42, description: 'Test expense' }));
 
 		render(Page);
@@ -208,12 +227,19 @@ describe('Expenses import page', () => {
 		const confirmBtn = screen.getByText('Potvrdit a vyplnit');
 		await fireEvent.click(confirmBtn);
 
-		// Should call update endpoint
+		// Should call update endpoint with payment_method preserved from the
+		// skeleton expense (otherwise the backend CHECK constraint fails).
 		await waitFor(() => {
 			const updateCall = mockFetch.mock.calls.find(
-				(call: unknown[]) => typeof call[0] === 'string' && call[0].includes('/api/v1/expenses/42')
+				(call: unknown[]) =>
+					typeof call[0] === 'string' &&
+					call[0].includes('/api/v1/expenses/42') &&
+					(call[1] as RequestInit | undefined)?.method === 'PUT'
 			);
 			expect(updateCall).toBeDefined();
+			const body = JSON.parse(String((updateCall?.[1] as RequestInit).body));
+			expect(body.payment_method).toBe('bank_transfer');
+			expect(body.currency_code).toBe('CZK');
 		});
 
 		// Should redirect to expense detail

@@ -94,14 +94,19 @@
 		pageState = 'saving';
 
 		try {
+			// Merge OCR data into the existing skeleton expense so that required
+			// fields with CHECK constraints (payment_method, currency_code, ...)
+			// keep their defaults instead of being sent as empty strings.
+			const existing = await expensesApi.getById(expenseId);
 			await expensesApi.update(expenseId, {
-				description: data.description || data.vendor_name || undefined,
-				expense_number: data.invoice_number || undefined,
-				amount: data.total_amount || undefined,
-				vat_amount: data.vat_amount || undefined,
-				vat_rate_percent: data.vat_rate_percent || undefined,
-				currency_code: data.currency_code || undefined,
-				issue_date: data.issue_date || undefined
+				...existing,
+				description: data.description || data.vendor_name || existing.description,
+				expense_number: data.invoice_number || existing.expense_number,
+				amount: data.total_amount || existing.amount,
+				vat_amount: data.vat_amount || existing.vat_amount,
+				vat_rate_percent: data.vat_rate_percent || existing.vat_rate_percent,
+				currency_code: data.currency_code || existing.currency_code,
+				issue_date: data.issue_date || existing.issue_date
 			});
 			toastSuccess('Náklad uložen');
 			goto(`/expenses/${expenseId}`);

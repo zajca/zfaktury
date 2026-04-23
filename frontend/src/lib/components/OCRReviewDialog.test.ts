@@ -51,11 +51,12 @@ describe('OCRReviewDialog', () => {
 		const dueDateInput = screen.getByLabelText('Datum splatnosti') as HTMLInputElement;
 		expect(dueDateInput.value).toBe('2024-02-15');
 
+		// Amounts are stored in halere but displayed as CZK decimals
 		const totalInput = screen.getByLabelText('Celková částka') as HTMLInputElement;
-		expect(totalInput.value).toBe('12100');
+		expect(totalInput.value).toBe('121');
 
 		const vatInput = screen.getByLabelText('DPH') as HTMLInputElement;
-		expect(vatInput.value).toBe('2100');
+		expect(vatInput.value).toBe('21');
 
 		const currencyInput = screen.getByLabelText('Měna') as HTMLInputElement;
 		expect(currencyInput.value).toBe('CZK');
@@ -124,6 +125,27 @@ describe('OCRReviewDialog', () => {
 		expect(calledWith.currency_code).toBe('EUR');
 		// Unchanged fields should remain
 		expect(calledWith.vendor_ico).toBe('12345678');
+	});
+
+	it('converts edited amounts from CZK display back to halere on confirm', async () => {
+		const onconfirm = vi.fn();
+		render(OCRReviewDialog, {
+			props: { ocrResult: makeOCRResult(), onclose: vi.fn(), onconfirm }
+		});
+
+		const totalInput = screen.getByLabelText('Celková částka') as HTMLInputElement;
+		await fireEvent.input(totalInput, { target: { value: '1234.56' } });
+
+		const vatInput = screen.getByLabelText('DPH') as HTMLInputElement;
+		await fireEvent.input(vatInput, { target: { value: '214.12' } });
+
+		const confirmBtn = screen.getByText('Potvrdit a vyplnit');
+		await fireEvent.click(confirmBtn);
+
+		expect(onconfirm).toHaveBeenCalledOnce();
+		const calledWith = onconfirm.mock.calls[0][0] as OCRResult;
+		expect(calledWith.total_amount).toBe(123456);
+		expect(calledWith.vat_amount).toBe(21412);
 	});
 
 	it('calls onclose on cancel button click', async () => {

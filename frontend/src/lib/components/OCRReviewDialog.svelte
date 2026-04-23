@@ -10,11 +10,14 @@
 
 	let { ocrResult, onclose, onconfirm }: Props = $props();
 
-	// Editable copies of OCR fields - intentionally capturing initial values
+	// Editable copies of OCR fields - intentionally capturing initial values.
+	// Amounts are stored internally in halere (int), but displayed as CZK decimals.
 	function getInitial() {
 		return $state.snapshot(ocrResult);
 	}
 	let formData = $state(getInitial());
+	let totalDisplay = $state(getInitial().total_amount / 100);
+	let vatDisplay = $state(getInitial().vat_amount / 100);
 
 	let confidencePercent = $derived(Math.round(ocrResult.confidence * 100));
 	let confidenceColor = $derived(
@@ -28,7 +31,9 @@
 	function handleConfirm() {
 		onconfirm({
 			...ocrResult,
-			...formData
+			...formData,
+			total_amount: Math.round((Number(totalDisplay) || 0) * 100),
+			vat_amount: Math.round((Number(vatDisplay) || 0) * 100)
 		});
 	}
 
@@ -140,8 +145,9 @@
 					<input
 						id="ocr-total-amount"
 						type="number"
-						bind:value={formData.total_amount}
+						bind:value={totalDisplay}
 						step="0.01"
+						min="0"
 						class={inputClass}
 					/>
 				</div>
@@ -154,8 +160,9 @@
 					<input
 						id="ocr-vat-amount"
 						type="number"
-						bind:value={formData.vat_amount}
+						bind:value={vatDisplay}
 						step="0.01"
+						min="0"
 						class={inputClass}
 					/>
 				</div>

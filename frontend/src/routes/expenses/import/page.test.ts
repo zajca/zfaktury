@@ -194,11 +194,14 @@ describe('Expenses import page', () => {
 	});
 
 	it('OCR confirm saves data and redirects', async () => {
-		// First call: import document (returns OCR)
-		// Second call: fetch existing skeleton expense
-		// Third call: update expense with merged OCR data
+		// Mocked fetch sequence:
+		// 1. importApi.importDocument
+		// 2. contactsApi.findByIco (OCR provided vendor_ico, existing vendor found)
+		// 3. expensesApi.getById (skeleton expense)
+		// 4. expensesApi.update
 		mockFetch
 			.mockResolvedValueOnce(jsonResponse(sampleImportResponseWithOCR))
+			.mockResolvedValueOnce(jsonResponse({ id: 99, name: 'Test Vendor s.r.o.', ico: '12345678' }))
 			.mockResolvedValueOnce(
 				jsonResponse({
 					id: 42,
@@ -248,6 +251,8 @@ describe('Expenses import page', () => {
 			const body = JSON.parse(String((updateCall?.[1] as RequestInit).body));
 			expect(body.payment_method).toBe('bank_transfer');
 			expect(body.currency_code).toBe('CZK');
+			// Vendor matched by ICO is attached to the expense.
+			expect(body.vendor_id).toBe(99);
 			// OCR line items are mapped to expense items with unit+sort_order.
 			expect(body.items).toHaveLength(1);
 			expect(body.items[0]).toMatchObject({
@@ -265,6 +270,33 @@ describe('Expenses import page', () => {
 		await waitFor(() => {
 			expect(goto).toHaveBeenCalledWith('/expenses/42');
 		});
+	});
+
+	it('prompts to create vendor when OCR ICO has no matching contact', async () => {
+		mockFetch
+			.mockResolvedValueOnce(jsonResponse(sampleImportResponseWithOCR))
+			// findByIco returns 404 -- no matching local contact
+			.mockResolvedValueOnce(jsonResponse({ error: 'contact not found' }, 404));
+
+		render(Page);
+
+		const fileInput = document.getElementById('file-input') as HTMLInputElement;
+		await fireEvent.change(fileInput, { target: { files: [createTestFile()] } });
+
+		await waitFor(() => {
+			expect(screen.getByText('OCR - Kontrola dat')).toBeInTheDocument();
+		});
+
+		await fireEvent.click(screen.getByText('Potvrdit a vyplnit'));
+
+		// Vendor creation prompt should appear with OCR data prefilled.
+		await waitFor(() => {
+			expect(screen.getByText('Dodavatel není v kontaktech')).toBeInTheDocument();
+		});
+		const nameInput = screen.getByLabelText('Název *') as HTMLInputElement;
+		expect(nameInput.value).toBe('Test Vendor s.r.o.');
+		const icoInput = screen.getByLabelText('IČO') as HTMLInputElement;
+		expect(icoInput.value).toBe('12345678');
 	});
 
 	it('OCR cancel redirects to expense detail', async () => {

@@ -118,6 +118,19 @@ func (s *ContactService) List(ctx context.Context, filter domain.ContactFilter) 
 	return contacts, count, nil
 }
 
+// FindByICO looks up an existing local contact by its ICO (exact match).
+// Returns domain.ErrNotFound if no matching contact exists.
+func (s *ContactService) FindByICO(ctx context.Context, ico string) (*domain.Contact, error) {
+	if ico == "" {
+		return nil, fmt.Errorf("ICO is required: %w", domain.ErrInvalidInput)
+	}
+	contact, err := s.repo.FindByICO(ctx, ico)
+	if err != nil {
+		return nil, fmt.Errorf("finding contact by ICO: %w", err)
+	}
+	return contact, nil
+}
+
 // LookupARES looks up a company by ICO using the ARES registry.
 func (s *ContactService) LookupARES(ctx context.Context, ico string) (*domain.Contact, error) {
 	if ico == "" {

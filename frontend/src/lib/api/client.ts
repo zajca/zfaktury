@@ -375,6 +375,17 @@ export const contactsApi = {
 
 	lookupAres(ico: string) {
 		return get<AresResult>(`/contacts/ares/${ico}`);
+	},
+
+	// Returns the existing local contact that matches the given ICO exactly,
+	// or null if no such contact exists.
+	async findByIco(ico: string): Promise<Contact | null> {
+		try {
+			return await get<Contact>(`/contacts/by-ico/${encodeURIComponent(ico)}`);
+		} catch (e) {
+			if (e instanceof ApiError && e.status === 404) return null;
+			throw e;
+		}
 	}
 };
 

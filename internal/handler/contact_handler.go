@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -26,6 +28,7 @@ func (h *ContactHandler) Routes() chi.Router {
 	r.Post("/", h.Create)
 	r.Get("/", h.List)
 	r.Get("/ares/{ico}", h.LookupARES)
+	r.Get("/by-ico/{ico}", h.FindByICO)
 	r.Get("/{id}", h.GetByID)
 	r.Put("/{id}", h.Update)
 	r.Delete("/{id}", h.Delete)
@@ -147,6 +150,29 @@ func (h *ContactHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// FindByICO handles GET /api/v1/contacts/by-ico/{ico}.
+// Returns 404 if no local contact with the given ICO exists.
+func (h *ContactHandler) FindByICO(w http.ResponseWriter, r *http.Request) {
+	ico := chi.URLParam(r, "ico")
+	if ico == "" {
+		respondError(w, http.StatusBadRequest, "ICO is required")
+		return
+	}
+
+	contact, err := h.svc.FindByICO(r.Context(), ico)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "contact not found")
+			return
+		}
+		slog.Error("failed to find contact by ICO", "error", err, "ico", ico)
+		respondError(w, http.StatusInternalServerError, "failed to find contact")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, contactFromDomain(contact))
 }
 
 // LookupARES handles GET /api/v1/contacts/ares/{ico}.

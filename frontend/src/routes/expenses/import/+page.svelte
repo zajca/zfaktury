@@ -1,19 +1,29 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { importApi, expensesApi, type OCRResult } from '$lib/api/client';
+	import {
+		importApi,
+		expensesApi,
+		contactsApi,
+		type OCRResult,
+		type Contact
+	} from '$lib/api/client';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import OCRReviewDialog from '$lib/components/OCRReviewDialog.svelte';
+	import VendorCreatePrompt from '$lib/components/VendorCreatePrompt.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 
-	let pageState: 'idle' | 'processing' | 'review' | 'saving' | 'done' = $state('idle');
+	let pageState: 'idle' | 'processing' | 'review' | 'vendor-create' | 'saving' | 'done' =
+		$state('idle');
 	let dragOver = $state(false);
 
 	let expenseId = $state<number | null>(null);
 	let ocrResult = $state<OCRResult | null>(null);
+	// Data being passed between OCR review → optional vendor creation → save.
+	let pendingOcrData = $state<OCRResult | null>(null);
 
 	const acceptedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
@@ -103,8 +113,35 @@
 
 	async function handleOCRConfirm(data: OCRResult) {
 		if (!expenseId) return;
-		pageState = 'saving';
 
+		// If OCR detected a vendor ICO, try to match it against the local
+		// contact list. If no match is found, ask the user whether to create
+		// the vendor (optionally filled from ARES) before saving the expense.
+		const ico = data.vendor_ico?.trim();
+		if (ico) {
+			pageState = 'saving';
+			try {
+				const existing = await contactsApi.findByIco(ico);
+				if (existing) {
+					await saveExpenseWithVendor(data, existing.id);
+					return;
+				}
+			} catch (e) {
+				toastError(e instanceof Error ? e.message : 'Nepodařilo se ověřit dodavatele');
+				pageState = 'review';
+				return;
+			}
+			pendingOcrData = data;
+			pageState = 'vendor-create';
+			return;
+		}
+
+		await saveExpenseWithVendor(data, null);
+	}
+
+	async function saveExpenseWithVendor(data: OCRResult, vendorId: number | null) {
+		if (!expenseId) return;
+		pageState = 'saving';
 		try {
 			// Merge OCR data into the existing skeleton expense so that required
 			// fields with CHECK constraints (payment_method, currency_code, ...)
@@ -118,7 +155,8 @@
 				vat_amount: data.vat_amount || existing.vat_amount,
 				vat_rate_percent: data.vat_rate_percent || existing.vat_rate_percent,
 				currency_code: data.currency_code || existing.currency_code,
-				issue_date: data.issue_date || existing.issue_date
+				issue_date: data.issue_date || existing.issue_date,
+				vendor_id: vendorId ?? existing.vendor_id ?? null
 			};
 			if (data.items && data.items.length > 0) {
 				payload.items = data.items.map((item, idx) => ({
@@ -137,6 +175,25 @@
 			toastError(e instanceof Error ? e.message : 'Ukládání se nezdařilo');
 			pageState = 'review';
 		}
+	}
+
+	async function handleVendorCreated(contact: Contact) {
+		if (!pendingOcrData) return;
+		const data = pendingOcrData;
+		pendingOcrData = null;
+		await saveExpenseWithVendor(data, contact.id);
+	}
+
+	async function handleVendorSkip() {
+		if (!pendingOcrData) return;
+		const data = pendingOcrData;
+		pendingOcrData = null;
+		await saveExpenseWithVendor(data, null);
+	}
+
+	function handleVendorCancel() {
+		pendingOcrData = null;
+		pageState = 'review';
 	}
 </script>
 
@@ -248,5 +305,16 @@
 
 	{#if pageState === 'review' && ocrResult}
 		<OCRReviewDialog {ocrResult} onclose={handleOCRClose} onconfirm={handleOCRConfirm} />
+	{/if}
+
+	{#if pageState === 'vendor-create' && pendingOcrData}
+		<VendorCreatePrompt
+			initialIco={pendingOcrData.vendor_ico ?? ''}
+			initialName={pendingOcrData.vendor_name ?? ''}
+			initialDic={pendingOcrData.vendor_dic ?? ''}
+			oncreate={handleVendorCreated}
+			onskip={handleVendorSkip}
+			oncancel={handleVendorCancel}
+		/>
 	{/if}
 </div>

@@ -220,13 +220,25 @@
 	function handleOcrConfirm(data: OCRResult) {
 		ocrResult = null;
 		if (!expense) return;
-		// Auto-fill form fields from OCR data and switch to edit mode
+		// Auto-fill form fields from OCR data and switch to edit mode.
+		// Amounts in `form.amount` are CZK (display); OCR returns halere.
 		editing = true;
 		form.description = data.description || form.description;
-		form.amount = data.total_amount || form.amount;
+		form.amount = data.total_amount ? fromHalere(data.total_amount) : form.amount;
 		form.vat_rate_percent = data.vat_rate_percent || form.vat_rate_percent;
 		form.currency_code = data.currency_code || form.currency_code;
 		if (data.issue_date) form.issue_date = data.issue_date;
+
+		if (data.items && data.items.length > 0) {
+			useItems = true;
+			items = data.items.map((item) => ({
+				description: item.description,
+				quantity: fromHalere(item.quantity),
+				unit: 'ks',
+				unit_price: fromHalere(item.unit_price),
+				vat_rate_percent: item.vat_rate_percent
+			}));
+		}
 	}
 
 	async function handleDocumentDelete(id: number) {

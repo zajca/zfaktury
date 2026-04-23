@@ -36,7 +36,15 @@ const sampleImportResponseWithOCR = {
 		vat_rate_percent: 21,
 		currency_code: 'CZK',
 		description: 'Test expense',
-		items: [],
+		items: [
+			{
+				description: 'Consulting',
+				quantity: 100,
+				unit_price: 10000,
+				vat_rate_percent: 21,
+				total_amount: 12100
+			}
+		],
 		confidence: 0.92
 	}
 };
@@ -240,6 +248,16 @@ describe('Expenses import page', () => {
 			const body = JSON.parse(String((updateCall?.[1] as RequestInit).body));
 			expect(body.payment_method).toBe('bank_transfer');
 			expect(body.currency_code).toBe('CZK');
+			// OCR line items are mapped to expense items with unit+sort_order.
+			expect(body.items).toHaveLength(1);
+			expect(body.items[0]).toMatchObject({
+				description: 'Consulting',
+				quantity: 100,
+				unit: 'ks',
+				unit_price: 10000,
+				vat_rate_percent: 21,
+				sort_order: 1
+			});
 		});
 
 		// Should redirect to expense detail

@@ -98,7 +98,7 @@
 			// fields with CHECK constraints (payment_method, currency_code, ...)
 			// keep their defaults instead of being sent as empty strings.
 			const existing = await expensesApi.getById(expenseId);
-			await expensesApi.update(expenseId, {
+			const payload: Record<string, unknown> = {
 				...existing,
 				description: data.description || data.vendor_name || existing.description,
 				expense_number: data.invoice_number || existing.expense_number,
@@ -107,7 +107,18 @@
 				vat_rate_percent: data.vat_rate_percent || existing.vat_rate_percent,
 				currency_code: data.currency_code || existing.currency_code,
 				issue_date: data.issue_date || existing.issue_date
-			});
+			};
+			if (data.items && data.items.length > 0) {
+				payload.items = data.items.map((item, idx) => ({
+					description: item.description,
+					quantity: item.quantity,
+					unit: 'ks',
+					unit_price: item.unit_price,
+					vat_rate_percent: item.vat_rate_percent,
+					sort_order: idx + 1
+				}));
+			}
+			await expensesApi.update(expenseId, payload);
 			toastSuccess('Náklad uložen');
 			goto(`/expenses/${expenseId}`);
 		} catch (e) {

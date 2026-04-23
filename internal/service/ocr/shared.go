@@ -21,7 +21,7 @@ Vrat POUZE platny JSON objekt (bez markdown, bez komentaru) s nasledujici strukt
   "vat_amount": castka DPH v CZK (cislo),
   "vat_rate_percent": sazba DPH v procentech (cele cislo, napr. 21),
   "currency_code": "kod meny (CZK, EUR, USD)",
-  "description": "kratky popis dokladu",
+  "description": "kratky popis dokladu (jedna veta v cestine, co bylo nakoupeno, napr. 'Konzultacni sluzby', 'Kancelarske potreby', 'Hosting webu')",
   "items": [
     {
       "description": "popis polozky",
@@ -39,6 +39,7 @@ Dulezite:
 - Castky jsou v korunach (CZK) jako desetinna cisla (napr. 1234.56 = 1234 Kc a 56 haleru)
 - Pokud udaj neni na dokladu, pouzij prazdny retezec pro textova pole, 0 pro cisla
 - Datum vzdy ve formatu YYYY-MM-DD
+- Pole "description" NIKDY nenechavej prazdne: pokud na dokladu neni, odvod ho z polozek nebo z typu dodavatele (napr. "Nakup v potravinach", "Softwarova licence")
 - Pro confidence pouzij hodnotu podle toho, jak jsi si jisty spravnosti extrakce`
 
 const userPrompt = `Analyzuj tento doklad (faktura/uctenka) a extrahuj vsechna dostupna data do JSON formatu podle zadane struktury.`

@@ -89,6 +89,18 @@
 		}
 	}
 
+	// Build a short human-readable description for the expense.
+	// Prefers the OCR-generated description, then falls back to a composition
+	// of vendor name + the first line item (so the expense list is never empty).
+	function buildDescription(data: OCRResult): string {
+		const desc = data.description?.trim();
+		if (desc) return desc;
+		const vendor = data.vendor_name?.trim();
+		const firstItem = data.items?.[0]?.description?.trim();
+		if (vendor && firstItem) return `${firstItem} - ${vendor}`;
+		return firstItem || vendor || '';
+	}
+
 	async function handleOCRConfirm(data: OCRResult) {
 		if (!expenseId) return;
 		pageState = 'saving';
@@ -100,7 +112,7 @@
 			const existing = await expensesApi.getById(expenseId);
 			const payload: Record<string, unknown> = {
 				...existing,
-				description: data.description || data.vendor_name || existing.description,
+				description: buildDescription(data) || existing.description,
 				expense_number: data.invoice_number || existing.expense_number,
 				amount: data.total_amount || existing.amount,
 				vat_amount: data.vat_amount || existing.vat_amount,

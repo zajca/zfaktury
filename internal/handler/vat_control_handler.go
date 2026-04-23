@@ -184,17 +184,27 @@ func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.
 		return
 	}
 
-	xmlData, err := h.svc.GenerateXML(r.Context(), id, dic)
-	if err != nil {
+	if _, err := h.svc.GenerateXML(r.Context(), id, dic); err != nil {
 		slog.Error("failed to generate XML", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]any{
-		"xml_size": len(xmlData),
-		"message":  "XML generated successfully",
-	})
+	cs, err := h.svc.GetByID(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get control statement after generate XML", "error", err, "id", id)
+		respondError(w, http.StatusInternalServerError, "XML generated but failed to fetch result")
+		return
+	}
+
+	lines, err := h.svc.GetLines(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get lines after generate XML", "error", err, "id", id)
+		respondError(w, http.StatusInternalServerError, "XML generated but failed to fetch lines")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, controlStatementFromDomain(cs, lines))
 }
 
 // DownloadXML handles GET /api/v1/vat-control-statements/{id}/xml.
@@ -246,5 +256,12 @@ func (h *VATControlStatementHandler) MarkFiled(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	respondJSON(w, http.StatusOK, controlStatementFromDomain(cs, nil))
+	lines, err := h.svc.GetLines(r.Context(), id)
+	if err != nil {
+		slog.Error("failed to get lines after mark filed", "error", err, "id", id)
+		respondError(w, http.StatusInternalServerError, "mark filed succeeded but failed to fetch lines")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, controlStatementFromDomain(cs, lines))
 }

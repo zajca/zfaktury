@@ -88,9 +88,18 @@ type taxDeductionDocResponse struct {
 }
 
 type taxExtractionResponse struct {
-	AmountCZK  int     `json:"amount_czk"`
-	Year       int     `json:"year"`
-	Confidence float64 `json:"confidence"`
+	Category              string  `json:"category"`
+	ProviderName          string  `json:"provider_name"`
+	ProviderICO           string  `json:"provider_ico"`
+	ContractNumber        string  `json:"contract_number"`
+	DocumentDate          string  `json:"document_date"`
+	PeriodYear            int     `json:"period_year"`
+	AmountCZK             int     `json:"amount_czk"`
+	AmountHalere          int64   `json:"amount_halere"`
+	Purpose               string  `json:"purpose"`
+	DescriptionSuggestion string  `json:"description_suggestion"`
+	Confidence            float64 `json:"confidence"`
+	Year                  int     `json:"year"`
 }
 
 // --- Conversion helpers ---
@@ -378,8 +387,17 @@ func (h *TaxDeductionsHandler) ExtractDocument(w http.ResponseWriter, r *http.Re
 	}
 
 	respondJSON(w, http.StatusOK, taxExtractionResponse{
-		AmountCZK:  result.AmountCZK,
-		Year:       result.Year,
-		Confidence: result.Confidence,
+		Category:              result.Category,
+		ProviderName:          result.ProviderName,
+		ProviderICO:           result.ProviderICO,
+		ContractNumber:        result.ContractNumber,
+		DocumentDate:          result.DocumentDate,
+		PeriodYear:            result.PeriodYear,
+		AmountCZK:             result.AmountCZK,
+		AmountHalere:          int64(result.AmountHalere),
+		Purpose:               result.Purpose,
+		DescriptionSuggestion: result.DescriptionSuggestion,
+		Confidence:            result.Confidence,
+		Year:                  result.Year,
 	})
 }

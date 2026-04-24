@@ -1297,9 +1297,18 @@ export interface TaxDeductionDocument {
 }
 
 export interface TaxExtractionResult {
+	category: string;
+	provider_name: string;
+	provider_ico: string;
+	contract_number: string;
+	document_date: string;
+	period_year: number;
 	amount_czk: number;
-	year: number;
+	amount_halere: number;
+	purpose: string;
+	description_suggestion: string;
 	confidence: number;
+	year: number;
 }
 
 // --- Tax Credits API ---

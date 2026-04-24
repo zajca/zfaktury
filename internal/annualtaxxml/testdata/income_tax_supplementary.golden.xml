@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost nazevSW="ZFaktury" verzeSW="1.0">
   <DPFDP5 verzePis="05.01">
-    <VetaD dokument="DP5" k_uladis="DPF" rok="2025" dap_typ="D" c_ufo_cil="451" pln_moc="A" audit="N" kc_zd7="200000" pr_zd7="500000" vy_zd7="300000" kc_zakldan23="200000" kc_zakldan="200000" kc_zdzaokr="200000" da_slezap="30000" sleva_rp="0" uhrn_slevy35ba="30840" da_slevy35ba="0" kc_dazvyhod="0" da_slevy35c="0" kc_zalpred="0" kc_zbyvpred="0"></VetaD>
+    <VetaD dokument="DP5" k_uladis="DPF" rok="2025" dap_typ="D" c_ufo_cil="451" pln_moc="A" audit="N" kc_zd7="200000" pr_zd7="500000" vy_zd7="300000" kc_zakldan23="200000" kc_zakldan="200000" kc_zdzaokr="200000" da_slezap="30000" odp_uroky="0" odp_zivpoj="0" odp_penz="0" odp_dary="0" odp_cl="0" sleva_rp="0" uhrn_slevy35ba="30840" da_slevy35ba="0" kc_dazvyhod="0" da_slevy35c="0" kc_zalpred="0" kc_zbyvpred="0"></VetaD>
     <VetaP jmeno="Jan" prijmeni="Novak" rod_c="8001011234" dic="CZ8001011234" ulice="Hlavni" c_pop="42" naz_obce="Praha" psc="11000" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
   </DPFDP5>
 </Pisemnost>

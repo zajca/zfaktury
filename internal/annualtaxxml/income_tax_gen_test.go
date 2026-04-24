@@ -1,6 +1,7 @@
 package annualtaxxml
 
 import (
+	"bytes"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -144,6 +145,81 @@ func TestIncomeTaxXML_Golden_Full(t *testing.T) {
 
 	goldenPath := filepath.Join("testdata", "income_tax_full.golden.xml")
 	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
+	// Verify per-category deduction attributes are emitted with correct whole-CZK values.
+	itr := &domain.IncomeTaxReturn{
+		Year:                   2025,
+		FilingType:             domain.FilingTypeRegular,
+		TotalRevenue:           domain.NewAmount(1000000, 0),
+		UsedExpenses:           domain.NewAmount(600000, 0),
+		TaxBase:                domain.NewAmount(400000, 0),
+		TaxBaseRounded:         domain.NewAmount(400000, 0),
+		TotalDeductions:        domain.NewAmount(74000, 0),
+		DeductionMortgage:      domain.NewAmount(50000, 0),
+		DeductionLifeInsurance: domain.NewAmount(12000, 0),
+		DeductionPension:       domain.NewAmount(8000, 0),
+		DeductionDonation:      domain.NewAmount(3000, 0),
+		DeductionUnionDues:     domain.NewAmount(1000, 0),
+	}
+	settings := map[string]string{
+		"financni_urad_code":    "451",
+		"taxpayer_first_name":   "Jan",
+		"taxpayer_last_name":    "Novak",
+		"taxpayer_birth_number": "8001011234",
+		"dic":                   "CZ8001011234",
+		"taxpayer_street":       "Hlavni",
+		"taxpayer_house_number": "42",
+		"taxpayer_city":         "Praha",
+		"taxpayer_postal_code":  "11000",
+	}
+
+	xmlData, err := GenerateIncomeTaxXML(itr, settings)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+
+	// Verify each category attribute is present with the expected value.
+	expected := []string{
+		`odp_uroky="50000"`,
+		`odp_zivpoj="12000"`,
+		`odp_penz="8000"`,
+		`odp_dary="3000"`,
+		`odp_cl="1000"`,
+	}
+	for _, want := range expected {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
+}
+
+func TestIncomeTaxXML_DeductionBreakdown_ZeroWhenEmpty(t *testing.T) {
+	// When no deductions are set, all per-category attrs must still be present with value "0".
+	itr := &domain.IncomeTaxReturn{
+		Year:         2025,
+		FilingType:   domain.FilingTypeRegular,
+		TotalRevenue: domain.NewAmount(100000, 0),
+	}
+
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{})
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+
+	zeros := []string{
+		`odp_uroky="0"`,
+		`odp_zivpoj="0"`,
+		`odp_penz="0"`,
+		`odp_dary="0"`,
+		`odp_cl="0"`,
+	}
+	for _, want := range zeros {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
 }
 
 func TestIncomeTaxXML_Golden_Minimal(t *testing.T) {

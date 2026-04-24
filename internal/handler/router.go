@@ -45,6 +45,7 @@ func NewRouter(
 	vatControlSvc *service.VATControlStatementService,
 	viesSvc *service.VIESSummaryService,
 	incomeTaxSvc *service.IncomeTaxReturnService,
+	incomeTaxBundleSvc *service.IncomeTaxBundleService,
 	socialInsuranceSvc *service.SocialInsuranceService,
 	healthInsuranceSvc *service.HealthInsuranceService,
 	taxYearSettingsSvc *service.TaxYearSettingsService,
@@ -208,7 +209,7 @@ func NewRouter(
 		viesHandler := NewVIESHandler(viesSvc, settingsSvc)
 		api.Mount("/vies-summaries", viesHandler.Routes())
 
-		incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc)
+		incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc).Bundle(incomeTaxBundleSvc)
 		api.Mount("/income-tax-returns", incomeTaxHandler.Routes())
 
 		socialInsuranceHandler := NewSocialInsuranceHandler(socialInsuranceSvc)

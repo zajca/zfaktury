@@ -66,6 +66,4 @@ type TaxExtractionResult struct {
 	DescriptionSuggestion string
 	// Confidence score from the model (0.0–1.0).
 	Confidence float64
-	// Legacy field: the year the parent deduction record belongs to.
-	Year int
 }

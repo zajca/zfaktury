@@ -40,6 +40,13 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 				KcZdzaokr:   taxBaseRounded,
 				DaSlezap:    ToWholeCZK(itr.TotalTax),
 
+				// Nezdanitelne casti zakladu dane (§15) - per-category breakdown.
+				OdpUroky:  ToWholeCZK(itr.DeductionMortgage),
+				OdpZivpoj: ToWholeCZK(itr.DeductionLifeInsurance),
+				OdpPenz:   ToWholeCZK(itr.DeductionPension),
+				OdpDary:   ToWholeCZK(itr.DeductionDonation),
+				OdpCl:     ToWholeCZK(itr.DeductionUnionDues),
+
 				// Tax credits
 				SlevaRp:       ToWholeCZK(itr.CreditBasic),
 				UhrnSlevy35ba: ToWholeCZK(itr.TotalCredits),

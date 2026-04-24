@@ -290,6 +290,16 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 
 	incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, taxCreditsSvc, auditSvc)
 	incomeTaxSvc.SetInvestmentService(investmentIncomeSvc)
+	incomeTaxBundleSvc := service.NewIncomeTaxBundleService(
+		incomeTaxReturnRepo,
+		taxDeductionRepo,
+		taxDeductionDocRepo,
+		incomeTaxSvc,
+		taxDeductionDocSvc,
+		investmentDocSvc,
+		auditSvc,
+		cfg.DataDir,
+	)
 	socialInsuranceSvc := service.NewSocialInsuranceService(socialInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, auditSvc)
 	healthInsuranceSvc := service.NewHealthInsuranceService(healthInsuranceRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, auditSvc)
 
@@ -359,7 +369,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
+	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
 		DevMode: cfg.Server.Dev,
 		DataDir: cfg.DataDir,
 	})

@@ -3,6 +3,7 @@
 	import type { TaxDeduction, TaxConstants } from '$lib/api/client';
 	import { taxDeductionsApi } from '$lib/api/client';
 	import { formatCZK } from '$lib/utils/money';
+	import { categoryLabels } from '$lib/utils/deduction';
 	import Button from '$lib/ui/Button.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
@@ -24,7 +25,8 @@
 		onReset,
 		onUploadDocument,
 		onExtractAmount,
-		onDeleteDocument
+		onDeleteDocument,
+		onUploadWithOCR
 	}: {
 		deductions: TaxDeduction[];
 		showDeductionForm: boolean;
@@ -41,15 +43,8 @@
 		onUploadDocument: (deductionId: number) => void;
 		onExtractAmount: (docId: number) => void;
 		onDeleteDocument: (docId: number) => void;
+		onUploadWithOCR: () => void;
 	} = $props();
-
-	const categoryLabels: Record<string, string> = {
-		mortgage: 'Úroky z hypotéky',
-		life_insurance: 'Životní pojištění',
-		pension: 'Penzijní spoření',
-		donation: 'Dary',
-		union_dues: 'Odborové příspěvky'
-	};
 </script>
 
 <Card>
@@ -57,14 +52,19 @@
 		<h2 class="text-base font-semibold text-primary">
 			Nezdanitelné části (odpočty) <HelpTip topic="nezdanitelne-odpocty" {taxConstants} />
 		</h2>
-		<Button
-			variant="primary"
-			size="sm"
-			onclick={() => {
-				onReset();
-				showDeductionForm = true;
-			}}>Přidat odpočet</Button
-		>
+		<div class="flex gap-2">
+			<Button variant="secondary" size="sm" onclick={onUploadWithOCR} disabled={saving}
+				>Nahrát doklad (OCR)</Button
+			>
+			<Button
+				variant="primary"
+				size="sm"
+				onclick={() => {
+					onReset();
+					showDeductionForm = true;
+				}}>Přidat odpočet</Button
+			>
+		</div>
 	</div>
 	{#if deductions.length > 0}
 		<div class="mt-4 space-y-3">

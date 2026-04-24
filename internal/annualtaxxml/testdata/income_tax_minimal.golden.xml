@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost nazevSW="ZFaktury" verzeSW="1.0">
   <DPFDP5 verzePis="05.01">
-    <VetaD dokument="DP5" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="461" pln_moc="A" audit="N" kc_zd7="140000" pr_zd7="350000" vy_zd7="210000" kc_zakldan23="140000" kc_zakldan="140000" kc_zdzaokr="140000" da_slezap="21000" sleva_rp="0" uhrn_slevy35ba="0" da_slevy35ba="21000" kc_dazvyhod="0" da_slevy35c="21000" kc_zalpred="0" kc_zbyvpred="21000"></VetaD>
+    <VetaD dokument="DP5" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="461" pln_moc="A" audit="N" kc_zd7="140000" pr_zd7="350000" vy_zd7="210000" kc_zakldan23="140000" kc_zakldan="140000" kc_zdzaokr="140000" da_slezap="21000" odp_uroky="0" odp_zivpoj="0" odp_penz="0" odp_dary="0" odp_cl="0" sleva_rp="0" uhrn_slevy35ba="0" da_slevy35ba="21000" kc_dazvyhod="0" da_slevy35c="21000" kc_zalpred="0" kc_zbyvpred="21000"></VetaD>
     <VetaP jmeno="Eva" prijmeni="Svobodova" rod_c="9055121234" dic="CZ9055121234" ulice="Namesti Miru" c_pop="7" naz_obce="Brno" psc="60200" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
   </DPFDP5>
 </Pisemnost>

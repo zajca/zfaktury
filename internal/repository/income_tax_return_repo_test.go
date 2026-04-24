@@ -112,6 +112,62 @@ func TestIncomeTaxReturnRepository_Update(t *testing.T) {
 	}
 }
 
+func TestIncomeTaxReturnRepository_DeductionBreakdown_Persists(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewIncomeTaxReturnRepository(db)
+	ctx := context.Background()
+
+	itr := &domain.IncomeTaxReturn{
+		Year:                   2025,
+		FilingType:             domain.FilingTypeRegular,
+		DeductionMortgage:      domain.NewAmount(50000, 0),
+		DeductionLifeInsurance: domain.NewAmount(12000, 0),
+		DeductionPension:       domain.NewAmount(8000, 0),
+		DeductionDonation:      domain.NewAmount(3000, 0),
+		DeductionUnionDues:     domain.NewAmount(1000, 0),
+	}
+	if err := repo.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.DeductionMortgage != domain.NewAmount(50000, 0) {
+		t.Errorf("DeductionMortgage = %d, want %d", got.DeductionMortgage, domain.NewAmount(50000, 0))
+	}
+	if got.DeductionLifeInsurance != domain.NewAmount(12000, 0) {
+		t.Errorf("DeductionLifeInsurance = %d, want %d", got.DeductionLifeInsurance, domain.NewAmount(12000, 0))
+	}
+	if got.DeductionPension != domain.NewAmount(8000, 0) {
+		t.Errorf("DeductionPension = %d, want %d", got.DeductionPension, domain.NewAmount(8000, 0))
+	}
+	if got.DeductionDonation != domain.NewAmount(3000, 0) {
+		t.Errorf("DeductionDonation = %d, want %d", got.DeductionDonation, domain.NewAmount(3000, 0))
+	}
+	if got.DeductionUnionDues != domain.NewAmount(1000, 0) {
+		t.Errorf("DeductionUnionDues = %d, want %d", got.DeductionUnionDues, domain.NewAmount(1000, 0))
+	}
+
+	// Update and re-read.
+	got.DeductionMortgage = domain.NewAmount(75000, 0)
+	got.DeductionDonation = domain.NewAmount(9000, 0)
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+	reloaded, err := repo.GetByID(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after update error: %v", err)
+	}
+	if reloaded.DeductionMortgage != domain.NewAmount(75000, 0) {
+		t.Errorf("after update DeductionMortgage = %d, want %d", reloaded.DeductionMortgage, domain.NewAmount(75000, 0))
+	}
+	if reloaded.DeductionDonation != domain.NewAmount(9000, 0) {
+		t.Errorf("after update DeductionDonation = %d, want %d", reloaded.DeductionDonation, domain.NewAmount(9000, 0))
+	}
+}
+
 func TestIncomeTaxReturnRepository_Delete(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewIncomeTaxReturnRepository(db)

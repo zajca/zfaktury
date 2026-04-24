@@ -478,6 +478,145 @@ func TestIncomeTaxReturnService_Recalculate_ActualExpenses(t *testing.T) {
 	}
 }
 
+// setupIncomeTaxSvcWithCredits creates the service with a wired TaxCreditsService for
+// tests that exercise credits/deductions computation.
+func setupIncomeTaxSvcWithCredits(t *testing.T) (*IncomeTaxReturnService, *TaxCreditsService, *sql.DB) {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	itrRepo := repository.NewIncomeTaxReturnRepository(db)
+	invRepo := repository.NewInvoiceRepository(db)
+	expRepo := repository.NewExpenseRepository(db)
+	setRepo := repository.NewSettingsRepository(db)
+	tysRepo := repository.NewTaxYearSettingsRepository(db)
+	tpRepo := repository.NewTaxPrepaymentRepository(db)
+
+	spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+	childRepo := repository.NewTaxChildCreditRepository(db)
+	personalRepo := repository.NewTaxPersonalCreditsRepository(db)
+	deductionRepo := repository.NewTaxDeductionRepository(db)
+	creditsSvc := NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo, nil)
+
+	svc := NewIncomeTaxReturnService(itrRepo, invRepo, expRepo, setRepo, tysRepo, tpRepo, creditsSvc, nil)
+	return svc, creditsSvc, db
+}
+
+func TestIncomeTaxReturnService_Recalculate_DeductionBreakdown(t *testing.T) {
+	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+
+	// Seed a 2025 invoice so that tax base > 0 (required for donation cap = 15% of tax base).
+	contact := testutil.SeedContact(t, db, nil)
+	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO invoices (
+			invoice_number, type, status,
+			issue_date, due_date, delivery_date, variable_symbol, constant_symbol,
+			customer_id, currency_code, exchange_rate,
+			payment_method, bank_account, bank_code, iban, swift,
+			subtotal_amount, vat_amount, total_amount, paid_amount,
+			notes, internal_notes,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"FV20250100", domain.InvoiceTypeRegular, domain.InvoiceStatusSent,
+		jan15.Format("2006-01-02"), jan15.AddDate(0, 0, 14).Format("2006-01-02"), jan15.Format("2006-01-02"),
+		"", "", contact.ID, "CZK", 100,
+		"bank_transfer", "", "", "", "",
+		domain.NewAmount(500000, 0), 0, domain.NewAmount(500000, 0), 0,
+		"", "",
+		now.Format(time.RFC3339), now.Format(time.RFC3339),
+	)
+	if err != nil {
+		t.Fatalf("inserting invoice: %v", err)
+	}
+
+	// Seed deductions across all 5 categories.
+	deductions := []domain.TaxDeduction{
+		{
+			Year:          2025,
+			Category:      domain.DeductionMortgage,
+			Description:   "Hypoteka",
+			ClaimedAmount: domain.NewAmount(50000, 0),
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+		{
+			Year:          2025,
+			Category:      domain.DeductionLifeInsurance,
+			Description:   "Zivotni pojisteni",
+			ClaimedAmount: domain.NewAmount(12000, 0),
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+		{
+			Year:          2025,
+			Category:      domain.DeductionPension,
+			Description:   "Penzijni sporeni",
+			ClaimedAmount: domain.NewAmount(8000, 0),
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+		{
+			Year:          2025,
+			Category:      domain.DeductionDonation,
+			Description:   "Dar",
+			ClaimedAmount: domain.NewAmount(3000, 0),
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+		{
+			Year:          2025,
+			Category:      domain.DeductionUnionDues,
+			Description:   "Odborove prispevky",
+			ClaimedAmount: domain.NewAmount(1000, 0),
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+	}
+	for i := range deductions {
+		if err := creditsSvc.CreateDeduction(ctx, &deductions[i]); err != nil {
+			t.Fatalf("CreateDeduction(%s) error: %v", deductions[i].Category, err)
+		}
+	}
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// Per-category sums should match the claimed amounts (all under statutory caps).
+	if result.DeductionMortgage != domain.NewAmount(50000, 0) {
+		t.Errorf("DeductionMortgage = %d, want %d", result.DeductionMortgage, domain.NewAmount(50000, 0))
+	}
+	if result.DeductionLifeInsurance != domain.NewAmount(12000, 0) {
+		t.Errorf("DeductionLifeInsurance = %d, want %d", result.DeductionLifeInsurance, domain.NewAmount(12000, 0))
+	}
+	if result.DeductionPension != domain.NewAmount(8000, 0) {
+		t.Errorf("DeductionPension = %d, want %d", result.DeductionPension, domain.NewAmount(8000, 0))
+	}
+	if result.DeductionDonation != domain.NewAmount(3000, 0) {
+		t.Errorf("DeductionDonation = %d, want %d", result.DeductionDonation, domain.NewAmount(3000, 0))
+	}
+	if result.DeductionUnionDues != domain.NewAmount(1000, 0) {
+		t.Errorf("DeductionUnionDues = %d, want %d", result.DeductionUnionDues, domain.NewAmount(1000, 0))
+	}
+
+	// Total should match sum of individual categories.
+	expectedTotal := result.DeductionMortgage + result.DeductionLifeInsurance +
+		result.DeductionPension + result.DeductionDonation + result.DeductionUnionDues
+	if result.TotalDeductions != expectedTotal {
+		t.Errorf("TotalDeductions = %d, want sum %d", result.TotalDeductions, expectedTotal)
+	}
+}
+
 func TestIncomeTaxReturnService_Recalculate_WithPrepayments(t *testing.T) {
 	svc, db := setupIncomeTaxSvc(t)
 	ctx := context.Background()

@@ -212,6 +212,33 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		if credErr != nil {
 			return nil, fmt.Errorf("computing deductions for income_tax_return: %w", credErr)
 		}
+
+		// Fetch per-category breakdown from deductions after compute.
+		// ComputeDeductions persisted AllowedAmount on each entry; sum them by category.
+		deductions, dedErr := s.taxCreditsSvc.ListDeductions(ctx, itr.Year)
+		if dedErr != nil {
+			return nil, fmt.Errorf("listing deductions for breakdown: %w", dedErr)
+		}
+		var mortgage, lifeIns, pension, donation, union domain.Amount
+		for _, ded := range deductions {
+			switch ded.Category {
+			case domain.DeductionMortgage:
+				mortgage += ded.AllowedAmount
+			case domain.DeductionLifeInsurance:
+				lifeIns += ded.AllowedAmount
+			case domain.DeductionPension:
+				pension += ded.AllowedAmount
+			case domain.DeductionDonation:
+				donation += ded.AllowedAmount
+			case domain.DeductionUnionDues:
+				union += ded.AllowedAmount
+			}
+		}
+		itr.DeductionMortgage = mortgage
+		itr.DeductionLifeInsurance = lifeIns
+		itr.DeductionPension = pension
+		itr.DeductionDonation = donation
+		itr.DeductionUnionDues = union
 	}
 
 	// Prepayments from tax prepayments table.

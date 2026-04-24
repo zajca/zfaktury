@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { beforeNavigate } from '$app/navigation';
 	import {
 		taxCreditsApi,
 		taxDeductionsApi,
@@ -19,6 +20,9 @@
 	import ChildrenCreditsCard from '$lib/components/tax/ChildrenCreditsCard.svelte';
 	import TaxDeductionsCard from '$lib/components/tax/TaxDeductionsCard.svelte';
 	import TaxCreditsSummaryCard from '$lib/components/tax/TaxCreditsSummaryCard.svelte';
+	import TaxDeductionOCRReviewDialog, {
+		type ConfirmedValues
+	} from '$lib/components/tax/TaxDeductionOCRReviewDialog.svelte';
 
 	let selectedYear = $state(new Date().getFullYear() - 1);
 	let loading = $state(true);
@@ -57,6 +61,14 @@
 	let deductionCategory = $state('mortgage');
 	let deductionDescription = $state('');
 	let deductionAmount = $state(0);
+
+	// OCR review dialog state for tax deductions.
+	// When the user uploads a proof document, we create a placeholder deduction,
+	// run OCR, then show the review dialog. On confirm we PUT the final values
+	// onto the placeholder; on cancel we DELETE the placeholder (and its file).
+	let ocrDialogOpen = $state(false);
+	let ocrResult = $state<TaxExtractionResult | null>(null);
+	let ocrPlaceholderId = $state<number | null>(null);
 
 	async function loadData() {
 		loading = true;
@@ -315,6 +327,76 @@
 		}
 	}
 
+	async function uploadWithOCR() {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/*,application/pdf';
+		input.onchange = async () => {
+			const file = input.files?.[0];
+			if (!file) return;
+			saving = true;
+			let placeholder: TaxDeduction | null = null;
+			try {
+				placeholder = await taxDeductionsApi.create(selectedYear, {
+					category: 'mortgage',
+					description: '',
+					claimed_amount: 0
+				});
+				const doc = await taxDeductionsApi.uploadDocument(selectedYear, placeholder.id, file);
+				const result = await taxDeductionsApi.extractDocument(doc.id);
+				ocrPlaceholderId = placeholder.id;
+				ocrResult = result;
+				ocrDialogOpen = true;
+			} catch (e) {
+				if (placeholder) {
+					try {
+						await taxDeductionsApi.delete(selectedYear, placeholder.id);
+					} catch {
+						/* best effort */
+					}
+				}
+				toastError(e instanceof Error ? e.message : 'Chyba při OCR rozpoznání');
+			} finally {
+				saving = false;
+			}
+		};
+		input.click();
+	}
+
+	async function onOCRConfirm(values: ConfirmedValues) {
+		if (ocrPlaceholderId == null) return;
+		saving = true;
+		try {
+			await taxDeductionsApi.update(selectedYear, ocrPlaceholderId, {
+				category: values.category,
+				description: values.description,
+				claimed_amount: toHalere(values.claimed_amount_czk)
+			});
+			ocrDialogOpen = false;
+			ocrResult = null;
+			ocrPlaceholderId = null;
+			await loadData();
+		} catch (e) {
+			toastError(e instanceof Error ? e.message : 'Chyba při ukládání odpočtu');
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function onOCRCancel() {
+		if (ocrPlaceholderId != null) {
+			try {
+				await taxDeductionsApi.delete(selectedYear, ocrPlaceholderId);
+			} catch {
+				/* best effort — if cleanup fails, the user sees the placeholder on reload and can delete it */
+			}
+		}
+		ocrDialogOpen = false;
+		ocrResult = null;
+		ocrPlaceholderId = null;
+		await loadData();
+	}
+
 	async function copyFromPreviousYear() {
 		saving = true;
 		try {
@@ -331,6 +413,19 @@
 	onMount(() => {
 		loadData();
 		mounted = true;
+	});
+
+	// If the user navigates away while an OCR placeholder deduction is still
+	// open (e.g. closes the dialog tab), best-effort clean up the placeholder
+	// row so it doesn't linger with an empty description and zero amount.
+	beforeNavigate(() => {
+		if (ocrPlaceholderId != null) {
+			const id = ocrPlaceholderId;
+			ocrPlaceholderId = null;
+			taxDeductionsApi.delete(selectedYear, id).catch(() => {
+				/* best effort */
+			});
+		}
 	});
 
 	$effect(() => {
@@ -448,6 +543,7 @@
 				onUploadDocument={uploadDocument}
 				onExtractAmount={extractAmount}
 				onDeleteDocument={deleteDocument}
+				onUploadWithOCR={uploadWithOCR}
 			/>
 
 			{#if summary}
@@ -456,3 +552,12 @@
 		</div>
 	{/if}
 </div>
+
+{#if ocrDialogOpen && ocrResult}
+	<TaxDeductionOCRReviewDialog
+		result={ocrResult}
+		{saving}
+		onConfirm={onOCRConfirm}
+		onCancel={onOCRCancel}
+	/>
+{/if}

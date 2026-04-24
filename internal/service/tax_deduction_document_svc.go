@@ -189,9 +189,12 @@ func (s *TaxDeductionDocumentService) GetFilePath(ctx context.Context, id int64)
 		return "", "", fmt.Errorf("fetching document for file path: %w", err)
 	}
 
-	// Validate the stored path is within our data directory to prevent path traversal.
+	// Validate the stored path is within our data directory to prevent path
+	// traversal AND symlink escape. EvalSymlinks resolves the whole chain; a
+	// symlink inside tax-documents/ pointing at /etc would otherwise satisfy a
+	// lexical filepath.Abs prefix check.
 	expectedPrefix := filepath.Join(s.dataDir, "tax-documents") + string(filepath.Separator)
-	absPath, err := filepath.Abs(doc.StoragePath)
+	absPath, err := filepath.EvalSymlinks(doc.StoragePath)
 	if err != nil {
 		return "", "", fmt.Errorf("invalid storage path: %w", err)
 	}

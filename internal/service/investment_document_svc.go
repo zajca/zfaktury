@@ -216,9 +216,10 @@ func (s *InvestmentDocumentService) GetFilePath(ctx context.Context, id int64) (
 		return "", "", fmt.Errorf("fetching document for file path: %w", err)
 	}
 
-	// Validate the stored path is within our data directory to prevent path traversal.
+	// Validate the stored path is within our data directory to prevent path
+	// traversal AND symlink escape (EvalSymlinks resolves the whole chain).
 	expectedPrefix := filepath.Join(s.dataDir, "investment-documents") + string(filepath.Separator)
-	absPath, err := filepath.Abs(doc.StoragePath)
+	absPath, err := filepath.EvalSymlinks(doc.StoragePath)
 	if err != nil {
 		return "", "", fmt.Errorf("invalid storage path: %w", err)
 	}

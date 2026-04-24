@@ -29,6 +29,7 @@ const incomeTaxReturnColumns = `id, year, filing_type,
 	prepayments, tax_due,
 	capital_income_gross, capital_income_tax, capital_income_net,
 	other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
+	deduction_mortgage, deduction_life_insurance, deduction_pension, deduction_donation, deduction_union_dues,
 	xml_data, status, filed_at, created_at, updated_at`
 
 // scanIncomeTaxReturn scans an IncomeTaxReturn from a row.
@@ -47,6 +48,7 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 		&itr.Prepayments, &itr.TaxDue,
 		&itr.CapitalIncomeGross, &itr.CapitalIncomeTax, &itr.CapitalIncomeNet,
 		&itr.OtherIncomeGross, &itr.OtherIncomeExpenses, &itr.OtherIncomeExempt, &itr.OtherIncomeNet,
+		&itr.DeductionMortgage, &itr.DeductionLifeInsurance, &itr.DeductionPension, &itr.DeductionDonation, &itr.DeductionUnionDues,
 		&xmlData, &itr.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
@@ -91,8 +93,9 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 			prepayments, tax_due,
 			capital_income_gross, capital_income_tax, capital_income_net,
 			other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
+			deduction_mortgage, deduction_life_insurance, deduction_pension, deduction_donation, deduction_union_dues,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
 		itr.TaxBase, itr.TotalDeductions, itr.TaxBaseRounded, itr.TaxAt15, itr.TaxAt23, itr.TotalTax,
@@ -101,6 +104,7 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 		itr.Prepayments, itr.TaxDue,
 		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
 		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
+		itr.DeductionMortgage, itr.DeductionLifeInsurance, itr.DeductionPension, itr.DeductionDonation, itr.DeductionUnionDues,
 		nil, itr.Status, nil,
 		itr.CreatedAt.Format(time.RFC3339), itr.UpdatedAt.Format(time.RFC3339),
 	)
@@ -135,6 +139,7 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 			prepayments = ?, tax_due = ?,
 			capital_income_gross = ?, capital_income_tax = ?, capital_income_net = ?,
 			other_income_gross = ?, other_income_expenses = ?, other_income_exempt = ?, other_income_net = ?,
+			deduction_mortgage = ?, deduction_life_insurance = ?, deduction_pension = ?, deduction_donation = ?, deduction_union_dues = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		itr.Year, itr.FilingType,
@@ -145,6 +150,7 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 		itr.Prepayments, itr.TaxDue,
 		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
 		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
+		itr.DeductionMortgage, itr.DeductionLifeInsurance, itr.DeductionPension, itr.DeductionDonation, itr.DeductionUnionDues,
 		itr.XMLData, itr.Status, filedAt,
 		itr.UpdatedAt.Format(time.RFC3339), itr.ID,
 	)

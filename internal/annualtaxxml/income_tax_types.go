@@ -42,6 +42,18 @@ type DPFOVetaD struct {
 	KcZdzaokr   int64 `xml:"kc_zdzaokr,attr"`   // tax base rounded down to 100 CZK
 	DaSlezap    int64 `xml:"da_slezap,attr"`    // total tax
 
+	// Nezdanitelne casti zakladu dane (§15) - per-category breakdown.
+	// TODO verify EPO attr name: odp_uroky (mortgage interest - uroky z hypoteky/stavebniho sporeni)
+	OdpUroky int64 `xml:"odp_uroky,attr"`
+	// TODO verify EPO attr name: odp_zivpoj (life insurance - zivotni pojisteni)
+	OdpZivpoj int64 `xml:"odp_zivpoj,attr"`
+	// TODO verify EPO attr name: odp_penz (pension contributions - penzijni sporeni)
+	OdpPenz int64 `xml:"odp_penz,attr"`
+	// TODO verify EPO attr name: odp_dary (donations - dary)
+	OdpDary int64 `xml:"odp_dary,attr"`
+	// TODO verify EPO attr name: odp_cl (union dues - odborove prispevky)
+	OdpCl int64 `xml:"odp_cl,attr"`
+
 	// Tax credits (slevy §35ba)
 	SlevaRp       int64 `xml:"sleva_rp,attr"`       // basic taxpayer credit
 	UhrnSlevy35ba int64 `xml:"uhrn_slevy35ba,attr"` // total credits

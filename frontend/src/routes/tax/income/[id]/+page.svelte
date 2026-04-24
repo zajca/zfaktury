@@ -83,9 +83,21 @@
 	async function handleDownloadXml() {
 		actionLoading = 'download';
 		try {
-			await downloadFile(`/api/v1/income-tax-returns/${returnId}/xml`, `dpfo-${returnId}.xml`);
+			await downloadFile(incomeTaxApi.xmlUrl(returnId), `dpfo-${returnId}.xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	async function handleDownloadBundle() {
+		if (!data) return;
+		actionLoading = 'bundle';
+		try {
+			await downloadFile(incomeTaxApi.bundleUrl(returnId), `priznani-${data.year}.zip`);
+		} catch (e) {
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout ZIP s přílohami');
 		} finally {
 			actionLoading = null;
 		}
@@ -183,6 +195,14 @@
 				{#if data.has_xml}
 					<Button variant="secondary" onclick={handleDownloadXml} disabled={actionLoading !== null}>
 						{actionLoading === 'download' ? 'Stahuji...' : 'Stáhnout XML'}
+					</Button>
+					<Button
+						variant="secondary"
+						onclick={handleDownloadBundle}
+						disabled={actionLoading !== null}
+						title="Stáhnout ZIP se XML a všemi přílohami (nezdanitelné části)"
+					>
+						{actionLoading === 'bundle' ? 'Balím...' : 'Stáhnout ZIP s přílohami'}
 					</Button>
 				{/if}
 				{#if data.status !== 'filed'}

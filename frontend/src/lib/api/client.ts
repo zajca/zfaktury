@@ -1110,6 +1110,12 @@ export const incomeTaxApi = {
 	},
 	markFiled(id: number) {
 		return post<IncomeTaxReturn>(`/income-tax-returns/${id}/mark-filed`, {});
+	},
+	xmlUrl(id: number): string {
+		return `${API_BASE}/income-tax-returns/${id}/xml`;
+	},
+	bundleUrl(id: number): string {
+		return `${API_BASE}/income-tax-returns/${id}/bundle`;
 	}
 };
 
@@ -1308,7 +1314,6 @@ export interface TaxExtractionResult {
 	purpose: string;
 	description_suggestion: string;
 	confidence: number;
-	year: number;
 }
 
 // --- Tax Credits API ---

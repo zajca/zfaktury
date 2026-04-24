@@ -20,6 +20,14 @@ type IncomeTaxReturn struct {
 	TotalDeductions Amount // nezdanitelne casti zakladu dane
 	TaxBaseRounded  Amount // rounded down to 100 CZK
 
+	// Deduction breakdown per §15 category (sum of AllowedAmount per category for the year).
+	// Used for EPO DPFDP5 XML attributes in VetaD.
+	DeductionMortgage      Amount // uroky z hypoteky / stavebniho sporeni
+	DeductionLifeInsurance Amount // zivotni pojisteni
+	DeductionPension       Amount // penzijni sporeni
+	DeductionDonation      Amount // dary
+	DeductionUnionDues     Amount // odborove prispevky
+
 	// Tax calculation (15% / 23% progressive)
 	TaxAt15  Amount
 	TaxAt23  Amount

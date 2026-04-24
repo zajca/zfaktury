@@ -99,7 +99,6 @@ type taxExtractionResponse struct {
 	Purpose               string  `json:"purpose"`
 	DescriptionSuggestion string  `json:"description_suggestion"`
 	Confidence            float64 `json:"confidence"`
-	Year                  int     `json:"year"`
 }
 
 // --- Conversion helpers ---
@@ -398,6 +397,5 @@ func (h *TaxDeductionsHandler) ExtractDocument(w http.ResponseWriter, r *http.Re
 		Purpose:               result.Purpose,
 		DescriptionSuggestion: result.DescriptionSuggestion,
 		Confidence:            result.Confidence,
-		Year:                  result.Year,
 	})
 }

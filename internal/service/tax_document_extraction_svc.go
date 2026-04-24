@@ -123,7 +123,6 @@ func (s *TaxDocumentExtractionService) ExtractAmount(ctx context.Context, docume
 		Purpose:               parsed.Purpose,
 		DescriptionSuggestion: parsed.DescriptionSuggestion,
 		Confidence:            confidence,
-		Year:                  year,
 	}
 
 	// Persist amount and confidence on the document record so the UI can show

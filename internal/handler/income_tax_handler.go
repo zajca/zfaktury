@@ -16,12 +16,20 @@ import (
 
 // IncomeTaxHandler handles HTTP requests for income tax return management.
 type IncomeTaxHandler struct {
-	svc *service.IncomeTaxReturnService
+	svc       *service.IncomeTaxReturnService
+	bundleSvc *service.IncomeTaxBundleService // nullable
 }
 
 // NewIncomeTaxHandler creates a new IncomeTaxHandler.
 func NewIncomeTaxHandler(svc *service.IncomeTaxReturnService) *IncomeTaxHandler {
 	return &IncomeTaxHandler{svc: svc}
+}
+
+// Bundle injects the optional bundle service used by DownloadBundle. The
+// endpoint returns 501 Not Implemented when the bundle service is not set.
+func (h *IncomeTaxHandler) Bundle(bundleSvc *service.IncomeTaxBundleService) *IncomeTaxHandler {
+	h.bundleSvc = bundleSvc
+	return h
 }
 
 // Routes registers income tax return routes on the given router.
@@ -34,6 +42,7 @@ func (h *IncomeTaxHandler) Routes() chi.Router {
 	r.Post("/{id}/recalculate", h.Recalculate)
 	r.Post("/{id}/generate-xml", h.GenerateXML)
 	r.Get("/{id}/xml", h.DownloadXML)
+	r.Get("/{id}/bundle", h.DownloadBundle)
 	r.Post("/{id}/mark-filed", h.MarkFiled)
 	return r
 }

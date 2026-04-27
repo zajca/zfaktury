@@ -18,13 +18,14 @@ jobs:
         run: |
           echo "Checking CI status for ${{ github.sha }}..."
           for i in $(seq 1 20); do
-            RUN=$(gh run list \
-              --repo "${{ github.repository }}" \
-              --workflow ci.yml \
-              --commit "${{ github.sha }}" \
-              --json status,conclusion \
-              --limit 1 \
-              --jq '.[0] // empty')
+            # NOTE: `gh run list --commit <sha>` and the equivalent
+            # `?head_sha=` API filter intermittently return empty results
+            # for runs that exist (GitHub-side index lag). Listing recent
+            # runs and filtering with jq is more reliable.
+            RUN=$(gh api \
+              "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?per_page=20" \
+              --jq ".workflow_runs[] | select(.head_sha == \"${{ github.sha }}\") | {status, conclusion}" \
+              | head -n 1)
 
             if [ -z "$RUN" ]; then
               echo "No CI run found for this commit (attempt $i/20), waiting 30s..."

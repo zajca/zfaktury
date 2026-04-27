@@ -1,6 +1,4 @@
 <script lang="ts" module>
-	import type { TaxExtractionResult } from '$lib/api/client';
-
 	/**
 	 * Values returned from the OCR review dialog after the user confirms.
 	 *
@@ -17,11 +15,10 @@
 		purpose: string;
 		claimed_amount_czk: number;
 	}
-
-	export type { TaxExtractionResult };
 </script>
 
 <script lang="ts">
+	import type { TaxExtractionResult } from '$lib/api/client';
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
 	import Select from '$lib/ui/Select.svelte';

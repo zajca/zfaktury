@@ -36,7 +36,7 @@ func NewAnthropicProvider(apiKey, model string) *AnthropicProvider {
 		apiKey:     apiKey,
 		baseURL:    anthropicDefaultURL,
 		model:      model,
-		httpClient: &http.Client{Timeout: 60 * time.Second},
+		httpClient: &http.Client{Timeout: 5 * time.Minute},
 	}
 }
 

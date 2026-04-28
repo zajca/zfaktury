@@ -11,6 +11,7 @@
 		uploadPlatform: string;
 		uploading: boolean;
 		saving: boolean;
+		extractingId: number | null;
 		onUploadPlatformChange: (value: string) => void;
 		onUpload: () => void;
 		onExtract: (id: number) => void;
@@ -22,6 +23,7 @@
 		uploadPlatform,
 		uploading,
 		saving,
+		extractingId,
 		onUploadPlatformChange,
 		onUpload,
 		onExtract,
@@ -50,6 +52,22 @@
 </script>
 
 <Card>
+	{#if extractingId !== null}
+		<div
+			class="mb-4 flex items-start gap-2 rounded border border-border bg-info-bg p-3 text-sm text-info"
+			role="status"
+		>
+			<span
+				class="mt-0.5 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+				aria-hidden="true"
+			></span>
+			<div>
+				<div class="font-medium">Probíhá AI extrakce dat z dokumentu...</div>
+				<div class="text-xs">U větších brokerských výpisů to může trvat 1-3 minuty.</div>
+			</div>
+		</div>
+	{/if}
+
 	<div class="flex items-center justify-between">
 		<h2 class="text-base font-semibold text-primary">Nahrané dokumenty</h2>
 		<div class="flex items-center gap-2">
@@ -121,8 +139,20 @@
 											variant="secondary"
 											size="sm"
 											onclick={() => onExtract(doc.id)}
-											disabled={saving}>Extrahovat</Button
+											disabled={saving}
 										>
+											{#if extractingId === doc.id}
+												<span
+													class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+													role="status"
+													aria-hidden="true"
+												></span>
+												<span class="sr-only">Probíhá extrakce</span>
+												Extrahuje se...
+											{:else}
+												Extrahovat
+											{/if}
+										</Button>
 									{/if}
 									<Button
 										variant="danger"

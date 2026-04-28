@@ -105,8 +105,11 @@
 		input.click();
 	}
 
+	let extractingId = $state<number | null>(null);
+
 	async function extractDocument(id: number) {
 		saving = true;
+		extractingId = id;
 		try {
 			await investmentsApi.extractDocument(id);
 			await loadData();
@@ -114,6 +117,7 @@
 			toastError(e instanceof Error ? e.message : 'Chyba při extrakci');
 		} finally {
 			saving = false;
+			extractingId = null;
 		}
 	}
 
@@ -379,6 +383,7 @@
 					{uploadPlatform}
 					{uploading}
 					{saving}
+					{extractingId}
 					onUploadPlatformChange={(v) => (uploadPlatform = v)}
 					onUpload={uploadDocument}
 					onExtract={extractDocument}

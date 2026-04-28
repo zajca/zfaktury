@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultTimeout   = 60 * time.Second
+	defaultTimeout   = 5 * time.Minute
 	defaultMaxTokens = 16384
 )
 

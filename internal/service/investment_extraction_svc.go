@@ -84,6 +84,12 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 
 	parsed, err := ocr.ParseInvestmentJSON(rawResponse)
 	if err != nil {
+		slog.Warn("failed to parse investment AI response",
+			"document_id", documentID,
+			"error", err,
+			"response_length", len(rawResponse),
+			"response_preview", truncate(rawResponse, 1000),
+		)
 		_ = s.docRepo.UpdateExtraction(ctx, documentID, domain.ExtractionFailed, err.Error())
 		return nil, fmt.Errorf("parsing AI response: %w", err)
 	}

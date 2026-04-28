@@ -36,7 +36,7 @@ func NewAnthropicProvider(apiKey, model string) *AnthropicProvider {
 		apiKey:     apiKey,
 		baseURL:    anthropicDefaultURL,
 		model:      model,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
@@ -176,6 +176,10 @@ func parseAnthropicResponseRaw(body []byte) (string, error) {
 		return "", fmt.Errorf("anthropic API error: %s", resp.Error.Message)
 	}
 
+	if resp.StopReason == "max_tokens" {
+		return "", fmt.Errorf("anthropic response was truncated (stop_reason=max_tokens); increase max_tokens or split the document")
+	}
+
 	if len(resp.Content) == 0 {
 		return "", fmt.Errorf("anthropic returned no content")
 	}
@@ -216,8 +220,9 @@ type anthropicImageSource struct {
 
 // Anthropic Messages API response types.
 type anthropicResponse struct {
-	Content []anthropicResponseContent `json:"content"`
-	Error   *anthropicError            `json:"error,omitempty"`
+	Content    []anthropicResponseContent `json:"content"`
+	StopReason string                     `json:"stop_reason"`
+	Error      *anthropicError            `json:"error,omitempty"`
 }
 
 type anthropicResponseContent struct {
@@ -266,6 +271,10 @@ func parseAnthropicResponse(body []byte) (*domain.OCRResult, error) {
 
 	if resp.Error != nil {
 		return nil, fmt.Errorf("anthropic API error: %s", resp.Error.Message)
+	}
+
+	if resp.StopReason == "max_tokens" {
+		return nil, fmt.Errorf("anthropic response was truncated (stop_reason=max_tokens); increase max_tokens or split the document")
 	}
 
 	if len(resp.Content) == 0 {

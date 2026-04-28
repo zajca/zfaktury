@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	defaultTimeout   = 25 * time.Second
-	defaultMaxTokens = 4096
+	defaultTimeout   = 60 * time.Second
+	defaultMaxTokens = 16384
 )
 
 // OpenAICompatibleProvider implements the Provider interface using the OpenAI-compatible
@@ -170,7 +170,8 @@ type chatResponse struct {
 }
 
 type chatChoice struct {
-	Message chatResponseMessage `json:"message"`
+	Message      chatResponseMessage `json:"message"`
+	FinishReason string              `json:"finish_reason"`
 }
 
 type chatResponseMessage struct {
@@ -284,7 +285,12 @@ func parseChatResponseRaw(body []byte, providerName string) (string, error) {
 		return "", fmt.Errorf("%s returned no choices", providerName)
 	}
 
-	return chatResp.Choices[0].Message.Content, nil
+	choice := chatResp.Choices[0]
+	if choice.FinishReason == "length" {
+		return "", fmt.Errorf("%s response was truncated (finish_reason=length); increase max_tokens or split the document", providerName)
+	}
+
+	return choice.Message.Content, nil
 }
 
 // parseChatResponse extracts the OCR result from the Chat Completions API response body.
@@ -302,6 +308,10 @@ func parseChatResponse(body []byte, providerName string) (*domain.OCRResult, err
 		return nil, fmt.Errorf("%s returned no choices", providerName)
 	}
 
-	content := chatResp.Choices[0].Message.Content
-	return ParseOCRJSON(content)
+	choice := chatResp.Choices[0]
+	if choice.FinishReason == "length" {
+		return nil, fmt.Errorf("%s response was truncated (finish_reason=length); increase max_tokens or split the document", providerName)
+	}
+
+	return ParseOCRJSON(choice.Message.Content)
 }

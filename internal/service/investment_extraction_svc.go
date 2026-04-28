@@ -57,6 +57,10 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 		return nil, fmt.Errorf("getting document: %w", err)
 	}
 
+	if doc.Kind == domain.InvestmentDocKindData {
+		return nil, fmt.Errorf("document is a raw data export and cannot be processed by AI extraction: %w", domain.ErrInvalidInput)
+	}
+
 	if !ocrSupportedInvestmentContentTypes[doc.ContentType] {
 		return nil, fmt.Errorf("document content type %q is not supported for extraction; supported: image/jpeg, image/png, application/pdf", doc.ContentType)
 	}

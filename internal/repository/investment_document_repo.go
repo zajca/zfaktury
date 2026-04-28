@@ -21,7 +21,7 @@ func NewInvestmentDocumentRepository(db *sql.DB) *InvestmentDocumentRepository {
 }
 
 // investmentDocumentColumns is the list of columns to select for an InvestmentDocument row.
-const investmentDocumentColumns = `id, year, platform, filename, content_type, storage_path, size, extraction_status, extraction_error, created_at, updated_at`
+const investmentDocumentColumns = `id, year, platform, kind, filename, content_type, storage_path, size, extraction_status, extraction_error, created_at, updated_at`
 
 // scanInvestmentDocument scans an InvestmentDocument from a row.
 func scanInvestmentDocument(s scanner) (*domain.InvestmentDocument, error) {
@@ -30,7 +30,7 @@ func scanInvestmentDocument(s scanner) (*domain.InvestmentDocument, error) {
 	var createdAtStr, updatedAtStr string
 
 	err := s.Scan(
-		&d.ID, &d.Year, &d.Platform, &d.Filename, &d.ContentType, &d.StoragePath,
+		&d.ID, &d.Year, &d.Platform, &d.Kind, &d.Filename, &d.ContentType, &d.StoragePath,
 		&d.Size, &d.ExtractionStatus, &extractionError,
 		&createdAtStr, &updatedAtStr,
 	)
@@ -60,10 +60,13 @@ func (r *InvestmentDocumentRepository) Create(ctx context.Context, doc *domain.I
 	doc.CreatedAt = now
 	doc.UpdatedAt = now
 
+	if doc.Kind == "" {
+		doc.Kind = domain.InvestmentDocKindStatement
+	}
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO investment_documents (year, platform, filename, content_type, storage_path, size, extraction_status, extraction_error, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		doc.Year, doc.Platform, doc.Filename, doc.ContentType, doc.StoragePath,
+		INSERT INTO investment_documents (year, platform, kind, filename, content_type, storage_path, size, extraction_status, extraction_error, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		doc.Year, doc.Platform, doc.Kind, doc.Filename, doc.ContentType, doc.StoragePath,
 		doc.Size, doc.ExtractionStatus, doc.ExtractionError,
 		doc.CreatedAt.Format(time.RFC3339), doc.UpdatedAt.Format(time.RFC3339),
 	)

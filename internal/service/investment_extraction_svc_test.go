@@ -85,7 +85,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_Success(t *testing.T) {
 
 	// Upload a document first.
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "", "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_UnsupportedContentType(
 
 	// Upload a WebP image (not supported for extraction).
 	data := bytes.NewReader(webpMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "file.webp", "image/webp", data)
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "", "file.webp", "image/webp", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -164,6 +164,26 @@ func TestInvestmentExtractionService_ExtractFromDocument_UnsupportedContentType(
 	_, err = extractionSvc.ExtractFromDocument(ctx, doc.ID)
 	if err == nil {
 		t.Error("expected error for unsupported content type")
+	}
+}
+
+func TestInvestmentExtractionService_ExtractFromDocument_RejectsDataKind(t *testing.T) {
+	provider := &investmentMockOCRProvider{}
+	extractionSvc, docSvc, _, _ := newInvestmentExtractionTestService(t, provider)
+	ctx := context.Background()
+
+	csv := []byte("date,asset\n2025-01-01,VWCE\n")
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, domain.InvestmentDocKindData, "trades.csv", "text/csv", bytes.NewReader(csv))
+	if err != nil {
+		t.Fatalf("Upload(data, csv): %v", err)
+	}
+
+	_, err = extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	if err == nil {
+		t.Fatal("expected error: AI extraction must refuse data-kind documents")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
 }
 
@@ -175,7 +195,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_ProviderError(t *testin
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "", "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -203,7 +223,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_InvalidJSON(t *testing.
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "", "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -230,7 +250,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_EmptyResult(t *testing.
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "empty.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "", "empty.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -257,7 +277,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_PersistsEntries(t *test
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "", "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}

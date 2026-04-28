@@ -16,6 +16,17 @@ const (
 	ExtractionPending   = "pending"
 	ExtractionExtracted = "extracted"
 	ExtractionFailed    = "failed"
+	// ExtractionSkipped marks documents uploaded as raw data exports
+	// (xlsx/csv/zip) that are not subject to AI extraction.
+	ExtractionSkipped = "skipped"
+)
+
+// Investment document kind: statement = broker statement subject to OCR/AI
+// extraction; data = raw export (xlsx/csv/zip/...) attached to the DPFO bundle
+// without any extraction.
+const (
+	InvestmentDocKindStatement = "statement"
+	InvestmentDocKindData      = "data"
 )
 
 // Capital income category constants.
@@ -44,11 +55,12 @@ const (
 	TransactionTypeSell = "sell"
 )
 
-// InvestmentDocument represents an uploaded broker statement.
+// InvestmentDocument represents an uploaded broker statement or data export.
 type InvestmentDocument struct {
 	ID               int64
 	Year             int
 	Platform         string
+	Kind             string // "statement" (default, OCR-eligible) or "data" (raw export)
 	Filename         string
 	ContentType      string
 	StoragePath      string

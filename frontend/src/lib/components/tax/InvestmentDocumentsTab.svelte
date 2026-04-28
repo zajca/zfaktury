@@ -13,7 +13,7 @@
 		saving: boolean;
 		extractingId: number | null;
 		onUploadPlatformChange: (value: string) => void;
-		onUpload: () => void;
+		onUpload: (kind: 'statement' | 'data') => void;
 		onExtract: (id: number) => void;
 		onDelete: (id: number) => void;
 	}
@@ -41,7 +41,8 @@
 	const statusLabels: Record<string, { text: string; class: string }> = {
 		pending: { text: 'Čeká na zpracování', class: 'bg-warning-bg text-warning' },
 		extracted: { text: 'Extrahováno', class: 'bg-success-bg text-success' },
-		failed: { text: 'Chyba', class: 'bg-danger-bg text-danger' }
+		failed: { text: 'Chyba', class: 'bg-danger-bg text-danger' },
+		skipped: { text: 'Příloha (bez OCR)', class: 'bg-info-bg text-info' }
 	};
 
 	function formatFileSize(bytes: number): string {
@@ -68,9 +69,9 @@
 		</div>
 	{/if}
 
-	<div class="flex items-center justify-between">
+	<div class="flex flex-wrap items-center justify-between gap-2">
 		<h2 class="text-base font-semibold text-primary">Nahrané dokumenty</h2>
-		<div class="flex items-center gap-2">
+		<div class="flex flex-wrap items-center gap-2">
 			<Select
 				value={uploadPlatform}
 				onchange={(e: Event) => {
@@ -81,8 +82,23 @@
 					<option value={key}>{label}</option>
 				{/each}
 			</Select>
-			<Button variant="primary" size="sm" onclick={onUpload} disabled={uploading}>
-				{uploading ? 'Nahrává se...' : 'Nahrát dokument'}
+			<Button
+				variant="primary"
+				size="sm"
+				onclick={() => onUpload('statement')}
+				disabled={uploading}
+				title="Výpis z brokerského účtu pro AI extrakci (PDF, JPG, PNG)"
+			>
+				{uploading ? 'Nahrává se...' : 'Nahrát výpis (OCR)'}
+			</Button>
+			<Button
+				variant="secondary"
+				size="sm"
+				onclick={() => onUpload('data')}
+				disabled={uploading}
+				title="Datový export (XLSX, CSV, ZIP) — jen příloha k DPFO, bez OCR"
+			>
+				{uploading ? 'Nahrává se...' : 'Nahrát data (XLSX/CSV)'}
 			</Button>
 		</div>
 	</div>
@@ -134,7 +150,7 @@
 							<td class="py-2 pr-4 text-tertiary">{formatFileSize(doc.size)}</td>
 							<td class="py-2 text-right">
 								<div class="flex justify-end gap-1">
-									{#if doc.extraction_status !== 'extracted'}
+									{#if doc.kind !== 'data' && doc.extraction_status !== 'extracted'}
 										<Button
 											variant="secondary"
 											size="sm"

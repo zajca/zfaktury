@@ -1440,6 +1440,7 @@ export interface InvestmentDocument {
 	id: number;
 	year: number;
 	platform: string;
+	kind: string; // "statement" (OCR-eligible) or "data" (raw export, attached only)
 	filename: string;
 	content_type: string;
 	size: number;
@@ -1511,11 +1512,17 @@ export interface InvestmentExtractionResult {
 
 export const investmentsApi = {
 	// Documents
-	async uploadDocument(year: number, platform: string, file: File): Promise<InvestmentDocument> {
+	async uploadDocument(
+		year: number,
+		platform: string,
+		file: File,
+		kind: 'statement' | 'data' = 'statement'
+	): Promise<InvestmentDocument> {
 		const formData = new FormData();
 		formData.append('file', file);
 		formData.append('year', String(year));
 		formData.append('platform', platform);
+		formData.append('kind', kind);
 		const response = await fetch(`${API_BASE}/investments/documents`, {
 			method: 'POST',
 			body: formData

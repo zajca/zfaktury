@@ -23,6 +23,23 @@ var validPlatforms = map[string]bool{
 	domain.PlatformOther:      true,
 }
 
+// dataExportContentTypes is the set of MIME types accepted for "data" kind
+// uploads (raw exports from broker platforms — xlsx, csv, etc). These are
+// merely attached to the DPFO bundle and are never sent through OCR.
+//
+// http.DetectContentType returns "application/zip" for xlsx files (xlsx is a
+// ZIP container) and "text/plain" for csv/json, so we accept those too.
+var dataExportContentTypes = map[string]bool{
+	"text/csv":                 true,
+	"text/plain":               true,
+	"application/vnd.ms-excel": true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+	"application/vnd.oasis.opendocument.spreadsheet":                    true,
+	"application/zip":  true,
+	"application/json": true,
+	"application/pdf":  true,
+}
+
 // InvestmentDocumentService handles business logic for investment document management.
 type InvestmentDocumentService struct {
 	repo         repository.InvestmentDocumentRepo
@@ -49,9 +66,17 @@ func NewInvestmentDocumentService(
 	}
 }
 
-// Upload validates, stores, and registers a new investment document (broker statement).
+// Upload validates, stores, and registers a new investment document.
+//
+// kind selects the upload mode:
+//   - "statement" (default): the document is a broker statement subject to AI
+//     extraction. Only image/PDF types are accepted.
+//   - "data": the document is a raw export (xlsx/csv/zip/...) that will only be
+//     attached to the DPFO bundle. No OCR is run; ExtractionStatus is set to
+//     "skipped".
+//
 // data is read fully to enforce the size limit before writing to disk.
-func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platform string, filename string, contentType string, data io.Reader) (*domain.InvestmentDocument, error) {
+func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platform string, kind string, filename string, contentType string, data io.Reader) (*domain.InvestmentDocument, error) {
 	// Validate year.
 	if year < 2000 || year > 2100 {
 		return nil, fmt.Errorf("year must be between 2000 and 2100, got %d", year)
@@ -62,9 +87,24 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 		return nil, fmt.Errorf("platform %q is not valid; allowed: portu, zonky, trading212, revolut, other", platform)
 	}
 
-	// Validate content type.
-	if !allowedContentTypes[contentType] {
-		return nil, fmt.Errorf("content type %q is not allowed; allowed types: image/jpeg, image/png, application/pdf, image/webp, image/heic", contentType)
+	// Validate kind (default to statement for backward compat).
+	if kind == "" {
+		kind = domain.InvestmentDocKindStatement
+	}
+	if kind != domain.InvestmentDocKindStatement && kind != domain.InvestmentDocKindData {
+		return nil, fmt.Errorf("kind %q is not valid; allowed: statement, data", kind)
+	}
+
+	allowed := allowedContentTypes
+	allowedDesc := "image/jpeg, image/png, application/pdf, image/webp, image/heic"
+	if kind == domain.InvestmentDocKindData {
+		allowed = dataExportContentTypes
+		allowedDesc = "text/csv, text/plain, xlsx, xls, ods, zip, json, pdf"
+	}
+
+	// Validate declared content type.
+	if !allowed[contentType] {
+		return nil, fmt.Errorf("content type %q is not allowed for kind %q; allowed types: %s", contentType, kind, allowedDesc)
 	}
 
 	// Sanitize filename: strip path separators, limit length.
@@ -94,8 +134,8 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 	if detectedType == "application/octet-stream" {
 		detectedType = detectByMagicBytes(fileBytes, contentType)
 	}
-	if !allowedContentTypes[detectedType] {
-		return nil, fmt.Errorf("detected content type %q is not allowed", detectedType)
+	if !allowed[detectedType] {
+		return nil, fmt.Errorf("detected content type %q is not allowed for kind %q", detectedType, kind)
 	}
 	// Use detected type as the canonical type.
 	contentType = detectedType
@@ -113,14 +153,20 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 		return nil, fmt.Errorf("writing document to disk: %w", err)
 	}
 
+	extractionStatus := domain.ExtractionPending
+	if kind == domain.InvestmentDocKindData {
+		extractionStatus = domain.ExtractionSkipped
+	}
+
 	doc := &domain.InvestmentDocument{
 		Year:             year,
 		Platform:         platform,
+		Kind:             kind,
 		Filename:         filename,
 		ContentType:      contentType,
 		StoragePath:      storagePath,
 		Size:             int64(len(fileBytes)),
-		ExtractionStatus: domain.ExtractionPending,
+		ExtractionStatus: extractionStatus,
 	}
 
 	if err := s.repo.Create(ctx, doc); err != nil {
@@ -134,6 +180,7 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 			"id":           doc.ID,
 			"year":         doc.Year,
 			"platform":     doc.Platform,
+			"kind":         doc.Kind,
 			"filename":     doc.Filename,
 			"content_type": doc.ContentType,
 		}

@@ -70,6 +70,7 @@ type investmentDocumentResponse struct {
 	ID               int64  `json:"id"`
 	Year             int    `json:"year"`
 	Platform         string `json:"platform"`
+	Kind             string `json:"kind"`
 	Filename         string `json:"filename"`
 	ContentType      string `json:"content_type"`
 	Size             int64  `json:"size"`
@@ -170,6 +171,7 @@ func investmentDocFromDomain(doc *domain.InvestmentDocument) investmentDocumentR
 		ID:               doc.ID,
 		Year:             doc.Year,
 		Platform:         doc.Platform,
+		Kind:             doc.Kind,
 		Filename:         doc.Filename,
 		ContentType:      doc.ContentType,
 		Size:             doc.Size,
@@ -262,12 +264,16 @@ func (h *InvestmentIncomeHandler) UploadDocument(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Optional kind: "statement" (default) or "data". data uploads accept
+	// xlsx/csv/zip/... and skip OCR.
+	kind := r.FormValue("kind")
+
 	contentType := header.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 
-	doc, err := h.docSvc.Upload(r.Context(), year, platform, header.Filename, contentType, file)
+	doc, err := h.docSvc.Upload(r.Context(), year, platform, kind, header.Filename, contentType, file)
 	if err != nil {
 		slog.Error("failed to upload investment document", "error", err)
 		mapDomainError(w, err)

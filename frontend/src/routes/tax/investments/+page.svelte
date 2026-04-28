@@ -85,16 +85,21 @@
 
 	// --- Document actions ---
 
-	async function uploadDocument() {
+	async function uploadDocument(kind: 'statement' | 'data' = 'statement') {
 		const input = document.createElement('input');
 		input.type = 'file';
-		input.accept = '.pdf,.csv,.xlsx,.xls';
+		// "statement" goes through OCR, restrict to image/PDF.
+		// "data" is just attached to the bundle, accept exports too.
+		input.accept =
+			kind === 'statement'
+				? '.pdf,.png,.jpg,.jpeg,.webp,.heic'
+				: '.pdf,.csv,.xlsx,.xls,.ods,.zip,.json,.txt';
 		input.onchange = async () => {
 			const file = input.files?.[0];
 			if (!file) return;
 			uploading = true;
 			try {
-				await investmentsApi.uploadDocument(selectedYear, uploadPlatform, file);
+				await investmentsApi.uploadDocument(selectedYear, uploadPlatform, file, kind);
 				await loadData();
 			} catch (e) {
 				toastError(e instanceof Error ? e.message : 'Chyba při nahrávání');

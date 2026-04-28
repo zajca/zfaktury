@@ -85,29 +85,36 @@
 
 	// --- Document actions ---
 
-	async function uploadDocument(kind: 'statement' | 'data' = 'statement') {
-		const input = document.createElement('input');
-		input.type = 'file';
-		// "statement" goes through OCR, restrict to image/PDF.
-		// "data" is just attached to the bundle, accept exports too.
-		input.accept =
+	let fileInputEl = $state<HTMLInputElement | null>(null);
+	let pendingKind: 'statement' | 'data' = 'statement';
+
+	function uploadDocument(kind: 'statement' | 'data' = 'statement') {
+		if (!fileInputEl) return;
+		pendingKind = kind;
+		fileInputEl.accept =
 			kind === 'statement'
 				? '.pdf,.png,.jpg,.jpeg,.webp,.heic'
 				: '.pdf,.csv,.xlsx,.xls,.ods,.zip,.json,.txt';
-		input.onchange = async () => {
-			const file = input.files?.[0];
-			if (!file) return;
-			uploading = true;
-			try {
-				await investmentsApi.uploadDocument(selectedYear, uploadPlatform, file, kind);
-				await loadData();
-			} catch (e) {
-				toastError(e instanceof Error ? e.message : 'Chyba při nahrávání');
-			} finally {
-				uploading = false;
-			}
-		};
-		input.click();
+		// Reset value so picking the same filename twice still fires change.
+		fileInputEl.value = '';
+		fileInputEl.click();
+	}
+
+	async function onFilePicked(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		uploading = true;
+		try {
+			await investmentsApi.uploadDocument(selectedYear, uploadPlatform, file, pendingKind);
+			await loadData();
+		} catch (err) {
+			toastError(err instanceof Error ? err.message : 'Chyba při nahrávání');
+		} finally {
+			uploading = false;
+			// Clear so the same file can be re-selected later if needed.
+			input.value = '';
+		}
 	}
 
 	let extractingId = $state<number | null>(null);
@@ -311,6 +318,16 @@
 <svelte:head>
 	<title>Investiční příjmy {selectedYear} - ZFaktury</title>
 </svelte:head>
+
+<!-- Single stable hidden file input shared by both upload buttons. -->
+<input
+	bind:this={fileInputEl}
+	type="file"
+	class="sr-only"
+	tabindex="-1"
+	aria-hidden="true"
+	onchange={onFilePicked}
+/>
 
 <div class="mx-auto max-w-6xl">
 	<h1 class="text-xl font-semibold text-primary">Investiční příjmy za rok {selectedYear}</h1>

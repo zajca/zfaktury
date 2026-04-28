@@ -315,17 +315,28 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 }
 
 // adaptiveTimeoutMiddleware applies a longer timeout for long-running import
-// endpoints and the default 30s timeout for everything else.
+// and AI-extraction endpoints and the default 30s timeout for everything else.
 func adaptiveTimeoutMiddleware(next http.Handler) http.Handler {
 	longTimeout := middleware.Timeout(10 * time.Minute)
 	shortTimeout := middleware.Timeout(30 * time.Second)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/v1/import/fakturoid") {
+		if isLongRunningPath(r.URL.Path) {
 			longTimeout(next).ServeHTTP(w, r)
 		} else {
 			shortTimeout(next).ServeHTTP(w, r)
 		}
 	})
+}
+
+// isLongRunningPath reports whether the given API path belongs to an endpoint
+// that may take significantly longer than 30s (Fakturoid import, AI extraction).
+func isLongRunningPath(path string) bool {
+	if strings.HasPrefix(path, "/api/v1/import/fakturoid") {
+		return true
+	}
+	// AI-backed OCR/extraction endpoints. Keep in sync with route registrations.
+	return strings.HasSuffix(path, "/ocr") ||
+		strings.HasSuffix(path, "/extract")
 }
 
 // corsMiddleware adds permissive CORS headers for development.

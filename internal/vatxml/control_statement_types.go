@@ -67,6 +67,22 @@ type VetaB3 struct {
 	Dan2    *int64   `xml:"dan2,attr"`
 }
 
+// VetaC contains the cumulative totals by rate, cross-checked by EPO against
+// the corresponding rows of the VAT return. Missing or mismatched values
+// trigger validation errors 211 (missing C), 180 (A.4+A.5 mismatch) and
+// 182 (B.2+B.3 mismatch).
+type VetaC struct {
+	XMLName    xml.Name `xml:"VetaC"`
+	Obrat23    *int64   `xml:"obrat23,attr,omitempty"`
+	Obrat5     *int64   `xml:"obrat5,attr,omitempty"`
+	Pln23      *int64   `xml:"pln23,attr,omitempty"`
+	Pln5       *int64   `xml:"pln5,attr,omitempty"`
+	PlnRezPren *int64   `xml:"pln_rez_pren,attr,omitempty"`
+	RezPren23  *int64   `xml:"rez_pren23,attr,omitempty"`
+	RezPren5   *int64   `xml:"rez_pren5,attr,omitempty"`
+	CelkZdA2   *int64   `xml:"celk_zd_a2,attr,omitempty"`
+}
+
 // ControlStatementXML is the serializable root structure for control statement XML.
 type ControlStatementXML struct {
 	XMLName xml.Name `xml:"Pisemnost"`
@@ -75,11 +91,15 @@ type ControlStatementXML struct {
 }
 
 // DPHKH1 is the typed container for control statement marshalling.
+//
+// Per EPO XSD, VetaA5, VetaB3, and VetaC may each occur at most once
+// (maxOccurs=1); A4/B2 are unbounded.
 type DPHKH1 struct {
 	VetaD KHVetaD  `xml:"VetaD"`
 	VetaP KHVetaP  `xml:"VetaP"`
 	A4    []VetaA4 `xml:"VetaA4,omitempty"`
-	A5    []VetaA5 `xml:"VetaA5,omitempty"`
+	A5    *VetaA5  `xml:"VetaA5,omitempty"`
 	B2    []VetaB2 `xml:"VetaB2,omitempty"`
-	B3    []VetaB3 `xml:"VetaB3,omitempty"`
+	B3    *VetaB3  `xml:"VetaB3,omitempty"`
+	C     *VetaC   `xml:"VetaC,omitempty"`
 }

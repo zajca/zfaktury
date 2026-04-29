@@ -4,5 +4,6 @@
     <VetaD dokument="KH1" k_uladis="DPH" rok="2025" mesic="1" khdph_forma="O"></VetaD>
     <VetaP dic="89052449" typ_ds="P"></VetaP>
     <VetaA4 c_evid_dd="FV20250010" dppd="20.01.2025" dic_odb="55667788" kod_rezim_pl="0" zdph_44="N" zakl_dane1="42000" dan1="8820"></VetaA4>
+    <VetaC obrat23="42000"></VetaC>
   </DPHKH1>
 </Pisemnost>

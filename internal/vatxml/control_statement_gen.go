@@ -47,16 +47,86 @@ func (g *ControlStatementGenerator) Generate(cs *domain.VATControlStatement, lin
 		},
 	}
 
+	var a5Base21, a5VAT21, a5Base12, a5VAT12 int64
+	var b3Base21, b3VAT21, b3Base12, b3VAT12 int64
+	var hasA5, hasB3 bool
+	var a4Base21, a4VAT21, a4Base12, a4VAT12 int64
+	var b2Base21, b2VAT21, b2Base12, b2VAT12 int64
+
 	for _, line := range lines {
+		base := ToWholeCZK(line.Base)
+		vat := ToWholeCZK(line.VAT)
 		switch line.Section {
 		case "A4":
 			doc.DPHKH.A4 = append(doc.DPHKH.A4, buildVetaA4(line))
+			switch line.VATRatePercent {
+			case 21:
+				a4Base21 += base
+				a4VAT21 += vat
+			case 12:
+				a4Base12 += base
+				a4VAT12 += vat
+			}
 		case "A5":
-			doc.DPHKH.A5 = append(doc.DPHKH.A5, buildVetaA5(line))
+			hasA5 = true
+			switch line.VATRatePercent {
+			case 21:
+				a5Base21 += base
+				a5VAT21 += vat
+			case 12:
+				a5Base12 += base
+				a5VAT12 += vat
+			}
 		case "B2":
 			doc.DPHKH.B2 = append(doc.DPHKH.B2, buildVetaB2(line))
+			switch line.VATRatePercent {
+			case 21:
+				b2Base21 += base
+				b2VAT21 += vat
+			case 12:
+				b2Base12 += base
+				b2VAT12 += vat
+			}
 		case "B3":
-			doc.DPHKH.B3 = append(doc.DPHKH.B3, buildVetaB3(line))
+			hasB3 = true
+			switch line.VATRatePercent {
+			case 21:
+				b3Base21 += base
+				b3VAT21 += vat
+			case 12:
+				b3Base12 += base
+				b3VAT12 += vat
+			}
+		}
+	}
+
+	if hasA5 {
+		doc.DPHKH.A5 = &VetaA5{
+			Zaklad1: int64Ptr(a5Base21),
+			Dan1:    int64Ptr(a5VAT21),
+			Zaklad2: int64Ptr(a5Base12),
+			Dan2:    int64Ptr(a5VAT12),
+		}
+	}
+	if hasB3 {
+		doc.DPHKH.B3 = &VetaB3{
+			Zaklad1: int64Ptr(b3Base21),
+			Dan1:    int64Ptr(b3VAT21),
+			Zaklad2: int64Ptr(b3Base12),
+			Dan2:    int64Ptr(b3VAT12),
+		}
+	}
+
+	obrat23 := a4Base21 + a5Base21
+	obrat5 := a4Base12 + a5Base12
+	pln23 := b2Base21 + b3Base21
+	pln5 := b2Base12 + b3Base12
+	if obrat23 != 0 || obrat5 != 0 || pln23 != 0 || pln5 != 0 {
+		doc.DPHKH.C = &VetaC{
+			Obrat23: int64Ptr(obrat23),
+			Obrat5:  int64Ptr(obrat5),
+			Pln23:   int64Ptr(pln23),
+			Pln5:    int64Ptr(pln5),
 		}
 	}
 
@@ -108,22 +178,6 @@ func buildVetaA4(line domain.VATControlStatementLine) VetaA4 {
 	return v
 }
 
-// buildVetaA5 creates a VetaA5 element from a control statement line.
-func buildVetaA5(line domain.VATControlStatementLine) VetaA5 {
-	v := VetaA5{}
-	base := ToWholeCZK(line.Base)
-	vat := ToWholeCZK(line.VAT)
-	switch line.VATRatePercent {
-	case 21:
-		v.Zaklad1 = int64Ptr(base)
-		v.Dan1 = int64Ptr(vat)
-	case 12:
-		v.Zaklad2 = int64Ptr(base)
-		v.Dan2 = int64Ptr(vat)
-	}
-	return v
-}
-
 // buildVetaB2 creates a VetaB2 element from a control statement line.
 func buildVetaB2(line domain.VATControlStatementLine) VetaB2 {
 	v := VetaB2{
@@ -133,22 +187,6 @@ func buildVetaB2(line domain.VATControlStatementLine) VetaB2 {
 		Pomer:   "N",
 		Zdph44:  "N",
 	}
-	base := ToWholeCZK(line.Base)
-	vat := ToWholeCZK(line.VAT)
-	switch line.VATRatePercent {
-	case 21:
-		v.Zaklad1 = int64Ptr(base)
-		v.Dan1 = int64Ptr(vat)
-	case 12:
-		v.Zaklad2 = int64Ptr(base)
-		v.Dan2 = int64Ptr(vat)
-	}
-	return v
-}
-
-// buildVetaB3 creates a VetaB3 element from a control statement line.
-func buildVetaB3(line domain.VATControlStatementLine) VetaB3 {
-	v := VetaB3{}
 	base := ToWholeCZK(line.Base)
 	vat := ToWholeCZK(line.VAT)
 	switch line.VATRatePercent {

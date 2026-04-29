@@ -5,7 +5,7 @@
     <VetaP dic="89052449" typ_ds="P"></VetaP>
     <VetaB2 c_evid_dd="VF2025001" dppd="10.06.2025" dic_dod="99887766" zakl_dane1="35000" dan1="7350" pomer="N" zdph_44="N"></VetaB2>
     <VetaB2 c_evid_dd="VF2025002" dppd="22.06.2025" dic_dod="11223344" zakl_dane2="15000" dan2="1800" pomer="N" zdph_44="N"></VetaB2>
-    <VetaB3 zakl_dane1="6000" dan1="1260"></VetaB3>
-    <VetaB3 zakl_dane2="2500" dan2="300"></VetaB3>
+    <VetaB3 zakl_dane1="6000" dan1="1260" zakl_dane2="2500" dan2="300"></VetaB3>
+    <VetaC pln23="41000" pln5="17500"></VetaC>
   </DPHKH1>
 </Pisemnost>

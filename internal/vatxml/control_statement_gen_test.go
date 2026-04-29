@@ -70,8 +70,14 @@ func TestControlStatementGenerator_Generate_Basic(t *testing.T) {
 	if !strings.Contains(xmlStr, `mesic="3"`) {
 		t.Error("XML should contain mesic=3")
 	}
-	if !strings.Contains(xmlStr, `d_typ="R"`) {
-		t.Error("XML should contain d_typ=R for regular filing")
+	if !strings.Contains(xmlStr, `khdph_forma="B"`) {
+		t.Error("XML should contain khdph_forma=B for regular filing")
+	}
+	if !strings.Contains(xmlStr, `dokument="KH1"`) {
+		t.Error("XML should contain dokument=KH1")
+	}
+	if !strings.Contains(xmlStr, `k_uladis="DPH"`) {
+		t.Error("XML should contain k_uladis=DPH")
 	}
 
 	// Verify VetaP.
@@ -91,6 +97,12 @@ func TestControlStatementGenerator_Generate_Basic(t *testing.T) {
 	}
 	if !strings.Contains(xmlStr, `dic_odb="12345678"`) {
 		t.Error("XML should contain partner DIC without CZ prefix")
+	}
+	if !strings.Contains(xmlStr, `kod_rezim_pl="0"`) {
+		t.Error("XML should contain kod_rezim_pl=0 on VetaA4")
+	}
+	if !strings.Contains(xmlStr, `zdph_44="N"`) {
+		t.Error("XML should contain zdph_44=N on VetaA4")
 	}
 	// 15000 CZK = 1500000 halere, toWholeCZK = 15000.
 	if !strings.Contains(xmlStr, `zakl_dane1="15000"`) {
@@ -125,8 +137,8 @@ func TestControlStatementGenerator_Generate_CorrectiveFiling(t *testing.T) {
 	}
 
 	xmlStr := string(xmlData)
-	if !strings.Contains(xmlStr, `d_typ="N"`) {
-		t.Error("XML should contain d_typ=N for corrective filing")
+	if !strings.Contains(xmlStr, `khdph_forma="O"`) {
+		t.Error("XML should contain khdph_forma=O for corrective filing")
 	}
 }
 
@@ -312,8 +324,8 @@ func TestControlStatementGenerator_Generate_SupplementaryFiling(t *testing.T) {
 	}
 
 	xmlStr := string(xmlData)
-	if !strings.Contains(xmlStr, `d_typ="O"`) {
-		t.Error("XML should contain d_typ=O for supplementary filing")
+	if !strings.Contains(xmlStr, `khdph_forma="N"`) {
+		t.Error("XML should contain khdph_forma=N for supplementary filing")
 	}
 }
 
@@ -341,10 +353,10 @@ func TestSharedFilingTypeCode(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{domain.FilingTypeRegular, "R"},
-		{domain.FilingTypeCorrective, "N"},
-		{domain.FilingTypeSupplementary, "O"},
-		{"unknown", "R"},
+		{domain.FilingTypeRegular, "B"},
+		{domain.FilingTypeCorrective, "O"},
+		{domain.FilingTypeSupplementary, "N"},
+		{"unknown", "B"},
 	}
 
 	for _, tt := range tests {

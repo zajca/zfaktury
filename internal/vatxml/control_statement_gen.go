@@ -34,10 +34,10 @@ func (g *ControlStatementGenerator) Generate(cs *domain.VATControlStatement, lin
 		Xmlns: "http://adis.mfcr.cz/rozhranni/",
 		DPHKH: DPHKH1{
 			VetaD: KHVetaD{
-				DType:     filingCode,
+				Dokument:  "KH1",
+				KUladis:   "DPH",
 				Rok:       cs.Period.Year,
 				Mesic:     cs.Period.Month,
-				DokDPHKH:  "KH",
 				KHDPHForm: filingCode,
 			},
 			VetaP: KHVetaP{
@@ -89,10 +89,11 @@ func int64Ptr(v int64) *int64 {
 // buildVetaA4 creates a VetaA4 element from a control statement line.
 func buildVetaA4(line domain.VATControlStatementLine) VetaA4 {
 	v := VetaA4{
-		CisloEv:     line.DocumentNumber,
-		DPPD:        formatDPPD(line.DPPD),
-		DicOdb:      strings.TrimPrefix(strings.ToUpper(line.PartnerDIC), "CZ"),
-		KodRezimPln: "0",
+		CisloEv:    line.DocumentNumber,
+		DPPD:       formatDPPD(line.DPPD),
+		DicOdb:     strings.TrimPrefix(strings.ToUpper(line.PartnerDIC), "CZ"),
+		KodRezimPl: "0",
+		Zdph44:     "N",
 	}
 	base := ToWholeCZK(line.Base)
 	vat := ToWholeCZK(line.VAT)
@@ -109,7 +110,7 @@ func buildVetaA4(line domain.VATControlStatementLine) VetaA4 {
 
 // buildVetaA5 creates a VetaA5 element from a control statement line.
 func buildVetaA5(line domain.VATControlStatementLine) VetaA5 {
-	v := VetaA5{KodRezimPln: "0"}
+	v := VetaA5{}
 	base := ToWholeCZK(line.Base)
 	vat := ToWholeCZK(line.VAT)
 	switch line.VATRatePercent {
@@ -126,10 +127,11 @@ func buildVetaA5(line domain.VATControlStatementLine) VetaA5 {
 // buildVetaB2 creates a VetaB2 element from a control statement line.
 func buildVetaB2(line domain.VATControlStatementLine) VetaB2 {
 	v := VetaB2{
-		CisloEv:     line.DocumentNumber,
-		DPPD:        formatDPPD(line.DPPD),
-		DicDod:      strings.TrimPrefix(strings.ToUpper(line.PartnerDIC), "CZ"),
-		KodRezimPln: "0",
+		CisloEv: line.DocumentNumber,
+		DPPD:    formatDPPD(line.DPPD),
+		DicDod:  strings.TrimPrefix(strings.ToUpper(line.PartnerDIC), "CZ"),
+		Pomer:   "N",
+		Zdph44:  "N",
 	}
 	base := ToWholeCZK(line.Base)
 	vat := ToWholeCZK(line.VAT)
@@ -146,7 +148,7 @@ func buildVetaB2(line domain.VATControlStatementLine) VetaB2 {
 
 // buildVetaB3 creates a VetaB3 element from a control statement line.
 func buildVetaB3(line domain.VATControlStatementLine) VetaB3 {
-	v := VetaB3{KodRezimPln: "0"}
+	v := VetaB3{}
 	base := ToWholeCZK(line.Base)
 	vat := ToWholeCZK(line.VAT)
 	switch line.VATRatePercent {

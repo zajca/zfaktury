@@ -39,16 +39,17 @@ func DPHFilingTypeCode(ft string) string {
 	}
 }
 
-// FilingTypeCode converts a domain filing type to the control statement d_typ code.
-// regular -> "R", corrective -> "N", supplementary -> "O".
+// FilingTypeCode converts a domain filing type to the control statement khdph_forma code.
+// regular -> "B" (radne), corrective -> "O" (opravne), supplementary -> "N" (nasledne).
+// EPO XSD restricts khdph_forma to one of [B, O, N, E].
 func FilingTypeCode(ft string) string {
 	switch ft {
 	case domain.FilingTypeCorrective:
-		return "N"
-	case domain.FilingTypeSupplementary:
 		return "O"
+	case domain.FilingTypeSupplementary:
+		return "N"
 	default:
-		return "R"
+		return "B"
 	}
 }
 

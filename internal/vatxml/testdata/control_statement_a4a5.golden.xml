@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost xmlns="http://adis.mfcr.cz/rozhranni/">
   <DPHKH1>
-    <VetaD d_typ="R" rok="2025" mesic="3" dokdphkh="KH" khdph_forma="R"></VetaD>
+    <VetaD dokument="KH1" k_uladis="DPH" rok="2025" mesic="3" khdph_forma="B"></VetaD>
     <VetaP dic="89052449" typ_ds="P"></VetaP>
-    <VetaA4 c_evid_dd="FV20250001" dppd="05.03.2025" dic_odb="12345678" kod_rezim_pln="0" zakl_dane1="25000" dan1="5250"></VetaA4>
-    <VetaA4 c_evid_dd="FV20250002" dppd="18.03.2025" dic_odb="87654321" kod_rezim_pln="0" zakl_dane2="18000" dan2="2160"></VetaA4>
-    <VetaA5 kod_rezim_pln="0" zakl_dane1="8501" dan1="1785"></VetaA5>
-    <VetaA5 kod_rezim_pln="0" zakl_dane2="4200" dan2="504"></VetaA5>
+    <VetaA4 c_evid_dd="FV20250001" dppd="05.03.2025" dic_odb="12345678" kod_rezim_pl="0" zdph_44="N" zakl_dane1="25000" dan1="5250"></VetaA4>
+    <VetaA4 c_evid_dd="FV20250002" dppd="18.03.2025" dic_odb="87654321" kod_rezim_pl="0" zdph_44="N" zakl_dane2="18000" dan2="2160"></VetaA4>
+    <VetaA5 zakl_dane1="8501" dan1="1785"></VetaA5>
+    <VetaA5 zakl_dane2="4200" dan2="504"></VetaA5>
   </DPHKH1>
 </Pisemnost>

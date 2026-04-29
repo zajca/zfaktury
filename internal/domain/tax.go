@@ -40,6 +40,26 @@ type TaxPeriod struct {
 	Quarter int // 1-4, 0 if monthly
 }
 
+// VATFilingDeadline returns the legal deadline for filing the VAT return for this period:
+// 25th day of the month following the end of the period.
+func (p TaxPeriod) VATFilingDeadline() time.Time {
+	if p.Month > 0 {
+		year, month := p.Year, p.Month+1
+		if month > 12 {
+			month = 1
+			year++
+		}
+		return time.Date(year, time.Month(month), 25, 0, 0, 0, 0, time.UTC)
+	}
+	endMonth := p.Quarter * 3
+	year, month := p.Year, endMonth+1
+	if month > 12 {
+		month = 1
+		year++
+	}
+	return time.Date(year, time.Month(month), 25, 0, 0, 0, 0, time.UTC)
+}
+
 // VATReturn represents a VAT return (Priznanf k DPH).
 type VATReturn struct {
 	ID         int64

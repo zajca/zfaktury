@@ -16,6 +16,30 @@ import (
 	"github.com/zajca/zfaktury/internal/testutil"
 )
 
+// insertVATTaxpayerSettings inserts all settings required for a valid VAT return XML.
+func insertVATTaxpayerSettings(db *sql.DB) error {
+	rows := [][2]string{
+		{"dic", "CZ12345678"},
+		{"first_name", "Jan"},
+		{"last_name", "Novák"},
+		{"street", "Hlavní"},
+		{"house_number", "1"},
+		{"city", "Praha"},
+		{"zip", "11000"},
+		{"c_ufo", "451"},
+		{"c_pracufo", "3001"},
+		{"c_okec", "62010"},
+	}
+	for _, kv := range rows {
+		if _, err := db.ExecContext(context.Background(),
+			"INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))",
+			kv[0], kv[1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func setupVATReturnRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	t.Helper()
 	db := testutil.NewTestDB(t)
@@ -337,11 +361,8 @@ func TestVATReturn_Recalculate_NotFound(t *testing.T) {
 func TestVATReturn_GenerateXML(t *testing.T) {
 	r, db := setupVATReturnRouter(t)
 
-	// Insert "dic" setting required for XML generation.
-	_, err := db.ExecContext(context.Background(),
-		"INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
-	if err != nil {
-		t.Fatalf("inserting dic setting: %v", err)
+	if err := insertVATTaxpayerSettings(db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
 	}
 
 	id := createVATReturn(t, r)
@@ -402,11 +423,8 @@ func TestVATReturn_GenerateXML_MissingSetting(t *testing.T) {
 func TestVATReturn_DownloadXML(t *testing.T) {
 	r, db := setupVATReturnRouter(t)
 
-	// Insert "dic" setting required for XML generation.
-	_, err := db.ExecContext(context.Background(),
-		"INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
-	if err != nil {
-		t.Fatalf("inserting dic setting: %v", err)
+	if err := insertVATTaxpayerSettings(db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
 	}
 
 	id := createVATReturn(t, r)

@@ -279,6 +279,11 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 	if err != nil {
 		return nil, fmt.Errorf("building taxpayer info for XML generation: %w", err)
 	}
+	info.SubmissionDate = vr.Period.VATFilingDeadline()
+
+	if err := vatxml.ValidateTaxpayerInfo(info); err != nil {
+		return nil, err
+	}
 
 	gen := &vatxml.VATReturnGenerator{}
 	xmlData, err := gen.Generate(vr, info)

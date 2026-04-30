@@ -75,15 +75,16 @@ type DPFOVetaP struct {
 }
 
 // DPFOVetaO contains per-section tax-base inputs from §6 / §7 / §8 / §9 / §10
-// and the consolidated tax base.
+// and the consolidated tax base. §8/§9/§10 fields use omitempty: emitting "0"
+// triggers the EPO control "if ř.39 or ř.40 is filled, Příloha 2 must accompany".
 type DPFOVetaO struct {
-	KcZd7       int64 `xml:"kc_zd7,attr"`       // ř. 37 -- dílčí základ daně §7 (= ř.113 Přílohy 1)
-	KcZakldan8  int64 `xml:"kc_zakldan8,attr"`  // ř. 38 -- §8 capital income net base
-	KcZd9       int64 `xml:"kc_zd9,attr"`       // ř. 39 -- §9 rental income net base
-	KcZd10      int64 `xml:"kc_zd10,attr"`      // ř. 40 -- §10 other income net base
-	KcUhrn      int64 `xml:"kc_uhrn,attr"`      // ř. 41 -- úhrn ř.37+38+39+40
-	KcZakldan23 int64 `xml:"kc_zakldan23,attr"` // ř. 42 -- celkový základ daně (= ř.36 + max(0,ř.41))
-	KcZakldan   int64 `xml:"kc_zakldan,attr"`   // ř. 45 -- ZD po odpočtu ztráty
+	KcZd7       int64 `xml:"kc_zd7,attr"`                // ř. 37 -- dílčí základ daně §7 (= ř.113 Přílohy 1)
+	KcZakldan8  int64 `xml:"kc_zakldan8,attr,omitempty"` // ř. 38 -- §8 capital income net base
+	KcZd9       int64 `xml:"kc_zd9,attr,omitempty"`      // ř. 39 -- §9 rental income net base (Příloha 2 required)
+	KcZd10      int64 `xml:"kc_zd10,attr,omitempty"`     // ř. 40 -- §10 other income net base (Příloha 2 required)
+	KcUhrn      int64 `xml:"kc_uhrn,attr"`               // ř. 41 -- úhrn ř.37+38+39+40
+	KcZakldan23 int64 `xml:"kc_zakldan23,attr"`          // ř. 42 -- celkový základ daně (= ř.36 + max(0,ř.41))
+	KcZakldan   int64 `xml:"kc_zakldan,attr"`            // ř. 45 -- ZD po odpočtu ztráty
 }
 
 // DPFOVetaS contains §15 deductions, base after deductions, rounded base and § 16 tax.

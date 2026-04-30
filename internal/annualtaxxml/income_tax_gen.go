@@ -161,10 +161,12 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, revenue, expenses, zd7 int64) *D
 	if itr.FlatRatePercent > 0 {
 		v.PrPrij7 = revenue
 		v.PrVyd7 = expenses
-		v.Vyd7proc = fmt.Sprintf("%d", itr.FlatRatePercent)
+		v.Vyd7proc = "A"
+		v.PrSazba = fmt.Sprintf("%d", itr.FlatRatePercent)
 	} else {
 		v.KcPrij7 = revenue
 		v.KcVyd7 = expenses
+		v.Vyd7proc = "N"
 	}
 	return v
 }

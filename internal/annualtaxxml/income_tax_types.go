@@ -116,7 +116,8 @@ type DPFOVetaT struct {
 	KcVyd7   int64  `xml:"kc_vyd7,attr,omitempty"`   // ř. 102 -- výdaje (actual-expense filers)
 	PrPrij7  int64  `xml:"pr_prij7,attr,omitempty"`  // oddíl B/2 -- příjmy (flat-rate filers)
 	PrVyd7   int64  `xml:"pr_vyd7,attr,omitempty"`   // oddíl B/2 -- výdaje (flat-rate filers)
-	Vyd7proc string `xml:"vyd7proc,attr,omitempty"`  // ř. 104 -- procento výdajů (flat-rate filers)
+	Vyd7proc string `xml:"vyd7proc,attr,omitempty"`  // A/N -- "applying flat-rate %?" flag
+	PrSazba  string `xml:"pr_sazba,attr,omitempty"`  // numeric % rate (e.g. 60, 80, 40, 30)
 	KcZd7p   int64  `xml:"kc_zd7p,attr"`             // ř. 113 -- dílčí ZD §7 přenesený na ř. 37
 	KcCisobr int64  `xml:"kc_cisobr,attr,omitempty"` // ř. 100 -- počet samostatných listů (default 0)
 }

@@ -6,6 +6,6 @@
     <VetaO kc_zd7="800000" kc_zakldan8="0" kc_zd9="0" kc_zd10="0" kc_uhrn="800000" kc_zakldan23="800000" kc_zakldan="800000"></VetaO>
     <VetaS kc_op28_5="0" kc_op15_13="0" kc_op15_12="0" kc_op15_8="0" kc_odcelk="0" kc_zdsniz="800000" kc_zdzaokr="800000" da_dan16="120000"></VetaS>
     <VetaB priloha1="1"></VetaB>
-    <VetaT pr_prij7="2000000" pr_vyd7="1200000" vyd7proc="60" kc_zd7p="800000"></VetaT>
+    <VetaT pr_prij7="2000000" pr_vyd7="1200000" vyd7proc="A" pr_sazba="60" kc_zd7p="800000"></VetaT>
   </DPFDP7>
 </Pisemnost>

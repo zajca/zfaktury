@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,11 @@ func setupIncomeTaxRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	settingsRepo := repository.NewSettingsRepository(db)
 	taxYearSettingsRepo := repository.NewTaxYearSettingsRepository(db)
 	taxPrepaymentRepo := repository.NewTaxPrepaymentRepository(db)
+
+	// Seed the FU code so XML generation passes c_ufo_cil validation.
+	if err := settingsRepo.Set(context.Background(), "financni_urad_code", "451"); err != nil {
+		t.Fatalf("seed financni_urad_code: %v", err)
+	}
 
 	svc := service.NewIncomeTaxReturnService(
 		incomeTaxRepo, invoiceRepo, expenseRepo,

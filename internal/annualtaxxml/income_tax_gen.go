@@ -3,11 +3,19 @@ package annualtaxxml
 import (
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
+
+// ufoCilPattern matches the EPO c_ufo_cil codebook format: exactly 3 digits.
+// Valid values are the 15 krajské FÚ codes (451, 461, 471, 481, 491, 501,
+// 511, 521, 531, 541, 551, 561, 571, 581, 591). Users sometimes enter the
+// 4-digit územní pracoviště code (c_pracufo) here -- EPO rejects those
+// with control "Číslo cílového finančního úřadu není v číselníku".
+var ufoCilPattern = regexp.MustCompile(`^\d{3}$`)
 
 // stripDICPrefix removes the leading 2-letter ISO country code (e.g. "CZ") from a DIC.
 // EPO DPFDP7 schema expects the numeric-only portion ([0-9]{1,10}).
@@ -77,6 +85,14 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		return nil, fmt.Errorf("income tax return is nil: %w", domain.ErrInvalidInput)
 	}
 
+	ufoCil := strings.TrimSpace(settings["financni_urad_code"])
+	if ufoCil == "" {
+		return nil, fmt.Errorf("kód finančního úřadu (financni_urad_code) není vyplněn v nastavení firmy: %w", domain.ErrInvalidInput)
+	}
+	if !ufoCilPattern.MatchString(ufoCil) {
+		return nil, fmt.Errorf("kód finančního úřadu %q má neplatný formát (musí být 3 číslice, např. 451 Praha, 551 Jihomoravský, 591 SFÚ): %w", ufoCil, domain.ErrInvalidInput)
+	}
+
 	// Whole-CZK conversions of every domain field referenced below.
 	revenue := ToWholeCZK(itr.TotalRevenue)
 
@@ -139,7 +155,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			KUladis:       "DPF",
 			Rok:           itr.Year,
 			DapTyp:        DPFOFilingTypeCode(itr.FilingType),
-			CUfoCil:       settings["financni_urad_code"],
+			CUfoCil:       ufoCil,
 			PlnMoc:        "N",
 			Audit:         "N",
 			ZdobdOd:       fmt.Sprintf("1.1.%d", itr.Year),

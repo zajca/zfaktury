@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -206,7 +207,10 @@ func TestIncomeTaxXML_DICStripsCountryPrefix(t *testing.T) {
 		FilingType:   domain.FilingTypeRegular,
 		TotalRevenue: domain.NewAmount(100000, 0),
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"}, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ8905244997",
+	}, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -231,7 +235,10 @@ func TestIncomeTaxXML_Section10TriggersPriloha2(t *testing.T) {
 		OtherIncomeExpenses: domain.NewAmount(3314, 0),
 		OtherIncomeNet:      domain.NewAmount(1686, 0),
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ1234567890"}, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ1234567890",
+	}, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -317,7 +324,10 @@ func TestIncomeTaxXML_ChildMonthsAggregation(t *testing.T) {
 		{Year: 2025, ChildOrder: 1, MonthsClaimed: 12, ZTP: false},
 		{Year: 2025, ChildOrder: 2, MonthsClaimed: 12, ZTP: false},
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"}, children)
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ8905244997",
+	}, children)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -351,7 +361,10 @@ func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
 		{Year: 2025, ChildOrder: 3, MonthsClaimed: 6, ZTP: false}, // -> m_deti3
 		{Year: 2025, ChildOrder: 4, MonthsClaimed: 4, ZTP: true},  // -> m_detiztpp3 (4+ treated as 3+)
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"}, children)
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ8905244997",
+	}, children)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -361,6 +374,90 @@ func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
 		if !bytes.Contains(xmlData, []byte(want)) {
 			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
 		}
+	}
+}
+
+func TestIncomeTaxXML_InvalidUfoCil(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		TotalRevenue:   domain.NewAmount(500000, 0),
+		UsedExpenses:   domain.NewAmount(300000, 0),
+		TaxBase:        domain.NewAmount(200000, 0),
+		TaxBaseRounded: domain.NewAmount(200000, 0),
+		TotalTax:       domain.NewAmount(30000, 0),
+	}
+	baseSettings := func() map[string]string {
+		return map[string]string{
+			"taxpayer_first_name":   "Jan",
+			"taxpayer_last_name":    "Novak",
+			"taxpayer_birth_number": "8001011234",
+			"dic":                   "CZ8001011234",
+			"taxpayer_street":       "Hlavni",
+			"taxpayer_house_number": "42",
+			"taxpayer_city":         "Praha",
+			"taxpayer_postal_code":  "11000",
+		}
+	}
+
+	tests := []struct {
+		name    string
+		ufoCil  string
+		wantSub string
+	}{
+		{"empty", "", "není vyplněn"},
+		{"4-digit pracoviste code", "3034", "neplatný formát"},
+		{"2-digit", "45", "neplatný formát"},
+		{"alphanumeric", "45A", "neplatný formát"},
+		{"5-digit", "12345", "neplatný formát"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := baseSettings()
+			if tt.ufoCil != "" {
+				s["financni_urad_code"] = tt.ufoCil
+			}
+			_, err := GenerateIncomeTaxXML(itr, s, nil)
+			if err == nil {
+				t.Fatalf("expected error for c_ufo_cil=%q, got nil", tt.ufoCil)
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("expected ErrInvalidInput, got: %v", err)
+			}
+			if !strings.Contains(err.Error(), tt.wantSub) {
+				t.Errorf("error message %q does not contain %q", err.Error(), tt.wantSub)
+			}
+		})
+	}
+}
+
+func TestIncomeTaxXML_ValidUfoCil(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		TotalRevenue:   domain.NewAmount(500000, 0),
+		UsedExpenses:   domain.NewAmount(300000, 0),
+		TaxBase:        domain.NewAmount(200000, 0),
+		TaxBaseRounded: domain.NewAmount(200000, 0),
+		TotalTax:       domain.NewAmount(30000, 0),
+	}
+	for _, code := range []string{"451", "461", "591", "  451  "} {
+		t.Run(code, func(t *testing.T) {
+			s := map[string]string{
+				"financni_urad_code":    code,
+				"taxpayer_first_name":   "Jan",
+				"taxpayer_last_name":    "Novak",
+				"taxpayer_birth_number": "8001011234",
+				"dic":                   "CZ8001011234",
+				"taxpayer_street":       "Hlavni",
+				"taxpayer_house_number": "42",
+				"taxpayer_city":         "Praha",
+				"taxpayer_postal_code":  "11000",
+			}
+			if _, err := GenerateIncomeTaxXML(itr, s, nil); err != nil {
+				t.Errorf("unexpected error for c_ufo_cil=%q: %v", code, err)
+			}
+		})
 	}
 }
 

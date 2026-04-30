@@ -338,14 +338,26 @@
 								value={field('c_okec')}
 								oninput={(e) => setField('c_okec', (e.target as HTMLInputElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 582900"
+								placeholder="např. 621000"
 							/>
+							<p class="mt-1 text-xs text-tertiary">
+								Od 1. 1. 2026 EPO vyžaduje CZ-NACE 2025 (NACE Rev. 2.1). Programování: <code
+									>621000</code
+								>
+								(dříve 620100). Viz
+								<a
+									href="https://csu.gov.cz/klasifikace-ekonomickych-cinnosti-cz-nace-platna-od-1-1-2025"
+									target="_blank"
+									rel="noopener"
+									class="text-accent underline">ČSÚ CZ-NACE 2025</a
+								>.
+							</p>
 						</div>
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div>
 							<label for="financni_urad_code" class="block text-sm font-medium text-secondary"
-								>Kód finančního úřadu</label
+								>Kód finančního úřadu (DPFO)</label
 							>
 							<input
 								id="financni_urad_code"
@@ -354,8 +366,14 @@
 								oninput={(e) =>
 									setField('financni_urad_code', (e.target as HTMLInputElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 0451"
+								placeholder="např. 451"
 							/>
+							<p class="mt-1 text-xs text-tertiary">
+								3-místný kód krajského FÚ (451 Praha, 461 Středočeský, 471 Jihočeský, 481 Plzeňský,
+								491 Karlovarský, 501 Ústecký, 511 Liberecký, 521 Královéhradecký, 531 Pardubický,
+								541 Vysočina, 551 Jihomoravský, 561 Olomoucký, 571 Moravskoslezský, 581 Zlínský, 591
+								SFÚ).
+							</p>
 						</div>
 						<div>
 							<label for="cssz_code" class="block text-sm font-medium text-secondary"

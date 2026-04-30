@@ -11,7 +11,7 @@ import (
 )
 
 func TestIncomeTaxXML_NilInput(t *testing.T) {
-	_, err := GenerateIncomeTaxXML(nil, map[string]string{})
+	_, err := GenerateIncomeTaxXML(nil, map[string]string{}, nil)
 	if err == nil {
 		t.Fatal("expected error for nil input, got nil")
 	}
@@ -45,7 +45,7 @@ func TestIncomeTaxXML_CorrectiveFilingType(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestIncomeTaxXML_SupplementaryFilingType(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestIncomeTaxXML_Golden_Full(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestIncomeTaxXML_DICStripsCountryPrefix(t *testing.T) {
 		FilingType:   domain.FilingTypeRegular,
 		TotalRevenue: domain.NewAmount(100000, 0),
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"})
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"}, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestIncomeTaxXML_Section10TriggersPriloha2(t *testing.T) {
 		OtherIncomeExpenses: domain.NewAmount(3314, 0),
 		OtherIncomeNet:      domain.NewAmount(1686, 0),
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ1234567890"})
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ1234567890"}, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -295,11 +295,71 @@ func TestIncomeTaxXML_Golden_Minimal(t *testing.T) {
 		"taxpayer_postal_code":  "60200",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
 
 	goldenPath := filepath.Join("testdata", "income_tax_minimal.golden.xml")
 	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestIncomeTaxXML_ChildMonthsAggregation(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:            2025,
+		FilingType:      domain.FilingTypeRegular,
+		TotalRevenue:    domain.NewAmount(1_550_848, 0),
+		FlatRatePercent: 60,
+		ChildBenefit:    domain.NewAmount(37_524, 0), // 15204 + 22320 (1st + 2nd child, full year)
+		TotalTax:        domain.NewAmount(91_605, 0),
+	}
+	children := []domain.TaxChildCredit{
+		{Year: 2025, ChildOrder: 1, MonthsClaimed: 12, ZTP: false},
+		{Year: 2025, ChildOrder: 2, MonthsClaimed: 12, ZTP: false},
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"}, children)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, want := range []string{
+		` m_deti="12"`, ` m_deti2="12"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
+	for _, unwanted := range []string{
+		` m_deti3="`, ` m_detiztpp="`, ` m_detiztpp2="`, ` m_detiztpp3="`,
+	} {
+		if bytes.Contains(xmlData, []byte(unwanted)) {
+			t.Errorf("unexpected XML attribute %q present, got:\n%s", unwanted, xmlData)
+		}
+	}
+}
+
+func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:            2025,
+		FilingType:      domain.FilingTypeRegular,
+		TotalRevenue:    domain.NewAmount(2_000_000, 0),
+		FlatRatePercent: 60,
+		ChildBenefit:    domain.NewAmount(80_000, 0),
+		TotalTax:        domain.NewAmount(120_000, 0),
+	}
+	children := []domain.TaxChildCredit{
+		{Year: 2025, ChildOrder: 1, MonthsClaimed: 12, ZTP: true}, // -> m_detiztpp
+		{Year: 2025, ChildOrder: 3, MonthsClaimed: 6, ZTP: false}, // -> m_deti3
+		{Year: 2025, ChildOrder: 4, MonthsClaimed: 4, ZTP: true},  // -> m_detiztpp3 (4+ treated as 3+)
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"}, children)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, want := range []string{
+		` m_detiztpp="12"`, ` m_deti3="6"`, ` m_detiztpp3="4"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
 }

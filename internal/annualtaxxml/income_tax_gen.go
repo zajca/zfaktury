@@ -37,8 +37,42 @@ func splitChildBenefit(taxAfterCredits, childBenefit int64) (slevy35c, danbonus 
 	return taxAfterCredits, childBenefit - taxAfterCredits
 }
 
-// GenerateIncomeTaxXML produces EPO XML bytes from an IncomeTaxReturn and settings map.
-func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]string) ([]byte, error) {
+// aggregateChildMonths buckets each TaxChildCredit by order (1/2/3+) and ZTP flag,
+// summing MonthsClaimed into the matching m_deti* slot. EPO derives kc_dazvyhod (ř.72)
+// from these slots, so an empty slice produces 0 for every slot and an inconsistency
+// error if kc_dazvyhod is non-zero.
+type childMonths struct {
+	Deti, Deti2, Deti3             int
+	DetiZtpp, DetiZtpp2, DetiZtpp3 int
+}
+
+func aggregateChildMonths(children []domain.TaxChildCredit) childMonths {
+	var m childMonths
+	for _, c := range children {
+		switch {
+		case c.ChildOrder <= 1 && c.ZTP:
+			m.DetiZtpp += c.MonthsClaimed
+		case c.ChildOrder <= 1:
+			m.Deti += c.MonthsClaimed
+		case c.ChildOrder == 2 && c.ZTP:
+			m.DetiZtpp2 += c.MonthsClaimed
+		case c.ChildOrder == 2:
+			m.Deti2 += c.MonthsClaimed
+		case c.ZTP:
+			m.DetiZtpp3 += c.MonthsClaimed
+		default:
+			m.Deti3 += c.MonthsClaimed
+		}
+	}
+	return m
+}
+
+// GenerateIncomeTaxXML produces EPO XML bytes from an IncomeTaxReturn, settings map,
+// and the list of child-credit entries used by the §35c calculation. The children
+// slice is required by EPO's ř.72 formula control even though the aggregate amount
+// is already in itr.ChildBenefit -- omitting it triggers a "kc_dazvyhod neodpovídá
+// výpočtu" warning.
+func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]string, children []domain.TaxChildCredit) ([]byte, error) {
 	if itr == nil {
 		return nil, fmt.Errorf("income tax return is nil: %w", domain.ErrInvalidInput)
 	}
@@ -96,6 +130,8 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		danPoDb = 0
 	}
 
+	cm := aggregateChildMonths(children)
+
 	doc := &DPFDP7{
 		VerzePis: "01.01.02",
 		VetaD: DPFOVetaD{
@@ -114,6 +150,12 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			KcOp15_1a:     creditBasic,
 			UhrnSlevy35ba: uhrnSlevy35ba,
 			DaSlevy35ba:   taxAfter35ba,
+			MDeti:         cm.Deti,
+			MDeti2:        cm.Deti2,
+			MDeti3:        cm.Deti3,
+			MDetiZtpp:     cm.DetiZtpp,
+			MDetiZtpp2:    cm.DetiZtpp2,
+			MDetiZtpp3:    cm.DetiZtpp3,
 			KcDazvyhod:    childBenefit,
 			KcSlevy35c:    slevy35c,
 			DaSlevy35c:    taxAfter35c,

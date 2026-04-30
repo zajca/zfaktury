@@ -60,15 +60,25 @@ type DPFOVetaD struct {
 	KcOp15_1a     int64  `xml:"kc_op15_1a,attr"`     // ř. 64 -- základní sleva na poplatníka (§ 35ba 1a) -- 30 840 Kč
 	UhrnSlevy35ba int64  `xml:"uhrn_slevy35ba,attr"` // ř. 70 -- úhrn slev podle § 35ba
 	DaSlevy35ba   int64  `xml:"da_slevy35ba,attr"`   // ř. 71 -- daň po slevách (= ř.60 - ř.70)
-	KcDazvyhod    int64  `xml:"kc_dazvyhod,attr"`    // ř. 72 -- daňové zvýhodnění na děti
-	KcSlevy35c    int64  `xml:"kc_slevy35c,attr"`    // ř. 73 -- sleva na děti uplatněná do výše daně
-	DaSlevy35c    int64  `xml:"da_slevy35c,attr"`    // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
-	KcDanCelk     int64  `xml:"kc_dan_celk,attr"`    // ř. 75 -- daň celkem (= ř.74 + ř.74a)
-	KcDanbonus    int64  `xml:"kc_danbonus,attr"`    // ř. 76 -- daňový bonus (= ř.72 - ř.73)
-	KcDanPoDb     int64  `xml:"kc_dan_po_db,attr"`   // ř. 77 -- daň celkem po úpravě o bonus (= ř.75 - ř.76, min 0)
-	KcDbPoOdpd    int64  `xml:"kc_db_po_odpd,attr"`  // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
-	KcZalpred     int64  `xml:"kc_zalpred,attr"`     // ř. 84 -- úhrn sražených záloh
-	KcZbyvpred    int64  `xml:"kc_zbyvpred,attr"`    // ř. 91 -- zbývá doplatit / přeplatek
+	// Per-child months claimed (used by EPO formula for ř.72). Each *2/*3 suffix selects
+	// the child order (1st/2nd/3rd+); ztpp variants apply the ZTP/P doubling.
+	// EPO formula: kc_dazvyhod = (m_deti × 1267 + m_deti2 × 1860 + m_deti3 × 2320)
+	//             + 2 × (m_detiztpp × 1267 + m_detiztpp2 × 1860 + m_detiztpp3 × 2320)
+	MDeti      int   `xml:"m_deti,attr,omitempty"`      // měsíců s 1. dítětem (běžným)
+	MDeti2     int   `xml:"m_deti2,attr,omitempty"`     // měsíců s 2. dítětem (běžným)
+	MDeti3     int   `xml:"m_deti3,attr,omitempty"`     // měsíců s 3+ dítětem (běžným)
+	MDetiZtpp  int   `xml:"m_detiztpp,attr,omitempty"`  // měsíců s 1. dítětem ZTP/P
+	MDetiZtpp2 int   `xml:"m_detiztpp2,attr,omitempty"` // měsíců s 2. dítětem ZTP/P
+	MDetiZtpp3 int   `xml:"m_detiztpp3,attr,omitempty"` // měsíců s 3+ dítětem ZTP/P
+	KcDazvyhod int64 `xml:"kc_dazvyhod,attr"`           // ř. 72 -- daňové zvýhodnění na děti
+	KcSlevy35c int64 `xml:"kc_slevy35c,attr"`           // ř. 73 -- sleva na děti uplatněná do výše daně
+	DaSlevy35c int64 `xml:"da_slevy35c,attr"`           // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
+	KcDanCelk  int64 `xml:"kc_dan_celk,attr"`           // ř. 75 -- daň celkem (= ř.74 + ř.74a)
+	KcDanbonus int64 `xml:"kc_danbonus,attr"`           // ř. 76 -- daňový bonus (= ř.72 - ř.73)
+	KcDanPoDb  int64 `xml:"kc_dan_po_db,attr"`          // ř. 77 -- daň celkem po úpravě o bonus (= ř.75 - ř.76, min 0)
+	KcDbPoOdpd int64 `xml:"kc_db_po_odpd,attr"`         // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
+	KcZalpred  int64 `xml:"kc_zalpred,attr"`            // ř. 84 -- úhrn sražených záloh
+	KcZbyvpred int64 `xml:"kc_zbyvpred,attr"`           // ř. 91 -- zbývá doplatit / přeplatek
 }
 
 // DPFOVetaP contains taxpayer identification.

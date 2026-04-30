@@ -313,12 +313,14 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		return nil, fmt.Errorf("fetching income_tax_return for XML generation: %w", err)
 	}
 
-	// Load settings for taxpayer info.
+	// Load settings for taxpayer info. c_okec is also pulled because the income-tax
+	// XML reuses it as the NACE code for Příloha č. 1 part B.
 	settings := make(map[string]string)
 	for _, key := range []string{
 		"financni_urad_code", "taxpayer_first_name", "taxpayer_last_name",
 		"taxpayer_birth_number", "dic", "taxpayer_street",
 		"taxpayer_house_number", "taxpayer_city", "taxpayer_postal_code",
+		"c_okec", "main_activity_nace", "main_activity_months",
 	} {
 		val, err := s.settingsRepo.Get(ctx, key)
 		if err == nil {
@@ -326,7 +328,17 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		}
 	}
 
-	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings)
+	// Load child-credit entries so the EPO ř.72 formula control can verify
+	// kc_dazvyhod = sum over m_deti* slots × per-order amounts.
+	var children []domain.TaxChildCredit
+	if s.taxCreditsSvc != nil {
+		children, err = s.taxCreditsSvc.ListChildren(ctx, itr.Year)
+		if err != nil {
+			return nil, fmt.Errorf("listing child credits for XML generation: %w", err)
+		}
+	}
+
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children)
 	if err != nil {
 		return nil, fmt.Errorf("generating income_tax_return XML: %w", err)
 	}

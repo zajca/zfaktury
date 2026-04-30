@@ -229,17 +229,23 @@ func buildPriloha2(itr *domain.IncomeTaxReturn) (*DPFOVetaV, []DPFOVetaJ) {
 //     additional Vetac rows (we currently emit a single main row, so the totals
 //     equal the main row values).
 //
-// Defaults applied when the corresponding setting is empty:
-//   - main_activity_nace -> "620100" (Computer programming activities)
-//   - main_activity_months -> 12
+// NACE code lookup order:
+//  1. main_activity_nace (DPFO-specific override) -- if user wants a different
+//     code on the income tax form than on the VAT form
+//  2. c_okec (shared NACE code already used for VAT XML) -- this is the existing
+//     "NACE kód činnosti" field in firma settings (e.g. 582900)
+//
+// If both are empty, c_nace is omitted; EPO will warn but the user can fill it
+// manually in the portal. Invented defaults must NOT be used because EPO
+// validates against the okec číselník.
 func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, revenue, expenses, zd7 int64) *DPFOVetaT {
-	nace := settings["main_activity_nace"]
-	if nace == "" {
-		nace = "620100"
-	}
 	months := 12
 	if v, err := strconv.Atoi(settings["main_activity_months"]); err == nil && v > 0 && v <= 12 {
 		months = v
+	}
+	nace := settings["main_activity_nace"]
+	if nace == "" {
+		nace = settings["c_okec"]
 	}
 	v := &DPFOVetaT{
 		CNace:   nace,

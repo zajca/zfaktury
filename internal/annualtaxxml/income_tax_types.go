@@ -47,24 +47,28 @@ type DPFOVetaD struct {
 	ZdobdOd string `xml:"zdobd_od,attr,omitempty"`
 	ZdobdDo string `xml:"zdobd_do,attr,omitempty"`
 
-	// Tax computation (sec. 4-5). Attribute names follow DPFDP7 schema (2024+),
-	// which renamed several legacy DPFDP5 attributes:
-	//   - basic taxpayer credit (ř.64) moved from sleva_rp to kc_op15_1a
-	//   - rounded-up tax (ř.60) moved from da_slezap to da_slevy
-	KcDztrata     int64 `xml:"kc_dztrata,attr"`     // ř. 61 -- daňová ztráta (zaokr. nahoru, bez znaménka mínus)
-	DaSlevy       int64 `xml:"da_slevy,attr"`       // ř. 60 -- daň celkem zaokrouhlená na celé Kč nahoru
-	KcOp15_1a     int64 `xml:"kc_op15_1a,attr"`     // ř. 64 -- základní sleva na poplatníka (§ 35ba 1a) -- 30 840 Kč
-	UhrnSlevy35ba int64 `xml:"uhrn_slevy35ba,attr"` // ř. 70 -- úhrn slev podle § 35ba
-	DaSlevy35ba   int64 `xml:"da_slevy35ba,attr"`   // ř. 71 -- daň po slevách (= ř.60 - ř.70)
-	KcDazvyhod    int64 `xml:"kc_dazvyhod,attr"`    // ř. 72 -- daňové zvýhodnění na děti
-	KcSlevy35c    int64 `xml:"kc_slevy35c,attr"`    // ř. 73 -- sleva na děti uplatněná do výše daně
-	DaSlevy35c    int64 `xml:"da_slevy35c,attr"`    // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
-	KcDanCelk     int64 `xml:"kc_dan_celk,attr"`    // ř. 75 -- daň celkem (= ř.74 + ř.74a)
-	KcDanbonus    int64 `xml:"kc_danbonus,attr"`    // ř. 76 -- daňový bonus (= ř.72 - ř.73)
-	KcDanPoDb     int64 `xml:"kc_dan_po_db,attr"`   // ř. 77 -- daň celkem po úpravě o bonus (= ř.75 - ř.76, min 0)
-	KcDbPoOdpd    int64 `xml:"kc_db_po_odpd,attr"`  // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
-	KcZalpred     int64 `xml:"kc_zalpred,attr"`     // ř. 84 -- úhrn sražených záloh
-	KcZbyvpred    int64 `xml:"kc_zbyvpred,attr"`    // ř. 91 -- zbývá doplatit / přeplatek
+	// Tax computation (sec. 4-5). Attribute names verified against ADIS popis_struktury
+	// for DPFDP7 (2024+):
+	//   - ř.58 (daň podle §16 přenesená z VetaS.da_dan16) = da_slezap (decimal 17/2)
+	//   - ř.60 (daň celkem zaokrouhlená nahoru, ř.58 + ř.59) = da_celod13 (integer)
+	//   - ř.62 (sleva podle §35 odst.1 -- zaměstnanci ZTP) = da_slevy (NOT for OSVC)
+	//   - ř.63 (sleva podle §35a/35b -- investiční pobídky) = sleva_rp (NOT for OSVC)
+	//   - ř.64 (základní sleva na poplatníka §35ba 1a) = kc_op15_1a
+	KcDztrata     int64  `xml:"kc_dztrata,attr"`     // ř. 61 -- daňová ztráta (zaokr. nahoru, bez znaménka mínus)
+	DaSlezap      string `xml:"da_slezap,attr"`      // ř. 58 -- daň podle §16 (formát "Kc.00", decimal 2 frac digits)
+	DaCelod13     int64  `xml:"da_celod13,attr"`     // ř. 60 -- daň celkem zaokrouhlená na celé Kč nahoru
+	KcOp15_1a     int64  `xml:"kc_op15_1a,attr"`     // ř. 64 -- základní sleva na poplatníka (§ 35ba 1a) -- 30 840 Kč
+	UhrnSlevy35ba int64  `xml:"uhrn_slevy35ba,attr"` // ř. 70 -- úhrn slev podle § 35ba
+	DaSlevy35ba   int64  `xml:"da_slevy35ba,attr"`   // ř. 71 -- daň po slevách (= ř.60 - ř.70)
+	KcDazvyhod    int64  `xml:"kc_dazvyhod,attr"`    // ř. 72 -- daňové zvýhodnění na děti
+	KcSlevy35c    int64  `xml:"kc_slevy35c,attr"`    // ř. 73 -- sleva na děti uplatněná do výše daně
+	DaSlevy35c    int64  `xml:"da_slevy35c,attr"`    // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
+	KcDanCelk     int64  `xml:"kc_dan_celk,attr"`    // ř. 75 -- daň celkem (= ř.74 + ř.74a)
+	KcDanbonus    int64  `xml:"kc_danbonus,attr"`    // ř. 76 -- daňový bonus (= ř.72 - ř.73)
+	KcDanPoDb     int64  `xml:"kc_dan_po_db,attr"`   // ř. 77 -- daň celkem po úpravě o bonus (= ř.75 - ř.76, min 0)
+	KcDbPoOdpd    int64  `xml:"kc_db_po_odpd,attr"`  // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
+	KcZalpred     int64  `xml:"kc_zalpred,attr"`     // ř. 84 -- úhrn sražených záloh
+	KcZbyvpred    int64  `xml:"kc_zbyvpred,attr"`    // ř. 91 -- zbývá doplatit / přeplatek
 }
 
 // DPFOVetaP contains taxpayer identification.

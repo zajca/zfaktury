@@ -72,12 +72,15 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		zdsniz = 0
 	}
 	taxBaseRounded := (zdsniz / 100) * 100 // ř.56 (round down to whole 100 CZK)
-	dan16 := ToWholeCZK(itr.TotalTax)      // ř.57 -- §16 tax (already computed by service)
-	daSlevy := dan16                       // ř.60 -- daň zaokrouhlená nahoru (service already rounds)
+	dan16 := ToWholeCZK(itr.TotalTax)      // ř.57 / ř.58 -- §16 tax (already computed by service)
+	// ř.58 = da_slezap (decimal 17/2, fractional digits required by EPO -- emit as "Kc.00").
+	// ř.60 = da_celod13 (integer, identical to ř.58 here because we have no §16a separate-base tax).
+	daSlezap := fmt.Sprintf("%d.00", dan16)
+	daCelod13 := dan16
 
 	uhrnSlevy35ba := ToWholeCZK(itr.TotalCredits) // ř.70
 	creditBasic := ToWholeCZK(itr.CreditBasic)    // ř.64 (§35ba 1a)
-	taxAfter35ba := daSlevy - uhrnSlevy35ba       // ř.71
+	taxAfter35ba := daCelod13 - uhrnSlevy35ba     // ř.71 = ř.60 - ř.70
 	if taxAfter35ba < 0 {
 		taxAfter35ba = 0
 	}
@@ -106,7 +109,8 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			ZdobdOd:       fmt.Sprintf("1.1.%d", itr.Year),
 			ZdobdDo:       fmt.Sprintf("31.12.%d", itr.Year),
 			KcDztrata:     loss,
-			DaSlevy:       daSlevy,
+			DaSlezap:      daSlezap,
+			DaCelod13:     daCelod13,
 			KcOp15_1a:     creditBasic,
 			UhrnSlevy35ba: uhrnSlevy35ba,
 			DaSlevy35ba:   taxAfter35ba,

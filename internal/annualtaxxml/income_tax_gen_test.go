@@ -333,6 +333,8 @@ func TestIncomeTaxXML_ChildMonthsAggregation(t *testing.T) {
 	}
 	for _, want := range []string{
 		` m_deti="12"`, ` m_deti2="12"`,
+		// VetaA rows must mirror the aggregates (EPO controls 176/318).
+		` vyzdite_pocmes="12"`, ` vyzdite_pocmes2="12"`,
 	} {
 		if !bytes.Contains(xmlData, []byte(want)) {
 			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)

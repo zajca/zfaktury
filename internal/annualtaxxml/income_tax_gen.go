@@ -3,19 +3,36 @@ package annualtaxxml
 import (
 	"encoding/xml"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
-// ufoCilPattern matches the EPO c_ufo_cil codebook format: exactly 3 digits.
-// Valid values are the 15 krajské FÚ codes (451, 461, 471, 481, 491, 501,
-// 511, 521, 531, 541, 551, 561, 571, 581, 591). Users sometimes enter the
-// 4-digit územní pracoviště code (c_pracufo) here -- EPO rejects those
-// with control "Číslo cílového finančního úřadu není v číselníku".
-var ufoCilPattern = regexp.MustCompile(`^\d{3}$`)
+// validUfoCilCodes is the EPO c_ufo codebook (číselník Územní finanční orgány).
+// EPO control 2 ("Číslo cílového finančního úřadu (X) není v číselníku") rejects
+// any value not in this set. The codes run sequentially 451..464 for the 14
+// krajské FÚ plus 13 for the Specializovaný finanční úřad -- they do NOT
+// increment by 10 (a common misconception that produced 461/471/.../591).
+//
+// Source: https://podpora.mojedane.gov.cz/cs/seznam-okruhu/rozhrani-pro-treti-strany/informace-k-ciselniku-ufo-platnem-od-1-1-4382
+var validUfoCilCodes = map[string]string{
+	"451": "Praha",
+	"452": "Středočeský",
+	"453": "Jihočeský",
+	"454": "Plzeňský",
+	"455": "Karlovarský",
+	"456": "Ústecký",
+	"457": "Liberecký",
+	"458": "Královéhradecký",
+	"459": "Pardubický",
+	"460": "Vysočina",
+	"461": "Jihomoravský",
+	"462": "Olomoucký",
+	"463": "Moravskoslezský",
+	"464": "Zlínský",
+	"13":  "Specializovaný FÚ",
+}
 
 // stripDICPrefix removes the leading 2-letter ISO country code (e.g. "CZ") from a DIC.
 // EPO DPFDP7 schema expects the numeric-only portion ([0-9]{1,10}).
@@ -89,8 +106,8 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	if ufoCil == "" {
 		return nil, fmt.Errorf("kód finančního úřadu (financni_urad_code) není vyplněn v nastavení firmy: %w", domain.ErrInvalidInput)
 	}
-	if !ufoCilPattern.MatchString(ufoCil) {
-		return nil, fmt.Errorf("kód finančního úřadu %q má neplatný formát (musí být 3 číslice, např. 451 Praha, 551 Jihomoravský, 591 SFÚ): %w", ufoCil, domain.ErrInvalidInput)
+	if _, ok := validUfoCilCodes[ufoCil]; !ok {
+		return nil, fmt.Errorf("kód finančního úřadu %q není v EPO číselníku ufo (platné kódy: 451 Praha, 452 Středočeský, 453 Jihočeský, 454 Plzeňský, 455 Karlovarský, 456 Ústecký, 457 Liberecký, 458 Královéhradecký, 459 Pardubický, 460 Vysočina, 461 Jihomoravský, 462 Olomoucký, 463 Moravskoslezský, 464 Zlínský, 13 SFÚ): %w", ufoCil, domain.ErrInvalidInput)
 	}
 
 	// Whole-CZK conversions of every domain field referenced below.
@@ -291,21 +308,22 @@ func buildPriloha2(itr *domain.IncomeTaxReturn) (*DPFOVetaV, []DPFOVetaJ) {
 //     additional Vetac rows (we currently emit a single main row, so the totals
 //     equal the main row values).
 //
-// normalizeNACE trims trailing zeros from 5- or 6-digit Czech subdivision codes
-// (e.g. "620100" -> "6201", "582900" -> "5829"). EPO's DPFDP7 NACE číselník uses
-// the 4-digit international NACE rev.2 form -- the 6-digit Czech extensions
-// "62.01.0" / "58.29.0" exist in CZSO classifications but are NOT in the EPO
-// okec lookup, so emitting them triggers control 1671 ("Kód CZ-NACE není uveden
-// v číselníku"). Codes that are already 4-digit pass through unchanged. Codes
-// whose trailing digits aren't zero (e.g. "62012") are left alone -- they are
-// either valid sub-codes or user-entered junk that EPO will flag.
-func normalizeNACE(code string) string {
+// padNACEto6 right-pads a CZ-NACE code with zeros to the 6-digit form expected
+// by EPO. The portal FAQ ("Jak vyberu hlavní ekonomickou činnost ve formuláři
+// aplikace EPO?") says the c_nace value must contain 6 characters -- shorter
+// codes (e.g. NACE Rev.2 4-digit "6201") are right-padded with zeros to land
+// on a leaf entry in the okec codebook (e.g. "620100"). Codes already at or
+// over 6 digits pass through unchanged; emitting a 4- or 5-digit value
+// triggers EPO control 1671 ("Kód CZ-NACE není uveden v číselníku").
+//
+// Source: https://podpora.mojedane.gov.cz/cs/seznam-okruhu/elektronicka-podani-epo/jak-vyberu-hlavni-ekonomickou-cinnost-ve-4389
+func padNACEto6(code string) string {
 	code = strings.TrimSpace(code)
 	if code == "" {
 		return ""
 	}
-	for len(code) > 4 && code[len(code)-1] == '0' {
-		code = code[:len(code)-1]
+	for len(code) < 6 {
+		code += "0"
 	}
 	return code
 }
@@ -329,7 +347,7 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, reve
 		nace = settings["c_okec"]
 	}
 	v := &DPFOVetaT{
-		CNace:   normalizeNACE(nace),
+		CNace:   padNACEto6(nace),
 		MPodnik: months,
 		KcZd7p:  zd7,
 	}

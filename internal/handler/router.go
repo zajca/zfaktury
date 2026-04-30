@@ -223,6 +223,9 @@ func NewRouter(
 
 		api.Get("/tax-constants/{year}", handleGetTaxConstants)
 
+		codebooksHandler := NewCodebooksHandler()
+		api.Mount("/codebooks", codebooksHandler.Routes())
+
 		taxCreditsHandler := NewTaxCreditsHandler(taxCreditsSvc)
 		api.Mount("/tax-credits", taxCreditsHandler.Routes())
 

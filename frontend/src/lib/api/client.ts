@@ -636,6 +636,27 @@ export const settingsApi = {
 	}
 };
 
+// --- Codebooks (static EPO reference data) ---
+
+export interface FinancialOffice {
+	code: string;
+	name: string;
+}
+
+export interface NACEEntry {
+	code: string;
+	name: string;
+}
+
+export const codebooksApi = {
+	financialOffices() {
+		return get<FinancialOffice[]>('/codebooks/financial-offices');
+	},
+	nace() {
+		return get<NACEEntry[]>('/codebooks/nace');
+	}
+};
+
 // --- Recurring Invoices API ---
 
 export const recurringInvoicesApi = {

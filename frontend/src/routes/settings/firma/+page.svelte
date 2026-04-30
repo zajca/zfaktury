@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { settingsApi, type Settings } from '$lib/api/client';
+	import {
+		settingsApi,
+		codebooksApi,
+		type Settings,
+		type FinancialOffice,
+		type NACEEntry
+	} from '$lib/api/client';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
@@ -12,10 +18,13 @@
 	let loading = $state(true);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
+	let financialOffices = $state<FinancialOffice[]>([]);
+	let naceEntries = $state<NACEEntry[]>([]);
 	import { onMount } from 'svelte';
 
 	onMount(() => {
 		loadSettings();
+		loadCodebooks();
 	});
 
 	async function loadSettings() {
@@ -29,6 +38,21 @@
 			loading = false;
 		}
 	}
+
+	async function loadCodebooks() {
+		try {
+			const [offices, nace] = await Promise.all([
+				codebooksApi.financialOffices(),
+				codebooksApi.nace()
+			]);
+			financialOffices = offices;
+			naceEntries = nace;
+		} catch (e) {
+			console.error('Failed to load codebooks', e);
+		}
+	}
+
+	const naceLookup = $derived(naceEntries.find((entry) => entry.code === field('c_okec')));
 
 	async function handleSave() {
 		saving = true;
@@ -335,22 +359,29 @@
 							<input
 								id="c_okec"
 								type="text"
+								list="nace-options"
 								value={field('c_okec')}
 								oninput={(e) => setField('c_okec', (e.target as HTMLInputElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 621000"
+								placeholder={naceEntries.length
+									? 'začněte psát název nebo kód…'
+									: 'načítám číselník…'}
 							/>
+							<datalist id="nace-options">
+								{#each naceEntries as entry (entry.code)}
+									<option value={entry.code}>{entry.code} – {entry.name}</option>
+								{/each}
+							</datalist>
 							<p class="mt-1 text-xs text-tertiary">
-								Od 1. 1. 2026 EPO vyžaduje CZ-NACE 2025 (NACE Rev. 2.1). Programování: <code
-									>621000</code
-								>
-								(dříve 620100). Viz
-								<a
-									href="https://csu.gov.cz/klasifikace-ekonomickych-cinnosti-cz-nace-platna-od-1-1-2025"
-									target="_blank"
-									rel="noopener"
-									class="text-accent underline">ČSÚ CZ-NACE 2025</a
-								>.
+								{#if naceLookup}
+									<span class="text-accent">{naceLookup.code}</span> – {naceLookup.name}
+								{:else if field('c_okec')}
+									<span class="text-error"
+										>Kód <code>{field('c_okec')}</code> není v CZ-NACE 2025 číselníku.</span
+									>
+								{:else}
+									CZ-NACE 2025 (NACE Rev. 2.1) – pětimístný kód podtřídy. Vyberte ze seznamu.
+								{/if}
 							</p>
 						</div>
 					</div>
@@ -359,20 +390,22 @@
 							<label for="financni_urad_code" class="block text-sm font-medium text-secondary"
 								>Kód finančního úřadu (DPFO)</label
 							>
-							<input
+							<select
 								id="financni_urad_code"
-								type="text"
 								value={field('financni_urad_code')}
-								oninput={(e) =>
-									setField('financni_urad_code', (e.target as HTMLInputElement).value)}
+								onchange={(e) =>
+									setField('financni_urad_code', (e.target as HTMLSelectElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 451"
-							/>
+							>
+								<option value=""
+									>{financialOffices.length ? '-- vyberte FÚ --' : 'Načítám číselník…'}</option
+								>
+								{#each financialOffices as office (office.code)}
+									<option value={office.code}>{office.code} – {office.name}</option>
+								{/each}
+							</select>
 							<p class="mt-1 text-xs text-tertiary">
-								3-místný kód krajského FÚ (451 Praha, 461 Středočeský, 471 Jihočeský, 481 Plzeňský,
-								491 Karlovarský, 501 Ústecký, 511 Liberecký, 521 Královéhradecký, 531 Pardubický,
-								541 Vysočina, 551 Jihomoravský, 561 Olomoucký, 571 Moravskoslezský, 581 Zlínský, 591
-								SFÚ).
+								Kód krajského FÚ (c_ufo) podle EPO číselníku ufo. Sekvence 451–464 + 13 (SFÚ).
 							</p>
 						</div>
 						<div>

@@ -406,10 +406,11 @@ func TestIncomeTaxXML_InvalidUfoCil(t *testing.T) {
 		wantSub string
 	}{
 		{"empty", "", "není vyplněn"},
-		{"4-digit pracoviste code", "3034", "neplatný formát"},
-		{"2-digit", "45", "neplatný formát"},
-		{"alphanumeric", "45A", "neplatný formát"},
-		{"5-digit", "12345", "neplatný formát"},
+		{"4-digit pracoviste code", "3034", "není v EPO číselníku"},
+		{"3-digit not in codebook (legacy +10 misconception)", "581", "není v EPO číselníku"},
+		{"2-digit", "45", "není v EPO číselníku"},
+		{"alphanumeric", "45A", "není v EPO číselníku"},
+		{"5-digit", "12345", "není v EPO číselníku"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -441,7 +442,7 @@ func TestIncomeTaxXML_ValidUfoCil(t *testing.T) {
 		TaxBaseRounded: domain.NewAmount(200000, 0),
 		TotalTax:       domain.NewAmount(30000, 0),
 	}
-	for _, code := range []string{"451", "461", "591", "  451  "} {
+	for _, code := range []string{"451", "461", "464", "13", "  451  "} {
 		t.Run(code, func(t *testing.T) {
 			s := map[string]string{
 				"financni_urad_code":    code,
@@ -461,23 +462,23 @@ func TestIncomeTaxXML_ValidUfoCil(t *testing.T) {
 	}
 }
 
-func TestNormalizeNACE(t *testing.T) {
+func TestPadNACEto6(t *testing.T) {
 	tests := []struct {
 		in, want string
 	}{
-		{"620100", "6201"},
-		{"582900", "5829"},
-		{"62010", "6201"},
-		{"6201", "6201"},
-		{"62012", "62012"},
-		{"4321", "4321"},
+		{"621000", "621000"},
+		{"6210", "621000"},
+		{"62100", "621000"},
+		{"6201", "620100"},
+		{"772", "772000"},
+		{"4321", "432100"},
 		{"", ""},
-		{" 620100 ", "6201"},
-		{"100000", "1000"},
+		{" 621000 ", "621000"},
+		{"1000", "100000"},
 	}
 	for _, tt := range tests {
-		if got := normalizeNACE(tt.in); got != tt.want {
-			t.Errorf("normalizeNACE(%q) = %q, want %q", tt.in, got, tt.want)
+		if got := padNACEto6(tt.in); got != tt.want {
+			t.Errorf("padNACEto6(%q) = %q, want %q", tt.in, got, tt.want)
 		}
 	}
 }

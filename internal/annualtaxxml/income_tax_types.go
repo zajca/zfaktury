@@ -21,13 +21,15 @@ type DPFOPisemnost struct {
 // DPFDP7 represents the income tax return form (Priznani k dani z prijmu FO).
 // Element order matches the XSD sequence: VetaD, VetaP, VetaO, VetaS, VetaB, VetaT.
 type DPFDP7 struct {
-	VerzePis string     `xml:"verzePis,attr"`
-	VetaD    DPFOVetaD  `xml:"VetaD"`
-	VetaP    DPFOVetaP  `xml:"VetaP"`
-	VetaO    *DPFOVetaO `xml:"VetaO,omitempty"`
-	VetaS    *DPFOVetaS `xml:"VetaS,omitempty"`
-	VetaB    *DPFOVetaB `xml:"VetaB,omitempty"`
-	VetaT    *DPFOVetaT `xml:"VetaT,omitempty"`
+	VerzePis string      `xml:"verzePis,attr"`
+	VetaD    DPFOVetaD   `xml:"VetaD"`
+	VetaP    DPFOVetaP   `xml:"VetaP"`
+	VetaO    *DPFOVetaO  `xml:"VetaO,omitempty"`
+	VetaS    *DPFOVetaS  `xml:"VetaS,omitempty"`
+	VetaB    *DPFOVetaB  `xml:"VetaB,omitempty"`
+	VetaT    *DPFOVetaT  `xml:"VetaT,omitempty"`
+	VetaV    *DPFOVetaV  `xml:"VetaV,omitempty"`
+	VetaJ    []DPFOVetaJ `xml:"VetaJ,omitempty"`
 }
 
 // DPFOVetaD contains filing metadata, tax credits and final settlement totals.
@@ -100,9 +102,32 @@ type DPFOVetaS struct {
 }
 
 // DPFOVetaB declares which attachments accompany the return.
-// XSD critical control: priloha1="1" must be set when VetaO.kc_zd7 is filled.
+// XSD critical controls: priloha1="1" required when VetaO.kc_zd7 is filled,
+// priloha2="1" required when VetaO.kc_zd9 or kc_zd10 is filled.
 type DPFOVetaB struct {
 	Priloha1 string `xml:"priloha1,attr,omitempty"`
+	Priloha2 string `xml:"priloha2,attr,omitempty"`
+}
+
+// DPFOVetaV is the §10 summary of Příloha č. 2 (other income / "ostatní příjmy").
+// Required when ř.40 (kc_zd10 in VetaO) is filled.
+type DPFOVetaV struct {
+	KcPrij10 int64 `xml:"kc_prij10,attr"` // sum of revenue across §10 income types
+	KcVyd10  int64 `xml:"kc_vyd10,attr"`  // sum of expenses (capped per type at revenue)
+	KcZd10p  int64 `xml:"kc_zd10p,attr"`  // dílčí ZD §10 transferred to ř.40
+}
+
+// DPFOVetaJ is one row of the §10 detail table in Příloha č. 2.
+// kod_dr_prij10 codes: A=příležitostná činnost, B=prodej nemovitostí, C=prodej movitých věcí,
+// D=prodej cenných papírů, E=převod podle §10 odst.1 c), F=jiné ostatní příjmy,
+// G=bezúplatné příjmy, H=loterie/tomboly podle §10 odst. 1 h) bod 1.
+type DPFOVetaJ struct {
+	KodDrPrij10 string `xml:"kod_dr_prij10,attr,omitempty"` // type code (A..H)
+	DruhPrij10  string `xml:"druh_prij10,attr,omitempty"`   // textual description
+	Prijmy10    int64  `xml:"prijmy10,attr"`                // revenue per row
+	Vydaje10    int64  `xml:"vydaje10,attr"`                // expenses per row (capped at revenue)
+	Rozdil10    int64  `xml:"rozdil10,attr"`                // revenue minus expenses (>= 0 when summed)
+	Kod10       string `xml:"kod10,attr,omitempty"`         // P/S/Z/N source flag
 }
 
 // DPFOVetaT is Priloha c. 1 -- detail of §7 business income.

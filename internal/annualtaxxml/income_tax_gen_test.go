@@ -218,6 +218,42 @@ func TestIncomeTaxXML_DICStripsCountryPrefix(t *testing.T) {
 	}
 }
 
+func TestIncomeTaxXML_Section10TriggersPriloha2(t *testing.T) {
+	// When §10 income is present, ř.40 (kc_zd10) must be filled AND VetaV / VetaJ
+	// must accompany the return. EPO blocks the submission otherwise with control 510.
+	itr := &domain.IncomeTaxReturn{
+		Year:                2025,
+		FilingType:          domain.FilingTypeRegular,
+		TotalRevenue:        domain.NewAmount(500000, 0),
+		UsedExpenses:        domain.NewAmount(300000, 0),
+		TaxBase:             domain.NewAmount(201686, 0),
+		OtherIncomeGross:    domain.NewAmount(5000, 0),
+		OtherIncomeExpenses: domain.NewAmount(3314, 0),
+		OtherIncomeNet:      domain.NewAmount(1686, 0),
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ1234567890"})
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_zd10="1686"`,
+		`priloha2="1"`,
+		`<VetaV `,
+		`kc_prij10="5000"`,
+		`kc_vyd10="3314"`,
+		`kc_zd10p="1686"`,
+		`<VetaJ `,
+		`kod_dr_prij10="D"`,
+		`prijmy10="5000"`,
+		`vydaje10="3314"`,
+		`rozdil10="1686"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
+}
+
 func TestIncomeTaxXML_Golden_Minimal(t *testing.T) {
 	// Minimal return: revenue only, no credits, no deductions, no prepayments.
 	itr := &domain.IncomeTaxReturn{

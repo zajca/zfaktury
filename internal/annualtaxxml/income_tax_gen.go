@@ -133,6 +133,16 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		VetaT: buildPriloha1(itr, revenue, expenses, zd7),
 	}
 
+	// Příloha č. 2 (§9 + §10). EPO requires it whenever ř.39 or ř.40 (kc_zd9 / kc_zd10)
+	// is filled. We currently track only §10 (other income from securities/crypto).
+	if v, j := buildPriloha2(itr); v != nil {
+		doc.VetaV = v
+		doc.VetaJ = j
+		if doc.VetaB != nil {
+			doc.VetaB.Priloha2 = "1"
+		}
+	}
+
 	pisemnost := &DPFOPisemnost{
 		NazevSW: "ZFaktury",
 		VerzeSW: "1.0",
@@ -150,6 +160,38 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	result = append(result, output...)
 
 	return result, nil
+}
+
+// buildPriloha2 fills VetaV (§10 summary) and VetaJ (per-type detail rows) for Příloha č. 2.
+// Returns (nil, nil) when there is no §10 income to report -- the attachment is then omitted
+// and kc_zd10 is suppressed in VetaO via omitempty.
+//
+// Callers track only an aggregate "other income" net base; the schema requires at least one
+// VetaJ row, so we emit a single row using kod_dr_prij10="D" (prodej cenných papírů), which
+// matches the typical OSVC investment-income use case (broker statements).
+func buildPriloha2(itr *domain.IncomeTaxReturn) (*DPFOVetaV, []DPFOVetaJ) {
+	gross := ToWholeCZK(itr.OtherIncomeGross)
+	if gross <= 0 {
+		return nil, nil
+	}
+	exp := ToWholeCZK(itr.OtherIncomeExpenses)
+	if exp > gross {
+		exp = gross // §10 expenses cannot exceed revenue per income type
+	}
+	diff := gross - exp
+	v := &DPFOVetaV{
+		KcPrij10: gross,
+		KcVyd10:  exp,
+		KcZd10p:  diff,
+	}
+	j := []DPFOVetaJ{{
+		KodDrPrij10: "D",
+		DruhPrij10:  "Prodej cenných papírů",
+		Prijmy10:    gross,
+		Vydaje10:    exp,
+		Rozdil10:    diff,
+	}}
+	return v, j
 }
 
 // buildPriloha1 fills VetaT (Příloha č. 1). The XSD uses two mutually exclusive

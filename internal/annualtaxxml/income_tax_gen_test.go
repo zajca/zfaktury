@@ -180,13 +180,14 @@ func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
 
-	// Verify each category attribute is present with the expected value.
+	// Verify each §15 deduction attribute is emitted with the expected value
+	// using the EPO DPFDP5 attribute names (in VetaS).
 	expected := []string{
-		`odp_uroky="50000"`,
-		`odp_zivpoj="12000"`,
-		`odp_penz="8000"`,
-		`odp_dary="3000"`,
-		`odp_cl="1000"`,
+		`kc_op28_5="50000"`,  // mortgage interest
+		`kc_op15_13="12000"`, // life insurance
+		`kc_op15_12="8000"`,  // pension
+		`kc_op15_8="3000"`,   // donations
+		`kc_op15_14="1000"`,  // union dues
 	}
 	for _, want := range expected {
 		if !bytes.Contains(xmlData, []byte(want)) {
@@ -195,30 +196,22 @@ func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
 	}
 }
 
-func TestIncomeTaxXML_DeductionBreakdown_ZeroWhenEmpty(t *testing.T) {
-	// When no deductions are set, all per-category attrs must still be present with value "0".
+func TestIncomeTaxXML_DICStripsCountryPrefix(t *testing.T) {
+	// XSD expects dic to match [0-9]{1,10} -- the "CZ" prefix must be stripped.
 	itr := &domain.IncomeTaxReturn{
 		Year:         2025,
 		FilingType:   domain.FilingTypeRegular,
 		TotalRevenue: domain.NewAmount(100000, 0),
 	}
-
-	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{})
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{"dic": "CZ8905244997"})
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
-
-	zeros := []string{
-		`odp_uroky="0"`,
-		`odp_zivpoj="0"`,
-		`odp_penz="0"`,
-		`odp_dary="0"`,
-		`odp_cl="0"`,
+	if !bytes.Contains(xmlData, []byte(`dic="8905244997"`)) {
+		t.Errorf("expected dic without CZ prefix, got:\n%s", string(xmlData))
 	}
-	for _, want := range zeros {
-		if !bytes.Contains(xmlData, []byte(want)) {
-			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
-		}
+	if bytes.Contains(xmlData, []byte(`dic="CZ`)) {
+		t.Errorf("dic still contains country prefix, got:\n%s", string(xmlData))
 	}
 }
 

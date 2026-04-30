@@ -3,7 +3,8 @@ package annualtaxxml
 import "encoding/xml"
 
 // EPO income tax return XML types for Czech tax authority (Financni sprava).
-// Based on the EPO submission format for "Priznani k dani z prijmu fyzickych osob" (DPFDP5).
+// Schema reference: https://adisspr.mfcr.cz/adis/jepo/schema/dpfdp5_epo2.xsd
+// Form: "Priznani k dani z prijmu fyzickych osob" (DPFDP5).
 
 // DPFOPisemnost is the root element of the EPO income tax return XML document.
 type DPFOPisemnost struct {
@@ -14,15 +15,22 @@ type DPFOPisemnost struct {
 }
 
 // DPFDP5 represents the income tax return form (Priznani k dani z prijmu FO).
+// Element order matches the XSD sequence: VetaD, VetaP, VetaO, VetaS, VetaB, VetaT.
 type DPFDP5 struct {
-	VerzePis string    `xml:"verzePis,attr"`
-	VetaD    DPFOVetaD `xml:"VetaD"`
-	VetaP    DPFOVetaP `xml:"VetaP"`
+	VerzePis string     `xml:"verzePis,attr"`
+	VetaD    DPFOVetaD  `xml:"VetaD"`
+	VetaP    DPFOVetaP  `xml:"VetaP"`
+	VetaO    *DPFOVetaO `xml:"VetaO,omitempty"`
+	VetaS    *DPFOVetaS `xml:"VetaS,omitempty"`
+	VetaB    *DPFOVetaB `xml:"VetaB,omitempty"`
+	VetaT    *DPFOVetaT `xml:"VetaT,omitempty"`
 }
 
-// DPFOVetaD contains the tax calculation data for the income tax return.
+// DPFOVetaD contains filing metadata and final tax/credit/prepayment totals.
+// Per DPFDP5 XSD, VetaD does NOT contain section §7 amounts, tax base or §15 deductions --
+// those live in VetaO / VetaS / VetaT respectively.
 type DPFOVetaD struct {
-	// Filing metadata
+	// Filing metadata (required).
 	Dokument string `xml:"dokument,attr"`
 	KUladis  string `xml:"k_uladis,attr"`
 	Rok      int    `xml:"rok,attr"`
@@ -31,44 +39,19 @@ type DPFOVetaD struct {
 	PlnMoc   string `xml:"pln_moc,attr"`
 	Audit    string `xml:"audit,attr"`
 
-	// Section 7 - Business income
-	KcZd7 int64 `xml:"kc_zd7,attr"` // tax base from business income
-	PrZd7 int64 `xml:"pr_zd7,attr"` // revenue
-	VyZd7 int64 `xml:"vy_zd7,attr"` // expenses
-
-	// Tax calculation
-	KcZakldan23 int64 `xml:"kc_zakldan23,attr"` // consolidated tax base
-	KcZakldan   int64 `xml:"kc_zakldan,attr"`   // tax base after loss deduction
-	KcZdzaokr   int64 `xml:"kc_zdzaokr,attr"`   // tax base rounded down to 100 CZK
-	DaSlezap    int64 `xml:"da_slezap,attr"`    // total tax
-
-	// Nezdanitelne casti zakladu dane (§15) - per-category breakdown.
-	// TODO verify EPO attr name: odp_uroky (mortgage interest - uroky z hypoteky/stavebniho sporeni)
-	OdpUroky int64 `xml:"odp_uroky,attr"`
-	// TODO verify EPO attr name: odp_zivpoj (life insurance - zivotni pojisteni)
-	OdpZivpoj int64 `xml:"odp_zivpoj,attr"`
-	// TODO verify EPO attr name: odp_penz (pension contributions - penzijni sporeni)
-	OdpPenz int64 `xml:"odp_penz,attr"`
-	// TODO verify EPO attr name: odp_dary (donations - dary)
-	OdpDary int64 `xml:"odp_dary,attr"`
-	// TODO verify EPO attr name: odp_cl (union dues - odborove prispevky)
-	OdpCl int64 `xml:"odp_cl,attr"`
-
-	// Tax credits (slevy §35ba)
+	// Tax and credits (optional).
+	DaSlezap      int64 `xml:"da_slezap,attr"`      // total tax (computed from tax base)
 	SlevaRp       int64 `xml:"sleva_rp,attr"`       // basic taxpayer credit
-	UhrnSlevy35ba int64 `xml:"uhrn_slevy35ba,attr"` // total credits
-	DaSlevy35ba   int64 `xml:"da_slevy35ba,attr"`   // tax after credits
-
-	// Child benefit (§35c)
-	KcDazvyhod int64 `xml:"kc_dazvyhod,attr"` // child benefit
-	DaSlevy35c int64 `xml:"da_slevy35c,attr"` // tax after benefit
-
-	// Prepayments and result
-	KcZalpred  int64 `xml:"kc_zalpred,attr"`  // prepayments
-	KcZbyvpred int64 `xml:"kc_zbyvpred,attr"` // amount due or overpayment
+	UhrnSlevy35ba int64 `xml:"uhrn_slevy35ba,attr"` // total §35ba credits
+	DaSlevy35ba   int64 `xml:"da_slevy35ba,attr"`   // tax after §35ba credits
+	KcDazvyhod    int64 `xml:"kc_dazvyhod,attr"`    // child benefit (§35c)
+	DaSlevy35c    int64 `xml:"da_slevy35c,attr"`    // tax after child benefit
+	KcZalpred     int64 `xml:"kc_zalpred,attr"`     // prepayments
+	KcZbyvpred    int64 `xml:"kc_zbyvpred,attr"`    // amount due (+) or overpayment (-)
 }
 
-// DPFOVetaP contains taxpayer identification for the income tax return.
+// DPFOVetaP contains taxpayer identification.
+// Per XSD, dic must match pattern [0-9]{1,10} -- numeric portion only, no "CZ" prefix.
 type DPFOVetaP struct {
 	Jmeno    string `xml:"jmeno,attr"`
 	Prijmeni string `xml:"prijmeni,attr"`
@@ -80,4 +63,33 @@ type DPFOVetaP struct {
 	PSC      string `xml:"psc,attr"`
 	KStat    string `xml:"k_stat,attr"`
 	Stat     string `xml:"stat,attr"`
+}
+
+// DPFOVetaO contains tax base aggregation across income sections.
+type DPFOVetaO struct {
+	KcZd7       int64 `xml:"kc_zd7,attr"`       // partial tax base from §7 (business income)
+	KcZakldan23 int64 `xml:"kc_zakldan23,attr"` // consolidated tax base
+	KcZakldan   int64 `xml:"kc_zakldan,attr"`   // tax base after loss deduction
+}
+
+// DPFOVetaS contains the rounded tax base and §15 deductions (nezdanitelne casti).
+type DPFOVetaS struct {
+	KcZdzaokr int64 `xml:"kc_zdzaokr,attr"` // tax base rounded down to 100 CZK
+	KcOp28_5  int64 `xml:"kc_op28_5,attr"`  // mortgage / building-savings interest
+	KcOp15_13 int64 `xml:"kc_op15_13,attr"` // private life insurance
+	KcOp15_12 int64 `xml:"kc_op15_12,attr"` // pension contributions
+	KcOp15_8  int64 `xml:"kc_op15_8,attr"`  // donations (bezuplatna plneni)
+	KcOp15_14 int64 `xml:"kc_op15_14,attr"` // union member dues
+}
+
+// DPFOVetaB declares which attachments accompany the return.
+// XSD requires priloha1="1" when VetaO.kc_zd7 is filled.
+type DPFOVetaB struct {
+	Priloha1 string `xml:"priloha1,attr,omitempty"`
+}
+
+// DPFOVetaT is Priloha c. 1 -- detail of §7 business income.
+type DPFOVetaT struct {
+	PrPrij7 int64 `xml:"pr_prij7,attr"` // business revenue (prijmy z §7)
+	PrVyd7  int64 `xml:"pr_vyd7,attr"`  // business expenses (vydaje z §7)
 }

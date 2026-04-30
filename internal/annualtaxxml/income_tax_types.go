@@ -19,13 +19,14 @@ type DPFOPisemnost struct {
 }
 
 // DPFDP7 represents the income tax return form (Priznani k dani z prijmu FO).
-// Element order matches the XSD sequence: VetaD, VetaP, VetaO, VetaS, VetaB, VetaT.
+// Element order matches the XSD sequence: VetaD, VetaP, VetaO, VetaS, VetaA, VetaB, VetaT.
 type DPFDP7 struct {
 	VerzePis string      `xml:"verzePis,attr"`
 	VetaD    DPFOVetaD   `xml:"VetaD"`
 	VetaP    DPFOVetaP   `xml:"VetaP"`
 	VetaO    *DPFOVetaO  `xml:"VetaO,omitempty"`
 	VetaS    *DPFOVetaS  `xml:"VetaS,omitempty"`
+	VetaA    []DPFOVetaA `xml:"VetaA,omitempty"`
 	VetaB    *DPFOVetaB  `xml:"VetaB,omitempty"`
 	VetaT    *DPFOVetaT  `xml:"VetaT,omitempty"`
 	VetaV    *DPFOVetaV  `xml:"VetaV,omitempty"`
@@ -119,6 +120,30 @@ type DPFOVetaS struct {
 	KcZdsniz  int64 `xml:"kc_zdsniz,attr"`  // ř. 55 -- ZD snížený o nezdanitelné části (= ř.45 - ř.54)
 	KcZdzaokr int64 `xml:"kc_zdzaokr,attr"` // ř. 56 -- ZD zaokrouhlený na celá sta Kč dolů
 	DaDan16   int64 `xml:"da_dan16,attr"`   // ř. 57 -- daň podle § 16
+}
+
+// DPFOVetaA is one row of Tabulka č. 2 (oddíl 5) -- "Údaje o vyživovaných dětech
+// žijících ve společně hospodařící domácnosti". One row per child. EPO derives the
+// m_deti* aggregates in VetaD as column sums across these rows; emitting the
+// aggregates in VetaD without matching VetaA rows triggers critical control 176
+// ("hodnota Celkem počet měsíců ... se nerovná součtu počtu měsíců jednotlivých řádků").
+//
+// Each child fills exactly one (pocmes / ztpp{2,3}) slot determined by ChildOrder
+// (1, 2, 3+) and the ZTP/P flag; the other slots stay 0 (and are omitted via omitempty).
+//
+// Identity: vyzdite_r_cislo (rodné číslo, [0-9]{1,10}) OR vyzdite_d_nar (birth date)
+// must be filled. We emit r_cislo with non-digits stripped.
+type DPFOVetaA struct {
+	VyzditeJmeno    string `xml:"vyzdite_jmeno,attr"`
+	VyzditePrijmeni string `xml:"vyzdite_prijmeni,attr"`
+	VyzditeRCislo   string `xml:"vyzdite_r_cislo,attr,omitempty"`
+	VyzditeDNar     string `xml:"vyzdite_d_nar,attr,omitempty"`
+	VyzditePocmes   int    `xml:"vyzdite_pocmes,attr,omitempty"`  // 1. dítě bez ZTP/P
+	VyzditeZtpp     int    `xml:"vyzdite_ztpp,attr,omitempty"`    // 1. dítě ZTP/P
+	VyzditePocmes2  int    `xml:"vyzdite_pocmes2,attr,omitempty"` // 2. dítě bez ZTP/P
+	VyzditeZtpp2    int    `xml:"vyzdite_ztpp2,attr,omitempty"`   // 2. dítě ZTP/P
+	VyzditePocmes3  int    `xml:"vyzdite_pocmes3,attr,omitempty"` // 3+. dítě bez ZTP/P
+	VyzditeZtpp3    int    `xml:"vyzdite_ztpp3,attr,omitempty"`   // 3+. dítě ZTP/P
 }
 
 // DPFOVetaB declares which attachments accompany the return.

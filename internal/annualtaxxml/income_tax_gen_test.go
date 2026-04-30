@@ -377,6 +377,111 @@ func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
 	}
 }
 
+// EPO critical control 176 ("hodnota Celkem počet měsíců ... se nerovná součtu
+// počtu měsíců jednotlivých řádků") fires when the m_deti* aggregates in VetaD
+// have no matching VetaA rows. Verify that one VetaA row is emitted per child
+// with the months landing in the slot that matches order + ZTP, and that the
+// per-row name/RČ pair uses the EPO-required attribute names.
+func TestIncomeTaxXML_VetaARowsMatchAggregates(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:            2025,
+		FilingType:      domain.FilingTypeRegular,
+		TotalRevenue:    domain.NewAmount(2_000_000, 0),
+		FlatRatePercent: 60,
+		ChildBenefit:    domain.NewAmount(50_000, 0),
+		TotalTax:        domain.NewAmount(120_000, 0),
+	}
+	children := []domain.TaxChildCredit{
+		{Year: 2025, ChildName: "Jan Novák", BirthNumber: "200101/1234",
+			ChildOrder: 1, MonthsClaimed: 12, ZTP: false},
+		{Year: 2025, ChildName: "Anna Nováková", BirthNumber: "215050/5678",
+			ChildOrder: 2, MonthsClaimed: 8, ZTP: true},
+		{Year: 2025, ChildName: "Petr Novák", BirthNumber: "2310116789",
+			ChildOrder: 3, MonthsClaimed: 6, ZTP: false},
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ8905244997",
+	}, children)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// One VetaA row per child, names split into jmeno/prijmeni, RČ slash stripped.
+	for _, want := range []string{
+		`<VetaA vyzdite_jmeno="Jan" vyzdite_prijmeni="Novák" vyzdite_r_cislo="2001011234" vyzdite_pocmes="12">`,
+		`<VetaA vyzdite_jmeno="Anna" vyzdite_prijmeni="Nováková" vyzdite_r_cislo="2150505678" vyzdite_ztpp2="8">`,
+		`<VetaA vyzdite_jmeno="Petr" vyzdite_prijmeni="Novák" vyzdite_r_cislo="2310116789" vyzdite_pocmes3="6">`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
+
+	// VetaD aggregates must equal the column sums above (control 176).
+	for _, want := range []string{` m_deti="12"`, ` m_detiztpp2="8"`, ` m_deti3="6"`} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected aggregate %q, got:\n%s", want, xmlData)
+		}
+	}
+}
+
+func TestIncomeTaxXML_VetaAOmittedWithoutChildren(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		TotalRevenue:   domain.NewAmount(500_000, 0),
+		UsedExpenses:   domain.NewAmount(300_000, 0),
+		TaxBase:        domain.NewAmount(200_000, 0),
+		TaxBaseRounded: domain.NewAmount(200_000, 0),
+		TotalTax:       domain.NewAmount(30_000, 0),
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ8001011234",
+	}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if bytes.Contains(xmlData, []byte("<VetaA ")) {
+		t.Errorf("expected no VetaA element when no children, got:\n%s", xmlData)
+	}
+}
+
+func TestSplitChildName(t *testing.T) {
+	tests := []struct {
+		in, wantFirst, wantLast string
+	}{
+		{"Jan Novák", "Jan", "Novák"},
+		{"Anna van der Berg", "Anna", "van der Berg"},
+		{"Novák", "", "Novák"},
+		{"  Jan  Novák  ", "Jan", "Novák"},
+		{"", "", ""},
+	}
+	for _, tt := range tests {
+		first, last := splitChildName(tt.in)
+		if first != tt.wantFirst || last != tt.wantLast {
+			t.Errorf("splitChildName(%q) = (%q, %q), want (%q, %q)",
+				tt.in, first, last, tt.wantFirst, tt.wantLast)
+		}
+	}
+}
+
+func TestStripBirthNumberSeparators(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"950101/1234", "9501011234"},
+		{"950101 1234", "9501011234"},
+		{"9501011234", "9501011234"},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		got := stripBirthNumberSeparators(tt.in)
+		if got != tt.want {
+			t.Errorf("stripBirthNumberSeparators(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
 func TestIncomeTaxXML_InvalidUfoCil(t *testing.T) {
 	itr := &domain.IncomeTaxReturn{
 		Year:           2025,

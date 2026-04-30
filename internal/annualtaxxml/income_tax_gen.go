@@ -71,6 +71,76 @@ type childMonths struct {
 	DetiZtpp, DetiZtpp2, DetiZtpp3 int
 }
 
+// splitChildName splits a single-field "Křestní Příjmení" name into the EPO
+// vyzdite_jmeno / vyzdite_prijmeni pair. The first whitespace-separated token
+// is treated as the given name, the remainder as the surname (handling both
+// "Jan Novák" and compound surnames like "Anna van der Berg").
+//
+// EPO's critical control flags an empty jmeno/prijmeni; if the user stored a
+// single token we fall back to using it as the surname (more identifying than
+// the given name) and leave the given name empty -- the form will still parse
+// but the user will see a warning to complete the row.
+func splitChildName(full string) (first, last string) {
+	full = strings.TrimSpace(full)
+	if full == "" {
+		return "", ""
+	}
+	parts := strings.Fields(full)
+	if len(parts) == 1 {
+		return "", parts[0]
+	}
+	return parts[0], strings.Join(parts[1:], " ")
+}
+
+// stripBirthNumberSeparators returns only the digits of a Czech rodné číslo
+// (XSD pattern [0-9]{1,10}). Users may enter "950101/1234" or "950101 1234";
+// EPO requires the slash-free form.
+func stripBirthNumberSeparators(rc string) string {
+	var b strings.Builder
+	b.Grow(len(rc))
+	for _, r := range rc {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// buildChildRows emits one VetaA row per TaxChildCredit. The (order, ZTP) pair
+// selects which of the six month slots receives MonthsClaimed; the other five
+// stay 0 (omitted by omitempty). EPO verifies column sums equal the m_deti*
+// aggregates in VetaD.
+func buildChildRows(children []domain.TaxChildCredit) []DPFOVetaA {
+	if len(children) == 0 {
+		return nil
+	}
+	rows := make([]DPFOVetaA, 0, len(children))
+	for _, c := range children {
+		first, last := splitChildName(c.ChildName)
+		row := DPFOVetaA{
+			VyzditeJmeno:    first,
+			VyzditePrijmeni: last,
+			VyzditeRCislo:   stripBirthNumberSeparators(c.BirthNumber),
+		}
+		switch {
+		case c.ChildOrder <= 1 && c.ZTP:
+			row.VyzditeZtpp = c.MonthsClaimed
+		case c.ChildOrder <= 1:
+			row.VyzditePocmes = c.MonthsClaimed
+		case c.ChildOrder == 2 && c.ZTP:
+			row.VyzditeZtpp2 = c.MonthsClaimed
+		case c.ChildOrder == 2:
+			row.VyzditePocmes2 = c.MonthsClaimed
+		case c.ZTP:
+			row.VyzditeZtpp3 = c.MonthsClaimed
+		default:
+			row.VyzditePocmes3 = c.MonthsClaimed
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
 func aggregateChildMonths(children []domain.TaxChildCredit) childMonths {
 	var m childMonths
 	for _, c := range children {
@@ -229,6 +299,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			KcZdzaokr: taxBaseRounded,
 			DaDan16:   dan16,
 		},
+		VetaA: buildChildRows(children),
 		VetaB: &DPFOVetaB{
 			Priloha1: "1",
 		},

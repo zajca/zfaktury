@@ -3,6 +3,7 @@ package annualtaxxml
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -44,9 +45,20 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 
 	// Whole-CZK conversions of every domain field referenced below.
 	revenue := ToWholeCZK(itr.TotalRevenue)
-	expenses := ToWholeCZK(itr.UsedExpenses)
+
+	// Flat-rate expenses: compute directly from revenue × rate / 100 with
+	// round-half-up. The calc service stores the value truncated, which differs
+	// from EPO's expected rounding (e.g. 1 550 848 × 60 % = 930 508,80 → 930 509).
+	var expenses int64
+	if itr.FlatRatePercent > 0 {
+		expenses = (revenue*int64(itr.FlatRatePercent) + 50) / 100
+	} else {
+		expenses = ToWholeCZK(itr.UsedExpenses)
+	}
 	zd7 := revenue - expenses // ř.37 / ř.113 -- partial tax base from §7
+	loss := int64(0)          // ř.61 -- daňová ztráta; § 7 pre-loss tracked here
 	if zd7 < 0 {
+		loss = -zd7
 		zd7 = 0
 	}
 	zd8 := ToWholeCZK(itr.CapitalIncomeNet) // ř.38
@@ -61,10 +73,11 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	}
 	taxBaseRounded := (zdsniz / 100) * 100 // ř.56 (round down to whole 100 CZK)
 	dan16 := ToWholeCZK(itr.TotalTax)      // ř.57 -- §16 tax (already computed by service)
-	daSlezap := dan16                      // ř.60 -- tax rounded up; the service already rounds
+	daSlevy := dan16                       // ř.60 -- daň zaokrouhlená nahoru (service already rounds)
 
 	uhrnSlevy35ba := ToWholeCZK(itr.TotalCredits) // ř.70
-	taxAfter35ba := daSlezap - uhrnSlevy35ba      // ř.71
+	creditBasic := ToWholeCZK(itr.CreditBasic)    // ř.64 (§35ba 1a)
+	taxAfter35ba := daSlevy - uhrnSlevy35ba       // ř.71
 	if taxAfter35ba < 0 {
 		taxAfter35ba = 0
 	}
@@ -72,6 +85,13 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	slevy35c, danbonus := splitChildBenefit(taxAfter35ba, childBenefit) // ř.73 / ř.76
 	taxAfter35c := taxAfter35ba - slevy35c                              // ř.74
 	danCelk := taxAfter35c                                              // ř.75 (= ř.74 + ř.74a; no separate-base tax tracked)
+	// ř.77 = ř.75 - ř.76 (min 0); ř.77a = ř.76 - ř.75 (min 0). At most one is non-zero.
+	danPoDb := danCelk - danbonus
+	dbPoOdpd := int64(0)
+	if danPoDb < 0 {
+		dbPoOdpd = -danPoDb
+		danPoDb = 0
+	}
 
 	doc := &DPFDP7{
 		VerzePis: "01.01.02",
@@ -85,8 +105,9 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			Audit:         "N",
 			ZdobdOd:       fmt.Sprintf("1.1.%d", itr.Year),
 			ZdobdDo:       fmt.Sprintf("31.12.%d", itr.Year),
-			DaSlezap:      daSlezap,
-			SlevaRp:       ToWholeCZK(itr.CreditBasic),
+			KcDztrata:     loss,
+			DaSlevy:       daSlevy,
+			KcOp15_1a:     creditBasic,
 			UhrnSlevy35ba: uhrnSlevy35ba,
 			DaSlevy35ba:   taxAfter35ba,
 			KcDazvyhod:    childBenefit,
@@ -94,6 +115,8 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			DaSlevy35c:    taxAfter35c,
 			KcDanCelk:     danCelk,
 			KcDanbonus:    danbonus,
+			KcDanPoDb:     danPoDb,
+			KcDbPoOdpd:    dbPoOdpd,
 			KcZalpred:     ToWholeCZK(itr.Prepayments),
 			KcZbyvpred:    ToWholeCZK(itr.TaxDue),
 		},
@@ -130,7 +153,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		VetaB: &DPFOVetaB{
 			Priloha1: "1",
 		},
-		VetaT: buildPriloha1(itr, revenue, expenses, zd7),
+		VetaT: buildPriloha1(itr, settings, revenue, expenses, zd7),
 	}
 
 	// Příloha č. 2 (§9 + §10). EPO requires it whenever ř.39 or ř.40 (kc_zd9 / kc_zd10)
@@ -198,13 +221,38 @@ func buildPriloha2(itr *domain.IncomeTaxReturn) (*DPFOVetaV, []DPFOVetaJ) {
 // sections for revenue and expenses: the "actual expenses" pair (kc_prij7/kc_vyd7)
 // must NOT be combined with the "flat-rate" pair (pr_prij7/pr_vyd7) or EPO raises
 // a critical-control error.
-func buildPriloha1(itr *domain.IncomeTaxReturn, revenue, expenses, zd7 int64) *DPFOVetaT {
-	v := &DPFOVetaT{KcZd7p: zd7}
+//
+// EPO also requires:
+//   - c_nace (NACE code from číselník okec) and m_podnik (months active) for
+//     identification of the main activity (část B header) when §7 income exists.
+//   - celk_pr_prij7 / celk_pr_vyd7 totals matching pr_prij7 / pr_vyd7 plus any
+//     additional Vetac rows (we currently emit a single main row, so the totals
+//     equal the main row values).
+//
+// Defaults applied when the corresponding setting is empty:
+//   - main_activity_nace -> "620100" (Computer programming activities)
+//   - main_activity_months -> 12
+func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, revenue, expenses, zd7 int64) *DPFOVetaT {
+	nace := settings["main_activity_nace"]
+	if nace == "" {
+		nace = "620100"
+	}
+	months := 12
+	if v, err := strconv.Atoi(settings["main_activity_months"]); err == nil && v > 0 && v <= 12 {
+		months = v
+	}
+	v := &DPFOVetaT{
+		CNace:   nace,
+		MPodnik: months,
+		KcZd7p:  zd7,
+	}
 	if itr.FlatRatePercent > 0 {
 		v.PrPrij7 = revenue
 		v.PrVyd7 = expenses
 		v.Vyd7proc = "A"
 		v.PrSazba = fmt.Sprintf("%d", itr.FlatRatePercent)
+		v.CelkPrPrij7 = revenue
+		v.CelkPrVyd7 = expenses
 	} else {
 		v.KcPrij7 = revenue
 		v.KcVyd7 = expenses

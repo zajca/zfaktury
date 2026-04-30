@@ -363,3 +363,24 @@ func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeNACE(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"620100", "6201"},
+		{"582900", "5829"},
+		{"62010", "6201"},
+		{"6201", "6201"},
+		{"62012", "62012"},
+		{"4321", "4321"},
+		{"", ""},
+		{" 620100 ", "6201"},
+		{"100000", "1000"},
+	}
+	for _, tt := range tests {
+		if got := normalizeNACE(tt.in); got != tt.want {
+			t.Errorf("normalizeNACE(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

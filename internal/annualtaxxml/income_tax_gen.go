@@ -275,6 +275,25 @@ func buildPriloha2(itr *domain.IncomeTaxReturn) (*DPFOVetaV, []DPFOVetaJ) {
 //     additional Vetac rows (we currently emit a single main row, so the totals
 //     equal the main row values).
 //
+// normalizeNACE trims trailing zeros from 5- or 6-digit Czech subdivision codes
+// (e.g. "620100" -> "6201", "582900" -> "5829"). EPO's DPFDP7 NACE číselník uses
+// the 4-digit international NACE rev.2 form -- the 6-digit Czech extensions
+// "62.01.0" / "58.29.0" exist in CZSO classifications but are NOT in the EPO
+// okec lookup, so emitting them triggers control 1671 ("Kód CZ-NACE není uveden
+// v číselníku"). Codes that are already 4-digit pass through unchanged. Codes
+// whose trailing digits aren't zero (e.g. "62012") are left alone -- they are
+// either valid sub-codes or user-entered junk that EPO will flag.
+func normalizeNACE(code string) string {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return ""
+	}
+	for len(code) > 4 && code[len(code)-1] == '0' {
+		code = code[:len(code)-1]
+	}
+	return code
+}
+
 // NACE code lookup order:
 //  1. main_activity_nace (DPFO-specific override) -- if user wants a different
 //     code on the income tax form than on the VAT form
@@ -294,7 +313,7 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, reve
 		nace = settings["c_okec"]
 	}
 	v := &DPFOVetaT{
-		CNace:   nace,
+		CNace:   normalizeNACE(nace),
 		MPodnik: months,
 		KcZd7p:  zd7,
 	}

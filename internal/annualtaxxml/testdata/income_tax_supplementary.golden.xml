@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost nazevSW="ZFaktury" verzeSW="1.0">
-  <DPFDP5 verzePis="05.01">
-    <VetaD dokument="DP5" k_uladis="DPF" rok="2025" dap_typ="D" c_ufo_cil="451" pln_moc="N" audit="N" da_slezap="30000" sleva_rp="0" uhrn_slevy35ba="30840" da_slevy35ba="0" kc_dazvyhod="0" da_slevy35c="0" kc_zalpred="0" kc_zbyvpred="0"></VetaD>
+  <DPFDP7 verzePis="01.01.02">
+    <VetaD dokument="DP7" k_uladis="DPF" rok="2025" dap_typ="D" c_ufo_cil="451" pln_moc="N" audit="N" zdobd_od="1.1.2025" zdobd_do="31.12.2025" da_slezap="30000" sleva_rp="0" uhrn_slevy35ba="30840" da_slevy35ba="0" kc_dazvyhod="0" da_slevy35c="0" kc_zalpred="0" kc_zbyvpred="0"></VetaD>
     <VetaP jmeno="Jan" prijmeni="Novak" rod_c="8001011234" dic="8001011234" ulice="Hlavni" c_pop="42" naz_obce="Praha" psc="11000" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
     <VetaO kc_zd7="200000" kc_zakldan23="200000" kc_zakldan="200000"></VetaO>
-    <VetaS kc_zdzaokr="200000" kc_op28_5="0" kc_op15_13="0" kc_op15_12="0" kc_op15_8="0" kc_op15_14="0"></VetaS>
+    <VetaS kc_zdzaokr="200000" kc_op28_5="0" kc_op15_13="0" kc_op15_12="0" kc_op15_8="0"></VetaS>
     <VetaB priloha1="1"></VetaB>
     <VetaT pr_prij7="500000" pr_vyd7="300000"></VetaT>
-  </DPFDP5>
+  </DPFDP7>
 </Pisemnost>

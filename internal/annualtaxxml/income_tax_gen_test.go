@@ -161,7 +161,7 @@ func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
 		DeductionLifeInsurance: domain.NewAmount(12000, 0),
 		DeductionPension:       domain.NewAmount(8000, 0),
 		DeductionDonation:      domain.NewAmount(3000, 0),
-		DeductionUnionDues:     domain.NewAmount(1000, 0),
+		DeductionUnionDues:     domain.NewAmount(1000, 0), // not emitted: removed from §15 in 2024
 	}
 	settings := map[string]string{
 		"financni_urad_code":    "451",
@@ -181,18 +181,21 @@ func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
 	}
 
 	// Verify each §15 deduction attribute is emitted with the expected value
-	// using the EPO DPFDP5 attribute names (in VetaS).
+	// using the EPO DPFDP7 attribute names (in VetaS).
 	expected := []string{
 		`kc_op28_5="50000"`,  // mortgage interest
 		`kc_op15_13="12000"`, // life insurance
 		`kc_op15_12="8000"`,  // pension
 		`kc_op15_8="3000"`,   // donations
-		`kc_op15_14="1000"`,  // union dues
 	}
 	for _, want := range expected {
 		if !bytes.Contains(xmlData, []byte(want)) {
 			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
 		}
+	}
+	// Union dues (kc_op15_14) was removed from §15 in 2024 and must not appear in DPFDP7 XML.
+	if bytes.Contains(xmlData, []byte(`kc_op15_14`)) {
+		t.Errorf("kc_op15_14 must not appear in DPFDP7 XML, got:\n%s", string(xmlData))
 	}
 }
 

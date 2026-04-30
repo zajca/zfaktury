@@ -3,20 +3,20 @@ package annualtaxxml
 import "encoding/xml"
 
 // EPO income tax return XML types for Czech tax authority (Financni sprava).
-// Schema reference: https://adisspr.mfcr.cz/adis/jepo/schema/dpfdp5_epo2.xsd
-// Form: "Priznani k dani z prijmu fyzickych osob" (DPFDP5).
+// Schema reference: https://adisspr.mfcr.cz/adis/jepo/schema/dpfdp7_epo2.xsd
+// Form: "Priznani k dani z prijmu fyzickych osob" (DPFDP7) -- valid for tax years 2024 and 2025.
 
 // DPFOPisemnost is the root element of the EPO income tax return XML document.
 type DPFOPisemnost struct {
 	XMLName xml.Name `xml:"Pisemnost"`
 	NazevSW string   `xml:"nazevSW,attr"`
 	VerzeSW string   `xml:"verzeSW,attr"`
-	DPFDP5  *DPFDP5  `xml:"DPFDP5"`
+	DPFDP7  *DPFDP7  `xml:"DPFDP7"`
 }
 
-// DPFDP5 represents the income tax return form (Priznani k dani z prijmu FO).
+// DPFDP7 represents the income tax return form (Priznani k dani z prijmu FO).
 // Element order matches the XSD sequence: VetaD, VetaP, VetaO, VetaS, VetaB, VetaT.
-type DPFDP5 struct {
+type DPFDP7 struct {
 	VerzePis string     `xml:"verzePis,attr"`
 	VetaD    DPFOVetaD  `xml:"VetaD"`
 	VetaP    DPFOVetaP  `xml:"VetaP"`
@@ -27,7 +27,7 @@ type DPFDP5 struct {
 }
 
 // DPFOVetaD contains filing metadata and final tax/credit/prepayment totals.
-// Per DPFDP5 XSD, VetaD does NOT contain section §7 amounts, tax base or §15 deductions --
+// Per DPFDP7 XSD, VetaD does NOT contain section §7 amounts, tax base or §15 deductions --
 // those live in VetaO / VetaS / VetaT respectively.
 type DPFOVetaD struct {
 	// Filing metadata (required).
@@ -38,6 +38,10 @@ type DPFOVetaD struct {
 	CUfoCil  string `xml:"c_ufo_cil,attr"`
 	PlnMoc   string `xml:"pln_moc,attr"`
 	Audit    string `xml:"audit,attr"`
+
+	// Tax period (D.M.YYYY). XSD requires zdobd_od=1.1.<rok>, zdobd_do=31.12.<rok>.
+	ZdobdOd string `xml:"zdobd_od,attr,omitempty"`
+	ZdobdDo string `xml:"zdobd_do,attr,omitempty"`
 
 	// Tax and credits (optional).
 	DaSlezap      int64 `xml:"da_slezap,attr"`      // total tax (computed from tax base)
@@ -73,13 +77,14 @@ type DPFOVetaO struct {
 }
 
 // DPFOVetaS contains the rounded tax base and §15 deductions (nezdanitelne casti).
+// DPFDP7 (forms 2024+) no longer carries kc_op15_14 (union dues) -- the deduction
+// was abolished by the 2024 consolidation package.
 type DPFOVetaS struct {
 	KcZdzaokr int64 `xml:"kc_zdzaokr,attr"` // tax base rounded down to 100 CZK
 	KcOp28_5  int64 `xml:"kc_op28_5,attr"`  // mortgage / building-savings interest
 	KcOp15_13 int64 `xml:"kc_op15_13,attr"` // private life insurance
 	KcOp15_12 int64 `xml:"kc_op15_12,attr"` // pension contributions
 	KcOp15_8  int64 `xml:"kc_op15_8,attr"`  // donations (bezuplatna plneni)
-	KcOp15_14 int64 `xml:"kc_op15_14,attr"` // union member dues
 }
 
 // DPFOVetaB declares which attachments accompany the return.

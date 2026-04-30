@@ -34,16 +34,18 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	taxBase := ToWholeCZK(itr.TaxBase)
 	taxBaseRounded := ToWholeCZK(itr.TaxBaseRounded)
 
-	doc := &DPFDP5{
-		VerzePis: "05.01",
+	doc := &DPFDP7{
+		VerzePis: "01.01.02",
 		VetaD: DPFOVetaD{
-			Dokument:      "DP5",
+			Dokument:      "DP7",
 			KUladis:       "DPF",
 			Rok:           itr.Year,
 			DapTyp:        DPFOFilingTypeCode(itr.FilingType),
 			CUfoCil:       settings["financni_urad_code"],
 			PlnMoc:        "N",
 			Audit:         "N",
+			ZdobdOd:       fmt.Sprintf("1.1.%d", itr.Year),
+			ZdobdDo:       fmt.Sprintf("31.12.%d", itr.Year),
 			DaSlezap:      ToWholeCZK(itr.TotalTax),
 			SlevaRp:       ToWholeCZK(itr.CreditBasic),
 			UhrnSlevy35ba: ToWholeCZK(itr.TotalCredits),
@@ -76,7 +78,6 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			KcOp15_13: ToWholeCZK(itr.DeductionLifeInsurance),
 			KcOp15_12: ToWholeCZK(itr.DeductionPension),
 			KcOp15_8:  ToWholeCZK(itr.DeductionDonation),
-			KcOp15_14: ToWholeCZK(itr.DeductionUnionDues),
 		},
 		VetaB: &DPFOVetaB{
 			Priloha1: "1",
@@ -90,7 +91,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	pisemnost := &DPFOPisemnost{
 		NazevSW: "ZFaktury",
 		VerzeSW: "1.0",
-		DPFDP5:  doc,
+		DPFDP7:  doc,
 	}
 
 	output, err := xml.MarshalIndent(pisemnost, "", "  ")

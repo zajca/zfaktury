@@ -315,15 +315,28 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 
 	// Load settings for taxpayer info. c_okec is also pulled because the income-tax
 	// XML reuses it as the NACE code for Příloha č. 1 part B.
+	// The XML generator expects taxpayer_* prefixed keys, but the actual settings
+	// store uses unprefixed keys (first_name, last_name, street, ...). Translate here.
 	settings := make(map[string]string)
+	settingKeyMap := map[string]string{
+		"first_name":   "taxpayer_first_name",
+		"last_name":    "taxpayer_last_name",
+		"birth_number": "taxpayer_birth_number",
+		"street":       "taxpayer_street",
+		"house_number": "taxpayer_house_number",
+		"city":         "taxpayer_city",
+		"zip":          "taxpayer_postal_code",
+	}
+	for srcKey, dstKey := range settingKeyMap {
+		if val, err := s.settingsRepo.Get(ctx, srcKey); err == nil {
+			settings[dstKey] = val
+		}
+	}
 	for _, key := range []string{
-		"financni_urad_code", "taxpayer_first_name", "taxpayer_last_name",
-		"taxpayer_birth_number", "dic", "taxpayer_street",
-		"taxpayer_house_number", "taxpayer_city", "taxpayer_postal_code",
-		"c_okec", "main_activity_nace", "main_activity_months",
+		"financni_urad_code", "dic", "c_okec",
+		"main_activity_nace", "main_activity_months",
 	} {
-		val, err := s.settingsRepo.Get(ctx, key)
-		if err == nil {
+		if val, err := s.settingsRepo.Get(ctx, key); err == nil {
 			settings[key] = val
 		}
 	}

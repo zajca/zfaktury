@@ -34,6 +34,8 @@ const (
 	SettingFirstName   = "first_name"
 	SettingLastName    = "last_name"
 	SettingHouseNumber = "house_number"
+	SettingBirthNumber = "birth_number"
+	SettingBirthDate   = "birth_date"
 
 	// Office codes (global, rarely change).
 	SettingHealthInsCode    = "health_insurance_code"
@@ -224,6 +226,8 @@ var knownKeys = map[string]bool{
 	SettingFirstName:        true,
 	SettingLastName:         true,
 	SettingHouseNumber:      true,
+	SettingBirthNumber:      true,
+	SettingBirthDate:        true,
 	SettingHealthInsCode:    true,
 	SettingFinancniUradCode: true,
 	SettingCSSZCode:         true,

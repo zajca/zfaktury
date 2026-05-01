@@ -137,6 +137,33 @@
 					</div>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div>
+							<label for="birth_number" class="block text-sm font-medium text-secondary"
+								>Rodné číslo</label
+							>
+							<input
+								id="birth_number"
+								type="text"
+								placeholder="9001011234"
+								value={field('birth_number')}
+								oninput={(e) => setField('birth_number', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+							/>
+						</div>
+						<div>
+							<label for="birth_date" class="block text-sm font-medium text-secondary"
+								>Datum narození</label
+							>
+							<input
+								id="birth_date"
+								type="date"
+								value={field('birth_date')}
+								oninput={(e) => setField('birth_date', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+							/>
+						</div>
+					</div>
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+						<div>
 							<label for="ico" class="block text-sm font-medium text-secondary"
 								>IČO <HelpTip topic="ico" /></label
 							>

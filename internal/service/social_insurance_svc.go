@@ -219,16 +219,26 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	}
 
 	// Load settings for taxpayer info.
+	// The XML generator expects taxpayer_* prefixed keys, but the actual settings
+	// store uses unprefixed keys (first_name, last_name, street, ...). Translate here.
 	settings := make(map[string]string)
-	for _, key := range []string{
-		"cssz_code", "taxpayer_first_name", "taxpayer_last_name",
-		"taxpayer_birth_number", "taxpayer_birth_date", "taxpayer_street",
-		"taxpayer_house_number", "taxpayer_postal_code", "taxpayer_city",
-	} {
-		val, err := s.settingsRepo.Get(ctx, key)
-		if err == nil {
-			settings[key] = val
+	settingKeyMap := map[string]string{
+		"first_name":   "taxpayer_first_name",
+		"last_name":    "taxpayer_last_name",
+		"birth_number": "taxpayer_birth_number",
+		"birth_date":   "taxpayer_birth_date",
+		"street":       "taxpayer_street",
+		"house_number": "taxpayer_house_number",
+		"city":         "taxpayer_city",
+		"zip":          "taxpayer_postal_code",
+	}
+	for srcKey, dstKey := range settingKeyMap {
+		if val, err := s.settingsRepo.Get(ctx, srcKey); err == nil {
+			settings[dstKey] = val
 		}
+	}
+	if val, err := s.settingsRepo.Get(ctx, "cssz_code"); err == nil {
+		settings["cssz_code"] = val
 	}
 	// Read flat_rate_percent from tax year settings for XML generation.
 	tys, tysErr := s.taxYearSettingsRepo.GetByYear(ctx, sio.Year)

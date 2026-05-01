@@ -55,3 +55,8 @@ web/frontend/build/favicon.png
 # Claude
 docs/AGENT-REPORTS
 .claude/worktrees/
+.claude/settings.local.json
+rust/.claude/
+
+# Stray root-level node_modules (frontend deps live in frontend/node_modules)
+/node_modules/

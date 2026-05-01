@@ -326,6 +326,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		"house_number": "taxpayer_house_number",
 		"city":         "taxpayer_city",
 		"zip":          "taxpayer_postal_code",
+		"phone":        "taxpayer_phone",
 	}
 	for srcKey, dstKey := range settingKeyMap {
 		if val, err := s.settingsRepo.Get(ctx, srcKey); err == nil {
@@ -333,8 +334,9 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		}
 	}
 	for _, key := range []string{
-		"financni_urad_code", "dic", "c_okec",
+		"financni_urad_code", "c_pracufo", "dic", "c_okec",
 		"main_activity_nace", "main_activity_months",
+		"mortgage_interest_months",
 	} {
 		if val, err := s.settingsRepo.Get(ctx, key); err == nil {
 			settings[key] = val

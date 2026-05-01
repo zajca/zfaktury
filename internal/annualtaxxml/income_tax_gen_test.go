@@ -569,6 +569,67 @@ func TestIncomeTaxXML_ValidUfoCil(t *testing.T) {
 	}
 }
 
+// EPO non-blocking warnings 361 (telephone) and 26 (territorial workplace) and the
+// blocking control 1509 (mortgage interest months alongside amount) are all silenced
+// by passing the corresponding settings through to VetaP / VetaS.
+func TestIncomeTaxXML_PhonePracufoMortgageMonths(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:              2025,
+		FilingType:        domain.FilingTypeRegular,
+		TotalRevenue:      domain.NewAmount(1_000_000, 0),
+		UsedExpenses:      domain.NewAmount(600_000, 0),
+		TaxBase:           domain.NewAmount(400_000, 0),
+		TaxBaseRounded:    domain.NewAmount(400_000, 0),
+		TotalDeductions:   domain.NewAmount(50_000, 0),
+		DeductionMortgage: domain.NewAmount(50_000, 0),
+		TotalTax:          domain.NewAmount(60_000, 0),
+	}
+	settings := map[string]string{
+		"financni_urad_code":  "451",
+		"c_pracufo":           "2001",
+		"dic":                 "CZ8905244997",
+		"taxpayer_first_name": "Jan",
+		"taxpayer_last_name":  "Novak",
+		"taxpayer_phone":      "+420123456789",
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, want := range []string{
+		` c_telef="+420123456789"`,
+		` c_pracufo="2001"`,
+		// Default to full year when settings["mortgage_interest_months"] is unset.
+		` m_uroky="12"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
+
+	// Override the mortgage months via settings.
+	settings["mortgage_interest_months"] = "7"
+	xmlData, err = GenerateIncomeTaxXML(itr, settings, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !bytes.Contains(xmlData, []byte(` m_uroky="7"`)) {
+		t.Errorf("expected m_uroky=7 from settings override, got:\n%s", xmlData)
+	}
+
+	// No mortgage deduction => m_uroky must be omitted entirely.
+	itr.DeductionMortgage = domain.NewAmount(0, 0)
+	itr.TotalDeductions = domain.NewAmount(0, 0)
+	delete(settings, "mortgage_interest_months")
+	xmlData, err = GenerateIncomeTaxXML(itr, settings, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if bytes.Contains(xmlData, []byte(` m_uroky=`)) {
+		t.Errorf("m_uroky must be omitted when no mortgage deduction, got:\n%s", xmlData)
+	}
+}
+
 func TestPadNACEto6(t *testing.T) {
 	tests := []struct {
 		in, want string

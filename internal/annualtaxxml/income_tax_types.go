@@ -84,6 +84,10 @@ type DPFOVetaD struct {
 
 // DPFOVetaP contains taxpayer identification.
 // Per XSD, dic must match pattern [0-9]{1,10} -- numeric portion only, no "CZ" prefix.
+//
+// CTelef and CPracufo are technically optional per XSD, but EPO emits non-blocking
+// warnings when they are missing (control 361 for telephone, control 26 for the
+// territorial workplace). Filling them keeps the submission clean.
 type DPFOVetaP struct {
 	Jmeno    string `xml:"jmeno,attr"`
 	Prijmeni string `xml:"prijmeni,attr"`
@@ -95,6 +99,8 @@ type DPFOVetaP struct {
 	PSC      string `xml:"psc,attr"`
 	KStat    string `xml:"k_stat,attr"`
 	Stat     string `xml:"stat,attr"`
+	CTelef   string `xml:"c_telef,attr,omitempty"`   // telefonní číslo poplatníka (EPO warning 361)
+	CPracufo string `xml:"c_pracufo,attr,omitempty"` // číslo územního pracoviště FÚ (EPO warning 26)
 }
 
 // DPFOVetaO contains per-section tax-base inputs from §6 / §7 / §8 / §9 / §10
@@ -111,15 +117,19 @@ type DPFOVetaO struct {
 }
 
 // DPFOVetaS contains §15 deductions, base after deductions, rounded base and § 16 tax.
+//
+// EPO control 1509 ("Oddíl 3/ř.47 - není současně vyplněn počet měsíců a částka")
+// requires m_uroky to be filled whenever kc_op28_5 (mortgage interest) is non-zero.
 type DPFOVetaS struct {
-	KcOp28_5  int64 `xml:"kc_op28_5,attr"`  // ř. 47 -- úroky z hypoték / stavebního spoření
-	KcOp15_13 int64 `xml:"kc_op15_13,attr"` // ř. 49 -- soukromé životní pojištění
-	KcOp15_12 int64 `xml:"kc_op15_12,attr"` // ř. 48 -- penzijní spoření / pojištění
-	KcOp15_8  int64 `xml:"kc_op15_8,attr"`  // ř. 46 -- bezúplatná plnění (dary)
-	KcOdcelk  int64 `xml:"kc_odcelk,attr"`  // ř. 54 -- úhrn nezdanitelných částí (ř.46+47+...+53)
-	KcZdsniz  int64 `xml:"kc_zdsniz,attr"`  // ř. 55 -- ZD snížený o nezdanitelné části (= ř.45 - ř.54)
-	KcZdzaokr int64 `xml:"kc_zdzaokr,attr"` // ř. 56 -- ZD zaokrouhlený na celá sta Kč dolů
-	DaDan16   int64 `xml:"da_dan16,attr"`   // ř. 57 -- daň podle § 16
+	KcOp28_5  int64 `xml:"kc_op28_5,attr"`         // ř. 47 -- úroky z hypoték / stavebního spoření
+	MUroky    int   `xml:"m_uroky,attr,omitempty"` // počet měsíců placení úroků (1..12, povinné když kc_op28_5 > 0)
+	KcOp15_13 int64 `xml:"kc_op15_13,attr"`        // ř. 49 -- soukromé životní pojištění
+	KcOp15_12 int64 `xml:"kc_op15_12,attr"`        // ř. 48 -- penzijní spoření / pojištění
+	KcOp15_8  int64 `xml:"kc_op15_8,attr"`         // ř. 46 -- bezúplatná plnění (dary)
+	KcOdcelk  int64 `xml:"kc_odcelk,attr"`         // ř. 54 -- úhrn nezdanitelných částí (ř.46+47+...+53)
+	KcZdsniz  int64 `xml:"kc_zdsniz,attr"`         // ř. 55 -- ZD snížený o nezdanitelné části (= ř.45 - ř.54)
+	KcZdzaokr int64 `xml:"kc_zdzaokr,attr"`        // ř. 56 -- ZD zaokrouhlený na celá sta Kč dolů
+	DaDan16   int64 `xml:"da_dan16,attr"`          // ř. 57 -- daň podle § 16
 }
 
 // DPFOVetaA is one row of Tabulka č. 2 (oddíl 5) -- "Údaje o vyživovaných dětech

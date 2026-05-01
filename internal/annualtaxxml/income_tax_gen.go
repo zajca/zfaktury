@@ -286,6 +286,8 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			PSC:      settings["taxpayer_postal_code"],
 			KStat:    "CZ",
 			Stat:     "ČESKÁ REPUBLIKA",
+			CTelef:   strings.TrimSpace(settings["taxpayer_phone"]),
+			CPracufo: strings.TrimSpace(settings["c_pracufo"]),
 		},
 		VetaO: &DPFOVetaO{
 			KcZd7:       zd7,
@@ -297,6 +299,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		},
 		VetaS: &DPFOVetaS{
 			KcOp28_5:  ToWholeCZK(itr.DeductionMortgage),
+			MUroky:    mortgageInterestMonths(itr, settings),
 			KcOp15_13: ToWholeCZK(itr.DeductionLifeInsurance),
 			KcOp15_12: ToWholeCZK(itr.DeductionPension),
 			KcOp15_8:  ToWholeCZK(itr.DeductionDonation),
@@ -339,6 +342,22 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	result = append(result, output...)
 
 	return result, nil
+}
+
+// mortgageInterestMonths returns the count of months for which mortgage interest was
+// paid in the tax year (m_uroky on ř.47). EPO control 1509 fires when ř.47 has an
+// amount but no months. The user can override via the mortgage_interest_months
+// setting (1..12); otherwise we default to 12 (full year), which is the typical
+// case for an existing mortgage. Returns 0 when no mortgage deduction is claimed
+// so the attribute is omitted via omitempty.
+func mortgageInterestMonths(itr *domain.IncomeTaxReturn, settings map[string]string) int {
+	if ToWholeCZK(itr.DeductionMortgage) <= 0 {
+		return 0
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(settings["mortgage_interest_months"])); err == nil && v > 0 && v <= 12 {
+		return v
+	}
+	return 12
 }
 
 // buildPriloha2 fills VetaV (§10 summary) and VetaJ (per-type detail rows) for Příloha č. 2.

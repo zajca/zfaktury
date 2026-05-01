@@ -192,8 +192,14 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	} else {
 		expenses = ToWholeCZK(itr.UsedExpenses)
 	}
-	zd7 := revenue - expenses // ř.37 / ř.113 -- partial tax base from §7
-	loss := int64(0)          // ř.61 -- daňová ztráta; § 7 pre-loss tracked here
+	// ř.104 / ř.113: signed accounting result (may be negative for a loss). EPO checks
+	// ř.113 against the formula ř.104 + ř.105 - ř.106 - ř.107 + ř.108 + ř.109 - ř.110 + ř.112,
+	// so kc_hosp_rozd (ř.104) and kc_zd7p (ř.113) must hold the same signed value when the
+	// other adjustment rows are zero (the typical OSVC case).
+	zd7Signed := revenue - expenses
+	// ř.37 in VetaO clamps to 0; the loss portion goes to kc_dztrata (ř.61) in VetaD.
+	zd7 := zd7Signed
+	loss := int64(0)
 	if zd7 < 0 {
 		loss = -zd7
 		zd7 = 0
@@ -303,7 +309,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		VetaB: &DPFOVetaB{
 			Priloha1: "1",
 		},
-		VetaT: buildPriloha1(itr, settings, revenue, expenses, zd7),
+		VetaT: buildPriloha1(itr, settings, revenue, expenses, zd7Signed),
 	}
 
 	// Příloha č. 2 (§9 + §10). EPO requires it whenever ř.39 or ř.40 (kc_zd9 / kc_zd10)
@@ -408,7 +414,7 @@ func padNACEto6(code string) string {
 // If both are empty, c_nace is omitted; EPO will warn but the user can fill it
 // manually in the portal. Invented defaults must NOT be used because EPO
 // validates against the okec číselník.
-func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, revenue, expenses, zd7 int64) *DPFOVetaT {
+func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, revenue, expenses, zd7Signed int64) *DPFOVetaT {
 	months := 12
 	if v, err := strconv.Atoi(settings["main_activity_months"]); err == nil && v > 0 && v <= 12 {
 		months = v
@@ -417,10 +423,18 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, reve
 	if nace == "" {
 		nace = settings["c_okec"]
 	}
+	// ř.101 (kc_prij7) and ř.102 (kc_vyd7) are required for both actual-expense and
+	// flat-rate filers -- EPO control fires when ř.101 != celk_pr_prij7 / ř.102 != celk_pr_vyd7.
+	// ř.104 (kc_hosp_rozd) and ř.113 (kc_zd7p) carry the signed revenue-expenses; they
+	// satisfy the formula ř.113 = ř.104 + 0 + ... + 0 when no spolupracující-osoba or
+	// účetnictví adjustments apply.
 	v := &DPFOVetaT{
-		CNace:   padNACEto6(nace),
-		MPodnik: months,
-		KcZd7p:  zd7,
+		CNace:      padNACEto6(nace),
+		MPodnik:    months,
+		KcPrij7:    revenue,
+		KcVyd7:     expenses,
+		KcHospRozd: zd7Signed,
+		KcZd7p:     zd7Signed,
 	}
 	if itr.FlatRatePercent > 0 {
 		v.PrPrij7 = revenue
@@ -430,8 +444,6 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, reve
 		v.CelkPrPrij7 = revenue
 		v.CelkPrVyd7 = expenses
 	} else {
-		v.KcPrij7 = revenue
-		v.KcVyd7 = expenses
 		v.Vyd7proc = "N"
 	}
 	return v

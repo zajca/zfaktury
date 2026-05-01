@@ -176,23 +176,34 @@ type DPFOVetaJ struct {
 }
 
 // DPFOVetaT is Priloha c. 1 -- detail of §7 business income.
-// The form has TWO mutually exclusive sections for revenue/expenses:
-//   - Oddíl B/1 (kc_prij7 ř.101 + kc_vyd7 ř.102): when expenses are kept in tax records.
-//   - Oddíl B/2 (pr_prij7 + pr_vyd7 + vyd7proc ř.104): when applying flat-rate %.
 //
-// Filling both at once triggers a critical control. The generator picks one based on
-// IncomeTaxReturn.FlatRatePercent.
+// Critical EPO controls (kontroly přílohy 1):
+//
+//   - ř.101 (kc_prij7) and ř.102 (kc_vyd7) MUST always be filled when §7 income is
+//     reported, regardless of whether actual expenses or the flat-rate % are used.
+//     For flat-rate filers, ř.101 must equal celk_pr_prij7 (Total income from
+//     Tabulka 2 of Section B) and ř.102 must equal celk_pr_vyd7 (Total expenses).
+//
+//   - ř.113 (kc_zd7p) MUST equal the formula:
+//     ř.104 + ř.105 - ř.106 - ř.107 + ř.108 + ř.109 - ř.110 + ř.112
+//     For a basic OSVC return all terms except ř.104 (kc_hosp_rozd) are 0, so
+//     ř.113 = ř.104 = revenue - expenses (may be negative for a loss).
+//
+// The flat-rate detail (pr_prij7/pr_vyd7/vyd7proc/pr_sazba/celk_pr_prij7/celk_pr_vyd7)
+// is only emitted when applying the flat-rate %.
 type DPFOVetaT struct {
 	// Část B header (main activity identification) -- required when §7 income is reported.
 	CNace   string `xml:"c_nace,attr,omitempty"`   // NACE code (číselník okec)
 	MPodnik int    `xml:"m_podnik,attr,omitempty"` // počet měsíců provozu činnosti (default 12)
 
-	// Oddíl 2 part B/1 -- "actual expenses" filers (mutually exclusive with B/2).
-	KcPrij7 int64 `xml:"kc_prij7,attr,omitempty"` // ř. 101 -- příjmy (actual-expense filers)
-	KcVyd7  int64 `xml:"kc_vyd7,attr,omitempty"`  // ř. 102 -- výdaje (actual-expense filers)
+	// Oddíl 2 -- always filled when §7 income is reported. ř.101 and ř.102 are the
+	// totals of Tabulka 2 of Section B (sum across all activities).
+	KcPrij7 int64 `xml:"kc_prij7,attr,omitempty"` // ř. 101 -- úhrn příjmů §7 (vždy)
+	KcVyd7  int64 `xml:"kc_vyd7,attr,omitempty"`  // ř. 102 -- úhrn výdajů §7 (vždy)
 
-	// Oddíl 2 part B/2 -- "flat-rate %" filers. EPO requires the Total* helper attributes
-	// (celk_pr_prij7/celk_pr_vyd7) to equal the sum of the main row + any extra Vetac rows.
+	// Flat-rate detail rows of Tabulka 2 of Section B -- only when applying flat-rate %.
+	// EPO requires the Total* helper attributes (celk_pr_prij7/celk_pr_vyd7) to equal
+	// the sum of the main row + any extra Vetac rows, and to equal kc_prij7/kc_vyd7.
 	PrPrij7     int64  `xml:"pr_prij7,attr,omitempty"`      // hlavní řádek -- příjmy (flat-rate filers)
 	PrVyd7      int64  `xml:"pr_vyd7,attr,omitempty"`       // hlavní řádek -- výdaje (flat-rate filers)
 	Vyd7proc    string `xml:"vyd7proc,attr,omitempty"`      // A/N -- "applying flat-rate %?" flag
@@ -200,6 +211,7 @@ type DPFOVetaT struct {
 	CelkPrPrij7 int64  `xml:"celk_pr_prij7,attr,omitempty"` // celkem příjmy -- součet hlavní + Vetac.prijmy7
 	CelkPrVyd7  int64  `xml:"celk_pr_vyd7,attr,omitempty"`  // celkem výdaje -- součet hlavní + Vetac.vydaje7
 
-	KcZd7p   int64 `xml:"kc_zd7p,attr"`             // ř. 113 -- dílčí ZD §7 přenesený na ř. 37
-	KcCisobr int64 `xml:"kc_cisobr,attr,omitempty"` // ř. 100 -- počet samostatných listů (default 0)
+	KcHospRozd int64 `xml:"kc_hosp_rozd,attr"`        // ř. 104 -- výsledek hospodaření / rozdíl příjmů a výdajů
+	KcZd7p     int64 `xml:"kc_zd7p,attr"`             // ř. 113 -- dílčí ZD §7 přenesený na ř. 37
+	KcCisobr   int64 `xml:"kc_cisobr,attr,omitempty"` // ř. 100 -- počet samostatných listů (default 0)
 }

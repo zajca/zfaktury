@@ -6,7 +6,7 @@ describe('help-content', () => {
 	const topicIds = Object.keys(helpTopics) as HelpTopicId[];
 
 	it('has all expected topics', () => {
-		expect(topicIds.length).toBe(69);
+		expect(topicIds.length).toBe(84);
 	});
 
 	it.each(topicIds)('topic "%s" has non-empty title', (id) => {
@@ -94,7 +94,22 @@ describe('help-content', () => {
 			'nova-zaloha',
 			'ztpp',
 			'fifo-prepocet',
-			'sleva-na-manzela'
+			'sleva-na-manzela',
+			'zavisla-cinnost-s6',
+			'dpc-dpp-hpp',
+			'potvrzeni-zalohove',
+			'potvrzeni-srazkove',
+			'srazkova-do-dap',
+			'radek-31-prijmy-s6',
+			'radek-33-zahranicni-dan',
+			'radek-34-dilci-zaklad-s6',
+			'radek-84-srazene-zalohy',
+			'radek-87-srazena-dan',
+			'radek-89-vyplacene-bonusy',
+			'rocni-zuctovani-rz',
+			'superhruba-mzda-zrusena',
+			'progresivni-sazba-23',
+			'samostatny-zaklad-16a'
 		];
 		expect(topicIds.sort()).toEqual(expectedIds.sort());
 	});

@@ -67,7 +67,22 @@ export type HelpTopicId =
 	| 'nova-zaloha'
 	| 'ztpp'
 	| 'fifo-prepocet'
-	| 'sleva-na-manzela';
+	| 'sleva-na-manzela'
+	| 'zavisla-cinnost-s6'
+	| 'dpc-dpp-hpp'
+	| 'potvrzeni-zalohove'
+	| 'potvrzeni-srazkove'
+	| 'srazkova-do-dap'
+	| 'radek-31-prijmy-s6'
+	| 'radek-33-zahranicni-dan'
+	| 'radek-34-dilci-zaklad-s6'
+	| 'radek-84-srazene-zalohy'
+	| 'radek-87-srazena-dan'
+	| 'radek-89-vyplacene-bonusy'
+	| 'rocni-zuctovani-rz'
+	| 'superhruba-mzda-zrusena'
+	| 'progresivni-sazba-23'
+	| 'samostatny-zaklad-16a';
 
 export interface HelpTopic {
 	title: string;
@@ -516,6 +531,113 @@ const staticTopics: Record<string, HelpTopic> = {
 			'FIFO (First In, First Out) je metoda pro určení nabývací ceny při prodeji cenných papírů. Znamená, že při prodeji se jako první "spotřebují" nejstarší nakoupené kusy.\n\nPříklad: Koupili jste 10 ks za 100 Kč a pak 10 ks za 150 Kč. Pokud prodáte 10 ks, nabývací cena bude 100 Kč (použijí se první nakoupené kusy).\n\nFIFO metoda je pro OSVČ jediná povolená metoda.',
 		legal:
 			'FIFO metoda je jediná přípustná metoda oceňování pro fyzické osoby při prodeji cenných papírů dle § 10 odst. 4 zákona č. 586/1992 Sb. a pokynu GFŘ-D-22. Při FIFO se přiřadí výdaj k přímo identifikovatelnému nákupu, nebo se použije nejstarší nepřiřazený nákup. Náklady na poplatky brokera jsou součástí nabývací ceny.'
+	},
+
+	// §6 Employment Income (RFC-016)
+	'zavisla-cinnost-s6': {
+		title: 'Závislá činnost (§6)',
+		simple:
+			'Zde nahrajte Potvrzení o zdanitelných příjmech, které vám vystavil zaměstnavatel za DPČ, DPP nebo hlavní pracovní poměr. Aplikace z něj vyextrahuje údaje a propíše je do řádků 31, 33, 34, 84 a 87 vašeho daňového přiznání.\n\nKaždé Potvrzení od jiného zaměstnavatele uložte zvlášť. Aplikace pozná dvě varianty -- "zálohové" (formulář 25 5460 vzor 33) a "srážkové" (25 5460/A vzor 12). U srážkového se rozhodnete, jestli ho chcete zahrnout do přiznání nebo ne.',
+		legal:
+			'Příjmy ze závislé činnosti definuje § 6 zákona č. 586/1992 Sb. o daních z příjmů. Plátce daně je povinen vystavit Potvrzení do 10 dnů od podání žádosti poplatníkem podle § 38j odst. 3 ZDP.\n\nDílčí základ daně podle § 6 = úhrn příjmů snížený o daň zaplacenou v zahraničí (§ 6 odst. 13). Od 1. 1. 2021 se nepřičítá pojistné odvedené zaměstnavatelem (zrušení superhrubé mzdy zákonem 609/2020 Sb.). Progresivní sazba 23 % je v § 16 odst. 1 ZDP, NIKOLIV v § 16a (ten je samostatný institut samostatného základu daně z vybraných zahraničních příjmů -- Příloha č. 4 DAP).'
+	},
+	'dpc-dpp-hpp': {
+		title: 'Typy pracovních smluv (DPČ/DPP/HPP)',
+		simple:
+			'V Česku existují tři běžné typy pracovněprávního vztahu:\n\n- HPP (hlavní pracovní poměr) -- klasická pracovní smlouva, plná pracovní doba.\n- DPČ (Dohoda o pracovní činnosti) -- maximálně poloviční úvazek průměrně za rok, vhodné pro brigády a vedlejšák.\n- DPP (Dohoda o provedení práce) -- max 300 hodin u jednoho zaměstnavatele za rok; specifické daňové režimy podle limitů odměny.\n\nPro DPFO je rozlišení důležité hlavně proto, že DPP a DPČ často podléhají srážkové dani, kterou se rozhodnete zahrnout nebo nezahrnout do přiznání.',
+		legal:
+			'Pracovní poměr je upraven v § 30 a násl. zákoníku práce (z. č. 262/2006 Sb.). Dohoda o provedení práce: § 75 ZP, max 300 hodin u jednoho zaměstnavatele za kalendářní rok. Dohoda o pracovní činnosti: § 76 ZP. Daňový režim odměn z DPP a DPČ se odvíjí od podpisu prohlášení k dani podle § 38k ZDP a od limitů uvedených v § 6 odst. 4 ZDP (rozhodný příjem pro účast na nemocenském).'
+	},
+	'potvrzeni-zalohove': {
+		title: 'Potvrzení o zdanitelných příjmech (vzor 33)',
+		simple:
+			'Tento formulář dostáváte od zaměstnavatele, pokud vám sráží zálohy na daň (typicky DPČ s podepsaným prohlášením, HPP). Najdete na něm úhrn vašich příjmů (ř. 2 + 4), úhrn měsíčních daňových bonusů (ř. 5 + 13) a sražené zálohy po slevách (ř. 8).\n\nPokud Potvrzení nemáte, máte právo o něj zaměstnavatele písemně požádat -- vystavit vám ho musí do 10 dnů od žádosti (§ 38j odst. 3 ZDP).\n\nDo aplikace stačí nahrát PDF nebo fotku -- AI to přečte za vás. Vždycky si ale zkontrolujte vyextrahované hodnoty, OCR může udělat chybu.',
+		legal:
+			'Formulář MFin 25 5460 vzor č. 33 vydává Ministerstvo financí ČR pro zdaňovací období 2025. Plátce daně je povinen vystavit Potvrzení do 10 dnů od podání žádosti poplatníkem podle § 38j odst. 3 ZDP. Údaje z něj se přenášejí do oddílu 1 Přiznání k DPFO (řádky 31, 33, 34, 36) a oddílu 7 (řádky 84 a 89). Roční zúčtování provádí zaměstnavatel podle § 38ch -- pokud bylo provedeno, sražené zálohy na ř. 84 se snižují o vrácený přeplatek.'
+	},
+	'potvrzeni-srazkove': {
+		title: 'Potvrzení o vyplacených příjmech a sražené dani (vzor 12)',
+		simple:
+			'Tento formulář (25 5460/A vzor č. 12) dostáváte od zaměstnavatele, pokud vám z odměny (typicky DPP do limitu nebo DPČ bez prohlášení k dani) srazil daň zvláštní sazbou rovnou 15 %. Daň je tím vypořádána a vy nemáte povinnost příjem v přiznání uvádět.\n\nMůžete se ale dobrovolně rozhodnout tyto srážkově zdaněné příjmy do přiznání zahrnout -- pak si srážkovou daň započtete proti vypočtené dani z přiznání. Pokud se tak rozhodnete, musíte zahrnout VŠECHNY srážkově zdaněné příjmy daného typu (§ 38g odst. 6 ZDP).',
+		legal:
+			'Formulář MFin 25 5460/A vzor č. 12 -- Potvrzení o vyplacených příjmech ze závislé činnosti, sražené dani vybírané srážkou podle zvláštní sazby daně. Srážková daň 15 % podle § 36 odst. 2 ZDP. Volitelné zahrnutí do DAP umožňuje § 36 odst. 6 a 7 ZDP, podmíněno § 38g odst. 6 ZDP -- musí se zahrnout veškeré srážkově zdaněné příjmy daného typu.'
+	},
+	'srazkova-do-dap': {
+		title: 'Zahrnutí srážkové daně do přiznání',
+		simple:
+			'Pokud zaškrtnete "Zahrnout do daňového přiznání", úhrn srážkových příjmů z tohoto Potvrzení se přičte na ř. 31 a sražená daň na ř. 87 -- započte se proti vypočtené dani.\n\nDŮLEŽITÉ: pokud se rozhodnete zahrnout, musíte podle § 38g odst. 6 ZDP zahrnout VŠECHNY srážkově zdaněné příjmy daného typu (DPP/DPČ) za celý rok -- nemůžete si vybrat jen jeden výhodný formulář.',
+		legal:
+			'Volitelné zahrnutí podle § 36 odst. 6 a 7 ZDP. Podmínka kompletního zahrnutí je v § 38g odst. 6 ZDP: "do daňového přiznání zahrne veškeré tyto příjmy". Sražená daň se uplatní jako sražená daň podle § 6 (ř. 87 DAP), nikoliv jako daňová záloha (ř. 84). Po zahrnutí se zákonná povinnost podat DAP nemění -- pokud poplatník neměl jinou povinnost ji podat, zahrnutí ji nezakládá.'
+	},
+	'radek-31-prijmy-s6': {
+		title: 'ř.31 Úhrn příjmů §6',
+		simple:
+			'Řádek 31 přiznání obsahuje úhrn všech vašich příjmů ze závislé činnosti od všech zaměstnavatelů. Sčítají se sem:\n\n- Příjmy z Potvrzení vzor 33 (ř. 2 + ř. 4 -- úhrn zúčtovaných příjmů a další zdanitelné příjmy)\n- Pokud jste se rozhodli zahrnout srážkové příjmy, i ř. 2 z Potvrzení vzor 12\n\nOd 1. 1. 2021 se zde NEpřičítá povinné pojistné odvedené zaměstnavatelem (zrušení superhrubé mzdy).',
+		legal:
+			'Řádek 31 odpovídá XSD atributu kc_prij6 v elementu VetaO. Definice viz pokyny k vyplnění DPFO za rok 2025, oddíl 1, str. 2. Zahrnuje všechny příjmy ze závislé činnosti od všech plátců, včetně příjmů ze zdrojů v zahraničí (§ 6 odst. 13 ZDP) a včetně srážkových příjmů zařazených do DAP podle § 36 odst. 6/7. Hodnotu pojistného odvedeného zaměstnavatelem k ZD nepřičítat -- superhrubá mzda zrušena zákonem 609/2020 Sb.'
+	},
+	'radek-33-zahranicni-dan': {
+		title: 'ř.33 Daň zaplacená v zahraničí',
+		simple:
+			'Pokud máte příjem od zahraničního zaměstnavatele a zahraniční stát z něj sám strhl daň, můžete tuto zahraniční daň odečíst od základu daně §6 -- to se děje na řádku 33.\n\nOdečet se týká jen daně zaplacené podle § 6 odst. 13 ZDP a vyžaduje doložené potvrzení od zahraniční daňové správy.',
+		legal:
+			'Řádek 33 odpovídá XSD atributu kc_dan_zah v elementu VetaO. Daň zaplacená v zahraničí v souvislosti s příjmy ze závislé činnosti podle § 6 odst. 13 zákona č. 586/1992 Sb. -- jen daňový rezident ČR. Doklad: úřední potvrzení zahraniční daňové správy o zaplacené dani. Alternativně lze využít zápočet podle § 38f a smluv o zamezení dvojího zdanění (Příloha č. 3 DAP).'
+	},
+	'radek-34-dilci-zaklad-s6': {
+		title: 'ř.34/36 Dílčí základ daně §6',
+		simple:
+			'Řádek 34 (a stejná hodnota na ř. 36) je dílčí základ daně z příjmů ze závislé činnosti. Spočítá se jako:\n\n  ř. 34 = ř. 31 (úhrn příjmů) − ř. 33 (zahraniční daň)\n\nTato hodnota se sčítá se základy daně z dalších oddílů (§7 podnikání, §8 kapitálové, §10 ostatní) pro výpočet celkové daně.',
+		legal:
+			'Řádek 34 (i ř. 36) odpovídá XSD atributu kc_zd6 v elementu VetaO. Dílčí základ daně podle § 6 ZDP = úhrn příjmů snížený o daň zaplacenou v zahraničí podle § 6 odst. 13. Sčítá se s ostatními dílčími základy do souhrnného základu daně, na který se aplikuje § 16 odst. 1 (sazba 15 % / 23 %).'
+	},
+	'radek-84-srazene-zalohy': {
+		title: 'ř.84 Sražené zálohy zaměstnavateli',
+		simple:
+			'Řádek 84 je úhrn všech záloh na daň, které vám zaměstnavatelé strhli ze mzdy během roku (po uplatnění slev na dani). Údaje pochází z ř. 8 každého Potvrzení vzor 33.\n\nPokud zaměstnavatel provedl roční zúčtování a vrátil vám přeplatek, hodnota se snižuje o ten vrácený přeplatek (čistá výše skutečně sražených záloh).',
+		legal:
+			'Řádek 84 odpovídá XSD atributu kc_zalzavc v elementu VetaD. "Úhrn sražených záloh na daň z příjmů ze závislé činnosti (po slevách na dani)" -- ve vzoru Potvrzení č. 33 se jedná o údaj uvedený na ř. 8. Pokud bylo provedeno roční zúčtování podle § 38ch ZDP, snižuje se ř. 84 o vrácený přeplatek z RZ.'
+	},
+	'radek-87-srazena-dan': {
+		title: 'ř.87 Sražená daň §36 odst.6',
+		simple:
+			'Řádek 87 obsahuje srážkovou daň z Potvrzení vzor 12, kterou jste se rozhodli zařadit do daňového přiznání. Tato částka se započte proti celkové dani vypočtené z přiznání.\n\nPokud srážkovou daň do přiznání nezahrnujete, nechte na 0 -- daň je již vypořádaná.',
+		legal:
+			'Řádek 87 odpovídá XSD atributu kc_sraz_6_4 v elementu VetaD. Sražená daň podle § 36 odst. 6 ZDP zařazená do DAP daňovým rezidentem ČR. Volitelné zahrnutí do DAP podle § 36 odst. 6/7 ZDP, podmíněno povinností uvést všechny takové příjmy podle § 38g odst. 6.'
+	},
+	'radek-89-vyplacene-bonusy': {
+		title: 'ř.89 Úhrn vyplacených měsíčních daňových bonusů',
+		simple:
+			'Řádek 89 je úhrn měsíčních daňových bonusů na děti, které vám zaměstnavatel vyplatil v průběhu roku (případně doplatil v ročním zúčtování). Údaje pochází z ř. 5 + ř. 13 Potvrzení vzor 33.\n\nTato hodnota se NEodečítá od nárokovaného ročního daňového zvýhodnění -- jde o samostatnou informativní položku pro vypořádání daňového bonusu se státem.',
+		legal:
+			'Řádek 89 odpovídá XSD atributu kc_vyplbonus v elementu VetaD: "úhrn měsíčních daňových bonusů, které Vám zaměstnavatel vyplatil" -- z Potvrzení ř. 5 + ř. 13 (vzor 33). Podle § 35d ZDP zaměstnavatel vyplácí měsíční daňové bonusy podle § 35c. Vyplacený bonus se NEodčítá od nárokovaného ročního zvýhodnění (ř. 72/73/76); finální zúčtování probíhá mezi vypočtenou daní/bonusem a součtem ř. 84 + ř. 87 + ř. 89.'
+	},
+	'rocni-zuctovani-rz': {
+		title: 'Roční zúčtování záloh (RZ)',
+		simple:
+			'Pokud jste o to zaměstnavatele požádali do 15. 2., mohl vám provést roční zúčtování záloh -- spočítá daň za celý rok se všemi slevami a vrátí vám případný přeplatek.\n\nPokud podáváte vlastní daňové přiznání (typicky kvůli OSVČ příjmům §7), v Potvrzení uvidíte vrácený přeplatek z RZ -- ten se odečte od sražených záloh na ř. 84, abyste přeplatek nezapočítali dvakrát.',
+		legal:
+			'Roční zúčtování záloh je upraveno v § 38ch ZDP. Provádí ho zaměstnavatel na žádost poplatníka, pokud poplatník neměl povinnost podat DAP a podepsal prohlášení k dani. Vrácený přeplatek se v Potvrzení vzor 33 zachycuje samostatnou položkou; v DAP se sražené zálohy na ř. 84 uvádějí již po snížení o vrácený přeplatek (jinak by se přeplatek započetl podruhé).'
+	},
+	'superhruba-mzda-zrusena': {
+		title: 'Proč není pole na povinné pojistné',
+		simple:
+			'Možná hledáte řádek 32 a pole pro povinné pojistné odvedené zaměstnavatelem -- "superhrubá mzda". Tento koncept byl od 1. 1. 2021 ZRUŠEN (zákonem 609/2020 Sb.).\n\nOd roku 2021 je základem daně samotná hrubá mzda -- pojistné odváděné zaměstnavatelem se k ní nepřičítá. Ř. 32 v aktuálním vzoru přiznání proto zůstává neobsazený.',
+		legal:
+			'Superhrubá mzda byla zrušena novelou zákona č. 609/2020 Sb. s účinností od 1. 1. 2021. § 6 odst. 12 ZDP nyní stanoví, že základem daně z příjmů ze závislé činnosti jsou samotné příjmy zaměstnance, bez navýšení o pojistné odváděné zaměstnavatelem. Pokyny k vyplnění DPFO 2025 explicitně uvádějí "ř. 32 Neobsazeno" (str. 2).'
+	},
+	'progresivni-sazba-23': {
+		title: '§16 progresivní sazba 23 %',
+		simple:
+			'Pokud váš celkový základ daně (součet všech dílčích §6+§7+§8+§10) přesáhne 36násobek průměrné mzdy, část nad limit je zdaněna sazbou 23 % místo 15 %. Pro rok 2025 je limit 1 676 052 Kč.\n\nVýpočet aplikace zvládne automaticky -- jen pokud se k limitu přibližujete, ověřte si, zda nemáte také zahraniční příjmy spadající pod §16a (samostatný základ daně, Příloha č. 4) -- to je samostatný institut.',
+		legal:
+			'Progresivní sazba je v § 16 odst. 1 zákona č. 586/1992 Sb.: 15 % do 36násobku průměrné mzdy, 23 % nad. Pro rok 2025 limit 1 676 052 Kč (36 × 46 557 Kč). Vstupem je úhrn všech dílčích základů daně (§ 6 + § 7 + § 8 + § 10). Nezaměňovat s § 16a -- samostatný základ daně z vybraných zahraničních příjmů (Příloha č. 4 DAP, ř. 74a a ř. 414).'
+	},
+	'samostatny-zaklad-16a': {
+		title: '§16a samostatný základ daně',
+		simple:
+			'§16a je samostatný institut, který umožňuje zdanit některé zahraniční příjmy (např. dividendy ze smluvních států) zvláštní 15% sazbou v Příloze č. 4 přiznání -- mimo hlavní výpočet.\n\nDŮLEŽITÉ: §16a NEsouvisí s §6 závislou činností ani s progresivní sazbou 23 % (ta je v §16 odst. 1). Pokud máte jen české zaměstnání, §16a vás netýká.',
+		legal:
+			'Samostatný základ daně podle § 16a ZDP -- vybrané zahraniční příjmy (typicky dividendy a podíly na zisku ze smluvních států), zdaněné zvláštní sazbou 15 %. Vykazuje se v Příloze č. 4 DAP (ř. 74a, ř. 414). Není součástí progresivní sazby podle § 16 odst. 1 a není dílčím základem daně podle § 6/§7/§8/§10. Tento institut je v aplikaci mimo MVP RFC-016.'
 	}
 };
 

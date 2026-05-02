@@ -1056,6 +1056,20 @@ export interface IncomeTaxReturn {
 	other_income_expenses: number;
 	other_income_exempt: number;
 	other_income_net: number;
+	// §6 employment income (DPC/DPP/HPP) aggregates
+	section6_gross_income?: number;
+	section6_income_without_advance?: number;
+	section6_foreign_tax?: number;
+	section6_tax_base?: number;
+	section6_advance_withheld?: number;
+	section6_withholding_credited?: number;
+	section6_monthly_bonus_paid?: number;
+	section6_certs_advance?: number;
+	section6_certs_withholding?: number;
+	section6_certs_bonus?: number;
+	// Backend-emitted advisory warning codes (e.g. "progressive_rate_review").
+	// Empty array or absent field = no warnings.
+	warnings?: string[];
 	has_xml: boolean;
 	status: string;
 	filed_at: string | null;
@@ -1658,6 +1672,105 @@ export const investmentsApi = {
 	},
 	recalculateFifo(year: number) {
 		return post<void>(`/investments/recalculate-fifo/${year}`, {});
+	}
+};
+
+// --- Employment Income (§6) Types ---
+
+export type EmploymentDocumentKind = 'advance' | 'withholding' | 'bonus';
+export type CertificateType = 'advance' | 'withholding';
+export type ContractType = 'dpc' | 'dpp' | 'hpp' | 'other';
+
+export interface EmploymentDocument {
+	id: number;
+	year: number;
+	kind: EmploymentDocumentKind;
+	filename: string;
+	content_type: string;
+	size: number;
+	extraction_status: 'pending' | 'extracted' | 'failed';
+	extraction_error?: string;
+	created_at: string;
+}
+
+export interface EmploymentCertificate {
+	id: number;
+	year: number;
+	document_id?: number;
+	certificate_type: CertificateType;
+	employer_name: string;
+	employer_ico: string;
+	employer_address?: string;
+	contract_type: ContractType;
+	period_from: string; // YYYY-MM-DD
+	period_to: string;
+	gross_income_czk: number;
+	income_without_advance_czk: number;
+	foreign_tax_paid_czk: number;
+	advance_tax_withheld_czk: number;
+	annual_settlement_refund_czk: number;
+	monthly_bonus_paid_czk: number;
+	withheld_final_tax_czk: number;
+	include_withholding_in_dap: boolean;
+	notes?: string;
+	confidence?: number;
+	status: 'draft' | 'confirmed';
+	created_at: string;
+	updated_at: string;
+}
+
+// --- Employment Income (§6) API ---
+
+export const employmentApi = {
+	async uploadDocument(
+		year: number,
+		kind: EmploymentDocumentKind,
+		file: File
+	): Promise<EmploymentDocument> {
+		const formData = new FormData();
+		formData.append('file', file);
+		const response = await fetch(`${API_BASE}/tax/employment/documents?year=${year}&kind=${kind}`, {
+			method: 'POST',
+			body: formData
+		});
+		if (!response.ok) {
+			let body: unknown;
+			try {
+				body = await response.json();
+			} catch {
+				/* ignore */
+			}
+			throw new ApiError(response.status, response.statusText, body);
+		}
+		return response.json();
+	},
+	extractDocument(id: number) {
+		return post<EmploymentCertificate>(`/tax/employment/documents/${id}/extract`, {});
+	},
+	listDocuments(year: number) {
+		return get<EmploymentDocument[]>(`/tax/employment/documents?year=${year}`);
+	},
+	deleteDocument(id: number) {
+		return del<void>(`/tax/employment/documents/${id}`);
+	},
+
+	listCertificates(year: number) {
+		return get<EmploymentCertificate[]>(`/tax/employment/certificates?year=${year}`);
+	},
+	getCertificate(id: number) {
+		return get<EmploymentCertificate>(`/tax/employment/certificates/${id}`);
+	},
+	createCertificate(cert: Partial<EmploymentCertificate>) {
+		return post<EmploymentCertificate>('/tax/employment/certificates', cert);
+	},
+	updateCertificate(id: number, cert: Partial<EmploymentCertificate>) {
+		return put<EmploymentCertificate>(`/tax/employment/certificates/${id}`, cert);
+	},
+	confirmCertificate(id: number) {
+		return post<void>(`/tax/employment/certificates/${id}/confirm`, {});
+	},
+	deleteCertificate(id: number) {
+		return del<void>(`/tax/employment/certificates/${id}`);
 	}
 };
 

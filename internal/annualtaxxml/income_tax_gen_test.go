@@ -655,3 +655,166 @@ func TestPadNACEto6(t *testing.T) {
 		}
 	}
 }
+
+// section6BaseSettings returns a minimal valid settings map for §6 tests.
+func section6BaseSettings() map[string]string {
+	return map[string]string{
+		"financni_urad_code":    "451",
+		"taxpayer_first_name":   "Jan",
+		"taxpayer_last_name":    "Novak",
+		"taxpayer_birth_number": "8001011234",
+		"dic":                   "CZ8001011234",
+		"taxpayer_street":       "Hlavni",
+		"taxpayer_house_number": "42",
+		"taxpayer_city":         "Praha",
+		"taxpayer_postal_code":  "11000",
+	}
+}
+
+// TestIncomeTaxXML_Section6Advance covers the typical advance case: two zálohové
+// Potvrzení (vzor 33) aggregating to 240 000 Kč gross, 36 000 Kč withheld advances,
+// 15 300 Kč paid monthly bonuses. potv_dazvyh stays 0 in MVP because we don't yet
+// support the standalone "Potvrzení o vyplaceném daňovém bonusu" form.
+func TestIncomeTaxXML_Section6Advance(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:                     2025,
+		FilingType:               domain.FilingTypeRegular,
+		TotalRevenue:             domain.NewAmount(0, 0),
+		Section6GrossIncome:      domain.NewAmount(240000, 0), // ř.31
+		Section6TaxBase:          domain.NewAmount(240000, 0), // ř.34/36 (no foreign tax)
+		Section6AdvanceWithheld:  domain.NewAmount(36000, 0),  // ř.84
+		Section6MonthlyBonusPaid: domain.NewAmount(15300, 0),  // ř.89
+		Section6CertsAdvance:     2,
+		// Section6CertsBonus stays 0 -- standalone bonus form OOS in MVP
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_prij6="240000"`,
+		`kc_zd6="240000"`,
+		`kc_zalzavc="36000"`,
+		`kc_vyplbonus="15300"`,
+		`potv_zam="2"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
+	// potv_dazvyh stays 0 (omitempty drops it) in MVP -- attribute must NOT appear.
+	if bytes.Contains(xmlData, []byte("potv_dazvyh=")) {
+		t.Errorf("potv_dazvyh must be omitted in MVP, got:\n%s", xmlData)
+	}
+	// kc_zakldan23 (ř.42) must equal kc_zd6 alone -- there is no §7/§8/§10 income.
+	if !bytes.Contains(xmlData, []byte(`kc_zakldan23="240000"`)) {
+		t.Errorf("expected kc_zakldan23=240000 (= kc_zd6 with no §7/8/10 income), got:\n%s", xmlData)
+	}
+}
+
+// TestIncomeTaxXML_Section6Withholding covers the user opting to include srážková
+// daň in DAP per §36 odst. 6/7. The withholding amount must land on kc_sraz_6_4 (ř.87)
+// and the attachment count potv_36 must be set.
+func TestIncomeTaxXML_Section6Withholding(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:                        2025,
+		FilingType:                  domain.FilingTypeRegular,
+		TotalRevenue:                domain.NewAmount(0, 0),
+		Section6GrossIncome:         domain.NewAmount(50000, 0),
+		Section6TaxBase:             domain.NewAmount(50000, 0),
+		Section6WithholdingCredited: domain.NewAmount(7500, 0), // ř.87 -- §36 odst.6 sražená daň
+		Section6CertsWithholding:    1,
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_prij6="50000"`,
+		`kc_zd6="50000"`,
+		`kc_sraz_6_4="7500"`,
+		`potv_36="1"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
+}
+
+// TestIncomeTaxXML_Section6OnlyNegativeSection7 covers the XSD critical control on
+// kc_zakldan23 (ř.42): "Pokud je ř.41 záporný, uveďte pouze hodnotu z ř.36". When
+// the §7+§8+§10 sum is negative, the consolidated tax base equals §6 alone.
+func TestIncomeTaxXML_Section6OnlyNegativeSection7(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:                2025,
+		FilingType:          domain.FilingTypeRegular,
+		TotalRevenue:        domain.NewAmount(100000, 0), // §7 income 100k
+		UsedExpenses:        domain.NewAmount(180000, 0), // §7 expenses 180k -> loss 80k
+		Section6GrossIncome: domain.NewAmount(300000, 0),
+		Section6TaxBase:     domain.NewAmount(300000, 0),
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	// kc_zakldan23 (ř.42) must equal kc_zd6 (300000) -- the §7 loss does NOT add.
+	if !bytes.Contains(xmlData, []byte(`kc_zakldan23="300000"`)) {
+		t.Errorf("expected kc_zakldan23=300000 (= kc_zd6, ř.41 negative dropped), got:\n%s", xmlData)
+	}
+	if !bytes.Contains(xmlData, []byte(`kc_zd6="300000"`)) {
+		t.Errorf("expected kc_zd6=300000, got:\n%s", xmlData)
+	}
+	// kc_dztrata (ř.61) must hold the §7 loss (80000), unaffected by §6.
+	if !bytes.Contains(xmlData, []byte(`kc_dztrata="80000"`)) {
+		t.Errorf("expected kc_dztrata=80000 (§7 loss), got:\n%s", xmlData)
+	}
+}
+
+// TestIncomeTaxXML_BonusReportedSeparately verifies that MonthlyBonusPaid (ř.89) is
+// reported separately on kc_vyplbonus and does NOT reduce ChildBenefit (ř.72) or
+// the computed bonus on ř.76. Regression for K3 in RFC-016 v2.
+//
+// Also asserts kc_zbyvpred (ř.91) reflects the bonus reconciliation: the user
+// claimed 20 000 Kč bonus but employer only paid out 10 000 Kč → user still
+// has 10 000 Kč refund coming on the DAP, i.e. kc_zbyvpred = −10 000.
+func TestIncomeTaxXML_BonusReportedSeparately(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:                     2025,
+		FilingType:               domain.FilingTypeRegular,
+		TotalRevenue:             domain.NewAmount(0, 0),
+		Section6GrossIncome:      domain.NewAmount(150000, 0),
+		Section6TaxBase:          domain.NewAmount(150000, 0),
+		Section6MonthlyBonusPaid: domain.NewAmount(10000, 0), // ř.89 vyplacený bonus zaměstnavatelem
+		Section6CertsAdvance:     1,
+		ChildBenefit:             domain.NewAmount(20000, 0), // ř.72 nárok -- must remain unchanged
+		// Tax 0 (no §16 calc setup here) so all of ChildBenefit becomes ř.76 bonus.
+		TotalTax: domain.NewAmount(0, 0),
+		// TaxAfterBenefit = −20 000 (user has full claim). TaxDue (ř.91) =
+		// −20 000 + 10 000 (ř.89) = −10 000 — see calc.CalculateIncomeTax.
+		// The XML generator only echoes itr.TaxDue here; assert the wired
+		// value flows through to kc_zbyvpred.
+		TaxDue: -domain.NewAmount(10000, 0),
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	// kc_vyplbonus (ř.89) reflects the employer-paid bonus.
+	if !bytes.Contains(xmlData, []byte(`kc_vyplbonus="10000"`)) {
+		t.Errorf("expected kc_vyplbonus=10000, got:\n%s", xmlData)
+	}
+	// kc_dazvyhod (ř.72) keeps the full ChildBenefit -- no double-counting.
+	if !bytes.Contains(xmlData, []byte(`kc_dazvyhod="20000"`)) {
+		t.Errorf("expected kc_dazvyhod=20000 (ChildBenefit unchanged by ř.89), got:\n%s", xmlData)
+	}
+	// ř.76 (kc_danbonus) = ChildBenefit when tax after credits is 0; verify it equals 20000.
+	if !bytes.Contains(xmlData, []byte(`kc_danbonus="20000"`)) {
+		t.Errorf("expected kc_danbonus=20000 (ř.76 nárok unchanged), got:\n%s", xmlData)
+	}
+	// kc_zbyvpred (ř.91) reflects ř.89 reconciliation: user has 10 000 Kč
+	// refund coming back from the státu (employer paid 10k, user entitled
+	// to 20k → 10k still owed). Negative TaxDue serialises with leading "-".
+	if !bytes.Contains(xmlData, []byte(`kc_zbyvpred="-10000"`)) {
+		t.Errorf("expected kc_zbyvpred=-10000 (ř.91 reflects ř.72 − ř.89 = −10 000), got:\n%s", xmlData)
+	}
+}

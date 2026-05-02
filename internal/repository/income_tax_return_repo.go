@@ -5,10 +5,48 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
+
+// joinWarnings serialises a warnings slice into the comma-separated form
+// stored in the income_tax_returns.warnings TEXT column. nil/empty input
+// produces "" (the migration default).
+func joinWarnings(warnings []string) string {
+	if len(warnings) == 0 {
+		return ""
+	}
+	cleaned := make([]string, 0, len(warnings))
+	for _, w := range warnings {
+		w = strings.TrimSpace(w)
+		if w != "" {
+			cleaned = append(cleaned, w)
+		}
+	}
+	return strings.Join(cleaned, ",")
+}
+
+// splitWarnings parses the stored comma-separated warnings string into a
+// slice. Empty input produces nil to keep the in-memory representation clean.
+func splitWarnings(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
 
 // IncomeTaxReturnRepository handles persistence of IncomeTaxReturn entities.
 type IncomeTaxReturnRepository struct {
@@ -30,7 +68,10 @@ const incomeTaxReturnColumns = `id, year, filing_type,
 	capital_income_gross, capital_income_tax, capital_income_net,
 	other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
 	deduction_mortgage, deduction_life_insurance, deduction_pension, deduction_donation, deduction_union_dues,
-	xml_data, status, filed_at, created_at, updated_at`
+	section6_gross_income, section6_income_without_advance, section6_foreign_tax, section6_tax_base,
+	section6_advance_withheld, section6_withholding_credited, section6_monthly_bonus_paid,
+	section6_certs_advance, section6_certs_withholding, section6_certs_bonus,
+	xml_data, warnings, status, filed_at, created_at, updated_at`
 
 // scanIncomeTaxReturn scans an IncomeTaxReturn from a row.
 func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
@@ -38,6 +79,7 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 	var filedAtStr sql.NullString
 	var createdAtStr, updatedAtStr string
 	var xmlData []byte
+	var warningsStr string
 
 	err := s.Scan(
 		&itr.ID, &itr.Year, &itr.FilingType,
@@ -49,7 +91,10 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 		&itr.CapitalIncomeGross, &itr.CapitalIncomeTax, &itr.CapitalIncomeNet,
 		&itr.OtherIncomeGross, &itr.OtherIncomeExpenses, &itr.OtherIncomeExempt, &itr.OtherIncomeNet,
 		&itr.DeductionMortgage, &itr.DeductionLifeInsurance, &itr.DeductionPension, &itr.DeductionDonation, &itr.DeductionUnionDues,
-		&xmlData, &itr.Status, &filedAtStr,
+		&itr.Section6GrossIncome, &itr.Section6IncomeWithoutAdvance, &itr.Section6ForeignTax, &itr.Section6TaxBase,
+		&itr.Section6AdvanceWithheld, &itr.Section6WithholdingCredited, &itr.Section6MonthlyBonusPaid,
+		&itr.Section6CertsAdvance, &itr.Section6CertsWithholding, &itr.Section6CertsBonus,
+		&xmlData, &warningsStr, &itr.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
@@ -57,6 +102,7 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 	}
 
 	itr.XMLData = xmlData
+	itr.Warnings = splitWarnings(warningsStr)
 
 	itr.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
 	if err != nil {
@@ -94,8 +140,11 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 			capital_income_gross, capital_income_tax, capital_income_net,
 			other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
 			deduction_mortgage, deduction_life_insurance, deduction_pension, deduction_donation, deduction_union_dues,
-			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			section6_gross_income, section6_income_without_advance, section6_foreign_tax, section6_tax_base,
+			section6_advance_withheld, section6_withholding_credited, section6_monthly_bonus_paid,
+			section6_certs_advance, section6_certs_withholding, section6_certs_bonus,
+			xml_data, warnings, status, filed_at, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
 		itr.TaxBase, itr.TotalDeductions, itr.TaxBaseRounded, itr.TaxAt15, itr.TaxAt23, itr.TotalTax,
@@ -105,7 +154,10 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
 		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
 		itr.DeductionMortgage, itr.DeductionLifeInsurance, itr.DeductionPension, itr.DeductionDonation, itr.DeductionUnionDues,
-		nil, itr.Status, nil,
+		itr.Section6GrossIncome, itr.Section6IncomeWithoutAdvance, itr.Section6ForeignTax, itr.Section6TaxBase,
+		itr.Section6AdvanceWithheld, itr.Section6WithholdingCredited, itr.Section6MonthlyBonusPaid,
+		itr.Section6CertsAdvance, itr.Section6CertsWithholding, itr.Section6CertsBonus,
+		nil, joinWarnings(itr.Warnings), itr.Status, nil,
 		itr.CreatedAt.Format(time.RFC3339), itr.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -140,7 +192,10 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 			capital_income_gross = ?, capital_income_tax = ?, capital_income_net = ?,
 			other_income_gross = ?, other_income_expenses = ?, other_income_exempt = ?, other_income_net = ?,
 			deduction_mortgage = ?, deduction_life_insurance = ?, deduction_pension = ?, deduction_donation = ?, deduction_union_dues = ?,
-			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
+			section6_gross_income = ?, section6_income_without_advance = ?, section6_foreign_tax = ?, section6_tax_base = ?,
+			section6_advance_withheld = ?, section6_withholding_credited = ?, section6_monthly_bonus_paid = ?,
+			section6_certs_advance = ?, section6_certs_withholding = ?, section6_certs_bonus = ?,
+			xml_data = ?, warnings = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
@@ -151,7 +206,10 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
 		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
 		itr.DeductionMortgage, itr.DeductionLifeInsurance, itr.DeductionPension, itr.DeductionDonation, itr.DeductionUnionDues,
-		itr.XMLData, itr.Status, filedAt,
+		itr.Section6GrossIncome, itr.Section6IncomeWithoutAdvance, itr.Section6ForeignTax, itr.Section6TaxBase,
+		itr.Section6AdvanceWithheld, itr.Section6WithholdingCredited, itr.Section6MonthlyBonusPaid,
+		itr.Section6CertsAdvance, itr.Section6CertsWithholding, itr.Section6CertsBonus,
+		itr.XMLData, joinWarnings(itr.Warnings), itr.Status, filedAt,
 		itr.UpdatedAt.Format(time.RFC3339), itr.ID,
 	)
 	if err != nil {

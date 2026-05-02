@@ -207,8 +207,23 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	zd8 := ToWholeCZK(itr.CapitalIncomeNet) // ř.38
 	zd10 := ToWholeCZK(itr.OtherIncomeNet)  // ř.40
 	uhrn := zd7 + zd8 + zd10                // ř.41 (no §9 rental income tracked yet)
-	zakldan23 := uhrn                       // ř.42 -- assumes §6 employment base = 0
-	zakldanLoss := zakldan23                // ř.45 -- no carry-forward losses applied
+
+	// §6 employment income inputs.
+	// kc_zd6 (ř.34/36) is computed by the service as kc_prij6 - kc_dan_zah and stored
+	// in itr.Section6TaxBase. We carry the precomputed value through to keep XML and
+	// detail-page rendering consistent.
+	prij6 := ToWholeCZK(itr.Section6GrossIncome)              // ř.31
+	prij6zahr := ToWholeCZK(itr.Section6IncomeWithoutAdvance) // ř.35
+	danZah := ToWholeCZK(itr.Section6ForeignTax)              // ř.33
+	zd6 := ToWholeCZK(itr.Section6TaxBase)                    // ř.34/36
+
+	// XSD ř.42 critical control: "Pokud je ř.41 záporný, uveďte pouze hodnotu z ř.36"
+	// — when §7+§8+§10 sum to a loss, the consolidated tax base is just §6 alone.
+	zakldan23 := zd6
+	if uhrn > 0 {
+		zakldan23 += uhrn
+	}
+	zakldanLoss := zakldan23 // ř.45 -- no carry-forward losses applied
 	totalDeductions := ToWholeCZK(itr.TotalDeductions)
 	zdsniz := zakldanLoss - totalDeductions // ř.55
 	if zdsniz < 0 {
@@ -274,6 +289,13 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			KcDbPoOdpd:    dbPoOdpd,
 			KcZalpred:     ToWholeCZK(itr.Prepayments),
 			KcZbyvpred:    ToWholeCZK(itr.TaxDue),
+			// §6 employment income (RFC-016).
+			// kc_zalzavc / kc_sraz_6_4 / kc_vyplbonus all use omitempty; aggregates of zero
+			// (no §6 income) drop out and the resulting XML matches the pre-§6 baseline.
+			KcZalzavc:    ToWholeCZK(itr.Section6AdvanceWithheld),
+			KcSraz64:     ToWholeCZK(itr.Section6WithholdingCredited),
+			KcSrazRezEHP: 0, // ř.87a -- nerezident EU/EHP, MVP: not tracked
+			KcVyplBonus:  ToWholeCZK(itr.Section6MonthlyBonusPaid),
 		},
 		VetaP: DPFOVetaP{
 			Jmeno:    settings["taxpayer_first_name"],
@@ -290,6 +312,13 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			CPracufo: strings.TrimSpace(settings["c_pracufo"]),
 		},
 		VetaO: &DPFOVetaO{
+			// §6 employment income (RFC-016) -- omitempty drops zero values for the
+			// no-employment-income case, preserving pre-§6 XML output.
+			KcPrij6:     prij6,
+			KcPrij6zahr: prij6zahr,
+			KcDanZah:    danZah,
+			KcZd6:       zd6,
+			KcZd6p:      0, // §38f Příloha 3 alokace -- MVP: 0 (omitted)
 			KcZd7:       zd7,
 			KcZakldan8:  zd8,
 			KcZd10:      zd10,
@@ -311,6 +340,11 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		VetaA: buildChildRows(children),
 		VetaB: &DPFOVetaB{
 			Priloha1: "1",
+			// §6 attachment counts (RFC-016) -- all zero for taxpayers without
+			// employment income; omitempty keeps the baseline XML untouched.
+			PotvZam:    itr.Section6CertsAdvance,
+			Potv36:     itr.Section6CertsWithholding,
+			PotvDazvyh: itr.Section6CertsBonus,
 		},
 		VetaT: buildPriloha1(itr, settings, revenue, expenses, zd7Signed),
 	}

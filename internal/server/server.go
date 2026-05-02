@@ -288,8 +288,13 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	investmentDocSvc := service.NewInvestmentDocumentService(investmentDocRepo, capitalIncomeRepo, securityTransactionRepo, cfg.DataDir, auditSvc)
 	investmentIncomeSvc := service.NewInvestmentIncomeService(capitalIncomeRepo, securityTransactionRepo, auditSvc)
 
+	// Wire §6 employment income repos (RFC-016).
+	employmentDocRepo := repository.NewEmploymentDocumentRepository(db)
+	employmentCertRepo := repository.NewEmploymentCertificateRepository(db)
+
 	incomeTaxSvc := service.NewIncomeTaxReturnService(incomeTaxReturnRepo, invoiceRepo, expenseRepo, settingsRepo, taxYearSettingsRepo, taxPrepaymentRepo, taxCreditsSvc, auditSvc)
 	incomeTaxSvc.SetInvestmentService(investmentIncomeSvc)
+	incomeTaxSvc.SetEmploymentCertificateRepo(employmentCertRepo)
 	incomeTaxBundleSvc := service.NewIncomeTaxBundleService(
 		incomeTaxReturnRepo,
 		taxDeductionRepo,
@@ -307,17 +312,23 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	var ocrSvc *service.OCRService
 	var taxExtractionSvc *service.TaxDocumentExtractionService
 	var investmentExtractionSvc *service.InvestmentExtractionService
+	var ocrProvider ocr.Provider
 	if cfg.OCR.APIKey != "" {
 		provider, err := ocr.NewProvider(cfg.OCR.Provider, cfg.OCR.APIKey, cfg.OCR.Model, cfg.OCR.BaseURL)
 		if err != nil {
 			slog.Warn("OCR disabled", "error", err)
 		} else {
+			ocrProvider = provider
 			ocrSvc = service.NewOCRService(provider, documentSvc)
 			taxExtractionSvc = service.NewTaxDocumentExtractionService(provider, taxDeductionDocSvc, taxDeductionRepo, taxDeductionDocRepo)
 			investmentExtractionSvc = service.NewInvestmentExtractionService(provider, investmentDocSvc, capitalIncomeRepo, securityTransactionRepo, investmentDocRepo)
 			slog.Info("OCR service configured", "provider", provider.Name())
 		}
 	}
+
+	// Wire §6 employment certificate service (RFC-016). OCR provider may be
+	// nil — manual entry still works.
+	employmentSvc := service.NewEmploymentCertificateService(employmentDocRepo, employmentCertRepo, ocrProvider, auditSvc, cfg.DataDir)
 
 	// Wire import service (for upload-first expense creation).
 	importSvc := service.NewImportService(expenseSvc, documentSvc, ocrSvc)
@@ -369,7 +380,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
+	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
 		DevMode: cfg.Server.Dev,
 		DataDir: cfg.DataDir,
 	})

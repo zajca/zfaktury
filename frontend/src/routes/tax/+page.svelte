@@ -5,9 +5,11 @@
 		incomeTaxApi,
 		socialInsuranceApi,
 		healthInsuranceApi,
+		employmentApi,
 		type IncomeTaxReturn,
 		type SocialInsuranceOverview,
 		type HealthInsuranceOverview,
+		type EmploymentCertificate,
 		type TaxConstants
 	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
@@ -26,27 +28,55 @@
 	let incomeTaxReturns = $state<IncomeTaxReturn[]>([]);
 	let socialOverviews = $state<SocialInsuranceOverview[]>([]);
 	let healthOverviews = $state<HealthInsuranceOverview[]>([]);
+	let employmentCertificates = $state<EmploymentCertificate[]>([]);
 
 	async function loadData() {
 		loading = true;
 		error = null;
 		try {
-			const [itr, sio, hio, tc] = await Promise.all([
+			const [itr, sio, hio, tc, emp] = await Promise.all([
 				incomeTaxApi.list(selectedYear),
 				socialInsuranceApi.list(selectedYear),
 				healthInsuranceApi.list(selectedYear),
-				loadTaxConstants(selectedYear)
+				loadTaxConstants(selectedYear),
+				employmentApi.listCertificates(selectedYear).catch(() => [])
 			]);
 			incomeTaxReturns = itr ?? [];
 			socialOverviews = sio ?? [];
 			healthOverviews = hio ?? [];
 			taxConstants = tc;
+			employmentCertificates = emp ?? [];
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
 		} finally {
 			loading = false;
 		}
 	}
+
+	let employmentSection6Gross = $derived(
+		employmentCertificates
+			.filter((c) => c.status === 'confirmed')
+			.reduce((sum, c) => {
+				if (c.certificate_type === 'advance') return sum + c.gross_income_czk;
+				if (c.include_withholding_in_dap) return sum + c.gross_income_czk;
+				return sum;
+			}, 0)
+	);
+	let employmentSection6Advance = $derived(
+		employmentCertificates
+			.filter((c) => c.status === 'confirmed' && c.certificate_type === 'advance')
+			.reduce((sum, c) => sum + c.advance_tax_withheld_czk - c.annual_settlement_refund_czk, 0)
+	);
+	let employmentSection6Withholding = $derived(
+		employmentCertificates
+			.filter(
+				(c) =>
+					c.status === 'confirmed' &&
+					c.certificate_type === 'withholding' &&
+					c.include_withholding_in_dap
+			)
+			.reduce((sum, c) => sum + c.withheld_final_tax_czk, 0)
+	);
 
 	let mounted = false;
 	onMount(() => {
@@ -133,7 +163,7 @@
 	{#if loading}
 		<LoadingSpinner class="mt-8 p-12" />
 	{:else}
-		<div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+		<div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
 			<!-- DPFO card -->
 			<Card>
 				<h2 class="text-base font-semibold text-primary">
@@ -284,6 +314,59 @@
 							</div>
 						</button>
 					{/each}
+				{/if}
+			</Card>
+
+			<!-- §6 Employment card -->
+			<Card>
+				<h2 class="text-base font-semibold text-primary">
+					Závislá činnost (§6) <HelpTip topic="zavisla-cinnost-s6" {taxConstants} />
+				</h2>
+				{#if employmentCertificates.length === 0}
+					<p class="mt-4 text-sm text-tertiary">Zatím žádná Potvrzení</p>
+					<div class="mt-4">
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={() => goto(`/tax/employment?year=${selectedYear}`)}
+						>
+							Spravovat
+						</Button>
+					</div>
+				{:else}
+					<div class="mt-4 space-y-1 text-sm">
+						<div class="flex justify-between">
+							<span class="text-tertiary">Počet Potvrzení</span>
+							<span class="font-medium text-primary">{employmentCertificates.length}</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-tertiary">ř. 31 (úhrn příjmů)</span>
+							<span class="font-medium text-primary tabular-nums">
+								{formatCZK(employmentSection6Gross * 100)}
+							</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-tertiary">ř. 84 (sražené zálohy)</span>
+							<span class="font-medium text-primary tabular-nums">
+								{formatCZK(employmentSection6Advance * 100)}
+							</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-tertiary">ř. 87 (srážková daň)</span>
+							<span class="font-medium text-primary tabular-nums">
+								{formatCZK(employmentSection6Withholding * 100)}
+							</span>
+						</div>
+					</div>
+					<div class="mt-4">
+						<Button
+							variant="secondary"
+							size="sm"
+							onclick={() => goto(`/tax/employment?year=${selectedYear}`)}
+						>
+							Spravovat
+						</Button>
+					</div>
 				{/if}
 			</Card>
 		</div>

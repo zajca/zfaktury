@@ -30,7 +30,7 @@ func TestCalculateIncomeTax(t *testing.T) {
 			// UsedExpenses = 120_000_000
 			// TaxBase = 200_000_000 - 120_000_000 = 80_000_000 halere (800,000 CZK)
 			// TaxBaseRounded = 80_000_000 (already divisible by 10000)
-			// 80_000_000 <= 158_281_200 -> only 15%
+			// 80_000_000 <= 167_605_200 -> only 15%
 			// TaxAt15 = 80_000_000 * 0.15 = 12_000_000
 			// TotalTax = 12_000_000
 			// CreditBasic = 3_084_000
@@ -64,25 +64,26 @@ func TestCalculateIncomeTax(t *testing.T) {
 			// UsedExpenses = 120_000_000
 			// TaxBase = 300_000_000 - 120_000_000 = 180_000_000 (1,800,000 CZK)
 			// TaxBaseRounded = 180_000_000
-			// 180_000_000 > threshold 158_281_200
-			// TaxAt15 = 158_281_200 * 0.15 = 23_742_180
-			// TaxAt23 = (180_000_000 - 158_281_200) * 0.23 = 21_718_800 * 0.23 = 4_995_324
-			// TotalTax = 23_742_180 + 4_995_324 = 28_737_504
+			// 2025 threshold = 36 × 46 557 = 1 676 052 Kč = 167_605_200 halere
+			// 180_000_000 > 167_605_200 -> progressive split
+			// TaxAt15 = 167_605_200 * 0.15 = 25_140_780
+			// TaxAt23 = (180_000_000 - 167_605_200) * 0.23 = 12_394_800 * 0.23 = 2_850_804
+			// TotalTax = 25_140_780 + 2_850_804 = 27_991_584
 			// CreditBasic = 3_084_000
-			// TaxAfterCredits = 28_737_504 - 3_084_000 = 25_653_504
+			// TaxAfterCredits = 27_991_584 - 3_084_000 = 24_907_584
 			expect: IncomeTaxResult{
 				FlatRateAmount:  domain.NewAmount(1_200_000, 0),
 				UsedExpenses:    domain.NewAmount(1_200_000, 0),
 				TaxBase:         domain.NewAmount(1_800_000, 0),
 				TaxBaseRounded:  domain.NewAmount(1_800_000, 0),
-				TaxAt15:         domain.Amount(23_742_180),
-				TaxAt23:         domain.Amount(4_995_324),
-				TotalTax:        domain.Amount(23_742_180 + 4_995_324),
+				TaxAt15:         domain.Amount(25_140_780),
+				TaxAt23:         domain.Amount(2_850_804),
+				TotalTax:        domain.Amount(25_140_780 + 2_850_804),
 				CreditBasic:     domain.NewAmount(30_840, 0),
 				TotalCredits:    domain.NewAmount(30_840, 0),
-				TaxAfterCredits: domain.Amount(23_742_180 + 4_995_324 - 3_084_000),
-				TaxAfterBenefit: domain.Amount(23_742_180 + 4_995_324 - 3_084_000),
-				TaxDue:          domain.Amount(23_742_180 + 4_995_324 - 3_084_000),
+				TaxAfterCredits: domain.Amount(25_140_780 + 2_850_804 - 3_084_000),
+				TaxAfterBenefit: domain.Amount(25_140_780 + 2_850_804 - 3_084_000),
+				TaxDue:          domain.Amount(25_140_780 + 2_850_804 - 3_084_000),
 			},
 		},
 		{
@@ -204,7 +205,7 @@ func TestCalculateIncomeTax(t *testing.T) {
 				Constants:       c,
 			},
 			// TaxBase = 50_000_000 - 10_000_000 = 40_000_000 (400,000 CZK)
-			// 40_000_000 < 158_281_200 -> only 15%
+			// 40_000_000 < 167_605_200 -> only 15%
 			// TaxAt15 = 40_000_000 * 0.15 = 6_000_000
 			expect: IncomeTaxResult{
 				FlatRateAmount:  0,
@@ -231,25 +232,25 @@ func TestCalculateIncomeTax(t *testing.T) {
 			},
 			// TaxBase = 200_000_000
 			// TaxBaseRounded = 200_000_000
-			// threshold = 158_281_200
-			// TaxAt15 = 158_281_200 * 0.15 = 23_742_180
-			// TaxAt23 = (200_000_000 - 158_281_200) * 0.23 = 41_718_800 * 0.23 = 9_595_324
-			// TotalTax = 23_742_180 + 9_595_324 = 33_337_504
+			// 2025 threshold = 36 × 46 557 = 1 676 052 Kč = 167_605_200 halere
+			// TaxAt15 = 167_605_200 * 0.15 = 25_140_780
+			// TaxAt23 = (200_000_000 - 167_605_200) * 0.23 = 32_394_800 * 0.23 = 7_450_804
+			// TotalTax = 25_140_780 + 7_450_804 = 32_591_584
 			// CreditBasic = 3_084_000
-			// TaxAfterCredits = 33_337_504 - 3_084_000 = 30_253_504
+			// TaxAfterCredits = 32_591_584 - 3_084_000 = 29_507_584
 			expect: IncomeTaxResult{
 				FlatRateAmount:  0,
 				UsedExpenses:    0,
 				TaxBase:         domain.NewAmount(2_000_000, 0),
 				TaxBaseRounded:  domain.NewAmount(2_000_000, 0),
-				TaxAt15:         domain.Amount(23_742_180),
-				TaxAt23:         domain.Amount(9_595_324),
-				TotalTax:        domain.Amount(33_337_504),
+				TaxAt15:         domain.Amount(25_140_780),
+				TaxAt23:         domain.Amount(7_450_804),
+				TotalTax:        domain.Amount(32_591_584),
 				CreditBasic:     domain.NewAmount(30_840, 0),
 				TotalCredits:    domain.NewAmount(30_840, 0),
-				TaxAfterCredits: domain.Amount(33_337_504 - 3_084_000),
-				TaxAfterBenefit: domain.Amount(33_337_504 - 3_084_000),
-				TaxDue:          domain.Amount(33_337_504 - 3_084_000),
+				TaxAfterCredits: domain.Amount(32_591_584 - 3_084_000),
+				TaxAfterBenefit: domain.Amount(32_591_584 - 3_084_000),
+				TaxDue:          domain.Amount(32_591_584 - 3_084_000),
 			},
 		},
 		{
@@ -367,7 +368,7 @@ func TestCalculateIncomeTax(t *testing.T) {
 			// TaxBase = 150_000_000 - 90_000_000 + 1_000_000 + 500_000 = 61_500_000 (615,000 CZK)
 			// After deductions: 61_500_000 - 2_400_000 = 59_100_000 (591,000 CZK)
 			// TaxBaseRounded = 59_100_000 (already divisible by 10000)
-			// 59_100_000 < 158_281_200 -> only 15%
+			// 59_100_000 < 167_605_200 -> only 15%
 			// TaxAt15 = 59_100_000 * 0.15 = 8_865_000
 			// CreditBasic = 3_084_000
 			// TotalCredits = 3_084_000 + 2_484_000 + 0 + 0 = 5_568_000
@@ -415,5 +416,83 @@ func assertAmount(t *testing.T, field string, want, got domain.Amount) {
 	t.Helper()
 	if want != got {
 		t.Errorf("%s: want %d (%s CZK), got %d (%s CZK)", field, want, want, got, got)
+	}
+}
+
+// TestTaxDue_SubtractsSection6Advance verifies ř.91 (kc_zbyvpred = TaxDue)
+// reflects employer-withheld §6 advances. With 600 000 Kč gross §6, full
+// CreditBasic eats most of the tax; the 60 000 Kč withheld advance pulls
+// TaxDue strongly negative (refund owed back to user).
+func TestTaxDue_SubtractsSection6Advance(t *testing.T) {
+	c := constants2025()
+	input := IncomeTaxInput{
+		Section6TaxBase:         domain.NewAmount(600_000, 0),
+		Section6AdvanceWithheld: domain.NewAmount(60_000, 0),
+		Constants:               c,
+	}
+	result := CalculateIncomeTax(input)
+	// Tax = 600 000 × 0.15 = 90 000; minus CreditBasic 30 840 = 59 160 Kč
+	// after credits. ř.91 = 59 160 − 0 (prepayments) − 60 000 (ř.84) = −840 Kč.
+	wantDue := domain.NewAmount(59_160, 0) - domain.NewAmount(60_000, 0)
+	if result.TaxDue != wantDue {
+		t.Errorf("TaxDue = %d, want %d (%s CZK)", result.TaxDue, wantDue, wantDue)
+	}
+}
+
+// TestTaxDue_SubtractsSection6Withholding verifies ř.91 reflects the
+// §36/6 withholding amount (ř.87) when the user opted to include a
+// vzor-12 Potvrzení in DAP.
+func TestTaxDue_SubtractsSection6Withholding(t *testing.T) {
+	c := constants2025()
+	input := IncomeTaxInput{
+		Section6TaxBase:             domain.NewAmount(200_000, 0),
+		Section6WithholdingCredited: domain.NewAmount(15_000, 0),
+		Constants:                   c,
+	}
+	result := CalculateIncomeTax(input)
+	// Tax = 200 000 × 0.15 = 30 000; minus CreditBasic 30 840 → 0.
+	// TaxDue = 0 − 0 − 0 − 15 000 = −15 000 Kč (refund).
+	wantDue := -domain.NewAmount(15_000, 0)
+	if result.TaxDue != wantDue {
+		t.Errorf("TaxDue = %d, want %d (%s CZK)", result.TaxDue, wantDue, wantDue)
+	}
+}
+
+// TestTaxDue_BonusOverpayReturnsToState verifies that when the employer
+// already paid out more monthly bonus than the user is entitled to (ř.89 >
+// ř.72), TaxDue increases — the user must return the excess to státu.
+func TestTaxDue_BonusOverpayReturnsToState(t *testing.T) {
+	c := constants2025()
+	input := IncomeTaxInput{
+		ChildBenefit:             domain.NewAmount(15_204, 0), // 1 dítě roční nárok
+		Section6MonthlyBonusPaid: domain.NewAmount(18_000, 0), // employer paid more than entitled
+		Constants:                c,
+	}
+	result := CalculateIncomeTax(input)
+	// TaxAfterCredits = 0 (no tax base). TaxAfterBenefit = 0 − 15 204 = −15 204.
+	// TaxDue = −15 204 − 0 − 0 − 0 + 18 000 = 2 796 Kč owed back to státu.
+	wantDue := domain.NewAmount(18_000, 0) - domain.NewAmount(15_204, 0)
+	if result.TaxDue != wantDue {
+		t.Errorf("TaxDue = %d, want %d (%s CZK) — bonus over-pay must return to státu",
+			result.TaxDue, wantDue, wantDue)
+	}
+}
+
+// TestTaxDue_BonusUnderpayClaimsRest verifies that when the employer paid
+// out less monthly bonus than the user is entitled to, TaxDue decreases —
+// the user can still claim the remaining bonus on DAP.
+func TestTaxDue_BonusUnderpayClaimsRest(t *testing.T) {
+	c := constants2025()
+	input := IncomeTaxInput{
+		ChildBenefit:             domain.NewAmount(15_204, 0),
+		Section6MonthlyBonusPaid: domain.NewAmount(10_000, 0),
+		Constants:                c,
+	}
+	result := CalculateIncomeTax(input)
+	// TaxAfterBenefit = −15 204. TaxDue = −15 204 + 10 000 = −5 204 (still
+	// owed to user, but less than full claim because employer already paid 10k).
+	wantDue := domain.NewAmount(10_000, 0) - domain.NewAmount(15_204, 0)
+	if result.TaxDue != wantDue {
+		t.Errorf("TaxDue = %d, want %d (%s CZK)", result.TaxDue, wantDue, wantDue)
 	}
 }

@@ -55,6 +55,7 @@ func NewRouter(
 	investmentIncomeSvc *service.InvestmentIncomeService,
 	investmentDocSvc *service.InvestmentDocumentService,
 	investmentExtractionSvc *service.InvestmentExtractionService,
+	employmentSvc *service.EmploymentCertificateService,
 	invDocumentSvc *service.InvoiceDocumentService,
 	fakturoidImportSvc *service.FakturoidImportService,
 	dashboardSvc *service.DashboardService,
@@ -236,6 +237,11 @@ func NewRouter(
 		if investmentIncomeSvc != nil {
 			investmentHandler := NewInvestmentIncomeHandler(investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc)
 			api.Mount("/investments", investmentHandler.Routes())
+		}
+
+		if employmentSvc != nil {
+			employmentHandler := NewEmploymentHandler(employmentSvc)
+			api.Mount("/tax/employment", employmentHandler.Routes())
 		}
 
 		fakturoidHandler := NewFakturoidHandler(fakturoidImportSvc)

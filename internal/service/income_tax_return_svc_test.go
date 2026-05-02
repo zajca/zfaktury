@@ -617,6 +617,344 @@ func TestIncomeTaxReturnService_Recalculate_DeductionBreakdown(t *testing.T) {
 	}
 }
 
+// setupIncomeTaxSvcWithEmployment wires the service with the employment
+// certificate repo for §6 aggregation tests.
+func setupIncomeTaxSvcWithEmployment(t *testing.T) (*IncomeTaxReturnService, *TaxCreditsService, *repository.EmploymentCertificateRepository, *sql.DB) {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	itrRepo := repository.NewIncomeTaxReturnRepository(db)
+	invRepo := repository.NewInvoiceRepository(db)
+	expRepo := repository.NewExpenseRepository(db)
+	setRepo := repository.NewSettingsRepository(db)
+	tysRepo := repository.NewTaxYearSettingsRepository(db)
+	tpRepo := repository.NewTaxPrepaymentRepository(db)
+
+	spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+	childRepo := repository.NewTaxChildCreditRepository(db)
+	personalRepo := repository.NewTaxPersonalCreditsRepository(db)
+	deductionRepo := repository.NewTaxDeductionRepository(db)
+	creditsSvc := NewTaxCreditsService(spouseRepo, childRepo, personalRepo, deductionRepo, nil)
+	empRepo := repository.NewEmploymentCertificateRepository(db)
+
+	svc := NewIncomeTaxReturnService(itrRepo, invRepo, expRepo, setRepo, tysRepo, tpRepo, creditsSvc, nil)
+	svc.SetEmploymentCertificateRepo(empRepo)
+	return svc, creditsSvc, empRepo, db
+}
+
+// seedConfirmedCert helper inserts a confirmed certificate via the repo.
+func seedConfirmedCert(t *testing.T, repo *repository.EmploymentCertificateRepository, cert *domain.EmploymentCertificate) {
+	t.Helper()
+	cert.Status = "confirmed"
+	if err := repo.Create(context.Background(), cert); err != nil {
+		t.Fatalf("seedConfirmedCert: %v", err)
+	}
+}
+
+func TestIncomeTaxReturnService_Recalculate_AggregatesSection6(t *testing.T) {
+	svc, _, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	// Two advance certs and one withholding cert (with include_in_dap=true).
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:               2025,
+		CertificateType:    domain.CertificateAdvance,
+		ContractType:       domain.ContractDPC,
+		EmployerName:       "Acme",
+		EmployerICO:        "12345678",
+		PeriodFrom:         time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:           time.Date(2025, 6, 30, 0, 0, 0, 0, time.UTC),
+		GrossIncome:        domain.NewAmount(100_000, 0),
+		ForeignTaxPaid:     domain.NewAmount(2_000, 0),
+		AdvanceTaxWithheld: domain.NewAmount(15_000, 0),
+		MonthlyBonusPaid:   domain.NewAmount(1_500, 0),
+	})
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:                   2025,
+		CertificateType:        domain.CertificateAdvance,
+		ContractType:           domain.ContractDPP,
+		EmployerName:           "Beta",
+		EmployerICO:            "87654321",
+		PeriodFrom:             time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:               time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		GrossIncome:            domain.NewAmount(80_000, 0),
+		AdvanceTaxWithheld:     domain.NewAmount(12_000, 0),
+		AnnualSettlementRefund: domain.NewAmount(1_000, 0),
+	})
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:                    2025,
+		CertificateType:         domain.CertificateWithholding,
+		ContractType:            domain.ContractDPP,
+		EmployerName:            "Gamma",
+		EmployerICO:             "11111111",
+		PeriodFrom:              time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:                time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC),
+		GrossIncome:             domain.NewAmount(20_000, 0),
+		WithheldFinalTax:        domain.NewAmount(3_000, 0),
+		IncludeWithholdingInDAP: true,
+	})
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	// Section6GrossIncome = 100_000 (Acme) + 80_000 (Beta) + 20_000 (Gamma withholding included).
+	wantGross := domain.NewAmount(200_000, 0)
+	if result.Section6GrossIncome != wantGross {
+		t.Errorf("Section6GrossIncome = %d, want %d", result.Section6GrossIncome, wantGross)
+	}
+	// Section6ForeignTax = 2_000 (Acme).
+	wantForeign := domain.NewAmount(2_000, 0)
+	if result.Section6ForeignTax != wantForeign {
+		t.Errorf("Section6ForeignTax = %d, want %d", result.Section6ForeignTax, wantForeign)
+	}
+	// Section6TaxBase = Section6GrossIncome - Section6ForeignTax = 200_000 - 2_000.
+	wantBase := wantGross - wantForeign
+	if result.Section6TaxBase != wantBase {
+		t.Errorf("Section6TaxBase = %d, want %d", result.Section6TaxBase, wantBase)
+	}
+	// Section6AdvanceWithheld = (15_000 - 0) + (12_000 - 1_000) = 26_000.
+	wantAdv := domain.NewAmount(26_000, 0)
+	if result.Section6AdvanceWithheld != wantAdv {
+		t.Errorf("Section6AdvanceWithheld = %d, want %d", result.Section6AdvanceWithheld, wantAdv)
+	}
+	// Section6WithholdingCredited = 3_000 (Gamma).
+	wantWh := domain.NewAmount(3_000, 0)
+	if result.Section6WithholdingCredited != wantWh {
+		t.Errorf("Section6WithholdingCredited = %d, want %d", result.Section6WithholdingCredited, wantWh)
+	}
+	// Section6MonthlyBonusPaid = 1_500.
+	wantBonus := domain.NewAmount(1_500, 0)
+	if result.Section6MonthlyBonusPaid != wantBonus {
+		t.Errorf("Section6MonthlyBonusPaid = %d, want %d", result.Section6MonthlyBonusPaid, wantBonus)
+	}
+	if result.Section6CertsAdvance != 2 {
+		t.Errorf("Section6CertsAdvance = %d, want 2", result.Section6CertsAdvance)
+	}
+	if result.Section6CertsWithholding != 1 {
+		t.Errorf("Section6CertsWithholding = %d, want 1", result.Section6CertsWithholding)
+	}
+	// Section6TaxBase should also flow into the §16 progressive tax base.
+	if result.TaxBase < wantBase {
+		t.Errorf("TaxBase = %d should include Section6TaxBase >= %d", result.TaxBase, wantBase)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_WithholdingNotIncludedSkipped verifies
+// the §38g(6) opt-in: certificates with include_withholding_in_dap=false are
+// dropped from §6 totals.
+func TestIncomeTaxReturnService_Recalculate_WithholdingNotIncludedSkipped(t *testing.T) {
+	svc, _, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:                    2025,
+		CertificateType:         domain.CertificateWithholding,
+		ContractType:            domain.ContractDPP,
+		EmployerName:            "Gamma",
+		EmployerICO:             "11111111",
+		PeriodFrom:              time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:                time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC),
+		GrossIncome:             domain.NewAmount(20_000, 0),
+		WithheldFinalTax:        domain.NewAmount(3_000, 0),
+		IncludeWithholdingInDAP: false,
+	})
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+	if result.Section6GrossIncome != 0 {
+		t.Errorf("Section6GrossIncome = %d, want 0 (cert opted out)", result.Section6GrossIncome)
+	}
+	if result.Section6CertsWithholding != 0 {
+		t.Errorf("Section6CertsWithholding = %d, want 0", result.Section6CertsWithholding)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_MonthlyBonusDoesNotReduceChildBenefit
+// is a regression for K3: MonthlyBonusPaid (ř.89) is informational about
+// employer-paid bonuses and must NOT be subtracted from the calculated child
+// benefit (ř.72). The reconciliation happens via ř.84/87/89 vs total tax/bonus.
+func TestIncomeTaxReturnService_Recalculate_MonthlyBonusDoesNotReduceChildBenefit(t *testing.T) {
+	svc, creditsSvc, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	// Configure a child credit so ChildBenefit > 0.
+	now := time.Now()
+	childRepoCred := &domain.TaxChildCredit{
+		Year:          2025,
+		ChildName:     "Anna",
+		BirthNumber:   "0501010001",
+		ChildOrder:    1,
+		MonthsClaimed: 12,
+		ZTP:           false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := creditsSvc.CreateChild(ctx, childRepoCred); err != nil {
+		t.Fatalf("CreateChild: %v", err)
+	}
+
+	// Confirmed advance cert with monthly bonus paid.
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:               2025,
+		CertificateType:    domain.CertificateAdvance,
+		ContractType:       domain.ContractHPP,
+		EmployerName:       "Acme",
+		EmployerICO:        "12345678",
+		PeriodFrom:         time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:           time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		GrossIncome:        domain.NewAmount(300_000, 0),
+		AdvanceTaxWithheld: domain.NewAmount(45_000, 0),
+		MonthlyBonusPaid:   domain.NewAmount(10_000, 0),
+	})
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	// MonthlyBonusPaid is captured.
+	wantBonus := domain.NewAmount(10_000, 0)
+	if result.Section6MonthlyBonusPaid != wantBonus {
+		t.Errorf("Section6MonthlyBonusPaid = %d, want %d", result.Section6MonthlyBonusPaid, wantBonus)
+	}
+	// ChildBenefit must equal the full computed annual amount, untouched by
+	// the §6 employer-paid bonus.
+	expectedChildBenefit, err := creditsSvc.ComputeChildBenefit(ctx, 2025)
+	if err != nil {
+		t.Fatalf("ComputeChildBenefit: %v", err)
+	}
+	if result.ChildBenefit != expectedChildBenefit {
+		t.Errorf("ChildBenefit = %d, want %d (must NOT be reduced by Section6MonthlyBonusPaid)", result.ChildBenefit, expectedChildBenefit)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_Section6CertsBonusStaysZero is a
+// regression for N5: Section6CertsBonus tracks the count of standalone
+// "Potvrzení o vyplaceném daňovém bonusu" forms, NOT advance certs that
+// happen to include MonthlyBonusPaid > 0. MVP keeps it at 0.
+func TestIncomeTaxReturnService_Recalculate_Section6CertsBonusStaysZero(t *testing.T) {
+	svc, _, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:               2025,
+		CertificateType:    domain.CertificateAdvance,
+		ContractType:       domain.ContractHPP,
+		EmployerName:       "Acme",
+		EmployerICO:        "12345678",
+		PeriodFrom:         time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:           time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		GrossIncome:        domain.NewAmount(300_000, 0),
+		AdvanceTaxWithheld: domain.NewAmount(45_000, 0),
+		MonthlyBonusPaid:   domain.NewAmount(10_000, 0),
+	})
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+	if result.Section6CertsBonus != 0 {
+		t.Errorf("Section6CertsBonus = %d, want 0 (advance certs with bonus must NOT bump this counter)", result.Section6CertsBonus)
+	}
+	if result.Section6CertsAdvance != 1 {
+		t.Errorf("Section6CertsAdvance = %d, want 1", result.Section6CertsAdvance)
+	}
+}
+
+// TestRecalculate_EmitsProgressiveRateWarning verifies the
+// WarningProgressiveRateReview token is appended when consolidated tax base
+// crosses 36× průměrná mzda for 2025 (1 676 052 Kč).
+func TestRecalculate_EmitsProgressiveRateWarning(t *testing.T) {
+	svc, _, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	// Single advance cert with gross income > threshold.
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:               2025,
+		CertificateType:    domain.CertificateAdvance,
+		ContractType:       domain.ContractHPP,
+		EmployerName:       "BigPay",
+		EmployerICO:        "27082440",
+		PeriodFrom:         time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:           time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		GrossIncome:        domain.NewAmount(2_000_000, 0), // > 1 676 052 Kč
+		AdvanceTaxWithheld: domain.NewAmount(300_000, 0),
+	})
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	found := false
+	for _, w := range result.Warnings {
+		if w == domain.WarningProgressiveRateReview {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Warnings = %v, want to contain %q", result.Warnings, domain.WarningProgressiveRateReview)
+	}
+}
+
+// TestRecalculate_NoWarningBelowThreshold verifies no warning is emitted
+// when the consolidated base sits comfortably below 36× průměrná mzda.
+func TestRecalculate_NoWarningBelowThreshold(t *testing.T) {
+	svc, _, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+		Year:               2025,
+		CertificateType:    domain.CertificateAdvance,
+		ContractType:       domain.ContractDPC,
+		EmployerName:       "SmallPay",
+		EmployerICO:        "27082440",
+		PeriodFrom:         time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		PeriodTo:           time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+		GrossIncome:        domain.NewAmount(200_000, 0),
+		AdvanceTaxWithheld: domain.NewAmount(30_000, 0),
+	})
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	for _, w := range result.Warnings {
+		if w == domain.WarningProgressiveRateReview {
+			t.Errorf("unexpected progressive rate warning at low base: Warnings = %v", result.Warnings)
+		}
+	}
+}
+
 func TestIncomeTaxReturnService_Recalculate_WithPrepayments(t *testing.T) {
 	svc, db := setupIncomeTaxSvc(t)
 	ctx := context.Background()

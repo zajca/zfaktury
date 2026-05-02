@@ -333,3 +333,24 @@ type TaxDeductionDocumentRepo interface {
 	Delete(ctx context.Context, id int64) error
 	UpdateExtraction(ctx context.Context, id int64, amount domain.Amount, confidence float64) error
 }
+
+// EmploymentDocumentRepo defines the persistence interface for §6 employment
+// income Potvrzení uploads (RFC-016).
+type EmploymentDocumentRepo interface {
+	Create(ctx context.Context, doc *domain.EmploymentDocument) error
+	GetByID(ctx context.Context, id int64) (*domain.EmploymentDocument, error)
+	ListByYear(ctx context.Context, year int) ([]*domain.EmploymentDocument, error)
+	Delete(ctx context.Context, id int64) error
+	UpdateExtraction(ctx context.Context, id int64, status, errMsg string) error
+}
+
+// EmploymentCertificateRepo defines the persistence interface for parsed/manual
+// §6 employment income certificates (RFC-016).
+type EmploymentCertificateRepo interface {
+	Create(ctx context.Context, cert *domain.EmploymentCertificate) error
+	GetByID(ctx context.Context, id int64) (*domain.EmploymentCertificate, error)
+	Update(ctx context.Context, cert *domain.EmploymentCertificate) error
+	Delete(ctx context.Context, id int64) error
+	ListByYear(ctx context.Context, year int) ([]*domain.EmploymentCertificate, error)
+	ListConfirmedByYear(ctx context.Context, year int) ([]*domain.EmploymentCertificate, error)
+}

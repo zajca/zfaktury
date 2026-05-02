@@ -21,7 +21,8 @@ type IncomeTaxReturnService struct {
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 	taxCreditsSvc       *TaxCreditsService
-	investmentSvc       *InvestmentIncomeService // nullable
+	investmentSvc       *InvestmentIncomeService  // nullable
+	employmentCerts     employmentCertificateRepo // nullable; §6 aggregation
 	audit               *AuditService
 }
 
@@ -51,6 +52,13 @@ func NewIncomeTaxReturnService(
 // SetInvestmentService sets the optional investment income service for §8/§10 integration.
 func (s *IncomeTaxReturnService) SetInvestmentService(investmentSvc *InvestmentIncomeService) {
 	s.investmentSvc = investmentSvc
+}
+
+// SetEmploymentCertificateRepo wires the §6 employment certificate repository
+// used during Recalculate to aggregate confirmed Potvrzení into ř.31 / ř.33 /
+// ř.34 / ř.84 / ř.87 / ř.89 totals. Optional — when nil, §6 fields stay zero.
+func (s *IncomeTaxReturnService) SetEmploymentCertificateRepo(repo employmentCertificateRepo) {
+	s.employmentCerts = repo
 }
 
 // Create validates and persists a new income tax return.
@@ -191,6 +199,48 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.OtherIncomeNet = summary.OtherIncomeNet
 	}
 
+	// Step 4c: §6 employment income aggregation (RFC-016).
+	// Only confirmed certificates feed the totals. Section6CertsBonus stays 0
+	// in MVP — counts of standalone "Potvrzení o vyplaceném daňovém bonusu"
+	// uploads (EmploymentDocBonus kind) are out of scope.
+	itr.Section6GrossIncome = 0
+	itr.Section6IncomeWithoutAdvance = 0
+	itr.Section6ForeignTax = 0
+	itr.Section6AdvanceWithheld = 0
+	itr.Section6WithholdingCredited = 0
+	itr.Section6MonthlyBonusPaid = 0
+	itr.Section6CertsAdvance = 0
+	itr.Section6CertsWithholding = 0
+	itr.Section6CertsBonus = 0
+	if s.employmentCerts != nil {
+		certs, certsErr := s.employmentCerts.ListConfirmedByYear(ctx, itr.Year)
+		if certsErr != nil {
+			return nil, fmt.Errorf("listing employment certificates for income_tax_return: %w", certsErr)
+		}
+		for _, c := range certs {
+			switch c.CertificateType {
+			case domain.CertificateAdvance:
+				itr.Section6GrossIncome += c.GrossIncome
+				itr.Section6IncomeWithoutAdvance += c.IncomeWithoutAdvance
+				itr.Section6ForeignTax += c.ForeignTaxPaid
+				itr.Section6AdvanceWithheld += c.AdvanceTaxWithheld - c.AnnualSettlementRefund
+				itr.Section6MonthlyBonusPaid += c.MonthlyBonusPaid
+				itr.Section6CertsAdvance++
+				// Section6CertsBonus is the count of separate
+				// "Potvrzení o vyplaceném daňovém bonusu" forms (potv_dazvyh)
+				// — NOT advance certs that paid a bonus. Stays 0 in MVP.
+			case domain.CertificateWithholding:
+				if c.IncludeWithholdingInDAP {
+					itr.Section6GrossIncome += c.GrossIncome
+					itr.Section6WithholdingCredited += c.WithheldFinalTax
+					itr.Section6CertsWithholding++
+				}
+			}
+		}
+	}
+	// Dílčí ZD §6 (ř.34/36) = ř.31 - ř.33.
+	itr.Section6TaxBase = itr.Section6GrossIncome - itr.Section6ForeignTax
+
 	// Compute credits and deductions from DB (needed as calc inputs).
 	var spouseCredit, disabilityCredit, studentCredit, childBenefit, totalDeductions domain.Amount
 	if s.taxCreditsSvc != nil {
@@ -203,8 +253,14 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		if credErr != nil {
 			return nil, fmt.Errorf("computing child benefit for income_tax_return: %w", credErr)
 		}
-		// Compute raw tax base for deduction cap calculation.
-		rawBase := itr.TotalRevenue - calc.ResolveUsedExpenses(itr.TotalRevenue, itr.ActualExpenses, flatRatePercent, constants.FlatRateCaps) + itr.CapitalIncomeNet + itr.OtherIncomeNet
+		// Compute raw tax base for deduction cap calculation. Mirror the calc
+		// package's "drop §7+§8+§10 if negative" guard so deduction caps that
+		// reference tax base do not blow up when business expenses exceed revenue.
+		otherSectionsBase := itr.TotalRevenue - calc.ResolveUsedExpenses(itr.TotalRevenue, itr.ActualExpenses, flatRatePercent, constants.FlatRateCaps) + itr.CapitalIncomeNet + itr.OtherIncomeNet
+		if otherSectionsBase < 0 {
+			otherSectionsBase = 0
+		}
+		rawBase := itr.Section6TaxBase + otherSectionsBase
 		if rawBase < 0 {
 			rawBase = 0
 		}
@@ -249,19 +305,37 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 
 	// Pure calculation.
 	taxResult := calc.CalculateIncomeTax(calc.IncomeTaxInput{
-		TotalRevenue:     itr.TotalRevenue,
-		ActualExpenses:   itr.ActualExpenses,
-		FlatRatePercent:  flatRatePercent,
-		Constants:        constants,
-		SpouseCredit:     spouseCredit,
-		DisabilityCredit: disabilityCredit,
-		StudentCredit:    studentCredit,
-		ChildBenefit:     childBenefit,
-		TotalDeductions:  totalDeductions,
-		Prepayments:      taxTotal,
-		CapitalIncomeNet: itr.CapitalIncomeNet,
-		OtherIncomeNet:   itr.OtherIncomeNet,
+		TotalRevenue:                itr.TotalRevenue,
+		ActualExpenses:              itr.ActualExpenses,
+		FlatRatePercent:             flatRatePercent,
+		Constants:                   constants,
+		SpouseCredit:                spouseCredit,
+		DisabilityCredit:            disabilityCredit,
+		StudentCredit:               studentCredit,
+		ChildBenefit:                childBenefit,
+		TotalDeductions:             totalDeductions,
+		Prepayments:                 taxTotal,
+		CapitalIncomeNet:            itr.CapitalIncomeNet,
+		OtherIncomeNet:              itr.OtherIncomeNet,
+		Section6TaxBase:             itr.Section6TaxBase,
+		Section6AdvanceWithheld:     itr.Section6AdvanceWithheld,
+		Section6WithholdingCredited: itr.Section6WithholdingCredited,
+		Section6MonthlyBonusPaid:    itr.Section6MonthlyBonusPaid,
 	})
+
+	// Warnings: §16 odst. 1 ZDP progressive 23% rate review when the
+	// consolidated tax base (§6 + §7 + §8 + §10) crosses 36× průměrná mzda
+	// for the year. The existing CalculateIncomeTax handles the split
+	// correctly; the warning prompts the user to verify the result.
+	itr.Warnings = nil
+	otherSectionsRaw := itr.TotalRevenue - taxResult.UsedExpenses + itr.CapitalIncomeNet + itr.OtherIncomeNet
+	if otherSectionsRaw < 0 {
+		otherSectionsRaw = 0
+	}
+	consolidatedBase := itr.Section6TaxBase + otherSectionsRaw
+	if consolidatedBase > constants.ProgressiveThreshold {
+		itr.Warnings = append(itr.Warnings, domain.WarningProgressiveRateReview)
+	}
 
 	// Map result back to entity.
 	itr.FlatRateAmount = taxResult.FlatRateAmount

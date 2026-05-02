@@ -80,6 +80,13 @@ type DPFOVetaD struct {
 	KcDbPoOdpd int64 `xml:"kc_db_po_odpd,attr"`         // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
 	KcZalpred  int64 `xml:"kc_zalpred,attr"`            // ř. 84 -- úhrn sražených záloh
 	KcZbyvpred int64 `xml:"kc_zbyvpred,attr"`           // ř. 91 -- zbývá doplatit / přeplatek
+
+	// §6 employment income (závislá činnost) -- omitempty so taxpayers without
+	// employment income emit XML identical to the pre-§6-support output.
+	KcZalzavc    int64 `xml:"kc_zalzavc,attr,omitempty"`     // ř. 84 §6 -- sražené zálohy zaměstnavateli (po RZ refund)
+	KcSraz64     int64 `xml:"kc_sraz_6_4,attr,omitempty"`    // ř. 87 -- sražená daň §36 odst.6 (rezident ČR)
+	KcSrazRezEHP int64 `xml:"kc_sraz_rezehp,attr,omitempty"` // ř. 87a -- sražená daň §36 odst.7 nerezident EU/EHP (MVP: 0)
+	KcVyplBonus  int64 `xml:"kc_vyplbonus,attr,omitempty"`   // ř. 89 -- úhrn vyplacených měsíčních daňových bonusů (Potvrzení ř.5+ř.13)
 }
 
 // DPFOVetaP contains taxpayer identification.
@@ -106,14 +113,25 @@ type DPFOVetaP struct {
 // DPFOVetaO contains per-section tax-base inputs from §6 / §7 / §8 / §9 / §10
 // and the consolidated tax base. §8/§9/§10 fields use omitempty: emitting "0"
 // triggers the EPO control "if ř.39 or ř.40 is filled, Příloha 2 must accompany".
+//
+// §6 employment income attributes (kc_prij6 / kc_prij6zahr / kc_dan_zah / kc_zd6 /
+// kc_zd6p) all use omitempty so that taxpayers without employment income emit XML
+// identical to the pre-§6-support output. kc_zakldan23 is always emitted because
+// it represents ř.42 -- the consolidated tax base used by every downstream EPO
+// formula control.
 type DPFOVetaO struct {
-	KcZd7       int64 `xml:"kc_zd7,attr"`                // ř. 37 -- dílčí základ daně §7 (= ř.113 Přílohy 1)
-	KcZakldan8  int64 `xml:"kc_zakldan8,attr,omitempty"` // ř. 38 -- §8 capital income net base
-	KcZd9       int64 `xml:"kc_zd9,attr,omitempty"`      // ř. 39 -- §9 rental income net base (Příloha 2 required)
-	KcZd10      int64 `xml:"kc_zd10,attr,omitempty"`     // ř. 40 -- §10 other income net base (Příloha 2 required)
-	KcUhrn      int64 `xml:"kc_uhrn,attr"`               // ř. 41 -- úhrn ř.37+38+39+40
-	KcZakldan23 int64 `xml:"kc_zakldan23,attr"`          // ř. 42 -- celkový základ daně (= ř.36 + max(0,ř.41))
-	KcZakldan   int64 `xml:"kc_zakldan,attr"`            // ř. 45 -- ZD po odpočtu ztráty
+	KcPrij6     int64 `xml:"kc_prij6,attr,omitempty"`     // ř. 31 -- úhrn příjmů §6 (Potvrzení vzor 33 ř.2+ř.4)
+	KcPrij6zahr int64 `xml:"kc_prij6zahr,attr,omitempty"` // ř. 35 -- část ř.31 bez záloh dle §38h (informativní)
+	KcDanZah    int64 `xml:"kc_dan_zah,attr,omitempty"`   // ř. 33 -- daň zaplacená v zahraničí (§6 odst.13)
+	KcZd6       int64 `xml:"kc_zd6,attr,omitempty"`       // ř. 34/36 -- dílčí ZD §6 = ř.31 - ř.33
+	KcZd6p      int64 `xml:"kc_zd6p,attr,omitempty"`      // §38f / Příloha 3 alokace §6 portionu pro zápočet zahr. daně (MVP: 0)
+	KcZd7       int64 `xml:"kc_zd7,attr"`                 // ř. 37 -- dílčí základ daně §7 (= ř.113 Přílohy 1)
+	KcZakldan8  int64 `xml:"kc_zakldan8,attr,omitempty"`  // ř. 38 -- §8 capital income net base
+	KcZd9       int64 `xml:"kc_zd9,attr,omitempty"`       // ř. 39 -- §9 rental income net base (Příloha 2 required)
+	KcZd10      int64 `xml:"kc_zd10,attr,omitempty"`      // ř. 40 -- §10 other income net base (Příloha 2 required)
+	KcUhrn      int64 `xml:"kc_uhrn,attr"`                // ř. 41 -- úhrn ř.37+38+39+40
+	KcZakldan23 int64 `xml:"kc_zakldan23,attr"`           // ř. 42 -- celkový základ daně (= ř.36 + max(0,ř.41))
+	KcZakldan   int64 `xml:"kc_zakldan,attr"`             // ř. 45 -- ZD po odpočtu ztráty
 }
 
 // DPFOVetaS contains §15 deductions, base after deductions, rounded base and § 16 tax.
@@ -159,9 +177,20 @@ type DPFOVetaA struct {
 // DPFOVetaB declares which attachments accompany the return.
 // XSD critical controls: priloha1="1" required when VetaO.kc_zd7 is filled,
 // priloha2="1" required when VetaO.kc_zd9 or kc_zd10 is filled.
+//
+// §6 employment income attachment counts:
+//   - potv_zam: count of "Potvrzení o zdanitelných příjmech ze závislé činnosti"
+//     (form 25 5460 vzor 33 -- zálohové)
+//   - potv_36: count of "Potvrzení o vyplacených příjmech a sražené dani"
+//     (form 25 5460/A vzor 12 -- srážkové), only counted when included in DAP
+//   - potv_dazvyh: count of standalone "Potvrzení o vyplaceném daňovém bonusu"
+//     forms (separate from vzor 33; MVP: 0 -- standalone bonus form upload OOS)
 type DPFOVetaB struct {
-	Priloha1 string `xml:"priloha1,attr,omitempty"`
-	Priloha2 string `xml:"priloha2,attr,omitempty"`
+	Priloha1   string `xml:"priloha1,attr,omitempty"`
+	Priloha2   string `xml:"priloha2,attr,omitempty"`
+	PotvZam    int    `xml:"potv_zam,attr,omitempty"`
+	Potv36     int    `xml:"potv_36,attr,omitempty"`
+	PotvDazvyh int    `xml:"potv_dazvyh,attr,omitempty"`
 }
 
 // DPFOVetaV is the §10 summary of Příloha č. 2 (other income / "ostatní příjmy").

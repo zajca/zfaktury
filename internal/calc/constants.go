@@ -70,7 +70,8 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		MaxChildBonus:             domain.NewAmount(60_300, 0),
 	},
 	2025: {
-		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
+		// 36 × průměrná mzda 46 557 Kč (nařízení vlády 282/2024 Sb.) = 1 676 052 Kč.
+		ProgressiveThreshold: domain.NewAmount(1_676_052, 0),
 		BasicCredit:          domain.NewAmount(30_840, 0),
 		SpouseCredit:         domain.NewAmount(24_840, 0),
 		StudentCredit:        domain.NewAmount(4_020, 0),
@@ -102,6 +103,9 @@ var taxConstantsDB = map[int]TaxYearConstants{
 		MaxChildBonus:             domain.NewAmount(60_300, 0),
 	},
 	2026: {
+		// TODO: update once nařízení vlády stanovující průměrnou mzdu pro rok
+		// 2026 vyjde — limit = 36 × průměrná mzda. Hodnota 1 582 812 Kč je
+		// placeholder z roku 2024 a musí být přepsána před filing season 2026.
 		ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
 		BasicCredit:          domain.NewAmount(30_840, 0),
 		SpouseCredit:         domain.NewAmount(24_840, 0),

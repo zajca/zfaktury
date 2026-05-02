@@ -54,6 +54,7 @@ var validEntityTypes = map[string]bool{
 	"tax_personal_credits": true, "tax_deduction": true,
 	"document": true, "tax_deduction_document": true, "investment_document": true,
 	"capital_income": true, "security_transaction": true,
+	"employment_document": true, "employment_certificate": true,
 }
 
 // validActions is the allowlist of actions accepted for filtering.

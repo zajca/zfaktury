@@ -94,7 +94,13 @@ type incomeTaxResponse struct {
 	OtherIncomeExempt   int64 `json:"other_income_exempt"`
 	OtherIncomeNet      int64 `json:"other_income_net"`
 
-	HasXML    bool    `json:"has_xml"`
+	HasXML bool `json:"has_xml"`
+
+	// Warnings surfaces non-blocking advisory tokens raised during Recalculate
+	// (e.g. progressive_rate_review). The frontend translates each token into
+	// localised copy.
+	Warnings []string `json:"warnings"`
+
 	Status    string  `json:"status"`
 	FiledAt   *string `json:"filed_at,omitempty"`
 	CreatedAt string  `json:"created_at"`
@@ -144,6 +150,7 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 		OtherIncomeNet:      int64(itr.OtherIncomeNet),
 
 		HasXML:    len(itr.XMLData) > 0,
+		Warnings:  itr.Warnings,
 		Status:    itr.Status,
 		FiledAt:   formatOptionalTime(itr.FiledAt),
 		CreatedAt: itr.CreatedAt.Format(time.RFC3339),

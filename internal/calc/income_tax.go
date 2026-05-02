@@ -16,6 +16,28 @@ type IncomeTaxInput struct {
 	Prepayments      domain.Amount
 	CapitalIncomeNet domain.Amount
 	OtherIncomeNet   domain.Amount
+	// Section6TaxBase is the §6 employment dílčí základ (ř.34/36 = ř.31 − ř.33).
+	// Added to the §16 progressive tax base. XSD rule for ř.42 ("if úhrn §7+§8+§10
+	// is negative, use only §6") is enforced here: §7+§8+§10 contributions are
+	// dropped when their sum is negative, so §6 alone forms the tax base in that
+	// case (matches the XML generator emission).
+	Section6TaxBase domain.Amount
+
+	// Section6 reconciliation values (RFC-016). Following Pokyny DPFO 2025
+	// oddíl 7, ř.91 (kc_zbyvpred = "zbývá doplatit") is computed as
+	//   ř.77 − ř.84 − ř.85 − ř.86 − ř.87 − ř.87a − úhrn záloh §7
+	// where ř.84 is the employer-withheld advance and ř.87 is §36 odst. 6
+	// withholding voluntarily included in DAP. We subtract those here so
+	// TaxDue (which feeds kc_zbyvpred) reflects the user's true balance.
+	//
+	// Section6MonthlyBonusPaid (ř.89) is the bonus the employer already paid
+	// out monthly. Reconciliation: TaxAfterBenefit holds the user's claim
+	// (negative when claimed); adding back the paid-out bonus reduces the
+	// claim or, if it exceeds the entitlement, increases TaxDue (the user
+	// must return the excess to the státu).
+	Section6AdvanceWithheld     domain.Amount // ř.84
+	Section6WithholdingCredited domain.Amount // ř.87 (only when user opted to include §36/6 in DAP)
+	Section6MonthlyBonusPaid    domain.Amount // ř.89 (kc_vyplbonus)
 }
 
 // IncomeTaxResult holds all computed values from the income tax calculation.
@@ -52,8 +74,17 @@ func CalculateIncomeTax(input IncomeTaxInput) IncomeTaxResult {
 		result.UsedExpenses = input.ActualExpenses
 	}
 
-	// Step 5: Tax base (revenue - expenses + capital income + other income).
-	taxBase := input.TotalRevenue - result.UsedExpenses + input.CapitalIncomeNet + input.OtherIncomeNet
+	// Step 5: Tax base = §6 + max(0, §7 + §8 + §10).
+	// §7 (business): TotalRevenue - UsedExpenses
+	// §8 (capital):  CapitalIncomeNet
+	// §10 (other):   OtherIncomeNet
+	// XSD rule for DPFO ř.42 ("Pokud je ř.41 záporný, uveďte pouze hodnotu z
+	// ř.36"): if úhrn §7+§8+§10 is negative, drop it and use just §6.
+	otherSectionsBase := input.TotalRevenue - result.UsedExpenses + input.CapitalIncomeNet + input.OtherIncomeNet
+	if otherSectionsBase < 0 {
+		otherSectionsBase = 0
+	}
+	taxBase := input.Section6TaxBase + otherSectionsBase
 	if taxBase < 0 {
 		taxBase = 0
 	}
@@ -94,8 +125,16 @@ func CalculateIncomeTax(input IncomeTaxInput) IncomeTaxResult {
 	// Step 9: Child benefit (can go negative - it's a bonus).
 	result.TaxAfterBenefit = result.TaxAfterCredits - input.ChildBenefit
 
-	// Step 10: Prepayments (can be negative = refund).
-	result.TaxDue = result.TaxAfterBenefit - input.Prepayments
+	// Step 10: Reconcile prepayments and §6 withholdings/advances (Pokyny
+	// DPFO 2025 oddíl 7, ř.91 = ř.77 − ř.84 − ř.87 − ř.87a − úhrn záloh §7).
+	// Section6MonthlyBonusPaid (ř.89) is added back: TaxAfterBenefit already
+	// captured the user's bonus claim (negative); the paid-out portion must
+	// be netted off (if equal → 0, if employer over-paid → positive doplatek).
+	result.TaxDue = result.TaxAfterBenefit -
+		input.Prepayments -
+		input.Section6AdvanceWithheld -
+		input.Section6WithholdingCredited +
+		input.Section6MonthlyBonusPaid
 
 	return result
 }

@@ -2,6 +2,22 @@ package domain
 
 import "time"
 
+// IncomeTaxReturn warning tokens raised during Recalculate. These are
+// advisory only — they do not block XML generation or filing, but the UI
+// surfaces them so the user can verify against the legal ground truth.
+const (
+	// WarningProgressiveRateReview signals the consolidated tax base
+	// (§6 + §7 + §8 + §10) crossed 36× průměrná mzda for the year, putting
+	// the upper portion into the §16 odst. 1 ZDP 23% bracket. The user must
+	// verify the split is correct (existing CalculateIncomeTax handles it).
+	WarningProgressiveRateReview = "progressive_rate_review"
+
+	// WarningWithholdingPartialInclude is reserved for §38g odst. 6 ZDP
+	// enforcement (out of scope for current MVP — left here so future
+	// implementations can adopt the same identifier).
+	WarningWithholdingPartialInclude = "withholding_partial_include"
+)
+
 // IncomeTaxReturn represents DPFO (danove priznani fyzickych osob).
 type IncomeTaxReturn struct {
 	ID         int64
@@ -59,7 +75,25 @@ type IncomeTaxReturn struct {
 	OtherIncomeExempt   Amount
 	OtherIncomeNet      Amount
 
-	XMLData   []byte
+	// §6 employment income aggregates (DPC/DPP/HPP)
+	Section6GrossIncome          Amount // ř.31
+	Section6IncomeWithoutAdvance Amount // ř.35 (informativní; §38h)
+	Section6ForeignTax           Amount // ř.33
+	Section6TaxBase              Amount // ř.34/36 = ř.31 - ř.33
+	Section6AdvanceWithheld      Amount // ř.84 (po vrácení přeplatku z RZ)
+	Section6WithholdingCredited  Amount // ř.87 (jen pokud uživatel zahrnul §36/6 do DAP)
+	Section6MonthlyBonusPaid     Amount // ř.89 kc_vyplbonus (vyplacené zaměstnavatelem; NESLEVÍ z ChildBenefit)
+	Section6CertsAdvance         int    // count -> potv_zam
+	Section6CertsWithholding     int    // count -> potv_36
+	Section6CertsBonus           int    // count -> potv_dazvyh
+
+	XMLData []byte
+
+	// Warnings carries non-blocking advisory tokens raised during Recalculate
+	// (e.g. progressive 23% rate review for §16 odst. 1 ZDP). Persisted as a
+	// comma-separated string in the warnings column. Empty slice = no warnings.
+	Warnings []string
+
 	Status    string // draft, ready, filed
 	FiledAt   *time.Time
 	CreatedAt time.Time

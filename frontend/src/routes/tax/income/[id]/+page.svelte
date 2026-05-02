@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { incomeTaxApi, type IncomeTaxReturn, type TaxConstants } from '$lib/api/client';
+	import type { HelpTopicId } from '$lib/data/help-content';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
 	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
@@ -35,6 +36,19 @@
 		regular: 'Řádné',
 		corrective: 'Následné',
 		supplementary: 'Opravné'
+	};
+
+	// Map backend warning codes to UI labels + help-content topic IDs.
+	// New codes can be added without crashing existing UIs.
+	const WARNING_LABELS: Record<string, { title: string; helpTopicId: string }> = {
+		progressive_rate_review: {
+			title: 'Zkontrolujte progresivní sazbu daně 23 %',
+			helpTopicId: 'progresivni-sazba-23'
+		},
+		withholding_partial_include: {
+			title: 'Částečné zahrnutí srážkové daně',
+			helpTopicId: 'srazkova-do-dap'
+		}
 	};
 
 	onMount(() => {
@@ -217,6 +231,105 @@
 		</div>
 
 		<div class="mt-6 space-y-6">
+			<!-- Backend-emitted warnings (e.g. progressive rate review). -->
+			{#if data.warnings && data.warnings.length > 0}
+				<div class="space-y-3" data-testid="warnings-section">
+					{#each data.warnings as warningCode (warningCode)}
+						{@const known = WARNING_LABELS[warningCode]}
+						<div
+							role="alert"
+							data-testid="warning-banner"
+							class="rounded-lg border border-warning/20 bg-warning-bg p-4 text-sm text-warning"
+						>
+							<div class="flex items-start justify-between gap-3">
+								<div class="font-semibold">
+									{known?.title ?? warningCode}
+									{#if known}
+										<HelpTip topic={known.helpTopicId as HelpTopicId} {taxConstants} />
+									{/if}
+								</div>
+							</div>
+							{#if known}
+								<p class="mt-1 text-xs text-warning/90">
+									Klikněte na ikonu nápovědy pro vysvětlení a citaci § ZDP.
+								</p>
+							{:else}
+								<p class="mt-1 text-xs text-warning/90">
+									Backend hlásí varovný kód, který tato verze rozhraní zatím nezná. Nezpůsobuje
+									chybu — překontrolujte ručně, nebo aktualizujte aplikaci.
+								</p>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			<!-- §6 Employment Income (read-only summary) -->
+			{#if (data.section6_gross_income ?? 0) > 0}
+				<Card>
+					<div class="flex items-center justify-between">
+						<h2 class="text-base font-semibold text-primary">
+							§6 Závislá činnost <HelpTip topic="zavisla-cinnost-s6" {taxConstants} />
+						</h2>
+						<a
+							href={`/tax/employment?year=${data.year}`}
+							class="text-sm text-accent hover:underline"
+						>
+							Upravit certifikáty
+						</a>
+					</div>
+					<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+						<dt class="text-secondary">
+							ř. 31 Úhrn příjmů §6 <HelpTip topic="radek-31-prijmy-s6" {taxConstants} />
+						</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK((data.section6_gross_income ?? 0) * 100)}
+						</dd>
+
+						<dt class="text-secondary">
+							ř. 33 Daň zaplacená v zahraničí
+							<HelpTip topic="radek-33-zahranicni-dan" {taxConstants} />
+						</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK((data.section6_foreign_tax ?? 0) * 100)}
+						</dd>
+
+						<dt class="text-secondary">
+							ř. 34/36 Dílčí základ daně §6
+							<HelpTip topic="radek-34-dilci-zaklad-s6" {taxConstants} />
+						</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK((data.section6_tax_base ?? 0) * 100)}
+						</dd>
+
+						<dt class="text-secondary">
+							ř. 84 Sražené zálohy zaměstnavateli
+							<HelpTip topic="radek-84-srazene-zalohy" {taxConstants} />
+						</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK((data.section6_advance_withheld ?? 0) * 100)}
+						</dd>
+
+						<dt class="text-secondary">
+							ř. 87 Sražená daň §36 odst.6 <HelpTip topic="radek-87-srazena-dan" {taxConstants} />
+						</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK((data.section6_withholding_credited ?? 0) * 100)}
+						</dd>
+
+						{#if (data.section6_monthly_bonus_paid ?? 0) > 0}
+							<dt class="text-secondary">
+								ř. 89 Vyplacené měsíční bonusy
+								<HelpTip topic="radek-89-vyplacene-bonusy" {taxConstants} />
+							</dt>
+							<dd class="text-right font-medium text-primary tabular-nums">
+								{formatCZK((data.section6_monthly_bonus_paid ?? 0) * 100)}
+							</dd>
+						{/if}
+					</div>
+				</Card>
+			{/if}
+
 			<!-- Section 7: Revenue and Expenses -->
 			<Card>
 				<h2 class="text-base font-semibold text-primary">Příjmy a výdaje (Oddíl 7)</h2>

@@ -209,13 +209,15 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	uhrn := zd7 + zd8 + zd10                // ř.41 (no §9 rental income tracked yet)
 
 	// §6 employment income inputs.
-	// kc_zd6 (ř.34/36) is computed by the service as kc_prij6 - kc_dan_zah and stored
-	// in itr.Section6TaxBase. We carry the precomputed value through to keep XML and
-	// detail-page rendering consistent.
+	// EPO control 1411 ("Oddíl 2/ř.36 - hodnota položky se nerovná hodnotě ř.34")
+	// requires kc_zd6 == kc_prij6 - kc_dan_zah at whole-CZK precision. Computing
+	// zd6 from the already-rounded prij6/danZah (instead of rounding the halere
+	// Section6TaxBase independently) guarantees the equality even when the source
+	// amounts have fractional CZK that would otherwise truncate inconsistently.
 	prij6 := ToWholeCZK(itr.Section6GrossIncome)              // ř.31
 	prij6zahr := ToWholeCZK(itr.Section6IncomeWithoutAdvance) // ř.35
 	danZah := ToWholeCZK(itr.Section6ForeignTax)              // ř.33
-	zd6 := ToWholeCZK(itr.Section6TaxBase)                    // ř.34/36
+	zd6 := prij6 - danZah                                     // ř.34/36 = ř.31 - ř.33
 
 	// XSD ř.42 critical control: "Pokud je ř.41 záporný, uveďte pouze hodnotu z ř.36"
 	// — when §7+§8+§10 sum to a loss, the consolidated tax base is just §6 alone.

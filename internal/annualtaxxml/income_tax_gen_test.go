@@ -741,6 +741,39 @@ func TestIncomeTaxXML_Section6Withholding(t *testing.T) {
 	}
 }
 
+// TestIncomeTaxXML_Section6Control1411 verifies that EPO control 1411
+// ("Oddíl 2/ř.36 - hodnota položky se nerovná hodnotě ř.34 z 2.oddílu DAP")
+// holds when the source amounts have fractional CZK (halere). EPO computes
+// ř.34 as kc_prij6 - kc_dan_zah at whole-CZK precision and requires kc_zd6
+// to match exactly; rounding each halere value independently can break the
+// invariant, so the generator derives kc_zd6 from the rounded prij6/danZah.
+func TestIncomeTaxXML_Section6Control1411(t *testing.T) {
+	// 240001.00 CZK gross, 1.50 CZK foreign tax: independent rounding of the
+	// stored Section6TaxBase (239999.50 CZK -> 239999) would not equal
+	// 240001 - 1 = 240000.
+	itr := &domain.IncomeTaxReturn{
+		Year:                2025,
+		FilingType:          domain.FilingTypeRegular,
+		TotalRevenue:        domain.NewAmount(0, 0),
+		Section6GrossIncome: domain.NewAmount(240001, 0),  // 240001.00 CZK
+		Section6ForeignTax:  domain.NewAmount(1, 50),      // 1.50 CZK
+		Section6TaxBase:     domain.NewAmount(239999, 50), // 239999.50 CZK
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_prij6="240001"`,
+		`kc_dan_zah="1"`,
+		`kc_zd6="240000"`, // = kc_prij6 - kc_dan_zah, satisfies EPO control 1411
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
+		}
+	}
+}
+
 // TestIncomeTaxXML_Section6OnlyNegativeSection7 covers the XSD critical control on
 // kc_zakldan23 (ř.42): "Pokud je ř.41 záporný, uveďte pouze hodnotu z ř.36". When
 // the §7+§8+§10 sum is negative, the consolidated tax base equals §6 alone.

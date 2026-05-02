@@ -40,7 +40,7 @@ Source: [Pokyny k vyplnění DPFO 2025, financnisprava.gov.cz](https://formulare
 | `VetaO` | `kc_dan_zah` | ř.33 | jen rezidenti ČR se zahraničním příjmem |
 | `VetaO` | `kc_zd6` | ř.34/36 | "Přeneste údaj z ř. 34" |
 | `VetaO` | `kc_prij6zahr` | ř.35 | "Část příjmů z ř. 31, u kterých neměl plátce povinnost srazit zálohy" |
-| `VetaO` | `kc_zd6p` | §16a | "Vypočtená částka tvoří dílčí základ daně připadající na příjmy ze závislé činnosti" — pro samostatný základ při překročení 36× průměrné mzdy |
+| `VetaO` | `kc_zd6p` | §38f / Příloha 3 | "Vypočtená částka tvoří dílčí základ daně připadající na příjmy ze závislé činnosti" — alokace §6 portionu pro zápočet zahraniční daně (Příloha č. 3 DAP). MVP: 0 / omitempty. **Nesouvisí s §16a** (Příloha 4 — vybrané zahr. příjmy) ani s progresivní sazbou §16 odst. 1. |
 | `VetaO` | `kc_zakldan23` | ř.42 | XSD doc: "Pokud je ř. 41 záporný, uveďte pouze hodnotu z ř. 36" |
 | `VetaD` | `kc_zalzavc` | ř.84 | "ve vzoru Potvrzení č. 33 se jedná o údaj uvedený na řádku 8" |
 | `VetaD` | `kc_sraz_6_4` | ř.87 | sražená daň §36 odst. 6 (rezident ČR) |
@@ -645,6 +645,10 @@ Extend `internal/handler/audit_log_handler.go:55`:
 - Související RFC: 006-annual-tax (DPFO base), 007-tax-credits-deductions (§15 OCR), 012-calc-extraction (calc helpers), 015-pdf-templates
 
 ## Changelog
+
+### v4 (2026-05-02) — third-round review feedback
+
+- **Q7/Q8 fix:** Tabulka XSD atributů u `kc_zd6p` říkala "§16a", ale Legislative notes a XML generátor správně říkaly "§38f / Příloha 3" (alokace §6 portionu pro zápočet zahraniční daně). Sjednoceno: tabulka teď uvádí "§38f / Příloha 3" s explicitní poznámkou, že **nesouvisí s §16a** (Příloha 4 — samostatný základ z vybraných zahraničních příjmů) ani s progresivní sazbou §16 odst. 1.
 
 ### v3 (2026-05-02) — second-round review feedback
 

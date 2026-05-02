@@ -30,7 +30,7 @@ Source: [Pokyny k vyplnění DPFO 2025, financnisprava.gov.cz](https://formulare
 | ř.84 | Úhrn sražených záloh §6 (po slevách na dani; po RZ snížený o vrácený přeplatek) | ř.8 Potvrzení vzor 33 |
 | ř.87 | Sražená daň §36 odst. 6 zařazená do DAP (rezident ČR) | Potvrzení 25 5460/A vzor 12; volitelné |
 | ř.87a | Sražená daň §36 odst. 7 (nerezident, daň. rezident EU/EHP) | nerelevantní pro tuzemské OSVČ |
-| ř.89 | Úhrn vyplacených měsíčních daňových bonusů §35d zaměstnavatelem | ř.5 + ř.13 Potvrzení vzor 33 (případně doplatek z RZ z ř.19) |
+| ř.89 | Úhrn vyplacených měsíčních daňových bonusů §35d zaměstnavatelem | ř.5 + ř.13 Potvrzení vzor 33 (per XSD doc na `kc_vyplbonus`: "součet ř.5 a 13"; doplatek z RZ je obsažen v ř.13) |
 
 ### Verified XSD attributes (already present in `dpfdp7_epo2.xsd`)
 
@@ -363,7 +363,10 @@ for _, c := range certs {
         itr.Section6AdvanceWithheld += c.AdvanceTaxWithheld - c.AnnualSettlementRefund
         itr.Section6MonthlyBonusPaid += c.MonthlyBonusPaid
         itr.Section6CertsAdvance++
-        if c.MonthlyBonusPaid > 0 { itr.Section6CertsBonus++ }
+        // Section6CertsBonus (potv_dazvyh) NEZVYŠOVAT zde — ten je počet samostatných
+        // formulářů "Potvrzení o vyplaceném daňovém bonusu" (EmploymentDocBonus kind),
+        // ne počet advance certifikátů s vyplaceným bonusem. V MVP zůstává 0
+        // (viz Out of Scope: "Potvrzení o vyplaceném daňovém bonusu" upload UI).
     case domain.CertificateWithholding:
         if c.IncludeWithholdingInDAP {
             itr.Section6GrossIncome += c.GrossIncome
@@ -518,7 +521,7 @@ Add 4th card (after DPFO/CSSZ/ZP) "Závislá činnost (§6)":
 #### Section on `tax/income/[id]/+page.svelte`
 
 Read-only "§6 závislá činnost" panel above existing §7 panel:
-- ř.31, ř.33, ř.34/36, ř.84, ř.87, ř.76 with HelpTip on each
+- ř.31, ř.33, ř.34/36, ř.84, ř.87, ř.89 with HelpTip on each
 - "Upravit certifikáty" link to `/tax/employment?year={year}`
 
 #### API Client
@@ -602,12 +605,12 @@ Extend `internal/handler/audit_log_handler.go:55`:
 | `repository/employment_certificate_repo_test.go` | CRUD, soft delete, ListByYear, ListConfirmedByYear, UNIQUE clause REPLACE |
 | `service/ocr/employment_prompt_test.go` | parse JSON for advance + withholding, malformed input, missing fields → 0, code-fence stripping |
 | `service/employment_certificate_svc_test.go` | upload + MIME guard, extract via mock OCR provider, validation rules, audit emits, RZ refund subtraction |
-| `service/income_tax_return_svc_test.go` (extension) | recompute aggregates §6, monthly bonus subtraction from child benefit, §16a limit warning |
-| `annualtaxxml/income_tax_gen_test.go` (extensions) | `TestIncomeTaxXML_Section6Advance` (2 advance certs → kc_prij6/kc_zd6/kc_zalzavc/kc_vyplbonus/potv_zam=2/potv_dazvyh=1), `TestIncomeTaxXML_Section6Withholding` (1 withholding included → kc_sraz_6_4/potv_36=1), `TestIncomeTaxXML_Section6OnlyNegativeSection7` (§6 + §7 ztráta → kc_zakldan23 = kc_zd6, no positive uhrn applied), `TestIncomeTaxXML_BonusNotSubtractedFromChildBenefit` (cert with monthly_bonus_paid=10000 + ChildBenefit=20000 → ChildBenefit zůstane 20000, kc_vyplbonus=10000) |
+| `service/income_tax_return_svc_test.go` (extension) | recompute aggregates §6, ChildBenefit zůstává nezměněn i když je MonthlyBonusPaid > 0 (regression for K3), §16 progressive rate warning when totalBase > 36× průměrná mzda, potv_dazvyh zůstává 0 v MVP i když advance cert má bonus > 0 (regression for N5) |
+| `annualtaxxml/income_tax_gen_test.go` (extensions) | `TestIncomeTaxXML_Section6Advance` (2 advance certs → kc_prij6/kc_zd6/kc_zalzavc/kc_vyplbonus/potv_zam=2, potv_dazvyh=0 v MVP), `TestIncomeTaxXML_Section6Withholding` (1 withholding included → kc_sraz_6_4/potv_36=1), `TestIncomeTaxXML_Section6OnlyNegativeSection7` (§6 + §7 ztráta → kc_zakldan23 = kc_zd6, no positive uhrn applied), `TestIncomeTaxXML_BonusReportedSeparately` (cert with monthly_bonus_paid=10000 + ChildBenefit=20000 → ChildBenefit zůstává 20000, kc_vyplbonus=10000, ř.72/76 nezměněny) |
 | `handler/employment_handler_test.go` | multipart upload happy path, MIME rejection, oversize rejection, extract endpoint, confirm triggers recompute |
 | `routes/tax/employment/page.test.ts` (Vitest) | upload flow with mocked employmentApi, OCR confidence rendering, advance vs withholding form switching, IČO validation, period range guard |
 | `routes/tax/income/[id]/page.test.ts` (extension) | §6 panel renders only when `Section6GrossIncome > 0` |
-| `tests/integration/employment_flow_test.go` | upload PDF testdata → mock OCR returns vzor 33 JSON → confirm 2 certs → generate DPFO XML → assert `kc_prij6=240000`, `kc_zd6=240000`, `kc_zalzavc=36000`, `kc_vyplbonus=15300`, `potv_zam=2`, `potv_dazvyh=1` |
+| `tests/integration/employment_flow_test.go` | upload PDF testdata → mock OCR returns vzor 33 JSON → confirm 2 certs → generate DPFO XML → assert `kc_prij6=240000`, `kc_zd6=240000`, `kc_zalzavc=36000`, `kc_vyplbonus=15300`, `potv_zam=2`, `potv_dazvyh=0` (MVP — separate bonus form upload OOS) |
 
 ## Migration Plan
 
@@ -620,7 +623,8 @@ Extend `internal/handler/audit_log_handler.go:55`:
 - **§16a samostatný základ daně** (Příloha č. 4 DAP, ř.74a, ř.414) — zdanění vybraných zahraničních příjmů (např. dividendy ze smluvních států) zvláštní 15 % sazbou. Nesouvisí s §6 ani s progresivní sazbou. UI emit warning at over-limit but emits XML without §16a split.
 - **§16 progresivní 23 %** nad 36× průměrná mzda (limit 1 676 052 Kč pro 2025) — existující `splitProgressiveTax` v `income_tax_return_svc.go` dostane do vstupního `TaxBase` Section6TaxBase + ostatní; výpočet 15/23 % funguje korektně bez další úpravy. KcZd6p alokace pro §38f zápočet zahraniční daně mimo MVP.
 - **ř.87a** (nerezident EU/EHP) — většina uživatelů jsou tuzemští rezidenti; struct field existuje, UI nezobrazuje.
-- **Automatické párování `Potvrzení o vyplaceném daňovém bonusu`** (samostatný `bonus` document kind) na řádky VetaA — uživatel řádky dětí upravuje ručně.
+- **Samostatný formulář "Potvrzení o vyplaceném daňovém bonusu"** (kind=`bonus` v `EmploymentDocument`) — schema umožňuje, ale upload UI ani extraction prompt v MVP nejsou. Důsledek: `Section6CertsBonus` (= XML attribut `potv_dazvyh`) zůstává 0; pokud uživatel toto Potvrzení dostal samostatně (typicky pokud zaměstnavatel nestihl/nemohl vystavit běžné Potvrzení vzor 33), musí se zatím postarat ručně v EPO portálu.
+- **Automatické párování dětí na VetaA řádky** — uživatel řádky dětí upravuje ručně mimo §6 modul.
 - **§38g odst. 6 enforcement** — UI ukáže warning u `include_withholding_in_dap`, neblokuje částečné zahrnutí.
 - **Attachment scanned PDF do EPO XML** — EPO přijímá přílohy přes separate upload step v portálu; generujeme jen DAP XML. Aplikace certifikáty s naskenovanými přílohami nabídne ke stažení jako ZIP pro ruční přiložení.
 
@@ -641,6 +645,15 @@ Extend `internal/handler/audit_log_handler.go:55`:
 - Související RFC: 006-annual-tax (DPFO base), 007-tax-credits-deductions (§15 OCR), 012-calc-extraction (calc helpers), 015-pdf-templates
 
 ## Changelog
+
+### v3 (2026-05-02) — second-round review feedback
+
+- **N5 fix:** `Section6CertsBonus++` v Recalculate odstraněn. `potv_dazvyh` má reflektovat počet samostatných formulářů "Potvrzení o vyplaceném daňovém bonusu" (`EmploymentDocument.Kind=bonus`), ne počet advance certifikátů s vyplaceným bonusem. V MVP zůstává 0; samostatný upload UI přidán do Out of Scope.
+- **N4 fix:** Frontend sekce na detail income return řádek nahrazen `ř.76` → `ř.89`. Pozůstatek z první verze.
+- **N2/N7 fix:** "doplatek z RZ z ř.19" v tabulce odstraněno — ř.19 v Potvrzení vzor 33 neexistuje. Doplatek z RZ je v ř.13 (per XSD doc na `kc_vyplbonus`).
+- **N1 fix:** Test description "monthly bonus subtraction from child benefit" přepsán na "ChildBenefit zůstává nezměněn i když MonthlyBonusPaid > 0 (regression for K3)".
+- **N6 fix:** Test "§16a limit warning" → "§16 progressive rate warning when totalBase > 36× průměrná mzda".
+- Integration test: `potv_dazvyh=1` → `potv_dazvyh=0` (důsledek N5).
 
 ### v2 (2026-05-02) — review feedback
 

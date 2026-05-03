@@ -117,17 +117,22 @@ type DPFOVetaP struct {
 // and the consolidated tax base. §8/§9/§10 fields use omitempty: emitting "0"
 // triggers the EPO control "if ř.39 or ř.40 is filled, Příloha 2 must accompany".
 //
-// §6 employment income attributes (kc_prij6 / kc_prij6zahr / kc_dan_zah / kc_zd6 /
-// kc_zd6p) all use omitempty so that taxpayers without employment income emit XML
+// §6 employment income attributes (kc_prij6 / kc_prij6zahr / kc_dan_zah / kc_zd6p /
+// kc_zd6) all use omitempty so that taxpayers without employment income emit XML
 // identical to the pre-§6-support output. kc_zakldan23 is always emitted because
 // it represents ř.42 -- the consolidated tax base used by every downstream EPO
 // formula control.
+//
+// EPO maps ř.34 to kc_zd6p (the "vypočtená částka" formula attribute) and ř.36 to
+// kc_zd6 (the "přeneste údaj z ř.34" attribute). Control 1411 ("Oddíl 2/ř.36 -
+// hodnota položky se nerovná hodnotě ř.34 z 2.oddílu DAP") fires when kc_zd6 !=
+// kc_zd6p. The generator emits both with the same value (ř.31 - ř.33).
 type DPFOVetaO struct {
 	KcPrij6     int64 `xml:"kc_prij6,attr,omitempty"`     // ř. 31 -- úhrn příjmů §6 (Potvrzení vzor 33 ř.2+ř.4)
 	KcPrij6zahr int64 `xml:"kc_prij6zahr,attr,omitempty"` // ř. 35 -- část ř.31 bez záloh dle §38h (informativní)
 	KcDanZah    int64 `xml:"kc_dan_zah,attr,omitempty"`   // ř. 33 -- daň zaplacená v zahraničí (§6 odst.13)
-	KcZd6       int64 `xml:"kc_zd6,attr,omitempty"`       // ř. 34/36 -- dílčí ZD §6 = ř.31 - ř.33
-	KcZd6p      int64 `xml:"kc_zd6p,attr,omitempty"`      // §38f / Příloha 3 alokace §6 portionu pro zápočet zahr. daně (MVP: 0)
+	KcZd6p      int64 `xml:"kc_zd6p,attr,omitempty"`      // ř. 34 -- dílčí ZD §6 = ř.31 - ř.33 ("vypočtená částka")
+	KcZd6       int64 `xml:"kc_zd6,attr,omitempty"`       // ř. 36 -- dílčí ZD §6 přenesený z ř.34 (= KcZd6p)
 	KcZd7       int64 `xml:"kc_zd7,attr"`                 // ř. 37 -- dílčí základ daně §7 (= ř.113 Přílohy 1)
 	KcZakldan8  int64 `xml:"kc_zakldan8,attr,omitempty"`  // ř. 38 -- §8 capital income net base
 	KcZd9       int64 `xml:"kc_zd9,attr,omitempty"`       // ř. 39 -- §9 rental income net base (Příloha 2 required)

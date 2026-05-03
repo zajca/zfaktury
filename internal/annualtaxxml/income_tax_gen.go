@@ -209,15 +209,16 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	uhrn := zd7 + zd8 + zd10                // ř.41 (no §9 rental income tracked yet)
 
 	// §6 employment income inputs.
-	// EPO control 1411 ("Oddíl 2/ř.36 - hodnota položky se nerovná hodnotě ř.34")
-	// requires kc_zd6 == kc_prij6 - kc_dan_zah at whole-CZK precision. Computing
-	// zd6 from the already-rounded prij6/danZah (instead of rounding the halere
-	// Section6TaxBase independently) guarantees the equality even when the source
-	// amounts have fractional CZK that would otherwise truncate inconsistently.
+	// EPO control 1411 ("Oddíl 2/ř.36 - hodnota položky se nerovná hodnotě ř.34
+	// z 2.oddílu DAP") compares kc_zd6 (ř.36, the "přeneste údaj z ř.34" slot)
+	// against kc_zd6p (ř.34, the "vypočtená částka" slot). Both must equal ř.31 -
+	// ř.33 at whole-CZK precision. Deriving zd6 from the rounded prij6/danZah
+	// (instead of rounding the halere Section6TaxBase independently) guarantees
+	// equality with kc_prij6 - kc_dan_zah for fractional-CZK source amounts.
 	prij6 := ToWholeCZK(itr.Section6GrossIncome)              // ř.31
 	prij6zahr := ToWholeCZK(itr.Section6IncomeWithoutAdvance) // ř.35
 	danZah := ToWholeCZK(itr.Section6ForeignTax)              // ř.33
-	zd6 := prij6 - danZah                                     // ř.34/36 = ř.31 - ř.33
+	zd6 := prij6 - danZah                                     // ř.34 = ř.36 = ř.31 - ř.33
 
 	// XSD ř.42 critical control: "Pokud je ř.41 záporný, uveďte pouze hodnotu z ř.36"
 	// — when §7+§8+§10 sum to a loss, the consolidated tax base is just §6 alone.
@@ -316,11 +317,13 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 		VetaO: &DPFOVetaO{
 			// §6 employment income (RFC-016) -- omitempty drops zero values for the
 			// no-employment-income case, preserving pre-§6 XML output.
+			// kc_zd6p (ř.34) and kc_zd6 (ř.36) carry the same value: EPO control 1411
+			// rejects the form if they disagree.
 			KcPrij6:     prij6,
 			KcPrij6zahr: prij6zahr,
 			KcDanZah:    danZah,
+			KcZd6p:      zd6,
 			KcZd6:       zd6,
-			KcZd6p:      0, // §38f Příloha 3 alokace -- MVP: 0 (omitted)
 			KcZd7:       zd7,
 			KcZakldan8:  zd8,
 			KcZd10:      zd10,

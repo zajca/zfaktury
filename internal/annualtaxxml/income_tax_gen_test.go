@@ -693,7 +693,8 @@ func TestIncomeTaxXML_Section6Advance(t *testing.T) {
 	}
 	for _, want := range []string{
 		`kc_prij6="240000"`,
-		`kc_zd6="240000"`,
+		`kc_zd6p="240000"`, // ř.34 -- "vypočtená částka"
+		`kc_zd6="240000"`,  // ř.36 -- "přeneste údaj z ř.34"
 		`kc_zalzavc="36000"`,
 		`kc_vyplbonus="15300"`,
 		`potv_zam="2"`,
@@ -731,7 +732,8 @@ func TestIncomeTaxXML_Section6Withholding(t *testing.T) {
 	}
 	for _, want := range []string{
 		`kc_prij6="50000"`,
-		`kc_zd6="50000"`,
+		`kc_zd6p="50000"`, // ř.34
+		`kc_zd6="50000"`,  // ř.36 (= ř.34)
 		`kc_sraz_6_4="7500"`,
 		`potv_36="1"`,
 	} {
@@ -743,10 +745,11 @@ func TestIncomeTaxXML_Section6Withholding(t *testing.T) {
 
 // TestIncomeTaxXML_Section6Control1411 verifies that EPO control 1411
 // ("Oddíl 2/ř.36 - hodnota položky se nerovná hodnotě ř.34 z 2.oddílu DAP")
-// holds when the source amounts have fractional CZK (halere). EPO computes
-// ř.34 as kc_prij6 - kc_dan_zah at whole-CZK precision and requires kc_zd6
-// to match exactly; rounding each halere value independently can break the
-// invariant, so the generator derives kc_zd6 from the rounded prij6/danZah.
+// holds. EPO maps ř.34 to kc_zd6p ("vypočtená částka") and ř.36 to kc_zd6
+// ("přeneste údaj z ř.34"); both must equal kc_prij6 - kc_dan_zah at whole-CZK
+// precision. The generator emits both attributes with the same value derived
+// from rounded prij6/danZah, so fractional-CZK source amounts cannot break
+// the invariant.
 func TestIncomeTaxXML_Section6Control1411(t *testing.T) {
 	// 240001.00 CZK gross, 1.50 CZK foreign tax: independent rounding of the
 	// stored Section6TaxBase (239999.50 CZK -> 239999) would not equal
@@ -766,7 +769,8 @@ func TestIncomeTaxXML_Section6Control1411(t *testing.T) {
 	for _, want := range []string{
 		`kc_prij6="240001"`,
 		`kc_dan_zah="1"`,
-		`kc_zd6="240000"`, // = kc_prij6 - kc_dan_zah, satisfies EPO control 1411
+		`kc_zd6p="240000"`, // ř.34 = kc_prij6 - kc_dan_zah
+		`kc_zd6="240000"`,  // ř.36 = ř.34, EPO control 1411 requires kc_zd6 == kc_zd6p
 	} {
 		if !bytes.Contains(xmlData, []byte(want)) {
 			t.Errorf("expected XML to contain %q, got:\n%s", want, xmlData)
@@ -796,6 +800,9 @@ func TestIncomeTaxXML_Section6OnlyNegativeSection7(t *testing.T) {
 	}
 	if !bytes.Contains(xmlData, []byte(`kc_zd6="300000"`)) {
 		t.Errorf("expected kc_zd6=300000, got:\n%s", xmlData)
+	}
+	if !bytes.Contains(xmlData, []byte(`kc_zd6p="300000"`)) {
+		t.Errorf("expected kc_zd6p=300000 (ř.34, EPO control 1411 requires == kc_zd6), got:\n%s", xmlData)
 	}
 	// kc_dztrata (ř.61) must hold the §7 loss (80000), unaffected by §6.
 	if !bytes.Contains(xmlData, []byte(`kc_dztrata="80000"`)) {

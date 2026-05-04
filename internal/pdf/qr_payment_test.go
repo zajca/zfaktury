@@ -125,6 +125,65 @@ func TestGenerateQRPayment(t *testing.T) {
 	}
 }
 
+// TestGenerateSPDString_DueDateZeroPadding ensures the DT field is always
+// 8 digits (YYYYMMDD). The upstream qrpay v0.0.4 SetDate produces
+// "DT:YYYY[M][D]" without zero-padding for single-digit month/day, which
+// breaks bank QR readers. Regression: invoice FV20260005 with due date
+// 14.5.2026 produced "DT:2026514" instead of "DT:20260514".
+func TestGenerateSPDString_DueDateZeroPadding(t *testing.T) {
+	cases := []struct {
+		name string
+		date time.Time
+		want string
+	}{
+		{"single-digit month and day", time.Date(2026, 5, 4, 0, 0, 0, 0, time.UTC), "DT:20260504*"},
+		{"single-digit month", time.Date(2026, 5, 14, 0, 0, 0, 0, time.UTC), "DT:20260514*"},
+		{"single-digit day", time.Date(2026, 11, 4, 0, 0, 0, 0, time.UTC), "DT:20261104*"},
+		{"two-digit", time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC), "DT:20261231*"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			invoice := &domain.Invoice{
+				TotalAmount: domain.NewAmount(100, 0),
+				DueDate:     tc.date,
+			}
+			spd, err := GenerateSPDString(invoice, "CZ5855000000001265098001", "")
+			if err != nil {
+				t.Fatalf("GenerateSPDString() error = %v", err)
+			}
+			if !strings.Contains(spd, tc.want) {
+				t.Errorf("SPD missing %q, got %q", tc.want, spd)
+			}
+		})
+	}
+}
+
+// TestGenerateSPDString_VSDigitsOnly ensures the variable symbol in the QR
+// payload is stripped to digits only. Czech banks reject SPAYD payments with
+// non-numeric VS. Regression: invoice with VariableSymbol="FV20260005"
+// produced "X-VS:FV20260005" — banks rejected the payment.
+func TestGenerateSPDString_VSDigitsOnly(t *testing.T) {
+	invoice := &domain.Invoice{
+		InvoiceNumber:  "FV20260005",
+		VariableSymbol: "FV20260005",
+		ConstantSymbol: "KS-0308",
+		TotalAmount:    domain.NewAmount(100, 0),
+	}
+	spd, err := GenerateSPDString(invoice, "CZ5855000000001265098001", "")
+	if err != nil {
+		t.Fatalf("GenerateSPDString() error = %v", err)
+	}
+	if !strings.Contains(spd, "X-VS:20260005*") {
+		t.Errorf("SPD should contain X-VS:20260005, got %q", spd)
+	}
+	if strings.Contains(spd, "X-VS:FV") {
+		t.Errorf("SPD must not contain non-digit VS, got %q", spd)
+	}
+	if !strings.Contains(spd, "X-KS:0308*") {
+		t.Errorf("SPD should contain X-KS:0308, got %q", spd)
+	}
+}
+
 func TestGenerateQRPayment_NoIBAN(t *testing.T) {
 	invoice := &domain.Invoice{
 		TotalAmount: domain.NewAmount(100, 0),

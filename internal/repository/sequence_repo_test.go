@@ -245,7 +245,7 @@ func TestSequenceRepository_CountInvoicesBySequenceID(t *testing.T) {
 	}
 
 	// Seed an invoice referencing this sequence.
-	customer := testutil.SeedContact(t, db, nil)
+	customer := testutil.SeedContact(t, db, 1, nil)
 	testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Test", Quantity: 100, Unit: "ks", UnitPrice: 10000, VATRatePercent: 21},
 	})

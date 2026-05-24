@@ -60,7 +60,7 @@ func TestDashboardService_GetDashboard_WithData(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed a contact for invoices.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed two invoices with known item amounts.
 	// SeedInvoice uses time.Now() for dates, so they appear in the current month.

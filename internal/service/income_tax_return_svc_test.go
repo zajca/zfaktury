@@ -324,7 +324,7 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed a customer contact.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed an invoice with specific date in 2025, status=sent.
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -406,7 +406,7 @@ func TestIncomeTaxReturnService_Recalculate_ActualExpenses(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed contact and invoice.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	now := time.Now()
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 

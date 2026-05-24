@@ -41,7 +41,7 @@ func TestReportService_RevenueReport_WithData(t *testing.T) {
 	svc := NewReportService(repo)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	year := time.Now().Year()
 
 	// Seed invoices with known amounts (SeedInvoice uses time.Now() for delivery_date).

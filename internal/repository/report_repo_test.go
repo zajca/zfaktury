@@ -29,7 +29,7 @@ func TestReportRepo_MonthlyRevenue_WithData(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed invoice in current month.
 	inv1 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
@@ -227,8 +227,8 @@ func TestReportRepo_TopCustomers_WithData(t *testing.T) {
 	now := time.Now()
 
 	// Create two customers.
-	customer1 := testutil.SeedContact(t, db, &domain.Contact{Name: "Big Customer"})
-	customer2 := testutil.SeedContact(t, db, &domain.Contact{Name: "Small Customer"})
+	customer1 := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Big Customer"})
+	customer2 := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Small Customer"})
 
 	// Seed 2 invoices for customer1 (higher total).
 	testutil.SeedInvoice(t, db, customer1.ID, []domain.InvoiceItem{
@@ -272,7 +272,7 @@ func TestReportRepo_QuarterlyRevenue_WithData(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Q service", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
@@ -337,7 +337,7 @@ func TestReportRepo_ProfitLossMonthly_WithData(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Revenue item", Quantity: 100, UnitPrice: 20000, VATRatePercent: 21},

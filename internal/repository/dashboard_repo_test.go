@@ -30,7 +30,7 @@ func TestDashboardRepo_RevenueCurrentMonth_WithData(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed two invoices with current month delivery date (SeedInvoice uses time.Now()).
 	inv1 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
@@ -88,7 +88,7 @@ func TestDashboardRepo_UnpaidInvoices_WithData(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// SeedInvoice creates draft invoices by default (unpaid).
 	inv1 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
@@ -163,7 +163,7 @@ func TestDashboardRepo_MonthlyRevenue_WithData(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed invoice in current month.
 	inv1 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
@@ -234,7 +234,7 @@ func TestDashboardRepo_RecentInvoices_Limit(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed 5 invoices.
 	for i := 0; i < 5; i++ {

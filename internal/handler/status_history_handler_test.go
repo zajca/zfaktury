@@ -36,7 +36,7 @@ func TestStatusHistoryHandler_GetHistory(t *testing.T) {
 	r, historyRepo, db := setupStatusHistoryRouter(t)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Handler Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Handler Test Customer"})
 	inv := testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Work", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	})
@@ -88,7 +88,7 @@ func TestStatusHistoryHandler_GetHistory_InvalidID(t *testing.T) {
 func TestStatusHistoryHandler_CheckOverdue(t *testing.T) {
 	r, _, db := setupStatusHistoryRouter(t)
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Overdue Handler Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Overdue Handler Customer"})
 	inv := testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Work", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	})

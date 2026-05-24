@@ -652,7 +652,7 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 	}
 
 	// Create a contact with CZ DIC.
-	contact := testutil.SeedContact(t, db, &domain.Contact{
+	contact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Test Customer",
 		DIC:  "CZ99887766",
 	})

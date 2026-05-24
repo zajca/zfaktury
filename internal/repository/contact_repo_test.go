@@ -44,7 +44,7 @@ func TestContactRepository_GetByID(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	seeded := testutil.SeedContact(t, db, &domain.Contact{
+	seeded := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "GetByID Test",
 		ICO:  "11111111",
 	})
@@ -81,7 +81,7 @@ func TestContactRepository_Update(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	seeded := testutil.SeedContact(t, db, &domain.Contact{Name: "Before Update"})
+	seeded := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Before Update"})
 
 	seeded.Name = "After Update"
 	seeded.Email = "updated@test.cz"
@@ -106,7 +106,7 @@ func TestContactRepository_Delete_SoftDelete(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	seeded := testutil.SeedContact(t, db, nil)
+	seeded := testutil.SeedContact(t, db, 1, nil)
 
 	if err := repo.Delete(ctx, seeded.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
@@ -144,7 +144,7 @@ func TestContactRepository_Delete_AlreadyDeleted(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	seeded := testutil.SeedContact(t, db, nil)
+	seeded := testutil.SeedContact(t, db, 1, nil)
 	if err := repo.Delete(ctx, seeded.ID); err != nil {
 		t.Fatalf("first Delete() error: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestContactRepository_FindByICO(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	testutil.SeedContact(t, db, &domain.Contact{Name: "ICO Test", ICO: "99887766"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "ICO Test", ICO: "99887766"})
 
 	got, err := repo.FindByICO(ctx, "99887766")
 	if err != nil {
@@ -187,9 +187,9 @@ func TestContactRepository_List_All(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Alpha"})
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Beta"})
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Gamma"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Alpha"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Beta"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Gamma"})
 
 	contacts, total, err := repo.List(ctx, domain.ContactFilter{})
 	if err != nil {
@@ -208,8 +208,8 @@ func TestContactRepository_List_Search(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Acme Corp"})
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Beta Inc"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Acme Corp"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Beta Inc"})
 
 	contacts, total, err := repo.List(ctx, domain.ContactFilter{Search: "Acme"})
 	if err != nil {
@@ -231,8 +231,8 @@ func TestContactRepository_List_TypeFilter(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Company", Type: domain.ContactTypeCompany})
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Individual", Type: domain.ContactTypeIndividual})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Company", Type: domain.ContactTypeCompany})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Individual", Type: domain.ContactTypeIndividual})
 
 	contacts, total, err := repo.List(ctx, domain.ContactFilter{Type: domain.ContactTypeIndividual})
 	if err != nil {
@@ -253,7 +253,7 @@ func TestContactRepository_List_Pagination(t *testing.T) {
 
 	// Create 5 contacts.
 	for i := 0; i < 5; i++ {
-		testutil.SeedContact(t, db, &domain.Contact{Name: string(rune('A'+i)) + " Contact"})
+		testutil.SeedContact(t, db, 1, &domain.Contact{Name: string(rune('A'+i)) + " Contact"})
 	}
 
 	// Get first page of 2.
@@ -283,8 +283,8 @@ func TestContactRepository_List_ExcludesSoftDeleted(t *testing.T) {
 	repo := NewContactRepository(db)
 	ctx := context.Background()
 
-	c := testutil.SeedContact(t, db, &domain.Contact{Name: "To Delete"})
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Keep"})
+	c := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "To Delete"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Keep"})
 
 	if err := repo.Delete(ctx, c.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)

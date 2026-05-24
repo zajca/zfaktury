@@ -14,7 +14,7 @@ func TestOverdueService_CheckOverdue(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Overdue Svc Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Overdue Svc Customer"})
 	items := []domain.InvoiceItem{
 		{Description: "Work", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	}
@@ -92,7 +92,7 @@ func TestOverdueService_GetHistory(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "History Svc Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "History Svc Customer"})
 	items := []domain.InvoiceItem{
 		{Description: "Work", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	}

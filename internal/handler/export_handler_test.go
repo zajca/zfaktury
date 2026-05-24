@@ -114,7 +114,7 @@ func TestExportHandler_ExportInvoices_WithData(t *testing.T) {
 	h := NewExportHandler(invoiceSvc, expenseSvc)
 
 	// Seed data.
-	contact := testutil.SeedContact(t, db, &domain.Contact{Name: "Export Test Corp"})
+	contact := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Export Test Corp"})
 	items := []domain.InvoiceItem{
 		{
 			Description:    "Development",

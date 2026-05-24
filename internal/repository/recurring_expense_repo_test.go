@@ -79,7 +79,7 @@ func TestRecurringExpenseRepository_GetByID(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewRecurringExpenseRepository(db)
 
-	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Hosting Co"})
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Hosting Co"})
 	seeded := seedRecurringExpense(t, repo, &domain.RecurringExpense{
 		Name:        "Monthly hosting",
 		Description: "Cloud hosting",
@@ -368,7 +368,7 @@ func TestRecurringExpenseRepository_List_WithVendor(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewRecurringExpenseRepository(db)
 
-	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Vendor Co"})
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Vendor Co"})
 	seedRecurringExpense(t, repo, &domain.RecurringExpense{
 		Name:     "With vendor",
 		VendorID: &vendor.ID,
@@ -512,7 +512,7 @@ func TestRecurringExpenseRepository_ListDue_WithVendor(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewRecurringExpenseRepository(db)
 
-	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Due Vendor"})
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Due Vendor"})
 	seedRecurringExpense(t, repo, &domain.RecurringExpense{
 		Name:          "Due with vendor",
 		VendorID:      &vendor.ID,

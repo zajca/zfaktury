@@ -34,7 +34,7 @@ func makeRecurringInvoice(customerID int64) *domain.RecurringInvoice {
 
 func TestRecurringInvoiceRepository_Create(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -57,7 +57,7 @@ func TestRecurringInvoiceRepository_Create(t *testing.T) {
 
 func TestRecurringInvoiceRepository_GetByID(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -104,7 +104,7 @@ func TestRecurringInvoiceRepository_GetByID_NotFound(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Update(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -144,7 +144,7 @@ func TestRecurringInvoiceRepository_Update(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Delete(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -176,7 +176,7 @@ func TestRecurringInvoiceRepository_Delete_NotFound(t *testing.T) {
 
 func TestRecurringInvoiceRepository_List(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -199,7 +199,7 @@ func TestRecurringInvoiceRepository_List(t *testing.T) {
 
 func TestRecurringInvoiceRepository_ListDue(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -240,7 +240,7 @@ func TestRecurringInvoiceRepository_ListDue(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Deactivate(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -273,7 +273,7 @@ func TestRecurringInvoiceRepository_Deactivate_NotFound(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Deactivate_AlreadyDeleted(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -289,7 +289,7 @@ func TestRecurringInvoiceRepository_Deactivate_AlreadyDeleted(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Delete_AlreadyDeleted(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -305,7 +305,7 @@ func TestRecurringInvoiceRepository_Delete_AlreadyDeleted(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Create_WithEndDate(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -331,7 +331,7 @@ func TestRecurringInvoiceRepository_Create_WithEndDate(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Update_WithEndDate(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -360,7 +360,7 @@ func TestRecurringInvoiceRepository_Update_WithEndDate(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Update_MultipleItems(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -398,7 +398,7 @@ func TestRecurringInvoiceRepository_Update_MultipleItems(t *testing.T) {
 
 func TestRecurringInvoiceRepository_Create_MultipleItems(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -438,7 +438,7 @@ func TestRecurringInvoiceRepository_List_Empty(t *testing.T) {
 
 func TestRecurringInvoiceRepository_List_ExcludesSoftDeleted(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -466,7 +466,7 @@ func TestRecurringInvoiceRepository_List_ExcludesSoftDeleted(t *testing.T) {
 
 func TestRecurringInvoiceRepository_List_WithCustomerData(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Acme Corp"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Acme Corp"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -490,7 +490,7 @@ func TestRecurringInvoiceRepository_List_WithCustomerData(t *testing.T) {
 
 func TestRecurringInvoiceRepository_List_WithEndDate(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -531,7 +531,7 @@ func TestRecurringInvoiceRepository_ListDue_Empty(t *testing.T) {
 
 func TestRecurringInvoiceRepository_ListDue_WithEndDate(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -556,7 +556,7 @@ func TestRecurringInvoiceRepository_ListDue_WithEndDate(t *testing.T) {
 
 func TestRecurringInvoiceRepository_ListDue_MultipleWithItems(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
@@ -594,7 +594,7 @@ func TestRecurringInvoiceRepository_ListDue_MultipleWithItems(t *testing.T) {
 
 func TestRecurringInvoiceRepository_List_NoCustomerMatch(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 

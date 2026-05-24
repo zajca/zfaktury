@@ -272,7 +272,7 @@ func TestSocialInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 	svc, db := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 

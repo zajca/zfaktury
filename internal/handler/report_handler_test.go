@@ -55,7 +55,7 @@ func TestReportHandler_Revenue_WithYear(t *testing.T) {
 	h := NewReportHandler(reportSvc)
 
 	// Seed data for 2025.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	// Manually insert an invoice with delivery_date in 2025 via direct SQL.
 	_, err := db.Exec(`
 		INSERT INTO invoices (
@@ -186,8 +186,8 @@ func TestReportHandler_TopCustomers(t *testing.T) {
 	h := NewReportHandler(reportSvc)
 
 	// Seed contacts and invoices for current year.
-	contact1 := testutil.SeedContact(t, db, &domain.Contact{Name: "Alpha Corp"})
-	contact2 := testutil.SeedContact(t, db, &domain.Contact{Name: "Beta Inc"})
+	contact1 := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Alpha Corp"})
+	contact2 := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Beta Inc"})
 
 	items := []domain.InvoiceItem{
 		{
@@ -241,7 +241,7 @@ func TestReportHandler_ProfitLoss(t *testing.T) {
 	h := NewReportHandler(reportSvc)
 
 	// Seed data for current year.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	items := []domain.InvoiceItem{
 		{
 			Description:    "Dev work",

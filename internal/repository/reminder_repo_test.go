@@ -14,7 +14,7 @@ func TestReminderRepository_Create(t *testing.T) {
 	repo := NewReminderRepository(db)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Reminder Customer", Email: "test@example.com"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Reminder Customer", Email: "test@example.com"})
 	inv := testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Service", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	})
@@ -45,7 +45,7 @@ func TestReminderRepository_ListByInvoiceID(t *testing.T) {
 	repo := NewReminderRepository(db)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "List Customer", Email: "list@example.com"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "List Customer", Email: "list@example.com"})
 	inv := testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Service", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	})
@@ -88,7 +88,7 @@ func TestReminderRepository_CountByInvoiceID(t *testing.T) {
 	repo := NewReminderRepository(db)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Count Customer", Email: "count@example.com"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Count Customer", Email: "count@example.com"})
 	inv := testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Service", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	})

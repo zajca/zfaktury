@@ -37,7 +37,7 @@ func setupReminderRouter(t *testing.T) (*chi.Mux, *domain.Invoice) {
 	emailSender := &testEmailSender{}
 
 	// Seed a customer with email.
-	customer := testutil.SeedContact(t, db, &domain.Contact{
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name:  "Reminder Test Customer",
 		Email: "customer@example.com",
 	})

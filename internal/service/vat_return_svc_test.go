@@ -270,7 +270,7 @@ func TestVATReturnService_Recalculate(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a contact and invoice in March 2025.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed invoice with delivery date in March 2025, status=sent.
 	march15 := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
@@ -528,7 +528,7 @@ func TestVATReturnService_Recalculate_WithExpenses(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed a vendor contact.
-	vendor := testutil.SeedContact(t, db, &domain.Contact{
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Vendor s.r.o.",
 		DIC:  "CZ55667788",
 	})
@@ -582,13 +582,13 @@ func TestVATReturnService_Recalculate_WithInvoiceAndExpense(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed customer contact.
-	customer := testutil.SeedContact(t, db, &domain.Contact{
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Customer a.s.",
 		DIC:  "CZ11223344",
 	})
 
 	// Seed vendor contact.
-	vendor := testutil.SeedContact(t, db, &domain.Contact{
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Vendor s.r.o.",
 		DIC:  "CZ55667788",
 	})
@@ -838,7 +838,7 @@ func TestVATReturnService_Recalculate_PartialBusinessPercent(t *testing.T) {
 	svc, db := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	vendor := testutil.SeedContact(t, db, &domain.Contact{
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Vendor",
 		DIC:  "CZ11112222",
 	})

@@ -13,7 +13,7 @@ func TestInvoiceRepository_ListOverdueCandidateIDs(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Overdue Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Overdue Test Customer"})
 	repo := NewInvoiceRepository(db)
 
 	items := []domain.InvoiceItem{

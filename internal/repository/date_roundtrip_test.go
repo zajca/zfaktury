@@ -327,7 +327,7 @@ func TestCategoryDateRoundtrip(t *testing.T) {
 // TestRecurringInvoiceDateRoundtrip verifies all date fields on recurring invoices.
 func TestRecurringInvoiceDateRoundtrip(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Date Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Date Test Customer"})
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 

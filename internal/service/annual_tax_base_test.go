@@ -43,7 +43,7 @@ func TestCalculateAnnualBase_WithInvoices(t *testing.T) {
 	expRepo := repository.NewExpenseRepository(db)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 
@@ -113,7 +113,7 @@ func TestCalculateAnnualBase_ExcludesDraftInvoices(t *testing.T) {
 	expRepo := repository.NewExpenseRepository(db)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 
@@ -159,7 +159,7 @@ func TestCalculateAnnualBase_ExcludesProforma(t *testing.T) {
 	expRepo := repository.NewExpenseRepository(db)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 
@@ -202,7 +202,7 @@ func TestCalculateAnnualBase_CreditNoteSubtractsRevenue(t *testing.T) {
 	expRepo := repository.NewExpenseRepository(db)
 	ctx := context.Background()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 	now := time.Now()
 

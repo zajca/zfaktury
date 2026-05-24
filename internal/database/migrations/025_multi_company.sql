@@ -99,6 +99,10 @@ UNION ALL SELECT 'swift', COALESCE(swift, '') FROM companies WHERE id = 1
 UNION ALL SELECT 'logo_path', COALESCE(logo_path, '') FROM companies WHERE id = 1
 UNION ALL SELECT 'accent_color', COALESCE(accent_color, '') FROM companies WHERE id = 1;
 
+-- Reverse: contacts partition
+DROP INDEX IF EXISTS idx_contacts_company;
+ALTER TABLE contacts DROP COLUMN company_id;
+
 DROP INDEX IF EXISTS idx_companies_ico_active;
 DROP TABLE IF EXISTS companies;
 

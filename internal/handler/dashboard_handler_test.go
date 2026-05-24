@@ -75,7 +75,7 @@ func TestDashboardHandler_GetDashboard_WithData(t *testing.T) {
 	h := NewDashboardHandler(dashSvc)
 
 	// Seed a contact.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 
 	// Seed an invoice with delivery_date in current month so it shows up in revenue.
 	now := time.Now()

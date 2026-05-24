@@ -41,7 +41,7 @@ func TestExpenseRepository_GetByID(t *testing.T) {
 	repo := NewExpenseRepository(db)
 	ctx := context.Background()
 
-	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Vendor X"})
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Vendor X"})
 	seeded := testutil.SeedExpense(t, db, &domain.Expense{
 		VendorID:    &vendor.ID,
 		Description: "Test expense",
@@ -176,7 +176,7 @@ func TestExpenseRepository_List_VendorFilter(t *testing.T) {
 	repo := NewExpenseRepository(db)
 	ctx := context.Background()
 
-	vendor := testutil.SeedContact(t, db, &domain.Contact{Name: "Vendor Y"})
+	vendor := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Vendor Y"})
 	testutil.SeedExpense(t, db, &domain.Expense{Description: "From vendor", VendorID: &vendor.ID})
 	testutil.SeedExpense(t, db, &domain.Expense{Description: "No vendor"})
 

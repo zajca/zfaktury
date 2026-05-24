@@ -22,7 +22,7 @@ func setupInvoiceDocumentRouter(t *testing.T) (*chi.Mux, int64, string) {
 	db := testutil.NewTestDB(t)
 	dataDir := t.TempDir()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	invoice := testutil.SeedInvoice(t, db, contact.ID, nil)
 
 	docRepo := repository.NewInvoiceDocumentRepository(db)
@@ -46,7 +46,7 @@ func setupInvoiceDocumentRouterWithDoc(t *testing.T) (*chi.Mux, int64, int64, st
 	db := testutil.NewTestDB(t)
 	dataDir := t.TempDir()
 
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	invoice := testutil.SeedInvoice(t, db, contact.ID, nil)
 
 	docRepo := repository.NewInvoiceDocumentRepository(db)

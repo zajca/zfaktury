@@ -13,7 +13,7 @@ func TestStatusHistoryRepository_CreateAndList(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "History Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "History Test Customer"})
 	inv := testutil.SeedInvoice(t, db, customer.ID, []domain.InvoiceItem{
 		{Description: "Work", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
 	})

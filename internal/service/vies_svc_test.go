@@ -427,7 +427,7 @@ func TestVIES_Recalculate_BasicEUPartner(t *testing.T) {
 	ctx := context.Background()
 
 	// Create an EU partner contact (German company).
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name:    "German GmbH",
 		DIC:     "DE123456789",
 		Country: "DE",
@@ -481,10 +481,10 @@ func TestVIES_Recalculate_MultipleEUPartners(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	deContact := testutil.SeedContact(t, db, &domain.Contact{
+	deContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE111111111", Country: "DE",
 	})
-	skContact := testutil.SeedContact(t, db, &domain.Contact{
+	skContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Slovak s.r.o.", DIC: "SK222222222", Country: "SK",
 	})
 
@@ -554,7 +554,7 @@ func TestVIES_Recalculate_CreditNoteReducesAmount(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE999999999", Country: "DE",
 	})
 
@@ -604,7 +604,7 @@ func TestVIES_Recalculate_IgnoresDraftAndCancelledInvoices(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE555555555", Country: "DE",
 	})
 
@@ -649,7 +649,7 @@ func TestVIES_Recalculate_IgnoresNonEUContact(t *testing.T) {
 	ctx := context.Background()
 
 	// Czech contact -- not EU partner.
-	czContact := testutil.SeedContact(t, db, &domain.Contact{
+	czContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "Czech s.r.o.", DIC: "CZ12345678", Country: "CZ",
 	})
 
@@ -684,7 +684,7 @@ func TestVIES_Recalculate_IgnoresDeliveryDateOutsideQuarter(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE777777777", Country: "DE",
 	})
 
@@ -742,7 +742,7 @@ func TestVIES_Recalculate_ReplacesOldLines(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE888888888", Country: "DE",
 	})
 
@@ -783,7 +783,7 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE666666666", Country: "DE",
 	})
 
@@ -827,7 +827,7 @@ func TestVIES_GenerateXML_Valid(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
-	euContact := testutil.SeedContact(t, db, &domain.Contact{
+	euContact := testutil.SeedContact(t, db, 1, &domain.Contact{
 		Name: "German GmbH", DIC: "DE444444444", Country: "DE",
 	})
 

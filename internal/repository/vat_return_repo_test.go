@@ -209,7 +209,7 @@ func TestVATReturnRepository_LinkInvoices(t *testing.T) {
 	}
 
 	// Create a contact and invoice for linking.
-	contact := testutil.SeedContact(t, db, nil)
+	contact := testutil.SeedContact(t, db, 1, nil)
 	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Test", Quantity: 100, Unit: "ks", UnitPrice: 10000, VATRatePercent: 21},
 	})

@@ -16,7 +16,7 @@ import (
 func setupInvoiceTestDB(t *testing.T) (*sql.DB, int64, int64) {
 	t.Helper()
 	db := testutil.NewTestDB(t)
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Test Customer"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})
 	seqID := testutil.SeedInvoiceSequence(t, db, "FV", 2026)
 	return db, customer.ID, seqID
 }
@@ -79,7 +79,7 @@ func TestInvoiceRepository_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	// Update customer with more details for JOIN testing.
-	testutil.SeedContact(t, db, &domain.Contact{Name: "Customer B", ICO: "22222222"})
+	testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Customer B", ICO: "22222222"})
 
 	inv := makeRepoInvoice(customerID, seqID)
 	inv.Items = append(inv.Items, domain.InvoiceItem{
@@ -247,7 +247,7 @@ func TestInvoiceRepository_List_SearchFilter(t *testing.T) {
 	repo := NewInvoiceRepository(db)
 	ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Searchable Corp"})
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Searchable Corp"})
 	seqID := testutil.SeedInvoiceSequence(t, db, "FV", 2026)
 
 	inv := makeRepoInvoice(customer.ID, seqID)

@@ -89,8 +89,10 @@ func NewTestDB(t *testing.T) *sql.DB {
 }
 
 // SeedContact inserts a contact into the database with sensible defaults.
-// Fields from the provided contact override defaults. Returns the contact with its assigned ID.
-func SeedContact(t *testing.T, db *sql.DB, c *domain.Contact) *domain.Contact {
+// Fields from the provided contact override defaults. The companyID argument
+// scopes the contact to a specific company (pass 1 for the default company
+// seeded by NewTestDB). Returns the contact with its assigned ID.
+func SeedContact(t *testing.T, db *sql.DB, companyID int64, c *domain.Contact) *domain.Contact {
 	t.Helper()
 
 	if c == nil {
@@ -112,11 +114,13 @@ func SeedContact(t *testing.T, db *sql.DB, c *domain.Contact) *domain.Contact {
 
 	result, err := db.ExecContext(context.Background(), `
 		INSERT INTO contacts (
+			company_id,
 			type, name, ico, dic, street, city, zip, country,
 			email, phone, web, bank_account, bank_code, iban, swift,
 			payment_terms_days, tags, notes, is_favorite, vat_unreliable_at,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID,
 		c.Type, c.Name, c.ICO, c.DIC, c.Street, c.City, c.ZIP, c.Country,
 		c.Email, c.Phone, c.Web, c.BankAccount, c.BankCode, c.IBAN, c.SWIFT,
 		c.PaymentTermsDays, c.Tags, c.Notes, c.IsFavorite, c.VATUnreliableAt,

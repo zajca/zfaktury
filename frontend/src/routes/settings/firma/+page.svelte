@@ -111,7 +111,17 @@
 							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 						/>
 					</div>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+						<div>
+							<label for="title" class="block text-sm font-medium text-secondary">Titul</label>
+							<input
+								id="title"
+								type="text"
+								value={field('title')}
+								oninput={(e) => setField('title', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+							/>
+						</div>
 						<div>
 							<label for="first_name" class="block text-sm font-medium text-secondary">Jméno</label>
 							<input
@@ -284,6 +294,18 @@
 							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 						/>
 					</div>
+					<div>
+						<label for="databox_id" class="block text-sm font-medium text-secondary"
+							>Datová schránka</label
+						>
+						<input
+							id="databox_id"
+							type="text"
+							value={field('databox_id')}
+							oninput={(e) => setField('databox_id', (e.target as HTMLInputElement).value)}
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
+					</div>
 				</div>
 			</Card>
 
@@ -445,7 +467,20 @@
 								value={field('cssz_code')}
 								oninput={(e) => setField('cssz_code', (e.target as HTMLInputElement).value)}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. prehledosvc"
+								placeholder="např. 775"
+							/>
+						</div>
+						<div>
+							<label for="cssz_variable_symbol" class="block text-sm font-medium text-secondary"
+								>VS pro ČSSZ</label
+							>
+							<input
+								id="cssz_variable_symbol"
+								type="text"
+								value={field('cssz_variable_symbol')}
+								oninput={(e) =>
+									setField('cssz_variable_symbol', (e.target as HTMLInputElement).value)}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							/>
 						</div>
 						<div>

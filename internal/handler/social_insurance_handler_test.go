@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,22 @@ func setupSocialInsuranceRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	expenseRepo := repository.NewExpenseRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
+	if err := settingsRepo.SetBulk(context.Background(), map[string]string{
+		service.SettingCSSZCode:        "775",
+		service.SettingFirstName:       "Jan",
+		service.SettingLastName:        "Novak",
+		service.SettingBirthNumber:     "8001011234",
+		service.SettingBirthDate:       "1980-01-01",
+		service.SettingStreet:          "Hlavni",
+		service.SettingHouseNumber:     "42",
+		service.SettingCity:            "Praha",
+		service.SettingZIP:             "11000",
+		service.SettingEmail:           "jan@example.test",
+		service.SettingPhone:           "777123456",
+		service.SettingCSSZVariableSym: "12345678",
+	}); err != nil {
+		t.Fatalf("seed settings: %v", err)
+	}
 	taxYearSettingsRepo := repository.NewTaxYearSettingsRepository(db)
 	taxPrepaymentRepo := repository.NewTaxPrepaymentRepository(db)
 

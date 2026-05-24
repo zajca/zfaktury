@@ -20,7 +20,7 @@ type Vendor struct {
 
 // Sender contains notification and protocol settings.
 type Sender struct {
-	EmailNotifikace string `xml:"EmailNotifikace,attr"`
+	EmailNotifikace string `xml:"EmailNotifikace,attr,omitempty"`
 	ISDSreport      string `xml:"ISDSreport,attr"`
 	VerzeProtokolu  string `xml:"VerzeProtokolu,attr"`
 }
@@ -31,8 +31,8 @@ type PrehledOSVC struct {
 	Dep  string `xml:"dep,attr"`
 	Rok  string `xml:"rok,attr"`
 	Typ  string `xml:"typ,attr"`
-	VSDP string `xml:"vsdp,attr"`
-	Dat  string `xml:"dat,attr"`
+	VSDP string `xml:"vsdp,attr,omitempty"`
+	Dat  string `xml:"dat,attr,omitempty"`
 
 	Client  Client `xml:"client"`
 	PVV     PVV    `xml:"pvv"`
@@ -40,8 +40,10 @@ type PrehledOSVC struct {
 	Zal     Zal    `xml:"zal"`
 	Pre     Pre    `xml:"pre"`
 	Prizn   Prizn  `xml:"prizn"`
+	Opr     Opr    `xml:"opr"`
 	Spo     Spo    `xml:"spo"`
 	DatEl   DatEl  `xml:"dat"`
+	Prilo   Prilo  `xml:"prilo"`
 }
 
 // Client contains taxpayer personal information.
@@ -57,13 +59,14 @@ type Client struct {
 	Vedc  Vedc        `xml:"vedc"`
 	Narok MonthFlags  `xml:"narok"`
 	Sleva MonthFlags  `xml:"sleva"`
+	Vzpm  string      `xml:"vzpm"`
 }
 
 // ClientName holds first/last name and title.
 type ClientName struct {
 	Fir string `xml:"fir,attr"`
 	Sur string `xml:"sur,attr"`
-	Tit string `xml:"tit,attr"`
+	Tit string `xml:"tit,attr,omitempty"`
 }
 
 // ClientBirth holds birth number and date.
@@ -74,11 +77,11 @@ type ClientBirth struct {
 
 // Address holds a Czech postal address.
 type Address struct {
-	Cit string `xml:"cit,attr"`
-	Cnt string `xml:"cnt,attr"`
-	Num string `xml:"num,attr"`
-	Pnu string `xml:"pnu,attr"`
-	Str string `xml:"str,attr"`
+	Cit string `xml:"cit,attr,omitempty"`
+	Cnt string `xml:"cnt,attr,omitempty"`
+	Num string `xml:"num,attr,omitempty"`
+	Pnu string `xml:"pnu,attr,omitempty"`
+	Str string `xml:"str,attr,omitempty"`
 }
 
 // MonthFlags represents 13 monthly flag fields (m1-m13).
@@ -151,23 +154,23 @@ type PVV struct {
 // HVPair holds an h/v attribute pair used in PVV fields.
 type HVPair struct {
 	H string `xml:"h,attr"`
-	V string `xml:"v,attr"`
+	V string `xml:"v,attr,omitempty"`
 }
 
 // Zal contains advance payment settings.
 type Zal struct {
-	Ved  string `xml:"ved,attr"`
-	Pau  string `xml:"pau,attr"`
-	VZ   string `xml:"vz,attr"`
-	DP   string `xml:"dp,attr"`
-	NP   string `xml:"np,attr"`
-	Duch string `xml:"duch,attr"`
+	Ved  string `xml:"ved,attr,omitempty"`
+	Pau  string `xml:"pau,attr,omitempty"`
+	VZ   string `xml:"vz,attr,omitempty"`
+	DP   string `xml:"dp,attr,omitempty"`
+	NP   string `xml:"np,attr,omitempty"`
+	Duch string `xml:"duch,attr,omitempty"`
 }
 
 // Pre contains overpayment return information.
 type Pre struct {
 	Vra  string  `xml:"vra,attr"`
-	Kam  string  `xml:"kam,attr"`
+	Kam  string  `xml:"kam,attr,omitempty"`
 	Rok  string  `xml:"rok"`
 	IBAN string  `xml:"iban"`
 	BS   PreBS   `xml:"bs"`
@@ -176,38 +179,51 @@ type Pre struct {
 
 // PreBS contains bank account details for overpayment return.
 type PreBS struct {
-	PU string `xml:"pu,attr"`
-	CU string `xml:"cu,attr"`
-	KB string `xml:"kb,attr"`
-	SS string `xml:"ss,attr"`
-	VS string `xml:"vs,attr"`
+	PU string `xml:"pu,attr,omitempty"`
+	CU string `xml:"cu,attr,omitempty"`
+	KB string `xml:"kb,attr,omitempty"`
+	SS string `xml:"ss,attr,omitempty"`
+	VS string `xml:"vs,attr,omitempty"`
 }
 
 // Prizn contains declaration flags.
 type Prizn struct {
-	Pau    string `xml:"pau"`
+	Pau    string `xml:"pau,omitempty"`
 	Pov    string `xml:"pov"`
 	Elektr string `xml:"elektr"`
-	Por    string `xml:"por"`
+	Por    string `xml:"por,omitempty"`
 	Meldat string `xml:"meldat"`
 }
 
 // Spo contains spouse information.
 type Spo struct {
-	Bno  string  `xml:"bno,attr"`
-	Den  string  `xml:"den,attr"`
+	Bno  string  `xml:"bno,attr,omitempty"`
+	Den  string  `xml:"den,attr,omitempty"`
 	Name SpoName `xml:"name"`
 	Adr  Address `xml:"adr"`
 }
 
 // SpoName holds spouse name fields.
 type SpoName struct {
-	Sur string `xml:"sur,attr"`
-	Fir string `xml:"fir,attr"`
-	Tit string `xml:"tit,attr"`
+	Sur string `xml:"sur,attr,omitempty"`
+	Fir string `xml:"fir,attr,omitempty"`
+	Tit string `xml:"tit,attr,omitempty"`
 }
 
 // DatEl holds the filing date element.
 type DatEl struct {
-	Dre string `xml:"dre,attr"`
+	Dre string `xml:"dre,attr,omitempty"`
+}
+
+// Opr contains corrective overview details.
+type Opr struct {
+	Datopr string `xml:"datopr,attr,omitempty"`
+	Duvod  string `xml:"duvod,attr,omitempty"`
+}
+
+// Prilo contains attachment metadata.
+type Prilo struct {
+	Coun    string `xml:"coun,attr"`
+	Plnamoc string `xml:"plnamoc,attr"`
+	Jina    string `xml:"jina,attr"`
 }

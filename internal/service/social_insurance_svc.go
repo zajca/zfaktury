@@ -179,11 +179,12 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 
 	// Pure calculation.
 	insResult := calc.CalculateInsurance(calc.InsuranceInput{
-		Revenue:        annualBase.Revenue,
-		UsedExpenses:   usedExpenses,
-		MinMonthlyBase: constants.SocialMinMonthly,
-		RatePermille:   constants.SocialRate,
-		Prepayments:    socialTotal,
+		Revenue:                annualBase.Revenue,
+		UsedExpenses:           usedExpenses,
+		MinMonthlyBase:         constants.SocialMinMonthly,
+		AssessmentBasePermille: 550,
+		RatePermille:           constants.SocialRate,
+		Prepayments:            socialTotal,
 	})
 
 	sio.TaxBase = insResult.TaxBase
@@ -225,12 +226,16 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	settingKeyMap := map[string]string{
 		"first_name":   "taxpayer_first_name",
 		"last_name":    "taxpayer_last_name",
+		"title":        "taxpayer_title",
 		"birth_number": "taxpayer_birth_number",
 		"birth_date":   "taxpayer_birth_date",
 		"street":       "taxpayer_street",
 		"house_number": "taxpayer_house_number",
 		"city":         "taxpayer_city",
 		"zip":          "taxpayer_postal_code",
+		"email":        "taxpayer_email",
+		"phone":        "taxpayer_phone",
+		"databox_id":   "taxpayer_databox_id",
 	}
 	for srcKey, dstKey := range settingKeyMap {
 		if val, err := s.settingsRepo.Get(ctx, srcKey); err == nil {
@@ -239,6 +244,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	}
 	if val, err := s.settingsRepo.Get(ctx, "cssz_code"); err == nil {
 		settings["cssz_code"] = val
+	}
+	if val, err := s.settingsRepo.Get(ctx, "cssz_variable_symbol"); err == nil {
+		settings["cssz_variable_symbol"] = val
 	}
 	// Read flat_rate_percent from tax year settings for XML generation.
 	tys, tysErr := s.taxYearSettingsRepo.GetByYear(ctx, sio.Year)

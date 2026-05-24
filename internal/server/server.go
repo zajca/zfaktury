@@ -246,6 +246,12 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	auditLogRepo := repository.NewAuditLogRepository(db)
 	auditSvc := service.NewAuditService(auditLogRepo)
 
+	// Multi-company: global company registry. EntityCheckers (for delete
+	// safety) are wired in Phase 3 once per-entity repos gain a companyID
+	// parameter — until then the CompanyService has no children to guard.
+	companyRepo := repository.NewCompanyRepository(db)
+	companySvc := service.NewCompanyService(companyRepo, nil, auditSvc)
+
 	// Wire ARES client.
 	aresClient := ares.NewClient()
 
@@ -359,7 +365,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
+	return handler.NewRouter(companySvc, contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
 		DevMode: cfg.Server.Dev,
 		DataDir: cfg.DataDir,
 	})

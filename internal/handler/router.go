@@ -24,7 +24,23 @@ type RouterConfig struct {
 }
 
 // NewRouter creates a chi router with all API routes mounted.
+//
+// Routes are split into two tiers:
+//
+//  1. Global tier — endpoints that are not scoped to a single company:
+//     /health, /api/v1/companies (CRUD), /api/v1/audit-log, /api/v1/backups,
+//     and the CNB exchange-rate proxy (a public, company-agnostic data feed).
+//
+//  2. Per-company tier — everything else, mounted under
+//     /api/v1/companies/{companyID}/... and guarded by the WithCompany
+//     middleware which resolves and validates the {companyID} path param
+//     before delegating to the inner handler.
+//
+// Per-company handler internals still ignore the resolved company id;
+// threading it through repositories/services/handlers is the job of the
+// follow-up tasks T20-T22.
 func NewRouter(
+	companySvc *service.CompanyService,
 	contactSvc *service.ContactService,
 	invoiceSvc *service.InvoiceService,
 	expenseSvc *service.ExpenseService,
@@ -83,6 +99,9 @@ func NewRouter(
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Use(jsonContentTypeMiddleware)
 
+		// Construct all per-company handlers up-front. Their internals still
+		// ignore the company id resolved by the WithCompany middleware — that
+		// gets threaded through repos/services/handlers in T20-T22.
 		contactHandler := NewContactHandler(contactSvc)
 		invoiceHandler := NewInvoiceHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen)
 		expenseHandler := NewExpenseHandler(expenseSvc)
@@ -93,179 +112,201 @@ func NewRouter(
 		recurringInvoiceHandler := NewRecurringInvoiceHandler(recurringInvoiceSvc)
 		recurringExpenseHandler := NewRecurringExpenseHandler(recurringExpenseSvc)
 
-		api.Mount("/contacts", contactHandler.Routes())
-		// Use Route (not Mount) for /invoices so additional sub-routes can be
-		// registered in the same group without being swallowed by Mount's wildcard.
 		var invDocHandler *InvoiceDocumentHandler
 		if invDocumentSvc != nil {
 			invDocHandler = NewInvoiceDocumentHandler(invDocumentSvc)
 		}
 
-		api.Route("/invoices", func(inv chi.Router) {
-			// Core invoice CRUD + actions
-			inv.Post("/", invoiceHandler.Create)
-			inv.Get("/", invoiceHandler.List)
-			inv.Get("/{id}", invoiceHandler.GetByID)
-			inv.Put("/{id}", invoiceHandler.Update)
-			inv.Delete("/{id}", invoiceHandler.Delete)
-			inv.Post("/{id}/send", invoiceHandler.MarkAsSent)
-			inv.Post("/{id}/mark-paid", invoiceHandler.MarkAsPaid)
-			inv.Post("/{id}/duplicate", invoiceHandler.Duplicate)
-			inv.Post("/{id}/settle", invoiceHandler.SettleProforma)
-			inv.Post("/{id}/credit-note", invoiceHandler.CreateCreditNote)
-			inv.Get("/{id}/pdf", invoiceHandler.DownloadPDF)
-			inv.Get("/{id}/qr", invoiceHandler.QRPayment)
-			inv.Get("/{id}/isdoc", invoiceHandler.ExportISDOC)
-			inv.Post("/export/isdoc", invoiceHandler.ExportISDOCBatch)
+		// -----------------------------------------------------------------
+		// Global tier — endpoints not scoped to a single company.
+		// -----------------------------------------------------------------
 
-			// Invoice document routes
-			if invDocHandler != nil {
-				inv.Get("/{id}/documents", invDocHandler.ListByInvoice)
-			}
+		// Company CRUD (the global registry of companies themselves).
+		companyHandler := NewCompanyHandler(companySvc)
+		api.Mount("/companies", companyHandler.Routes())
 
-			// Status history & overdue (conditional)
-			if overdueSvc != nil {
-				statusHistoryHandler := NewStatusHistoryHandler(overdueSvc)
-				inv.Get("/{id}/history", statusHistoryHandler.GetHistory)
-				inv.Post("/check-overdue", statusHistoryHandler.CheckOverdue)
-			}
+		// Audit log is cross-company by design (admin/diagnostic view).
+		auditLogHandler := NewAuditLogHandler(auditSvc)
+		api.Mount("/audit-log", auditLogHandler.Routes())
 
-			// Payment reminders (conditional)
-			if reminderSvc != nil {
-				reminderHandler := NewReminderHandler(reminderSvc)
-				inv.Post("/{id}/remind", reminderHandler.SendReminder)
-				inv.Get("/{id}/reminders", reminderHandler.ListReminders)
-			}
-
-			// Send invoice via email (always registered, checks SMTP at runtime)
-			emailHandler := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender)
-			inv.Post("/{id}/send-email", emailHandler.SendEmail)
-		})
-
-		// Email defaults (always available for frontend pre-population)
-		api.Get("/email/defaults", NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender).GetDefaults)
-
-		// Use Route (not Mount) for /expenses so the import sub-route
-		// is not swallowed by Mount's wildcard. Document routes must also
-		// live here since Route captures the entire /expenses/* prefix.
-		api.Route("/expenses", func(exp chi.Router) {
-			exp.Post("/", expenseHandler.Create)
-			exp.Get("/", expenseHandler.List)
-			exp.Post("/review", expenseHandler.MarkTaxReviewed)
-			exp.Post("/unreview", expenseHandler.UnmarkTaxReviewed)
-			exp.Get("/{id}", expenseHandler.GetByID)
-			exp.Put("/{id}", expenseHandler.Update)
-			exp.Delete("/{id}", expenseHandler.Delete)
-
-			// Document routes (moved from documentHandler.Routes())
-			exp.Post("/{id}/documents", documentHandler.Upload)
-			exp.Get("/{id}/documents", documentHandler.ListByExpense)
-
-			if importSvc != nil {
-				importHandler := NewImportHandler(importSvc)
-				exp.Post("/import", importHandler.Import)
-			}
-		})
-		api.Mount("/expense-categories", categoryHandler.Routes())
-		pdfSettingsHandler := NewPDFSettingsHandler(settingsSvc, invoiceSvc, pdfGen, cfg.DataDir)
-		api.Route("/settings", func(sr chi.Router) {
-			sr.Get("/", settingsHandler.GetAll)
-			sr.Put("/", settingsHandler.Update)
-			sr.Get("/pdf", pdfSettingsHandler.GetPDFSettings)
-			sr.Put("/pdf", pdfSettingsHandler.UpdatePDFSettings)
-			sr.Post("/logo", pdfSettingsHandler.UploadLogo)
-			sr.Get("/logo", pdfSettingsHandler.GetLogo)
-			sr.Delete("/logo", pdfSettingsHandler.DeleteLogo)
-			sr.Get("/pdf-preview", pdfSettingsHandler.PreviewPDF)
-		})
-
-		api.Mount("/invoice-sequences", sequenceHandler.Routes())
-		api.Mount("/", documentHandler.Routes())
-		if invDocHandler != nil {
-			api.Get("/invoice-documents/{id}", invDocHandler.GetByID)
-			api.Get("/invoice-documents/{id}/download", invDocHandler.Download)
-			api.Delete("/invoice-documents/{id}", invDocHandler.Delete)
-		}
-		api.Mount("/recurring-invoices", recurringInvoiceHandler.Routes())
-		api.Mount("/recurring-expenses", recurringExpenseHandler.Routes())
-
-		if ocrSvc != nil {
-			ocrHandler := NewOCRHandler(ocrSvc)
-			api.Post("/documents/{id}/ocr", ocrHandler.ProcessDocument)
+		// Backups operate at the database level, not per-company.
+		if backupSvc != nil {
+			backupHandler := NewBackupHandler(backupSvc)
+			api.Mount("/backups", backupHandler.Routes())
 		}
 
+		// CNB exchange-rate is a public data feed and not scoped to a company.
 		if cnbClient != nil {
 			exchangeHandler := NewExchangeHandler(cnbClient)
 			api.Mount("/exchange-rate", exchangeHandler.Routes())
 		}
 
-		vatReturnHandler := NewVATReturnHandler(vatReturnSvc)
-		api.Mount("/vat-returns", vatReturnHandler.Routes())
+		// -----------------------------------------------------------------
+		// Per-company tier — mounted under /companies/{companyID}/... with
+		// the WithCompany middleware resolving and validating the path param.
+		// -----------------------------------------------------------------
+		api.Route("/companies/{companyID}", func(co chi.Router) {
+			co.Use(WithCompany(companySvc))
 
-		vatControlHandler := NewVATControlStatementHandler(vatControlSvc, settingsSvc)
-		api.Mount("/vat-control-statements", vatControlHandler.Routes())
+			co.Mount("/contacts", contactHandler.Routes())
 
-		viesHandler := NewVIESHandler(viesSvc, settingsSvc)
-		api.Mount("/vies-summaries", viesHandler.Routes())
+			// Use Route (not Mount) for /invoices so additional sub-routes can
+			// be registered in the same group without being swallowed by
+			// Mount's wildcard.
+			co.Route("/invoices", func(inv chi.Router) {
+				// Core invoice CRUD + actions.
+				inv.Post("/", invoiceHandler.Create)
+				inv.Get("/", invoiceHandler.List)
+				inv.Get("/{id}", invoiceHandler.GetByID)
+				inv.Put("/{id}", invoiceHandler.Update)
+				inv.Delete("/{id}", invoiceHandler.Delete)
+				inv.Post("/{id}/send", invoiceHandler.MarkAsSent)
+				inv.Post("/{id}/mark-paid", invoiceHandler.MarkAsPaid)
+				inv.Post("/{id}/duplicate", invoiceHandler.Duplicate)
+				inv.Post("/{id}/settle", invoiceHandler.SettleProforma)
+				inv.Post("/{id}/credit-note", invoiceHandler.CreateCreditNote)
+				inv.Get("/{id}/pdf", invoiceHandler.DownloadPDF)
+				inv.Get("/{id}/qr", invoiceHandler.QRPayment)
+				inv.Get("/{id}/isdoc", invoiceHandler.ExportISDOC)
+				inv.Post("/export/isdoc", invoiceHandler.ExportISDOCBatch)
 
-		incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc)
-		api.Mount("/income-tax-returns", incomeTaxHandler.Routes())
+				// Invoice document routes.
+				if invDocHandler != nil {
+					inv.Get("/{id}/documents", invDocHandler.ListByInvoice)
+				}
 
-		socialInsuranceHandler := NewSocialInsuranceHandler(socialInsuranceSvc)
-		api.Mount("/social-insurance", socialInsuranceHandler.Routes())
+				// Status history & overdue (conditional).
+				if overdueSvc != nil {
+					statusHistoryHandler := NewStatusHistoryHandler(overdueSvc)
+					inv.Get("/{id}/history", statusHistoryHandler.GetHistory)
+					inv.Post("/check-overdue", statusHistoryHandler.CheckOverdue)
+				}
 
-		healthInsuranceHandler := NewHealthInsuranceHandler(healthInsuranceSvc)
-		api.Mount("/health-insurance", healthInsuranceHandler.Routes())
+				// Payment reminders (conditional).
+				if reminderSvc != nil {
+					reminderHandler := NewReminderHandler(reminderSvc)
+					inv.Post("/{id}/remind", reminderHandler.SendReminder)
+					inv.Get("/{id}/reminders", reminderHandler.ListReminders)
+				}
 
-		taxYearSettingsHandler := NewTaxYearSettingsHandler(taxYearSettingsSvc)
-		api.Mount("/tax-year-settings", taxYearSettingsHandler.Routes())
+				// Send invoice via email (always registered, checks SMTP at
+				// runtime).
+				emailHandler := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender)
+				inv.Post("/{id}/send-email", emailHandler.SendEmail)
+			})
 
-		api.Get("/tax-constants/{year}", handleGetTaxConstants)
+			// Email defaults (frontend pre-population).
+			co.Get("/email/defaults", NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender).GetDefaults)
 
-		taxCreditsHandler := NewTaxCreditsHandler(taxCreditsSvc)
-		api.Mount("/tax-credits", taxCreditsHandler.Routes())
+			// Use Route (not Mount) for /expenses so the import sub-route is
+			// not swallowed by Mount's wildcard. Document routes also live
+			// here since Route captures the entire /expenses/* prefix.
+			co.Route("/expenses", func(exp chi.Router) {
+				exp.Post("/", expenseHandler.Create)
+				exp.Get("/", expenseHandler.List)
+				exp.Post("/review", expenseHandler.MarkTaxReviewed)
+				exp.Post("/unreview", expenseHandler.UnmarkTaxReviewed)
+				exp.Get("/{id}", expenseHandler.GetByID)
+				exp.Put("/{id}", expenseHandler.Update)
+				exp.Delete("/{id}", expenseHandler.Delete)
 
-		taxDeductionsHandler := NewTaxDeductionsHandler(taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc)
-		api.Mount("/tax-deductions", taxDeductionsHandler.Routes())
-		api.Mount("/tax-deduction-documents", taxDeductionsHandler.DocumentRoutes())
+				// Document routes (moved from documentHandler.Routes()).
+				exp.Post("/{id}/documents", documentHandler.Upload)
+				exp.Get("/{id}/documents", documentHandler.ListByExpense)
 
-		if investmentIncomeSvc != nil {
-			investmentHandler := NewInvestmentIncomeHandler(investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc)
-			api.Mount("/investments", investmentHandler.Routes())
-		}
+				if importSvc != nil {
+					importHandler := NewImportHandler(importSvc)
+					exp.Post("/import", importHandler.Import)
+				}
+			})
 
-		fakturoidHandler := NewFakturoidHandler(fakturoidImportSvc)
-		api.Mount("/import/fakturoid", fakturoidHandler.Routes())
+			co.Mount("/expense-categories", categoryHandler.Routes())
 
-		// Dashboard
-		dashboardHandler := NewDashboardHandler(dashboardSvc)
-		api.Get("/dashboard", dashboardHandler.GetDashboard)
+			pdfSettingsHandler := NewPDFSettingsHandler(settingsSvc, invoiceSvc, pdfGen, cfg.DataDir)
+			co.Route("/settings", func(sr chi.Router) {
+				sr.Get("/", settingsHandler.GetAll)
+				sr.Put("/", settingsHandler.Update)
+				sr.Get("/pdf", pdfSettingsHandler.GetPDFSettings)
+				sr.Put("/pdf", pdfSettingsHandler.UpdatePDFSettings)
+				sr.Post("/logo", pdfSettingsHandler.UploadLogo)
+				sr.Get("/logo", pdfSettingsHandler.GetLogo)
+				sr.Delete("/logo", pdfSettingsHandler.DeleteLogo)
+				sr.Get("/pdf-preview", pdfSettingsHandler.PreviewPDF)
+			})
 
-		// Reports
-		reportHandler := NewReportHandler(reportSvc)
-		api.Get("/reports/revenue", reportHandler.Revenue)
-		api.Get("/reports/expenses", reportHandler.Expenses)
-		api.Get("/reports/top-customers", reportHandler.TopCustomers)
-		api.Get("/reports/profit-loss", reportHandler.ProfitLoss)
+			co.Mount("/invoice-sequences", sequenceHandler.Routes())
+			co.Mount("/", documentHandler.Routes())
+			if invDocHandler != nil {
+				co.Get("/invoice-documents/{id}", invDocHandler.GetByID)
+				co.Get("/invoice-documents/{id}/download", invDocHandler.Download)
+				co.Delete("/invoice-documents/{id}", invDocHandler.Delete)
+			}
+			co.Mount("/recurring-invoices", recurringInvoiceHandler.Routes())
+			co.Mount("/recurring-expenses", recurringExpenseHandler.Routes())
 
-		// Tax calendar
-		taxCalendarHandler := NewTaxCalendarHandler(taxCalendarSvc)
-		api.Get("/reports/tax-calendar", taxCalendarHandler.GetCalendar)
+			if ocrSvc != nil {
+				ocrHandler := NewOCRHandler(ocrSvc)
+				co.Post("/documents/{id}/ocr", ocrHandler.ProcessDocument)
+			}
 
-		// CSV export
-		exportHandler := NewExportHandler(invoiceSvc, expenseSvc)
-		api.Get("/export/invoices", exportHandler.ExportInvoices)
-		api.Get("/export/expenses", exportHandler.ExportExpenses)
+			vatReturnHandler := NewVATReturnHandler(vatReturnSvc)
+			co.Mount("/vat-returns", vatReturnHandler.Routes())
 
-		// Audit log
-		auditLogHandler := NewAuditLogHandler(auditSvc)
-		api.Mount("/audit-log", auditLogHandler.Routes())
+			vatControlHandler := NewVATControlStatementHandler(vatControlSvc, settingsSvc)
+			co.Mount("/vat-control-statements", vatControlHandler.Routes())
 
-		// Backups
-		if backupSvc != nil {
-			backupHandler := NewBackupHandler(backupSvc)
-			api.Mount("/backups", backupHandler.Routes())
-		}
+			viesHandler := NewVIESHandler(viesSvc, settingsSvc)
+			co.Mount("/vies-summaries", viesHandler.Routes())
+
+			incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc)
+			co.Mount("/income-tax-returns", incomeTaxHandler.Routes())
+
+			socialInsuranceHandler := NewSocialInsuranceHandler(socialInsuranceSvc)
+			co.Mount("/social-insurance", socialInsuranceHandler.Routes())
+
+			healthInsuranceHandler := NewHealthInsuranceHandler(healthInsuranceSvc)
+			co.Mount("/health-insurance", healthInsuranceHandler.Routes())
+
+			taxYearSettingsHandler := NewTaxYearSettingsHandler(taxYearSettingsSvc)
+			co.Mount("/tax-year-settings", taxYearSettingsHandler.Routes())
+
+			co.Get("/tax-constants/{year}", handleGetTaxConstants)
+
+			taxCreditsHandler := NewTaxCreditsHandler(taxCreditsSvc)
+			co.Mount("/tax-credits", taxCreditsHandler.Routes())
+
+			taxDeductionsHandler := NewTaxDeductionsHandler(taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc)
+			co.Mount("/tax-deductions", taxDeductionsHandler.Routes())
+			co.Mount("/tax-deduction-documents", taxDeductionsHandler.DocumentRoutes())
+
+			if investmentIncomeSvc != nil {
+				investmentHandler := NewInvestmentIncomeHandler(investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc)
+				co.Mount("/investments", investmentHandler.Routes())
+			}
+
+			fakturoidHandler := NewFakturoidHandler(fakturoidImportSvc)
+			co.Mount("/import/fakturoid", fakturoidHandler.Routes())
+
+			// Dashboard.
+			dashboardHandler := NewDashboardHandler(dashboardSvc)
+			co.Get("/dashboard", dashboardHandler.GetDashboard)
+
+			// Reports.
+			reportHandler := NewReportHandler(reportSvc)
+			co.Get("/reports/revenue", reportHandler.Revenue)
+			co.Get("/reports/expenses", reportHandler.Expenses)
+			co.Get("/reports/top-customers", reportHandler.TopCustomers)
+			co.Get("/reports/profit-loss", reportHandler.ProfitLoss)
+
+			// Tax calendar.
+			taxCalendarHandler := NewTaxCalendarHandler(taxCalendarSvc)
+			co.Get("/reports/tax-calendar", taxCalendarHandler.GetCalendar)
+
+			// CSV export.
+			exportHandler := NewExportHandler(invoiceSvc, expenseSvc)
+			co.Get("/export/invoices", exportHandler.ExportInvoices)
+			co.Get("/export/expenses", exportHandler.ExportExpenses)
+		})
 	})
 
 	// Health check endpoint.
@@ -315,11 +356,15 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 
 // adaptiveTimeoutMiddleware applies a longer timeout for long-running import
 // endpoints and the default 30s timeout for everything else.
+//
+// The Fakturoid import is now per-company at
+// /api/v1/companies/{companyID}/import/fakturoid; matching is done with
+// strings.Contains because the company-id segment is a path variable.
 func adaptiveTimeoutMiddleware(next http.Handler) http.Handler {
 	longTimeout := middleware.Timeout(10 * time.Minute)
 	shortTimeout := middleware.Timeout(30 * time.Second)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/v1/import/fakturoid") {
+		if strings.Contains(r.URL.Path, "/import/fakturoid") {
 			longTimeout(next).ServeHTTP(w, r)
 		} else {
 			shortTimeout(next).ServeHTTP(w, r)

@@ -43,6 +43,8 @@ coverage.html
 logs
 tmp
 config.dev.toml
+# Live deployment config (must NEVER be baked into the image — mounted at runtime)
+/config.toml
 .env
 .env.*
 

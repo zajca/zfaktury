@@ -1,0 +1,69 @@
+# ZFaktury runtime configuration template.
+#
+# Copy this file to `config.toml` at the repository root and fill in the
+# sections you actually use. `config.toml` is gitignored and dockerignored,
+# so the secrets it contains never enter the image or version control.
+#
+# Apply changes by restarting the container:
+#     docker restart zfaktury
+
+# --- HTTP server -------------------------------------------------------------
+# When running in a container the CMD already passes --host 0.0.0.0, so this
+# section can stay commented. Uncomment only to override.
+# [server]
+# host = "0.0.0.0"
+# port = 8080
+
+# --- Database (defaults are fine) -------------------------------------------
+# [database]
+# path = ""                          # Custom SQLite path (default: <data_dir>/zfaktury.db)
+# journal_mode = "wal"               # wal (default) or delete
+
+# --- Logging ----------------------------------------------------------------
+# [log]
+# path = ""                          # Empty = stderr only
+# level = "info"                     # debug, info, warn, error
+
+# --- Email sending (invoices, reminders) ------------------------------------
+# Gmail/M365 require an "app password", not your account password.
+# [smtp]
+# host = "smtp.seznam.cz"            # or smtp.gmail.com, smtp.office365.com
+# port = 587                         # 587 STARTTLS (usual) or 465 implicit TLS
+# username = "you@example.com"
+# password = "app-password-here"
+# from     = "you@example.com"
+
+# --- FIO Bank API import (Czech) --------------------------------------------
+# Generate the token in FIO Internetbanking -> Nastaveni -> API.
+# [fio]
+# api_token = ""
+
+# --- Backups ----------------------------------------------------------------
+# [backup]
+# destination     = ""               # Local fallback dir (default: <data_dir>/backups)
+# schedule        = "0 2 * * *"      # Cron expression; empty disables scheduled backups
+# retention_count = 14               # Keep last N; 0 = keep all
+#
+# Off-site copy to S3-compatible storage (AWS S3, MinIO, Backblaze B2, Cloudflare R2).
+# [backup.s3]
+# endpoint   = "s3.eu-central-1.amazonaws.com"
+# region     = "eu-central-1"
+# bucket     = ""
+# access_key = ""
+# secret_key = ""
+# use_ssl    = true
+
+# --- OCR for expense document extraction ------------------------------------
+# Pick ONE provider. Leave api_key empty to disable OCR entirely.
+#
+# Defaults per provider:
+#   openai      -> gpt-4o
+#   claude      -> claude-sonnet-4-20250514
+#   gemini      -> gemini-2.0-flash
+#   openrouter  -> google/gemini-2.0-flash-001
+#   mistral     -> pixtral-large-latest
+# [ocr]
+# provider = "openai"                # openai | openrouter | gemini | mistral | claude
+# api_key  = ""
+# model    = ""                      # Optional override of the per-provider default
+# base_url = ""                      # Optional, for proxies / self-hosted endpoints

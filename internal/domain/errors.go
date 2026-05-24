@@ -19,4 +19,11 @@ var (
 	// Reminder errors
 	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")
 	ErrNoCustomerEmail   = errors.New("customer has no email address")
+
+	// ErrLastCompany indicates an attempt to soft-delete the only remaining company.
+	ErrLastCompany = errors.New("cannot delete the last company")
+
+	// ErrInUse indicates an attempt to soft-delete an entity (e.g. a company)
+	// that still has non-deleted child records.
+	ErrInUse = errors.New("cannot delete: still in use")
 )

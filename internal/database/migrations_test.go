@@ -163,6 +163,75 @@ func TestMultiCompanyMigration_BackfillsContactsToDefaultCompany(t *testing.T) {
 	}
 }
 
+func TestMultiCompanyMigration_BackfillsLeafEntitiesToDefaultCompany(t *testing.T) {
+	db := openMigratedDB(t, true)
+	// Tables the v024 seed populates with at least one row.
+	tables := []string{"invoices", "invoice_items", "expenses"}
+	for _, tbl := range tables {
+		t.Run(tbl, func(t *testing.T) {
+			var n, bad int
+			if err := db.QueryRow(`SELECT COUNT(*) FROM ` + tbl).Scan(&n); err != nil {
+				t.Fatalf("count: %v", err)
+			}
+			if n == 0 {
+				t.Skipf("seed populates 0 rows in %s", tbl)
+			}
+			if err := db.QueryRow(`SELECT COUNT(*) FROM ` + tbl + ` WHERE company_id != 1`).Scan(&bad); err != nil {
+				t.Fatalf("count bad: %v", err)
+			}
+			if bad != 0 {
+				t.Errorf("%s: %d rows with company_id != 1", tbl, bad)
+			}
+		})
+	}
+}
+
+func TestMultiCompanyMigration_AllPerCompanyTablesHaveColumn(t *testing.T) {
+	db := openMigratedDB(t, true)
+	tables := []string{
+		"contacts", "expense_categories",
+		"invoices", "invoice_items", "invoice_status_history", "invoice_documents",
+		"recurring_invoices", "recurring_invoice_items",
+		"expenses", "expense_items", "expense_documents",
+		"recurring_expenses",
+		"invoice_sequences",
+		"payment_reminders",
+		"tax_year_settings", "tax_prepayments",
+		"tax_spouse_credits", "tax_child_credits", "tax_personal_credits",
+		"tax_deductions", "tax_deduction_documents",
+		"vat_returns", "vat_return_invoices", "vat_return_expenses",
+		"vat_control_statements", "vat_control_statement_lines",
+		"vies_summaries", "vies_summary_lines",
+		"income_tax_returns", "social_insurance_overviews", "health_insurance_overviews",
+		"investment_documents", "capital_income_entries", "security_transactions",
+		"fakturoid_import_log",
+		"settings",
+	}
+	for _, tbl := range tables {
+		t.Run(tbl, func(t *testing.T) {
+			rows, err := db.Query(`PRAGMA table_info(` + tbl + `)`)
+			if err != nil {
+				t.Fatalf("pragma: %v", err)
+			}
+			defer rows.Close()
+			has := false
+			for rows.Next() {
+				var cid int
+				var name, typ string
+				var notnull, pk int
+				var dflt sql.NullString
+				_ = rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk)
+				if name == "company_id" {
+					has = true
+				}
+			}
+			if !has {
+				t.Errorf("%s: missing company_id column", tbl)
+			}
+		})
+	}
+}
+
 // TestMultiCompanyMigrationProductionSized runs migration 025 against
 // a synthetic ~5k-invoice fixture and asserts completion under 30s.
 // Gated by the ZFAKTURY_RUN_BIG_MIGRATION_TEST environment variable

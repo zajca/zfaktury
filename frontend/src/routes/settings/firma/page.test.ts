@@ -15,6 +15,7 @@ function jsonResponse(data: unknown, status = 200) {
 
 const sampleSettings = {
 	company_name: 'Test OSVC',
+	title: 'Ing.',
 	first_name: 'Jan',
 	last_name: 'Novak',
 	ico: '12345678',
@@ -26,13 +27,16 @@ const sampleSettings = {
 	zip: '10000',
 	email: 'test@example.com',
 	phone: '+420123456789',
+	databox_id: '7rgmm99',
 	bank_account: '123456789',
 	bank_code: '0100',
 	iban: 'CZ1234567890',
 	swift: 'KOMBCZPP',
 	c_ufo: '464',
 	c_pracufo: '3305',
-	c_okec: '582900'
+	c_okec: '582900',
+	cssz_code: '775',
+	cssz_variable_symbol: '75660248'
 };
 
 beforeEach(() => {
@@ -64,6 +68,7 @@ describe('Settings Firma Page', () => {
 		});
 		expect(document.querySelector('#first_name')).toBeInTheDocument();
 		expect(document.querySelector('#last_name')).toBeInTheDocument();
+		expect(document.querySelector('#title')).toBeInTheDocument();
 		expect(document.querySelector('#ico')).toBeInTheDocument();
 		expect(document.querySelector('#dic')).toBeInTheDocument();
 		expect(document.querySelector('#vat_registered')).toBeInTheDocument();
@@ -73,6 +78,7 @@ describe('Settings Firma Page', () => {
 		expect(document.querySelector('#zip')).toBeInTheDocument();
 		expect(document.querySelector('#email')).toBeInTheDocument();
 		expect(document.querySelector('#phone')).toBeInTheDocument();
+		expect(document.querySelector('#databox_id')).toBeInTheDocument();
 		expect(document.querySelector('#bank_account')).toBeInTheDocument();
 		expect(document.querySelector('#bank_code')).toBeInTheDocument();
 		expect(document.querySelector('#iban')).toBeInTheDocument();
@@ -80,6 +86,8 @@ describe('Settings Firma Page', () => {
 		expect(document.querySelector('#c_ufo')).toBeInTheDocument();
 		expect(document.querySelector('#c_pracufo')).toBeInTheDocument();
 		expect(document.querySelector('#c_okec')).toBeInTheDocument();
+		expect(document.querySelector('#cssz_code')).toBeInTheDocument();
+		expect(document.querySelector('#cssz_variable_symbol')).toBeInTheDocument();
 	});
 
 	it('shows settings values in inputs', async () => {

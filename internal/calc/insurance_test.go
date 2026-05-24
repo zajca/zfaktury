@@ -260,3 +260,30 @@ func TestCalculateInsuranceMonthlyRounding(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateInsuranceSocialAssessmentBase55Percent(t *testing.T) {
+	got := CalculateInsurance(InsuranceInput{
+		Revenue:                domain.NewAmount(1_550_848, 0),
+		UsedExpenses:           domain.NewAmount(930_508, 80),
+		MinMonthlyBase:         domain.NewAmount(16_295, 0),
+		AssessmentBasePermille: 550,
+		RatePermille:           292,
+		Prepayments:            domain.NewAmount(86_991, 0),
+	})
+
+	if got.TaxBase != domain.NewAmount(620_339, 20) {
+		t.Errorf("TaxBase = %s, want 620339.20", got.TaxBase)
+	}
+	if got.AssessmentBase != domain.NewAmount(341_187, 0) {
+		t.Errorf("AssessmentBase = %s, want 341187.00", got.AssessmentBase)
+	}
+	if got.FinalAssessmentBase != domain.NewAmount(341_187, 0) {
+		t.Errorf("FinalAssessmentBase = %s, want 341187.00", got.FinalAssessmentBase)
+	}
+	if got.TotalInsurance != domain.NewAmount(99_627, 0) {
+		t.Errorf("TotalInsurance = %s, want 99627.00", got.TotalInsurance)
+	}
+	if got.NewMonthlyPrepay != domain.NewAmount(8_303, 0) {
+		t.Errorf("NewMonthlyPrepay = %s, want 8303.00", got.NewMonthlyPrepay)
+	}
+}

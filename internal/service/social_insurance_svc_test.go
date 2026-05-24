@@ -332,8 +332,8 @@ func TestSocialInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 		t.Errorf("TaxBase = %d, want %d", result.TaxBase, expectedTaxBase)
 	}
 
-	// AssessmentBase = TaxBase / 2.
-	expectedAssessment := domain.Amount(int64(expectedTaxBase) / 2)
+	// CSSZ 2025 assessment base = 55% of tax base.
+	expectedAssessment := domain.Amount(int64(expectedTaxBase) * 550 / 1000)
 	if result.AssessmentBase != expectedAssessment {
 		t.Errorf("AssessmentBase = %d, want %d", result.AssessmentBase, expectedAssessment)
 	}
@@ -380,8 +380,8 @@ func TestSocialInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 		t.Errorf("FinalAssessmentBase = %d, want %d (should use minimum)", result.FinalAssessmentBase, expectedMinBase)
 	}
 
-	// TotalInsurance = minBase * rate / 1000.
-	expectedInsurance := domain.Amount(int64(expectedMinBase) * int64(constants.SocialRate) / 1000)
+	// TotalInsurance = minBase * rate / 1000, rounded up to whole CZK for CSSZ.
+	expectedInsurance := domain.Amount(((int64(expectedMinBase)*int64(constants.SocialRate)/1000 + 99) / 100) * 100)
 	if result.TotalInsurance != expectedInsurance {
 		t.Errorf("TotalInsurance = %d, want %d", result.TotalInsurance, expectedInsurance)
 	}

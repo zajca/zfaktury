@@ -7,8 +7,11 @@ type InsuranceInput struct {
 	Revenue        domain.Amount
 	UsedExpenses   domain.Amount // already resolved (flat-rate or actual)
 	MinMonthlyBase domain.Amount // e.g. constants.SocialMinMonthly or HealthMinMonthly
-	RatePermille   int           // 292 for social, 135 for health
-	Prepayments    domain.Amount
+	// AssessmentBasePermille is the share of tax base used as the assessment
+	// base. Zero keeps the historical/default 50% behavior.
+	AssessmentBasePermille int
+	RatePermille           int // 292 for social, 135 for health
+	Prepayments            domain.Amount
 }
 
 // InsuranceResult holds the computed insurance values.
@@ -30,8 +33,16 @@ func CalculateInsurance(input InsuranceInput) InsuranceResult {
 		taxBase = 0
 	}
 
-	// assessmentBase = taxBase / 2 (integer division in halere).
-	assessmentBase := taxBase / 2
+	assessmentBasePermille := input.AssessmentBasePermille
+	if assessmentBasePermille == 0 {
+		assessmentBasePermille = 500
+	}
+
+	assessmentBase := taxBase * int64(assessmentBasePermille) / 1000
+	if input.AssessmentBasePermille != 0 {
+		// CSSZ expects the computed assessment base rounded up to whole CZK.
+		assessmentBase = ceilToWholeCZK(assessmentBase)
+	}
 
 	// minAssessmentBase = minMonthlyBase * 12.
 	minAssessmentBase := int64(input.MinMonthlyBase) * 12
@@ -42,8 +53,11 @@ func CalculateInsurance(input InsuranceInput) InsuranceResult {
 		finalBase = minAssessmentBase
 	}
 
-	// totalInsurance = finalBase * ratePermille / 1000.
 	totalInsurance := finalBase * int64(input.RatePermille) / 1000
+	if input.AssessmentBasePermille != 0 {
+		// CSSZ form line D32.1 is rounded up to whole CZK.
+		totalInsurance = ceilToWholeCZK(totalInsurance)
+	}
 
 	// difference = totalInsurance - prepayments.
 	difference := totalInsurance - int64(input.Prepayments)
@@ -64,6 +78,16 @@ func CalculateInsurance(input InsuranceInput) InsuranceResult {
 		Difference:          domain.Amount(difference),
 		NewMonthlyPrepay:    domain.Amount(roundedUpCZK),
 	}
+}
+
+func ceilToWholeCZK(halere int64) int64 {
+	if halere <= 0 {
+		return halere
+	}
+	if halere%100 == 0 {
+		return halere
+	}
+	return ((halere / 100) + 1) * 100
 }
 
 // ResolveUsedExpenses determines the expenses to use in tax calculations.

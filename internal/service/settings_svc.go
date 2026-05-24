@@ -36,11 +36,14 @@ const (
 	SettingHouseNumber = "house_number"
 	SettingBirthNumber = "birth_number"
 	SettingBirthDate   = "birth_date"
+	SettingTitle       = "title"
+	SettingDataBoxID   = "databox_id"
 
 	// Office codes (global, rarely change).
 	SettingHealthInsCode    = "health_insurance_code"
 	SettingFinancniUradCode = "financni_urad_code"
 	SettingCSSZCode         = "cssz_code"
+	SettingCSSZVariableSym  = "cssz_variable_symbol"
 	SettingUFOCode          = "c_ufo"
 	SettingPracUFO          = "c_pracufo"
 	SettingOKEC             = "c_okec"
@@ -228,9 +231,12 @@ var knownKeys = map[string]bool{
 	SettingHouseNumber:      true,
 	SettingBirthNumber:      true,
 	SettingBirthDate:        true,
+	SettingTitle:            true,
+	SettingDataBoxID:        true,
 	SettingHealthInsCode:    true,
 	SettingFinancniUradCode: true,
 	SettingCSSZCode:         true,
+	SettingCSSZVariableSym:  true,
 	SettingUFOCode:          true,
 	SettingPracUFO:          true,
 	SettingOKEC:             true,

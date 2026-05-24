@@ -232,10 +232,93 @@ DROP TABLE recurring_invoice_items__old;
 CREATE INDEX idx_recurring_invoice_items_company ON recurring_invoice_items(company_id);
 CREATE INDEX idx_recurring_invoice_items_parent  ON recurring_invoice_items(recurring_invoice_id);
 
+-- Partition: expenses (parent).
+-- Adding the column is enough on the parent side; the UNIQUE(company_id, id)
+-- index makes the parent a valid composite-FK target for the rebuilt child.
+ALTER TABLE expenses ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id);
+CREATE INDEX        idx_expenses_company    ON expenses(company_id);
+CREATE UNIQUE INDEX idx_expenses_company_id ON expenses(company_id, id);
+
+-- Rebuild: expense_items gains company_id and a composite FK
+-- (company_id, expense_id) -> expenses(company_id, id) so an item can never
+-- reference an expense owned by a different company. ON DELETE CASCADE keeps
+-- the original deletion semantics from migration 023.
+-- Uses the CREATE __new + DROP original + RENAME pattern (mirrored from the
+-- invoice_sequences rebuild above) to avoid silently rewriting FK references
+-- in any future dependent table during the table rename.
+CREATE TABLE expense_items__new (
+	id               INTEGER PRIMARY KEY AUTOINCREMENT,
+	company_id       INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id),
+	expense_id       INTEGER NOT NULL,
+	description      TEXT    NOT NULL DEFAULT '',
+	quantity         INTEGER NOT NULL DEFAULT 100,
+	unit             TEXT    NOT NULL DEFAULT 'ks',
+	unit_price       INTEGER NOT NULL DEFAULT 0,
+	vat_rate_percent INTEGER NOT NULL DEFAULT 0,
+	vat_amount       INTEGER NOT NULL DEFAULT 0,
+	total_amount     INTEGER NOT NULL DEFAULT 0,
+	sort_order       INTEGER NOT NULL DEFAULT 0,
+	created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+	FOREIGN KEY (company_id, expense_id) REFERENCES expenses(company_id, id) ON DELETE CASCADE
+);
+INSERT INTO expense_items__new (
+	id, company_id, expense_id, description, quantity, unit, unit_price,
+	vat_rate_percent, vat_amount, total_amount, sort_order, created_at
+)
+SELECT
+	id, 1, expense_id, description, quantity, unit, unit_price,
+	vat_rate_percent, vat_amount, total_amount, sort_order, created_at
+FROM expense_items;
+DROP TABLE expense_items;
+ALTER TABLE expense_items__new RENAME TO expense_items;
+CREATE INDEX idx_expense_items_expense_id ON expense_items(expense_id);
+CREATE INDEX idx_expense_items_company    ON expense_items(company_id);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+
+-- Reverse: expense graph composite FK on child, then parent column drop.
+-- The child must be rebuilt first so the composite FK referencing the parent's
+-- (company_id, id) is gone before we drop company_id from expenses.
+
+-- Rebuild expense_items back to single-column FK ON DELETE CASCADE.
+-- Mirror of Up: CREATE __new + DROP original + RENAME so we never rename the
+-- live table out of the way (would silently rewrite FK references in any
+-- future dependent table).
+DROP INDEX IF EXISTS idx_expense_items_company;
+DROP INDEX IF EXISTS idx_expense_items_expense_id;
+CREATE TABLE expense_items__new (
+	id               INTEGER PRIMARY KEY AUTOINCREMENT,
+	expense_id       INTEGER NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+	description      TEXT    NOT NULL DEFAULT '',
+	quantity         INTEGER NOT NULL DEFAULT 100,
+	unit             TEXT    NOT NULL DEFAULT 'ks',
+	unit_price       INTEGER NOT NULL DEFAULT 0,
+	vat_rate_percent INTEGER NOT NULL DEFAULT 0,
+	vat_amount       INTEGER NOT NULL DEFAULT 0,
+	total_amount     INTEGER NOT NULL DEFAULT 0,
+	sort_order       INTEGER NOT NULL DEFAULT 0,
+	created_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+INSERT INTO expense_items__new (
+	id, expense_id, description, quantity, unit, unit_price,
+	vat_rate_percent, vat_amount, total_amount, sort_order, created_at
+)
+SELECT
+	id, expense_id, description, quantity, unit, unit_price,
+	vat_rate_percent, vat_amount, total_amount, sort_order, created_at
+FROM expense_items
+WHERE company_id = 1;
+DROP TABLE expense_items;
+ALTER TABLE expense_items__new RENAME TO expense_items;
+CREATE INDEX idx_expense_items_expense_id ON expense_items(expense_id);
+
+-- Reverse: expenses parent column add.
+DROP INDEX IF EXISTS idx_expenses_company_id;
+DROP INDEX IF EXISTS idx_expenses_company;
+ALTER TABLE expenses DROP COLUMN company_id;
 
 -- Reverse: invoice graph composite FK on children, then parent column drops.
 -- Children must be rebuilt first so the composite FK referencing the parent's

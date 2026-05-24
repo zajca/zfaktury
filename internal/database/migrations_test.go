@@ -269,6 +269,32 @@ func TestMultiCompanyMigration_CompositeFK_RejectsCrossCompanyInvoiceItem(t *tes
 	}
 }
 
+func TestMultiCompanyMigration_CompositeFK_RejectsCrossCompanyExpenseItem(t *testing.T) {
+	db := openMigratedDB(t, true)
+
+	// Create a second company and an expense owned by it.
+	_, err := db.Exec(`INSERT INTO companies (id, name, legal_name, ico, created_at, updated_at)
+		VALUES (2, 'B', 'B', '99999999', strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`)
+	if err != nil {
+		t.Fatalf("insert company: %v", err)
+	}
+	// Use the actual expenses schema columns.
+	res, err := db.Exec(`INSERT INTO expenses (vendor_id, expense_number, company_id, issue_date, amount, description, created_at, updated_at)
+		VALUES (1, 'AL/2026/X', 2, '2026-04-01', 1000, 'cross-company test', strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`)
+	if err != nil {
+		t.Fatalf("insert expense in company 2: %v", err)
+	}
+	expID, _ := res.LastInsertId()
+
+	// Cross-company expense_items should be rejected by composite FK.
+	// Expense belongs to company 2; item claims company 1.
+	_, err = db.Exec(`INSERT INTO expense_items (expense_id, company_id, description, quantity, unit_price, total_amount)
+		VALUES (?, 1, 'cross-company leak', 1, 100, 100)`, expID)
+	if err == nil {
+		t.Error("expected composite FK violation; expense belongs to company 2 but item names company 1")
+	}
+}
+
 func TestMultiCompanyMigration_InvoiceSequencesUniquePerCompany(t *testing.T) {
 	db := openMigratedDB(t, true)
 

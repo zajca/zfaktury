@@ -263,15 +263,20 @@ func SeedExpense(t *testing.T, db *sql.DB, e *domain.Expense) *domain.Expense {
 	e.CreatedAt = now
 	e.UpdatedAt = now
 
+	// Default to company id=1 (the company seeded by NewTestDB). A future task
+	// may widen this to accept an explicit companyID once multi-company tests
+	// arrive; for now every fixture expense lives in the default company.
 	result, err := db.ExecContext(context.Background(), `
 		INSERT INTO expenses (
+			company_id,
 			vendor_id, expense_number, category, description,
 			issue_date, amount, currency_code, exchange_rate,
 			vat_rate_percent, vat_amount,
 			is_tax_deductible, business_percent, payment_method,
 			document_path, notes,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		1,
 		e.VendorID, e.ExpenseNumber, e.Category, e.Description,
 		e.IssueDate.Format("2006-01-02"), e.Amount, e.CurrencyCode, e.ExchangeRate,
 		e.VATRatePercent, e.VATAmount,

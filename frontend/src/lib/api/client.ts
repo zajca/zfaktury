@@ -2,6 +2,57 @@
 
 // --- Domain Types ---
 
+// Company is a tenant in the multi-company tier. Lives at /api/v1/companies
+// (global registry — NOT behind the per-company URL prefix).
+export interface Company {
+	id: number;
+	name: string;
+	legal_name: string;
+	ico: string;
+	dic?: string;
+	vat_registered: boolean;
+	street?: string;
+	house_number?: string;
+	city?: string;
+	zip?: string;
+	email?: string;
+	phone?: string;
+	first_name?: string;
+	last_name?: string;
+	bank_account?: string;
+	bank_code?: string;
+	iban?: string;
+	swift?: string;
+	logo_path?: string;
+	accent_color?: string;
+	created_at: string;
+	updated_at: string;
+}
+
+// NewCompany is the create/update payload — same shape as Company minus the
+// server-assigned id and timestamps.
+export interface NewCompany {
+	name: string;
+	legal_name: string;
+	ico: string;
+	dic?: string;
+	vat_registered: boolean;
+	street?: string;
+	house_number?: string;
+	city?: string;
+	zip?: string;
+	email?: string;
+	phone?: string;
+	first_name?: string;
+	last_name?: string;
+	bank_account?: string;
+	bank_code?: string;
+	iban?: string;
+	swift?: string;
+	logo_path?: string;
+	accent_color?: string;
+}
+
 export interface Contact {
 	id: number;
 	type: 'company' | 'individual';
@@ -344,6 +395,43 @@ export function put<T>(path: string, body: unknown): Promise<T> {
 export function del<T>(path: string): Promise<T> {
 	return request<T>(path, { method: 'DELETE' });
 }
+
+// --- Companies API ---
+
+// Global tier — these URLs build /api/v1/companies directly (no /companies/{id}
+// prefix). Used to manage the registry of companies themselves.
+export const companiesApi = {
+	list() {
+		return get<Company[]>('/companies');
+	},
+
+	getById(id: number) {
+		return get<Company>(`/companies/${id}`);
+	},
+
+	create(data: NewCompany) {
+		return post<Company>('/companies', data);
+	},
+
+	update(id: number, data: NewCompany) {
+		// Server returns 204 No Content; request<T> handles that as undefined.
+		return put<void>(`/companies/${id}`, { ...data, id });
+	},
+
+	// delete() surfaces the server's 409 (ErrLastCompany / ErrInUse) as a thrown
+	// Error carrying the server-provided message text — UI shows it verbatim
+	// ("cannot delete: still in use" / "cannot delete the last company").
+	async delete(id: number): Promise<void> {
+		try {
+			await del<void>(`/companies/${id}`);
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 409) {
+				throw new Error(err.message || 'cannot delete: in use or last company');
+			}
+			throw err;
+		}
+	}
+};
 
 // --- Contacts API ---
 

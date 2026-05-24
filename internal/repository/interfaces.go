@@ -334,12 +334,12 @@ type TaxDeductionDocumentRepo interface {
 	UpdateExtraction(ctx context.Context, id int64, amount domain.Amount, confidence float64) error
 }
 
-// CompanyRepository persists Company aggregates.
+// CompanyRepo persists Company aggregates.
 //
 // All other per-company repositories receive companyID as an explicit
-// parameter and filter by it; CompanyRepository itself is global —
+// parameter and filter by it; CompanyRepo itself is global —
 // it knows about all companies regardless of which is currently active.
-type CompanyRepository interface {
+type CompanyRepo interface {
 	Create(ctx context.Context, c domain.Company) (int64, error)
 	GetByID(ctx context.Context, id int64) (domain.Company, error)
 	List(ctx context.Context) ([]domain.Company, error)

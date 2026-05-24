@@ -10,18 +10,18 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
-// CompanyRepositoryImpl persists Company aggregates.
+// CompanyRepository persists Company aggregates.
 //
-// Unlike per-company repositories, CompanyRepositoryImpl operates without
+// Unlike per-company repositories, CompanyRepository operates without
 // a companyID filter — it knows about all companies regardless of which
 // is currently active.
-type CompanyRepositoryImpl struct {
+type CompanyRepository struct {
 	db *sql.DB
 }
 
-// NewCompanyRepository constructs a CompanyRepositoryImpl backed by the given DB.
-func NewCompanyRepository(db *sql.DB) *CompanyRepositoryImpl {
-	return &CompanyRepositoryImpl{db: db}
+// NewCompanyRepository constructs a CompanyRepository backed by the given DB.
+func NewCompanyRepository(db *sql.DB) *CompanyRepository {
+	return &CompanyRepository{db: db}
 }
 
 const companyColumns = `id, name, legal_name, ico, dic, vat_registered,
@@ -77,7 +77,7 @@ func scanCompany(row interface{ Scan(...any) error }) (domain.Company, error) {
 }
 
 // Create inserts a new company and returns its generated ID.
-func (r *CompanyRepositoryImpl) Create(ctx context.Context, c domain.Company) (int64, error) {
+func (r *CompanyRepository) Create(ctx context.Context, c domain.Company) (int64, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	vatInt := 0
 	if c.VATRegistered {
@@ -107,7 +107,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 }
 
 // GetByID fetches an active (non-soft-deleted) company by primary key.
-func (r *CompanyRepositoryImpl) GetByID(ctx context.Context, id int64) (domain.Company, error) {
+func (r *CompanyRepository) GetByID(ctx context.Context, id int64) (domain.Company, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT `+companyColumns+` FROM companies WHERE id = ? AND deleted_at IS NULL`, id)
 	c, err := scanCompany(row)
@@ -121,7 +121,7 @@ func (r *CompanyRepositoryImpl) GetByID(ctx context.Context, id int64) (domain.C
 }
 
 // List returns all active companies ordered by ID.
-func (r *CompanyRepositoryImpl) List(ctx context.Context) ([]domain.Company, error) {
+func (r *CompanyRepository) List(ctx context.Context) ([]domain.Company, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT `+companyColumns+` FROM companies WHERE deleted_at IS NULL ORDER BY id`)
 	if err != nil {
@@ -141,7 +141,7 @@ func (r *CompanyRepositoryImpl) List(ctx context.Context) ([]domain.Company, err
 }
 
 // Update replaces the mutable fields of an existing company.
-func (r *CompanyRepositoryImpl) Update(ctx context.Context, c domain.Company) error {
+func (r *CompanyRepository) Update(ctx context.Context, c domain.Company) error {
 	vatInt := 0
 	if c.VATRegistered {
 		vatInt = 1
@@ -176,7 +176,7 @@ WHERE id = ? AND deleted_at IS NULL`,
 }
 
 // SoftDelete marks a company as deleted by setting deleted_at.
-func (r *CompanyRepositoryImpl) SoftDelete(ctx context.Context, id int64) error {
+func (r *CompanyRepository) SoftDelete(ctx context.Context, id int64) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE companies SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
@@ -193,7 +193,7 @@ func (r *CompanyRepositoryImpl) SoftDelete(ctx context.Context, id int64) error 
 }
 
 // CountActive returns the number of non-soft-deleted companies.
-func (r *CompanyRepositoryImpl) CountActive(ctx context.Context) (int, error) {
+func (r *CompanyRepository) CountActive(ctx context.Context) (int, error) {
 	var n int
 	err := r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM companies WHERE deleted_at IS NULL`).Scan(&n)

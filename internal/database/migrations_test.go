@@ -242,3 +242,35 @@ func TestMultiCompanyMigrationProductionSized(t *testing.T) {
 	}
 	t.Skip("populated in Phase 2 task 15")
 }
+
+func TestMultiCompanyMigration_InvoiceSequencesUniquePerCompany(t *testing.T) {
+	db := openMigratedDB(t, true)
+
+	// The v024 seed put two sequences in the default company; both should still exist.
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM invoice_sequences WHERE company_id = 1`).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("seeded sequences = %d, want 2", n)
+	}
+
+	// Insert a second company so we can test the new uniqueness rule.
+	if _, err := db.Exec(`INSERT INTO companies (id, name, legal_name, ico, created_at, updated_at)
+		VALUES (2, 'B', 'B', '99999999', strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`); err != nil {
+		t.Fatalf("insert company 2: %v", err)
+	}
+
+	// (company_id=2, prefix='FV', year=2026) should be allowed — partitioned by company.
+	if _, err := db.Exec(`INSERT INTO invoice_sequences (company_id, prefix, next_number, year, format_pattern)
+		VALUES (2, 'FV', 1, 2026, '{prefix}{year}{number:04d}')`); err != nil {
+		t.Errorf("company-partitioned sequence rejected: %v", err)
+	}
+
+	// A duplicate (company_id, prefix, year) must still fail.
+	_, err := db.Exec(`INSERT INTO invoice_sequences (company_id, prefix, next_number, year, format_pattern)
+		VALUES (1, 'FV', 99, 2026, 'x')`)
+	if err == nil {
+		t.Error("expected UNIQUE violation on duplicate (1, FV, 2026)")
+	}
+}

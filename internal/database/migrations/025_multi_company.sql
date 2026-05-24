@@ -131,6 +131,32 @@ CREATE INDEX idx_capital_income_entries_company ON capital_income_entries(compan
 ALTER TABLE security_transactions ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id);
 CREATE INDEX idx_security_transactions_company ON security_transactions(company_id);
 
+-- Rebuild: invoice_sequences gains company_id in its UNIQUE constraint.
+-- SQLite cannot alter a UNIQUE constraint in place, so we rename → recreate → copy → drop.
+ALTER TABLE invoice_sequences RENAME TO invoice_sequences__old;
+
+CREATE TABLE invoice_sequences (
+	id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	company_id     INTEGER NOT NULL REFERENCES companies(id),
+	prefix         TEXT    NOT NULL,
+	next_number    INTEGER NOT NULL DEFAULT 1,
+	year           INTEGER NOT NULL,
+	format_pattern TEXT    NOT NULL DEFAULT '{prefix}{year}{number:04d}',
+	created_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+	updated_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+	deleted_at     TEXT,
+	UNIQUE(company_id, prefix, year)
+);
+
+INSERT INTO invoice_sequences (id, company_id, prefix, next_number, year, format_pattern, created_at, updated_at, deleted_at)
+SELECT id, 1, prefix, next_number, year, format_pattern, created_at, updated_at, deleted_at FROM invoice_sequences__old;
+
+DROP TABLE invoice_sequences__old;
+
+CREATE INDEX idx_invoice_sequences_year ON invoice_sequences(year);
+CREATE INDEX idx_invoice_sequences_deleted_at ON invoice_sequences(deleted_at);
+CREATE INDEX idx_invoice_sequences_company ON invoice_sequences(company_id);
+
 -- +goose StatementEnd
 
 -- +goose Down
@@ -157,6 +183,30 @@ UNION ALL SELECT 'iban', COALESCE(iban, '') FROM companies WHERE id = 1
 UNION ALL SELECT 'swift', COALESCE(swift, '') FROM companies WHERE id = 1
 UNION ALL SELECT 'logo_path', COALESCE(logo_path, '') FROM companies WHERE id = 1
 UNION ALL SELECT 'accent_color', COALESCE(accent_color, '') FROM companies WHERE id = 1;
+
+-- Reverse: invoice_sequences rebuild back to UNIQUE(prefix, year).
+-- Best-effort: only company 1's sequences survive the downgrade.
+DROP INDEX IF EXISTS idx_invoice_sequences_company;
+DROP INDEX IF EXISTS idx_invoice_sequences_deleted_at;
+DROP INDEX IF EXISTS idx_invoice_sequences_year;
+ALTER TABLE invoice_sequences RENAME TO invoice_sequences__new;
+CREATE TABLE invoice_sequences (
+	id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	prefix         TEXT    NOT NULL,
+	next_number    INTEGER NOT NULL DEFAULT 1,
+	year           INTEGER NOT NULL,
+	format_pattern TEXT    NOT NULL DEFAULT '{prefix}{year}{number:04d}',
+	created_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+	updated_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+	deleted_at     TEXT,
+	UNIQUE(prefix, year)
+);
+INSERT INTO invoice_sequences (id, prefix, next_number, year, format_pattern, created_at, updated_at, deleted_at)
+SELECT id, prefix, next_number, year, format_pattern, created_at, updated_at, deleted_at FROM invoice_sequences__new
+WHERE company_id = 1;
+DROP TABLE invoice_sequences__new;
+CREATE INDEX idx_invoice_sequences_year ON invoice_sequences(year);
+CREATE INDEX idx_invoice_sequences_deleted_at ON invoice_sequences(deleted_at);
 
 -- Reverse: leaf-style per-company tables (reverse order of Up).
 DROP INDEX IF EXISTS idx_security_transactions_company;

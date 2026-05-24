@@ -780,6 +780,91 @@ func controlStatementFromDomain(cs *domain.VATControlStatement, lines []domain.V
 	return resp
 }
 
+// --- Company DTOs ---
+
+// CompanyDTO is the JSON shape of a company in API responses.
+// Identity fields come first; optional fields use omitempty so empty
+// company records stay readable in API output.
+type CompanyDTO struct {
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	LegalName     string `json:"legal_name"`
+	ICO           string `json:"ico"`
+	DIC           string `json:"dic,omitempty"`
+	VATRegistered bool   `json:"vat_registered"`
+	Street        string `json:"street,omitempty"`
+	HouseNumber   string `json:"house_number,omitempty"`
+	City          string `json:"city,omitempty"`
+	ZIP           string `json:"zip,omitempty"`
+	Email         string `json:"email,omitempty"`
+	Phone         string `json:"phone,omitempty"`
+	FirstName     string `json:"first_name,omitempty"`
+	LastName      string `json:"last_name,omitempty"`
+	BankAccount   string `json:"bank_account,omitempty"`
+	BankCode      string `json:"bank_code,omitempty"`
+	IBAN          string `json:"iban,omitempty"`
+	SWIFT         string `json:"swift,omitempty"`
+	LogoPath      string `json:"logo_path,omitempty"`
+	AccentColor   string `json:"accent_color,omitempty"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+}
+
+// companyToDTO converts a domain.Company to a CompanyDTO.
+func companyToDTO(c domain.Company) CompanyDTO {
+	return CompanyDTO{
+		ID:            c.ID,
+		Name:          c.Name,
+		LegalName:     c.LegalName,
+		ICO:           c.ICO,
+		DIC:           c.DIC,
+		VATRegistered: c.VATRegistered,
+		Street:        c.Street,
+		HouseNumber:   c.HouseNumber,
+		City:          c.City,
+		ZIP:           c.ZIP,
+		Email:         c.Email,
+		Phone:         c.Phone,
+		FirstName:     c.FirstName,
+		LastName:      c.LastName,
+		BankAccount:   c.BankAccount,
+		BankCode:      c.BankCode,
+		IBAN:          c.IBAN,
+		SWIFT:         c.SWIFT,
+		LogoPath:      c.LogoPath,
+		AccentColor:   c.AccentColor,
+		CreatedAt:     c.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     c.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+// dtoToCompany converts a CompanyDTO to a domain.Company.
+// Timestamps are not copied — they are managed by the repository layer.
+func dtoToCompany(d CompanyDTO) domain.Company {
+	return domain.Company{
+		ID:            d.ID,
+		Name:          d.Name,
+		LegalName:     d.LegalName,
+		ICO:           d.ICO,
+		DIC:           d.DIC,
+		VATRegistered: d.VATRegistered,
+		Street:        d.Street,
+		HouseNumber:   d.HouseNumber,
+		City:          d.City,
+		ZIP:           d.ZIP,
+		Email:         d.Email,
+		Phone:         d.Phone,
+		FirstName:     d.FirstName,
+		LastName:      d.LastName,
+		BankAccount:   d.BankAccount,
+		BankCode:      d.BankCode,
+		IBAN:          d.IBAN,
+		SWIFT:         d.SWIFT,
+		LogoPath:      d.LogoPath,
+		AccentColor:   d.AccentColor,
+	}
+}
+
 // --- VIES Summary DTOs ---
 
 // viesSummaryRequest is the JSON request body for creating a VIES summary.

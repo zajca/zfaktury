@@ -333,3 +333,17 @@ type TaxDeductionDocumentRepo interface {
 	Delete(ctx context.Context, id int64) error
 	UpdateExtraction(ctx context.Context, id int64, amount domain.Amount, confidence float64) error
 }
+
+// CompanyRepository persists Company aggregates.
+//
+// All other per-company repositories receive companyID as an explicit
+// parameter and filter by it; CompanyRepository itself is global —
+// it knows about all companies regardless of which is currently active.
+type CompanyRepository interface {
+	Create(ctx context.Context, c domain.Company) (int64, error)
+	GetByID(ctx context.Context, id int64) (domain.Company, error)
+	List(ctx context.Context) ([]domain.Company, error)
+	Update(ctx context.Context, c domain.Company) error
+	SoftDelete(ctx context.Context, id int64) error
+	CountActive(ctx context.Context) (int, error)
+}

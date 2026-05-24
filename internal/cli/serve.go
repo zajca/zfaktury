@@ -12,12 +12,14 @@ import (
 )
 
 var (
+	serveHost       string
 	servePort       int
 	serveDev        bool
 	serveInitConfig bool
 )
 
 func init() {
+	serveCmd.Flags().StringVar(&serveHost, "host", "", "HTTP bind interface (default: 127.0.0.1; use 0.0.0.0 in containers)")
 	serveCmd.Flags().IntVar(&servePort, "port", 8080, "HTTP server port")
 	serveCmd.Flags().BoolVar(&serveDev, "dev", false, "Enable development mode (proxy frontend to Vite)")
 	serveCmd.Flags().BoolVar(&serveInitConfig, "init-config", false, "Create a default config file if it does not exist")
@@ -32,6 +34,7 @@ var serveCmd = &cobra.Command{
 		app, err := server.New(server.Options{
 			ConfigFile: configFile,
 			InitConfig: serveInitConfig,
+			Host:       serveHost,
 			Port:       servePort,
 			DevMode:    serveDev,
 		})

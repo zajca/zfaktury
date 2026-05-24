@@ -1,0 +1,43 @@
+# Example docker-compose.yml for running zfaktury in a container.
+#
+# This file is a starting point — copy it to your deployment directory
+# (outside the repo) and adjust host paths, the published port, and
+# the `user:` UID/GID to your environment.
+#
+# Pair it with a `config.toml` at the repository root (gitignored).
+# Edit that file in your editor, then `docker compose restart` to apply.
+
+name: zfaktury
+
+services:
+  zfaktury:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        VERSION: docker-local
+    image: zfaktury:latest
+    container_name: zfaktury
+    hostname: zfaktury
+    restart: unless-stopped
+
+    # Override the image's default 1000:1000 if your host data directory
+    # is owned by a different UID/GID (common on NAS systems).
+    # user: "1024:100"
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      - TZ=Europe/Prague
+      - ZFAKTURY_DATA_DIR=/data
+
+    volumes:
+      # Persistent state: SQLite DB, uploaded documents, backups, lock file.
+      # Point this at any host directory you want to keep across rebuilds.
+      - ./data:/data
+
+      # Live configuration. Edit the host file in your editor and
+      # `docker compose restart zfaktury` to apply changes.
+      # The :ro suffix makes the mount read-only inside the container.
+      - ../config.toml:/data/.zfaktury/config.toml:ro

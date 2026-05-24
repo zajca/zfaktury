@@ -1,0 +1,56 @@
+# VCS
+.git
+.github
+.gitignore
+
+# Editor / agent metadata
+.claude
+.agents
+.audit
+.idea
+.vscode
+.envrc
+.direnv
+
+# Built binaries
+/zfaktury
+/zfaktury-server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Frontend artifacts (re-built inside the image)
+frontend/node_modules
+frontend/build
+frontend/.svelte-kit
+frontend/coverage
+
+# Embedded frontend output (re-generated inside the image; placeholder index.html stays)
+web/frontend/build/_app
+web/frontend/build/favicon.png
+
+# Go test/coverage
+*.test
+*.out
+coverage.html
+/vendor
+
+# Local data and runtime
+*.db
+*.db-shm
+*.db-wal
+logs
+tmp
+config.dev.toml
+# Live deployment config (must NEVER be baked into the image — mounted at runtime)
+/config.toml
+.env
+.env.*
+
+# Docs and reports
+docs/AGENT-REPORTS
+
+# Nix / Rust sibling project (not needed by Go server build)
+shell.nix
+rust

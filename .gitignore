@@ -43,6 +43,8 @@ frontend/coverage/
 
 # Local config
 config.dev.toml
+# Live deployment config (template: config.toml.example)
+/config.toml
 
 # Nix
 .envrc

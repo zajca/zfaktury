@@ -94,6 +94,37 @@ make clean          # Remove build artifacts
 make install-hooks  # Install git pre-commit hook
 ```
 
+## Docker
+
+A multi-stage `Dockerfile` is included for the server-only (headless) build:
+node22 → golang1.25 → alpine, producing a ~33 MB image with no CGO and the
+SvelteKit frontend embedded in the binary.
+
+```bash
+# Build the image
+docker build -t zfaktury:latest .
+
+# Create your runtime config (gitignored, never baked into the image)
+cp config.toml.example config.toml
+$EDITOR config.toml
+
+# Run it
+docker run -d --name zfaktury --restart unless-stopped \
+  -p 8080:8080 \
+  -v "$PWD/data:/data" \
+  -v "$PWD/config.toml:/data/.zfaktury/config.toml:ro" \
+  zfaktury:latest
+```
+
+By default the container binds `0.0.0.0:8080` (the `serve --host` flag is
+configurable; the desktop build still defaults to `127.0.0.1`). The SQLite
+database, uploaded documents, and backups live in the mounted `/data`
+directory.
+
+See `deploy/docker-compose.yml` for an equivalent Compose setup, and
+`config.toml.example` for the full set of configurable sections (SMTP, FIO,
+OCR, S3 backups).
+
 ## Testing
 
 ```bash

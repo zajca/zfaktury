@@ -3,6 +3,7 @@
 | Field | Value |
 |---|---|
 | Date | 2026-05-24 |
+| Version | v2 — incorporates review feedback from Gemini CLI (Architect Role); see "Review notes" at end |
 | Status | Approved (pending implementation plan) |
 | Branch | `feature/multi-company` |
 | Author | Jiri Manas (with brainstorming via Claude) |
@@ -121,7 +122,7 @@ Each gets a matching `CREATE INDEX idx_<table>_company ON <table>(company_id)` f
 | `GET /api/v1/ares/*` | ARES sync lookup by IČO — no company context needed |
 | `GET /api/v1/vies-check/*` | VIES VAT ID validation (sync lookup, distinct from the `vies-summary` filing) |
 | `GET /api/v1/cnb/*` | CNB exchange-rate sync lookup |
-| `GET /api/v1/audit-log` | cross-company trail |
+| `GET /api/v1/audit-log` | cross-company trail; accepts optional `?company_id=<id>` query filter to scope the result to a single company |
 | `GET, POST /api/v1/backups` | full-DB snapshots |
 
 **Per-company tier** under `/api/v1/companies/{companyID}/`:
@@ -159,6 +160,7 @@ Reads `chi.URLParam(r, "companyID")`, parses it as `int64`, looks up the company
 - `400 Bad Request` if the path segment isn't a positive integer.
 - `404 Not Found` if no company has that ID (or it's soft-deleted).
 - On success, downstream handlers retrieve via `company.FromContext(r.Context())` and **also** pass `company.ID` explicitly into service and repository calls.
+- On success, the middleware also writes `X-Company-Id: <id>` to the response so the frontend can verify the response matches the still-active company (race-condition detection — see Edge Cases).
 
 ### Service & repository signatures
 
@@ -217,17 +219,32 @@ Reactive (`$state`) so any component using `currentCompany.current` re-renders o
 
 ### Typed API client
 
-Per-company methods read `currentCompany.current.id` internally and build the full path. Callers do not pass company IDs explicitly:
+Per-company methods read `currentCompany.current.id` internally and build the full path. Callers do not pass company IDs explicitly. **The captured id and the response's `X-Company-Id` header are returned to the caller** so write actions can detect when the user has switched companies mid-flight (see Edge Cases):
 
 ```typescript
-// Caller (unchanged shape):
+// Caller (read):
 await client.invoices.list({ status: 'sent' });
 
+// Caller (write — returns capture so the caller can verify):
+const { data, submittedFor, respondedFor } = await client.invoices.create(payload);
+if (submittedFor !== respondedFor) {
+    // Should never happen — middleware echoes the URL's company id.
+}
+if (submittedFor !== currentCompany.current?.id) {
+    toast(`Saved to ${nameOf(submittedFor)} — you've since switched to ${nameOf(currentCompany.current?.id)}`);
+    return; // skip the redirect-to-list path
+}
+
 // Inside client.ts:
-list(filter: InvoiceFilter) {
+create(input: NewInvoice) {
     const cid = currentCompany.current?.id;
     if (!cid) throw new NoCompanyError();
-    return fetch(`/api/v1/companies/${cid}/invoices?${qs(filter)}`);
+    return fetch(`/api/v1/companies/${cid}/invoices`, { method: 'POST', body: ... })
+        .then(async (r) => ({
+            data: await r.json(),
+            submittedFor: cid,
+            respondedFor: Number(r.headers.get('X-Company-Id')),
+        }));
 }
 ```
 
@@ -267,8 +284,9 @@ Single goose migration `025_multi_company.sql`, applied in one transaction. Beha
 3. **Partition every per-company table** via `ALTER TABLE … ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id)`. SQLite supports inline `REFERENCES` since 3.6.19; the `DEFAULT 1` populates existing rows.
 4. **Add `idx_<table>_company` index** for each.
 5. **Rebuild `invoice_sequences`** with `UNIQUE(company_id, prefix, year)` via SQLite's rename / create-new / copy / drop dance.
-6. **Strip the 17 identity keys from `settings`.**
-7. **Gain `company_id` on `settings`**, replace `UNIQUE(key)` with `UNIQUE(company_id, key)`.
+6. **Rebuild parent-child tables for composite-FK targets.** `invoices`, `recurring_invoices`, `expenses` each need `UNIQUE(company_id, id)`. Their children — `invoice_items`, `recurring_invoice_items`, `expense_items`, `vat_return_invoices`, `vat_return_expenses` — get their FK redefined as composite `FOREIGN KEY (company_id, <fk>) REFERENCES <parent>(company_id, id)`. Five composite-FK child rebuilds + three parent unique-index adds. Order matters: parents before children so the FK target exists.
+7. **Strip the 17 identity keys from `settings`.**
+8. **Gain `company_id` on `settings`**, replace `UNIQUE(key)` with `UNIQUE(company_id, key)`.
 
 Inside goose's BEGIN/COMMIT envelope, a failure rolls back cleanly.
 
@@ -293,20 +311,22 @@ Costs three `COUNT(*)`-style queries per table; only runs once per process start
 
 ## Edge cases & invariants
 
-- **Cross-company FK leak.** An invoice in company A cannot reference a contact / sequence / category from company B. Enforced at the **service layer**: when a handler receives a request scoped to company A, all lookups (`contactRepo.GetByID`, `sequenceRepo.GetActive`, etc.) pass `companyID = A` and the repository's `WHERE company_id = ?` filter naturally rejects company-B IDs as `NotFound`. SQLite-level composite FK enforcement (e.g. `(company_id, contact_id) REFERENCES contacts(company_id, id)`) is **out of scope for v1** — the service layer is sufficient, and the integration test explicitly exercises the cross-company rejection path (step 6 of the integration flow below).
+- **Cross-company FK leak — defense in depth.** An invoice in company A cannot reference a contact / sequence / category from company B. Primary enforcement is the **service layer**: when a handler receives a request scoped to company A, all lookups (`contactRepo.GetByID`, `sequenceRepo.GetActive`, etc.) pass `companyID = A` and the repository's `WHERE company_id = ?` filter naturally rejects company-B IDs as `NotFound`. **Additionally**, for the parent-child relationships that drive financial aggregation (where a leak would silently corrupt totals or VAT filings), the migration adds **composite SQL-level foreign keys** that make a cross-company link physically impossible: `invoice_items.invoice_id`, `recurring_invoice_items.recurring_invoice_id`, `expense_items.expense_id`, `vat_return_invoices.invoice_id`, `vat_return_expenses.expense_id`. The parents (`invoices`, `expenses`, etc.) gain a `UNIQUE(company_id, id)` index to serve as the composite-FK target, and the child tables get composite `FOREIGN KEY (company_id, invoice_id) REFERENCES invoices(company_id, id)`. Lookup-style references (`invoices.contact_id`, `invoices.sequence_id`, `expenses.category_id`) stay as single-column FKs — a bug there surfaces immediately as a wrong-contact/wrong-category in the UI and is caught by the exhaustive cross-company leak-detector test suite (see Testing).
 - **Sequence collision.** Two companies legitimately can run `FV2026-0001` — the unique constraint `(company_id, prefix, year)` permits it. Tested in the integration suite.
 - **Soft-delete of the last company.** Blocked at the service layer with `domain.ErrLastCompany`.
 - **Soft-delete of a non-empty company.** Blocked with `domain.ErrInUse`. User must clear contained records (or soft-delete them) first.
 - **Stale localStorage company id.** Bootstrap validates against the fetched company list; if the stored ID is no longer present (or is soft-deleted), it falls back to the first available and overwrites localStorage.
-- **Concurrent switching while a request is in flight.** Acceptable: response lands and is rendered for whichever company is now current; if the user has already switched away, the data displayed will visibly mismatch the new selection but the `$effect` immediately re-fires for the new ID. No data corruption — the response was correct for company X; the user is now on company Y; the next render will be correct.
+- **Concurrent switching while a request is in flight (read path).** Acceptable: a list response lands while the user is now on another company; the active page's `$effect` is already re-firing for the new company id, so the stale response is harmless — by the time it's rendered, a newer fetch has been initiated. No data corruption — the response was correct for company X; the user is now on company Y; the next render will be correct.
+- **Concurrent switching while a write is in flight (write path).** This is the dangerous case: user POSTs an invoice to company A, switches to company B before the response, and would normally land on B's invoice list with no indication that anything was saved to A. The frontend mitigates this by **capturing `companyId` at submit time**, comparing it against `currentCompany.current?.id` when the response arrives, and showing a context-explaining toast ("Saved to *Manas OSVC* — you've since switched to *Manas s.r.o.*") instead of redirecting to the now-wrong list. The captured-vs-active comparison is what the typed API client returns as `submittedFor` (see Frontend). The `X-Company-Id` response header is an additional belt-and-suspenders check that the server actually processed the request for the company the URL named — should never disagree, but the assertion is cheap.
 - **ARES auto-fill.** `/companies/new?ico=…` calls the existing `/api/v1/ares` global endpoint and pre-fills the create form. Same flow as today's contact create.
 
 ## Testing
 
 | Layer | New tests |
 |---|---|
-| **Migration** | `migrations_test.go` exercises (a) a v024 fixture with realistic seed data → applies 025 → asserts exactly one company, all rows backfilled, 17 keys gone, sequences intact; (b) an empty v024 → applies 025 → zero companies, zero rows |
-| **Repository (×20)** | `Test*_companyIsolation` per per-company repo: seeds two companies, creates one record in each, asserts list/get/update/delete from one never sees the other |
+| **Migration — correctness** | `migrations_test.go` exercises (a) a v024 fixture with realistic seed data → applies 025 → asserts exactly one company, all rows backfilled, 17 keys gone, sequences intact, composite FKs in place; (b) an empty v024 → applies 025 → zero companies, zero rows |
+| **Migration — production-sized** | A separate slow test (gated behind `-tags integration` so it doesn't run on every CI build) seeds a synthetic v024 DB with ~5,000 invoices, ~10,000 invoice items, ~2,500 contacts, ~5,000 expenses across one default company, then runs migration 025 end-to-end. Asserts: completes under 30 s on commodity hardware, exact row counts unchanged, all composite FK constraints satisfied, no orphan rows |
+| **Repository — leak detector (table-driven)** | A single exhaustive test in `internal/repository/leak_detector_test.go` that, for every per-company repo's Get/List/Update/Delete (~80 cases total), seeds the entity in company A and asserts that the same operation invoked with `companyID = B` returns `ErrNotFound` (or zero rows for List). Generated from a table so adding a new entity to the suite is one line. Complements (does not replace) the per-repo `Test*_companyIsolation` tests, which cover the happy path |
 | **Service** | `CompanyService.Delete` blocks on non-empty / last-company; companyID threaded through every existing service test |
 | **Handler / middleware** | `WithCompany`: 400 on non-numeric, 404 on missing / soft-deleted, success populates context; sample handler test for a per-company route |
 | **Frontend component (Vitest)** | `currentCompany` store (persist, restore, clear-stale); `CompanyHeader.svelte` (render, dropdown, select, manage link); empty-state redirect; representative page refetches on `currentCompany` change |
@@ -317,6 +337,31 @@ Costs three `COUNT(*)`-style queries per table; only runs once per process start
 ## PR scope & sequencing
 
 **One bundled PR** rather than phased. The migration is atomic; any partial intermediate state ("invoices know their company, expenses don't") would be more confusing to reason about than no state. Roughly ~30 tables and ~60 handler files are touched, plus the frontend; the branch will be long-lived (~3–5 weeks of focused work). Inside the branch, commits stay surgical and well-scoped (typically one entity or one concern per commit) so the diff is navigable when the upstream maintainer reviews.
+
+## Review notes (v2)
+
+The v1 of this spec was reviewed by Gemini CLI (Architect role) on 2026-05-24. Ten items raised; six incorporated, four pushed back on with technical reasoning. Recorded here so the next reviewer can see the trade-offs rather than re-litigate them.
+
+### Incorporated
+
+| # | Item | Where it landed |
+|---|---|---|
+| 2.1 | Composite SQL-level FKs for cross-company safety, scoped to parent-child aggregation paths (not every relationship) | Edge Cases → "Cross-company FK leak — defense in depth"; Migration → step 6 |
+| 2.2 | Audit log `?company_id=` filter | API surface → global tier table |
+| 2.3 | Capture `companyId` at submit-time and surface a context-explaining toast when the user has switched companies before the response lands | Edge Cases → "Concurrent switching while a write is in flight"; Frontend → typed client snippet |
+| 3.1b | Exhaustive leak-detector test that table-driven-checks every per-company Get/List/Update/Delete with a wrong `companyID` | Testing table |
+| 4.1 | Production-sized migration test on a synthetic ~5k-invoice DB | Testing table |
+| 4.3 | `X-Company-Id` response header set by the `WithCompany` middleware on every per-company response | API surface → middleware; Frontend → typed client snippet |
+
+### Pushed back on (with reasoning)
+
+| # | Item | Reasoning |
+|---|---|---|
+| 2.1 (broad form) | Composite FKs on *every* per-company relationship, not just parent-child aggregation paths | Adding composite FKs to existing tables requires the full rename → recreate → copy → drop dance because composite FKs are table-level (no `ALTER TABLE ADD CONSTRAINT` in SQLite). Doing this for ~25 child tables means ~25 table rebuilds in the migration, each a non-trivial risk on production DBs. Service-layer enforcement plus the leak-detector test catches the same bugs at much lower cost; composite FKs are reserved for the relationships where a silent leak would corrupt financial aggregations |
+| 2.4 | "Email templates may contain stale hardcoded company name after migration" | Verified false premise: `internal/service/email/templates.go` defines email bodies as Go `text/html/template` constants in code, not strings in the settings table. They already render with placeholders like `{{.SenderName}}`, `{{.BankAccount}}`, `{{.CustomerName}}` populated at send time. No risk of stale baked-in company data |
+| 2.5 | Add a CLI `purge` / `HardDelete` for cleaning up old companies | YAGNI. zfaktury is a local single-user binary on a SQLite file the user owns. If true deletion is needed, `sqlite3 zfaktury.db` is one command. Adding a destructive CLI surface for a niche case at v1 is feature creep; can be added later if real demand emerges |
+| 3.1a | Adopt a `BaseRepository` pattern to centralize the `company_id = ?` clause | Against existing code style — each repo in this codebase is its own concrete struct with explicit SQL, sharing only narrow helpers (`scanInvoiceRow`). Introducing a base class would be a stylistic refactor out of scope for this PR. The repetition is mechanical and the leak detector catches misses |
+| 3.2 | Return `412 Precondition Failed` / `428 Precondition Required` for missing-company so the frontend knows to show onboarding | Unnecessary: the frontend bootstrap calls `GET /api/v1/companies` (global) before any per-company URL is built, and routes to `/companies/new` on empty result. No per-company URL is ever requested without a known-valid id, so the missing-company case at the per-company tier is genuinely "resource not found" — 404 is RFC-correct here |
 
 ## Open questions / future work
 

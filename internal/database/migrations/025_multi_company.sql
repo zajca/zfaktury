@@ -329,10 +329,26 @@ CREATE INDEX idx_vat_control_statement_lines_company ON vat_control_statement_li
 CREATE INDEX idx_vies_summaries_company              ON vies_summaries(company_id);
 CREATE INDEX idx_vies_summary_lines_company          ON vies_summary_lines(company_id);
 
+-- Partition: income tax filings
+ALTER TABLE income_tax_returns          ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id);
+ALTER TABLE income_tax_return_invoices  ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id);
+ALTER TABLE income_tax_return_expenses  ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id);
+CREATE INDEX idx_income_tax_returns_company         ON income_tax_returns(company_id);
+CREATE INDEX idx_income_tax_return_invoices_company ON income_tax_return_invoices(company_id);
+CREATE INDEX idx_income_tax_return_expenses_company ON income_tax_return_expenses(company_id);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+
+-- Reverse: income tax partition
+DROP INDEX IF EXISTS idx_income_tax_return_expenses_company;
+DROP INDEX IF EXISTS idx_income_tax_return_invoices_company;
+DROP INDEX IF EXISTS idx_income_tax_returns_company;
+ALTER TABLE income_tax_return_expenses DROP COLUMN company_id;
+ALTER TABLE income_tax_return_invoices DROP COLUMN company_id;
+ALTER TABLE income_tax_returns DROP COLUMN company_id;
 
 -- Reverse: VAT graph in reverse order of Up. First drop the simple flat
 -- partitions (no composite FK), then rebuild the children to strip their

@@ -22,7 +22,7 @@ func TestTaxYearSettingsService_GetByYear_Defaults(t *testing.T) {
 	svc, _, _ := newTaxYearSettingsSvc(t)
 	ctx := context.Background()
 
-	tys, err := svc.GetByYear(ctx, 2099)
+	tys, err := svc.GetByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("GetByYear: %v", err)
 	}
@@ -38,11 +38,11 @@ func TestTaxYearSettingsService_GetByYear_Existing(t *testing.T) {
 	svc, settingsRepo, _ := newTaxYearSettingsSvc(t)
 	ctx := context.Background()
 
-	if err := settingsRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
+	if err := settingsRepo.Upsert(ctx, 1, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
 
-	tys, err := svc.GetByYear(ctx, 2025)
+	tys, err := svc.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear: %v", err)
 	}
@@ -61,11 +61,11 @@ func TestTaxYearSettingsService_GetPrepayments_FillsMissing(t *testing.T) {
 		{Month: 6, TaxAmount: 150000, SocialAmount: 250000, HealthAmount: 350000},
 		{Month: 12, TaxAmount: 200000, SocialAmount: 300000, HealthAmount: 400000},
 	}
-	if err := prepaymentRepo.UpsertAll(ctx, 2025, partial); err != nil {
+	if err := prepaymentRepo.UpsertAll(ctx, 1, 2025, partial); err != nil {
 		t.Fatalf("UpsertAll: %v", err)
 	}
 
-	result, err := svc.GetPrepayments(ctx, 2025)
+	result, err := svc.GetPrepayments(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetPrepayments: %v", err)
 	}
@@ -104,12 +104,12 @@ func TestTaxYearSettingsService_Save(t *testing.T) {
 		{Month: 1, TaxAmount: 100000, SocialAmount: 200000, HealthAmount: 300000},
 		{Month: 2, TaxAmount: 110000, SocialAmount: 210000, HealthAmount: 310000},
 	}
-	if err := svc.Save(ctx, 2025, 60, prepayments); err != nil {
+	if err := svc.Save(ctx, 1, 2025, 60, prepayments); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
 	// Verify settings were saved
-	tys, err := settingsRepo.GetByYear(ctx, 2025)
+	tys, err := settingsRepo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestTaxYearSettingsService_Save(t *testing.T) {
 	}
 
 	// Verify prepayments were saved
-	result, err := prepaymentRepo.ListByYear(ctx, 2025)
+	result, err := prepaymentRepo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear: %v", err)
 	}
@@ -135,11 +135,11 @@ func TestTaxYearSettingsService_GetPrepaymentSums(t *testing.T) {
 		{Month: 1, TaxAmount: 100000, SocialAmount: 200000, HealthAmount: 300000},
 		{Month: 2, TaxAmount: 150000, SocialAmount: 250000, HealthAmount: 350000},
 	}
-	if err := prepaymentRepo.UpsertAll(ctx, 2025, prepayments); err != nil {
+	if err := prepaymentRepo.UpsertAll(ctx, 1, 2025, prepayments); err != nil {
 		t.Fatalf("UpsertAll: %v", err)
 	}
 
-	taxTotal, socialTotal, healthTotal, err := svc.GetPrepaymentSums(ctx, 2025)
+	taxTotal, socialTotal, healthTotal, err := svc.GetPrepaymentSums(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetPrepaymentSums: %v", err)
 	}

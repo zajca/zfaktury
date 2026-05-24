@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
+	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/testutil"
 )
 
@@ -14,7 +14,7 @@ func TestSettingsRepository_GetAll_Empty(t *testing.T) {
 	repo := NewSettingsRepository(db)
 	ctx := context.Background()
 
-	settings, err := repo.GetAll(ctx)
+	settings, err := repo.GetAll(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetAll on empty DB: %v", err)
 	}
@@ -28,11 +28,11 @@ func TestSettingsRepository_SetAndGet(t *testing.T) {
 	repo := NewSettingsRepository(db)
 	ctx := context.Background()
 
-	if err := repo.Set(ctx, "company_name", "Acme Corp"); err != nil {
+	if err := repo.Set(ctx, 1, "company_name", "Acme Corp"); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 
-	val, err := repo.Get(ctx, "company_name")
+	val, err := repo.Get(ctx, 1, "company_name")
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -46,14 +46,14 @@ func TestSettingsRepository_Set_Upsert(t *testing.T) {
 	repo := NewSettingsRepository(db)
 	ctx := context.Background()
 
-	if err := repo.Set(ctx, "theme", "light"); err != nil {
+	if err := repo.Set(ctx, 1, "theme", "light"); err != nil {
 		t.Fatalf("Set first: %v", err)
 	}
-	if err := repo.Set(ctx, "theme", "dark"); err != nil {
+	if err := repo.Set(ctx, 1, "theme", "dark"); err != nil {
 		t.Fatalf("Set second: %v", err)
 	}
 
-	val, err := repo.Get(ctx, "theme")
+	val, err := repo.Get(ctx, 1, "theme")
 	if err != nil {
 		t.Fatalf("Get after upsert: %v", err)
 	}
@@ -72,11 +72,11 @@ func TestSettingsRepository_SetBulk_GetAll(t *testing.T) {
 		"key_b": "value_b",
 		"key_c": "value_c",
 	}
-	if err := repo.SetBulk(ctx, bulk); err != nil {
+	if err := repo.SetBulk(ctx, 1, bulk); err != nil {
 		t.Fatalf("SetBulk: %v", err)
 	}
 
-	settings, err := repo.GetAll(ctx)
+	settings, err := repo.GetAll(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetAll: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestSettingsRepository_SetBulk_Overwrites(t *testing.T) {
 	repo := NewSettingsRepository(db)
 	ctx := context.Background()
 
-	if err := repo.Set(ctx, "existing", "old_value"); err != nil {
+	if err := repo.Set(ctx, 1, "existing", "old_value"); err != nil {
 		t.Fatalf("Set initial: %v", err)
 	}
 
@@ -103,11 +103,11 @@ func TestSettingsRepository_SetBulk_Overwrites(t *testing.T) {
 		"existing": "new_value",
 		"fresh":    "fresh_value",
 	}
-	if err := repo.SetBulk(ctx, bulk); err != nil {
+	if err := repo.SetBulk(ctx, 1, bulk); err != nil {
 		t.Fatalf("SetBulk: %v", err)
 	}
 
-	val, err := repo.Get(ctx, "existing")
+	val, err := repo.Get(ctx, 1, "existing")
 	if err != nil {
 		t.Fatalf("Get existing: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestSettingsRepository_SetBulk_Overwrites(t *testing.T) {
 		t.Fatalf("expected %q after bulk overwrite, got %q", "new_value", val)
 	}
 
-	val, err = repo.Get(ctx, "fresh")
+	val, err = repo.Get(ctx, 1, "fresh")
 	if err != nil {
 		t.Fatalf("Get fresh: %v", err)
 	}
@@ -129,11 +129,11 @@ func TestSettingsRepository_Get_NotFound(t *testing.T) {
 	repo := NewSettingsRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.Get(ctx, "nonexistent")
+	_, err := repo.Get(ctx, 1, "nonexistent")
 	if err == nil {
 		t.Fatal("expected error for nonexistent key, got nil")
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		t.Fatalf("expected error wrapping sql.ErrNoRows, got: %v", err)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected error wrapping domain.ErrNotFound, got: %v", err)
 	}
 }

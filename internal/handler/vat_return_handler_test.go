@@ -28,6 +28,7 @@ func setupVATReturnRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	h := NewVATReturnHandler(vatReturnSvc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/vat-returns", h.Routes())
 	return r, db
 }

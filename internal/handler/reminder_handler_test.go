@@ -59,7 +59,7 @@ func setupReminderRouter(t *testing.T) (*chi.Mux, *domain.Invoice) {
 	}
 
 	settingsRepo := repository.NewSettingsRepository(db)
-	if err := settingsRepo.Set(context.Background(), "company_name", "Jan Novak"); err != nil {
+	if err := settingsRepo.Set(context.Background(), 1, "company_name", "Jan Novak"); err != nil {
 		t.Fatalf("seeding company_name setting: %v", err)
 	}
 	settingsSvc := service.NewSettingsService(settingsRepo, nil)

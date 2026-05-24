@@ -51,6 +51,12 @@ type fakturoidImportResponse struct {
 
 // Import performs a full import from Fakturoid using credentials from the request body.
 func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req fakturoidImportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -67,7 +73,7 @@ func (h *FakturoidHandler) Import(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, fmt.Sprintf("Fakturoid authentication failed: %v", err))
 		return
 	}
-	result, err := h.svc.ImportAll(r.Context(), client, req.DownloadAttachments)
+	result, err := h.svc.ImportAll(r.Context(), company.ID, client, req.DownloadAttachments)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return

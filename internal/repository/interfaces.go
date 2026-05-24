@@ -146,163 +146,196 @@ type ReminderRepo interface {
 }
 
 // SettingsRepo defines the persistence interface for application settings.
+//
+// All methods are scoped to a single company via the companyID parameter;
+// settings belonging to other companies are invisible.
 type SettingsRepo interface {
-	GetAll(ctx context.Context) (map[string]string, error)
-	Get(ctx context.Context, key string) (string, error)
-	Set(ctx context.Context, key, value string) error
-	SetBulk(ctx context.Context, settings map[string]string) error
+	GetAll(ctx context.Context, companyID int64) (map[string]string, error)
+	Get(ctx context.Context, companyID int64, key string) (string, error)
+	Set(ctx context.Context, companyID int64, key, value string) error
+	SetBulk(ctx context.Context, companyID int64, settings map[string]string) error
 }
 
 // VATReturnRepo defines the persistence interface for VAT returns.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type VATReturnRepo interface {
-	Create(ctx context.Context, vr *domain.VATReturn) error
-	Update(ctx context.Context, vr *domain.VATReturn) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.VATReturn, error)
-	List(ctx context.Context, year int) ([]domain.VATReturn, error)
-	GetByPeriod(ctx context.Context, year, month, quarter int, filingType string) (*domain.VATReturn, error)
-	LinkInvoices(ctx context.Context, vatReturnID int64, invoiceIDs []int64) error
-	LinkExpenses(ctx context.Context, vatReturnID int64, expenseIDs []int64) error
-	GetLinkedInvoiceIDs(ctx context.Context, vatReturnID int64) ([]int64, error)
-	GetLinkedExpenseIDs(ctx context.Context, vatReturnID int64) ([]int64, error)
+	Create(ctx context.Context, companyID int64, vr *domain.VATReturn) error
+	Update(ctx context.Context, companyID int64, vr *domain.VATReturn) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.VATReturn, error)
+	List(ctx context.Context, companyID int64, year int) ([]domain.VATReturn, error)
+	GetByPeriod(ctx context.Context, companyID int64, year, month, quarter int, filingType string) (*domain.VATReturn, error)
+	LinkInvoices(ctx context.Context, companyID, vatReturnID int64, invoiceIDs []int64) error
+	LinkExpenses(ctx context.Context, companyID, vatReturnID int64, expenseIDs []int64) error
+	GetLinkedInvoiceIDs(ctx context.Context, companyID, vatReturnID int64) ([]int64, error)
+	GetLinkedExpenseIDs(ctx context.Context, companyID, vatReturnID int64) ([]int64, error)
 }
 
 // VATControlStatementRepo defines the persistence interface for VAT control statements.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type VATControlStatementRepo interface {
-	Create(ctx context.Context, cs *domain.VATControlStatement) error
-	Update(ctx context.Context, cs *domain.VATControlStatement) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.VATControlStatement, error)
-	List(ctx context.Context, year int) ([]domain.VATControlStatement, error)
-	GetByPeriod(ctx context.Context, year, month int, filingType string) (*domain.VATControlStatement, error)
-	CreateLines(ctx context.Context, lines []domain.VATControlStatementLine) error
-	DeleteLines(ctx context.Context, controlStatementID int64) error
-	GetLines(ctx context.Context, controlStatementID int64) ([]domain.VATControlStatementLine, error)
+	Create(ctx context.Context, companyID int64, cs *domain.VATControlStatement) error
+	Update(ctx context.Context, companyID int64, cs *domain.VATControlStatement) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.VATControlStatement, error)
+	List(ctx context.Context, companyID int64, year int) ([]domain.VATControlStatement, error)
+	GetByPeriod(ctx context.Context, companyID int64, year, month int, filingType string) (*domain.VATControlStatement, error)
+	CreateLines(ctx context.Context, companyID int64, lines []domain.VATControlStatementLine) error
+	DeleteLines(ctx context.Context, companyID, controlStatementID int64) error
+	GetLines(ctx context.Context, companyID, controlStatementID int64) ([]domain.VATControlStatementLine, error)
 }
 
 // IncomeTaxReturnRepo defines the persistence interface for income tax returns.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type IncomeTaxReturnRepo interface {
-	Create(ctx context.Context, itr *domain.IncomeTaxReturn) error
-	Update(ctx context.Context, itr *domain.IncomeTaxReturn) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error)
-	List(ctx context.Context, year int) ([]domain.IncomeTaxReturn, error)
-	GetByYear(ctx context.Context, year int, filingType string) (*domain.IncomeTaxReturn, error)
-	LinkInvoices(ctx context.Context, id int64, invoiceIDs []int64) error
-	LinkExpenses(ctx context.Context, id int64, expenseIDs []int64) error
-	GetLinkedInvoiceIDs(ctx context.Context, id int64) ([]int64, error)
-	GetLinkedExpenseIDs(ctx context.Context, id int64) ([]int64, error)
+	Create(ctx context.Context, companyID int64, itr *domain.IncomeTaxReturn) error
+	Update(ctx context.Context, companyID int64, itr *domain.IncomeTaxReturn) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.IncomeTaxReturn, error)
+	List(ctx context.Context, companyID int64, year int) ([]domain.IncomeTaxReturn, error)
+	GetByYear(ctx context.Context, companyID int64, year int, filingType string) (*domain.IncomeTaxReturn, error)
+	LinkInvoices(ctx context.Context, companyID, id int64, invoiceIDs []int64) error
+	LinkExpenses(ctx context.Context, companyID, id int64, expenseIDs []int64) error
+	GetLinkedInvoiceIDs(ctx context.Context, companyID, id int64) ([]int64, error)
+	GetLinkedExpenseIDs(ctx context.Context, companyID, id int64) ([]int64, error)
 }
 
 // SocialInsuranceOverviewRepo defines the persistence interface for social insurance overviews.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type SocialInsuranceOverviewRepo interface {
-	Create(ctx context.Context, sio *domain.SocialInsuranceOverview) error
-	Update(ctx context.Context, sio *domain.SocialInsuranceOverview) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error)
-	List(ctx context.Context, year int) ([]domain.SocialInsuranceOverview, error)
-	GetByYear(ctx context.Context, year int, filingType string) (*domain.SocialInsuranceOverview, error)
+	Create(ctx context.Context, companyID int64, sio *domain.SocialInsuranceOverview) error
+	Update(ctx context.Context, companyID int64, sio *domain.SocialInsuranceOverview) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.SocialInsuranceOverview, error)
+	List(ctx context.Context, companyID int64, year int) ([]domain.SocialInsuranceOverview, error)
+	GetByYear(ctx context.Context, companyID int64, year int, filingType string) (*domain.SocialInsuranceOverview, error)
 }
 
 // TaxYearSettingsRepo defines the persistence interface for per-year tax settings.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxYearSettingsRepo interface {
-	GetByYear(ctx context.Context, year int) (*domain.TaxYearSettings, error)
-	Upsert(ctx context.Context, tys *domain.TaxYearSettings) error
+	GetByYear(ctx context.Context, companyID int64, year int) (*domain.TaxYearSettings, error)
+	Upsert(ctx context.Context, companyID int64, tys *domain.TaxYearSettings) error
 }
 
 // TaxPrepaymentRepo defines the persistence interface for monthly tax prepayments.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxPrepaymentRepo interface {
-	ListByYear(ctx context.Context, year int) ([]domain.TaxPrepayment, error)
-	UpsertAll(ctx context.Context, year int, prepayments []domain.TaxPrepayment) error
-	SumByYear(ctx context.Context, year int) (taxTotal, socialTotal, healthTotal domain.Amount, err error)
+	ListByYear(ctx context.Context, companyID int64, year int) ([]domain.TaxPrepayment, error)
+	UpsertAll(ctx context.Context, companyID int64, year int, prepayments []domain.TaxPrepayment) error
+	SumByYear(ctx context.Context, companyID int64, year int) (taxTotal, socialTotal, healthTotal domain.Amount, err error)
 }
 
 // HealthInsuranceOverviewRepo defines the persistence interface for health insurance overviews.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type HealthInsuranceOverviewRepo interface {
-	Create(ctx context.Context, hio *domain.HealthInsuranceOverview) error
-	Update(ctx context.Context, hio *domain.HealthInsuranceOverview) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.HealthInsuranceOverview, error)
-	List(ctx context.Context, year int) ([]domain.HealthInsuranceOverview, error)
-	GetByYear(ctx context.Context, year int, filingType string) (*domain.HealthInsuranceOverview, error)
+	Create(ctx context.Context, companyID int64, hio *domain.HealthInsuranceOverview) error
+	Update(ctx context.Context, companyID int64, hio *domain.HealthInsuranceOverview) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.HealthInsuranceOverview, error)
+	List(ctx context.Context, companyID int64, year int) ([]domain.HealthInsuranceOverview, error)
+	GetByYear(ctx context.Context, companyID int64, year int, filingType string) (*domain.HealthInsuranceOverview, error)
 }
 
 // VIESSummaryRepo defines the persistence interface for VIES summaries.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type VIESSummaryRepo interface {
-	Create(ctx context.Context, vs *domain.VIESSummary) error
-	Update(ctx context.Context, vs *domain.VIESSummary) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.VIESSummary, error)
-	List(ctx context.Context, year int) ([]domain.VIESSummary, error)
-	GetByPeriod(ctx context.Context, year, quarter int, filingType string) (*domain.VIESSummary, error)
-	CreateLines(ctx context.Context, lines []domain.VIESSummaryLine) error
-	DeleteLines(ctx context.Context, viesSummaryID int64) error
-	GetLines(ctx context.Context, viesSummaryID int64) ([]domain.VIESSummaryLine, error)
+	Create(ctx context.Context, companyID int64, vs *domain.VIESSummary) error
+	Update(ctx context.Context, companyID int64, vs *domain.VIESSummary) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.VIESSummary, error)
+	List(ctx context.Context, companyID int64, year int) ([]domain.VIESSummary, error)
+	GetByPeriod(ctx context.Context, companyID int64, year, quarter int, filingType string) (*domain.VIESSummary, error)
+	CreateLines(ctx context.Context, companyID int64, lines []domain.VIESSummaryLine) error
+	DeleteLines(ctx context.Context, companyID, viesSummaryID int64) error
+	GetLines(ctx context.Context, companyID, viesSummaryID int64) ([]domain.VIESSummaryLine, error)
 }
 
 // TaxSpouseCreditRepo defines the persistence interface for spouse tax credits.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxSpouseCreditRepo interface {
-	Upsert(ctx context.Context, credit *domain.TaxSpouseCredit) error
-	GetByYear(ctx context.Context, year int) (*domain.TaxSpouseCredit, error)
-	DeleteByYear(ctx context.Context, year int) error
+	Upsert(ctx context.Context, companyID int64, credit *domain.TaxSpouseCredit) error
+	GetByYear(ctx context.Context, companyID int64, year int) (*domain.TaxSpouseCredit, error)
+	DeleteByYear(ctx context.Context, companyID int64, year int) error
 }
 
 // TaxChildCreditRepo defines the persistence interface for child tax credits.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxChildCreditRepo interface {
-	Create(ctx context.Context, credit *domain.TaxChildCredit) error
-	Update(ctx context.Context, credit *domain.TaxChildCredit) error
-	Delete(ctx context.Context, id int64) error
-	ListByYear(ctx context.Context, year int) ([]domain.TaxChildCredit, error)
+	Create(ctx context.Context, companyID int64, credit *domain.TaxChildCredit) error
+	Update(ctx context.Context, companyID int64, credit *domain.TaxChildCredit) error
+	Delete(ctx context.Context, companyID, id int64) error
+	ListByYear(ctx context.Context, companyID int64, year int) ([]domain.TaxChildCredit, error)
 }
 
 // TaxPersonalCreditsRepo defines the persistence interface for personal tax credits.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxPersonalCreditsRepo interface {
-	Upsert(ctx context.Context, credits *domain.TaxPersonalCredits) error
-	GetByYear(ctx context.Context, year int) (*domain.TaxPersonalCredits, error)
+	Upsert(ctx context.Context, companyID int64, credits *domain.TaxPersonalCredits) error
+	GetByYear(ctx context.Context, companyID int64, year int) (*domain.TaxPersonalCredits, error)
 }
 
 // TaxDeductionRepo defines the persistence interface for tax deductions.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxDeductionRepo interface {
-	Create(ctx context.Context, ded *domain.TaxDeduction) error
-	Update(ctx context.Context, ded *domain.TaxDeduction) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.TaxDeduction, error)
-	ListByYear(ctx context.Context, year int) ([]domain.TaxDeduction, error)
+	Create(ctx context.Context, companyID int64, ded *domain.TaxDeduction) error
+	Update(ctx context.Context, companyID int64, ded *domain.TaxDeduction) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.TaxDeduction, error)
+	ListByYear(ctx context.Context, companyID int64, year int) ([]domain.TaxDeduction, error)
 }
 
 // InvestmentDocumentRepo defines the persistence interface for investment documents.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type InvestmentDocumentRepo interface {
-	Create(ctx context.Context, doc *domain.InvestmentDocument) error
-	GetByID(ctx context.Context, id int64) (*domain.InvestmentDocument, error)
-	ListByYear(ctx context.Context, year int) ([]domain.InvestmentDocument, error)
-	Delete(ctx context.Context, id int64) error
-	UpdateExtraction(ctx context.Context, id int64, status string, extractionError string) error
+	Create(ctx context.Context, companyID int64, doc *domain.InvestmentDocument) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.InvestmentDocument, error)
+	ListByYear(ctx context.Context, companyID int64, year int) ([]domain.InvestmentDocument, error)
+	Delete(ctx context.Context, companyID, id int64) error
+	UpdateExtraction(ctx context.Context, companyID, id int64, status string, extractionError string) error
 }
 
 // CapitalIncomeRepo defines the persistence interface for capital income entries.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type CapitalIncomeRepo interface {
-	Create(ctx context.Context, entry *domain.CapitalIncomeEntry) error
-	Update(ctx context.Context, entry *domain.CapitalIncomeEntry) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.CapitalIncomeEntry, error)
-	ListByYear(ctx context.Context, year int) ([]domain.CapitalIncomeEntry, error)
-	ListByDocumentID(ctx context.Context, documentID int64) ([]domain.CapitalIncomeEntry, error)
-	SumByYear(ctx context.Context, year int) (grossTotal, taxTotal, netTotal domain.Amount, err error)
-	DeleteByDocumentID(ctx context.Context, documentID int64) error
+	Create(ctx context.Context, companyID int64, entry *domain.CapitalIncomeEntry) error
+	Update(ctx context.Context, companyID int64, entry *domain.CapitalIncomeEntry) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.CapitalIncomeEntry, error)
+	ListByYear(ctx context.Context, companyID int64, year int) ([]domain.CapitalIncomeEntry, error)
+	ListByDocumentID(ctx context.Context, companyID, documentID int64) ([]domain.CapitalIncomeEntry, error)
+	SumByYear(ctx context.Context, companyID int64, year int) (grossTotal, taxTotal, netTotal domain.Amount, err error)
+	DeleteByDocumentID(ctx context.Context, companyID, documentID int64) error
 }
 
 // SecurityTransactionRepo defines the persistence interface for security transactions.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type SecurityTransactionRepo interface {
-	Create(ctx context.Context, tx *domain.SecurityTransaction) error
-	Update(ctx context.Context, tx *domain.SecurityTransaction) error
-	Delete(ctx context.Context, id int64) error
-	GetByID(ctx context.Context, id int64) (*domain.SecurityTransaction, error)
-	ListByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error)
-	ListByDocumentID(ctx context.Context, documentID int64) ([]domain.SecurityTransaction, error)
-	ListBuysForFIFO(ctx context.Context, assetName, assetType string) ([]domain.SecurityTransaction, error)
-	ListSellsByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error)
-	UpdateFIFOResults(ctx context.Context, id int64, costBasis, computedGain, exemptAmount domain.Amount, timeTestExempt bool) error
-	DeleteByDocumentID(ctx context.Context, documentID int64) error
+	Create(ctx context.Context, companyID int64, tx *domain.SecurityTransaction) error
+	Update(ctx context.Context, companyID int64, tx *domain.SecurityTransaction) error
+	Delete(ctx context.Context, companyID, id int64) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.SecurityTransaction, error)
+	ListByYear(ctx context.Context, companyID int64, year int) ([]domain.SecurityTransaction, error)
+	ListByDocumentID(ctx context.Context, companyID, documentID int64) ([]domain.SecurityTransaction, error)
+	ListBuysForFIFO(ctx context.Context, companyID int64, assetName, assetType string) ([]domain.SecurityTransaction, error)
+	ListSellsByYear(ctx context.Context, companyID int64, year int) ([]domain.SecurityTransaction, error)
+	UpdateFIFOResults(ctx context.Context, companyID, id int64, costBasis, computedGain, exemptAmount domain.Amount, timeTestExempt bool) error
+	DeleteByDocumentID(ctx context.Context, companyID, documentID int64) error
 }
 
 // AuditLogRepo defines the persistence interface for audit log entries.
@@ -313,10 +346,12 @@ type AuditLogRepo interface {
 }
 
 // FakturoidImportLogRepo defines the persistence interface for Fakturoid import logs.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type FakturoidImportLogRepo interface {
-	Create(ctx context.Context, entry *domain.FakturoidImportLog) error
-	FindByFakturoidID(ctx context.Context, entityType string, fakturoidID int64) (*domain.FakturoidImportLog, error)
-	ListByEntityType(ctx context.Context, entityType string) ([]domain.FakturoidImportLog, error)
+	Create(ctx context.Context, companyID int64, entry *domain.FakturoidImportLog) error
+	FindByFakturoidID(ctx context.Context, companyID int64, entityType string, fakturoidID int64) (*domain.FakturoidImportLog, error)
+	ListByEntityType(ctx context.Context, companyID int64, entityType string) ([]domain.FakturoidImportLog, error)
 }
 
 // BackupHistoryRepo defines the persistence interface for backup history records.
@@ -353,12 +388,14 @@ type ReportRepo interface {
 }
 
 // TaxDeductionDocumentRepo defines the persistence interface for tax deduction documents.
+//
+// All methods are scoped to a single company via the companyID parameter.
 type TaxDeductionDocumentRepo interface {
-	Create(ctx context.Context, doc *domain.TaxDeductionDocument) error
-	GetByID(ctx context.Context, id int64) (*domain.TaxDeductionDocument, error)
-	ListByDeductionID(ctx context.Context, deductionID int64) ([]domain.TaxDeductionDocument, error)
-	Delete(ctx context.Context, id int64) error
-	UpdateExtraction(ctx context.Context, id int64, amount domain.Amount, confidence float64) error
+	Create(ctx context.Context, companyID int64, doc *domain.TaxDeductionDocument) error
+	GetByID(ctx context.Context, companyID, id int64) (*domain.TaxDeductionDocument, error)
+	ListByDeductionID(ctx context.Context, companyID, deductionID int64) ([]domain.TaxDeductionDocument, error)
+	Delete(ctx context.Context, companyID, id int64) error
+	UpdateExtraction(ctx context.Context, companyID, id int64, amount domain.Amount, confidence float64) error
 }
 
 // CompanyRepo persists Company aggregates.

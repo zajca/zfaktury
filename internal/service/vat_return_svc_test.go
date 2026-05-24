@@ -28,7 +28,7 @@ func TestVATReturnService_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if vr.ID == 0 {
@@ -55,7 +55,7 @@ func TestVATReturnService_Create_DuplicateRegular(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -67,7 +67,7 @@ func TestVATReturnService_Create_DuplicateRegular(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr2); err == nil {
+	if err := svc.Create(ctx, 1, vr2); err == nil {
 		t.Error("expected error for duplicate regular filing")
 	}
 }
@@ -86,7 +86,7 @@ func TestVATReturnService_Create_InvalidInput(t *testing.T) {
 		Period:     domain.TaxPeriod{Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err == nil {
+	if err := svc.Create(ctx, 1, vr); err == nil {
 		t.Error("expected error for missing year")
 	}
 
@@ -95,7 +95,7 @@ func TestVATReturnService_Create_InvalidInput(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr2); err == nil {
+	if err := svc.Create(ctx, 1, vr2); err == nil {
 		t.Error("expected error for missing month and quarter")
 	}
 }
@@ -116,11 +116,11 @@ func TestVATReturnService_GetByID(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, vr.ID)
+	got, err := svc.GetByID(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -145,15 +145,15 @@ func TestVATReturnService_Delete(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := svc.Delete(ctx, vr.ID); err != nil {
+	if err := svc.Delete(ctx, 1, vr.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := svc.GetByID(ctx, vr.ID)
+	_, err := svc.GetByID(ctx, 1, vr.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -175,18 +175,18 @@ func TestVATReturnService_Delete_Filed(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Mark as filed.
-	_, err := svc.MarkFiled(ctx, vr.ID)
+	_, err := svc.MarkFiled(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
 	// Try to delete.
-	if err := svc.Delete(ctx, vr.ID); err == nil {
+	if err := svc.Delete(ctx, 1, vr.ID); err == nil {
 		t.Error("expected error when deleting filed vat return")
 	}
 }
@@ -207,11 +207,11 @@ func TestVATReturnService_MarkFiled(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	filed, err := svc.MarkFiled(ctx, vr.ID)
+	filed, err := svc.MarkFiled(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestVATReturnService_MarkFiled(t *testing.T) {
 	}
 
 	// Cannot mark as filed again.
-	_, err = svc.MarkFiled(ctx, vr.ID)
+	_, err = svc.MarkFiled(ctx, 1, vr.ID)
 	if err == nil {
 		t.Error("expected error for double filing")
 	}
@@ -246,12 +246,12 @@ func TestVATReturnService_List(t *testing.T) {
 			},
 			FilingType: domain.FilingTypeRegular,
 		}
-		if err := svc.Create(ctx, vr); err != nil {
+		if err := svc.Create(ctx, 1, vr); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
 	}
 
-	returns, err := svc.List(ctx, 2025)
+	returns, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -351,12 +351,12 @@ func TestVATReturnService_Recalculate(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Recalculate.
-	result2, err := svc.Recalculate(ctx, vr.ID)
+	result2, err := svc.Recalculate(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -440,7 +440,7 @@ func TestVATReturnService_List_Empty(t *testing.T) {
 	svc, _ := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	result, err := svc.List(ctx, 2025)
+	result, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -454,7 +454,7 @@ func TestVATReturnService_List_DefaultYear(t *testing.T) {
 	ctx := context.Background()
 
 	// List with year=0 should default to current year.
-	result, err := svc.List(ctx, 0)
+	result, err := svc.List(ctx, 1, 0)
 	if err != nil {
 		t.Fatalf("List(0) error: %v", err)
 	}
@@ -477,12 +477,12 @@ func TestVATReturnService_List_FiltersByYear(t *testing.T) {
 			Period:     domain.TaxPeriod{Year: e.year, Month: e.month},
 			FilingType: domain.FilingTypeRegular,
 		}
-		if err := svc.Create(ctx, vr); err != nil {
+		if err := svc.Create(ctx, 1, vr); err != nil {
 			t.Fatalf("Create(%d/%d) error: %v", e.year, e.month, err)
 		}
 	}
 
-	result2025, err := svc.List(ctx, 2025)
+	result2025, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List(2025) error: %v", err)
 	}
@@ -490,7 +490,7 @@ func TestVATReturnService_List_FiltersByYear(t *testing.T) {
 		t.Errorf("List(2025) returned %d items, want 2", len(result2025))
 	}
 
-	result2024, err := svc.List(ctx, 2024)
+	result2024, err := svc.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List(2024) error: %v", err)
 	}
@@ -507,17 +507,17 @@ func TestVATReturnService_Recalculate_Filed(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 4},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Mark as filed.
-	if _, err := svc.MarkFiled(ctx, vr.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, vr.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
 	// Recalculate filed return should fail.
-	_, err := svc.Recalculate(ctx, vr.ID)
+	_, err := svc.Recalculate(ctx, 1, vr.ID)
 	if err == nil {
 		t.Error("Recalculate() should return error for filed return")
 	}
@@ -552,11 +552,11 @@ func TestVATReturnService_Recalculate_WithExpenses(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, vr.ID)
+	result, err := svc.Recalculate(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -655,11 +655,11 @@ func TestVATReturnService_Recalculate_WithInvoiceAndExpense(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, vr.ID)
+	result, err := svc.Recalculate(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -691,7 +691,7 @@ func TestVATReturnService_Recalculate_ZeroID(t *testing.T) {
 	svc, _ := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.Recalculate(ctx, 0)
+	_, err := svc.Recalculate(ctx, 1, 0)
 	if err == nil {
 		t.Error("Recalculate(0) should return error")
 	}
@@ -701,7 +701,7 @@ func TestVATReturnService_Recalculate_NotFound(t *testing.T) {
 	svc, _ := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.Recalculate(ctx, 9999)
+	_, err := svc.Recalculate(ctx, 1, 9999)
 	if err == nil {
 		t.Error("Recalculate(9999) should return error for non-existent ID")
 	}
@@ -721,11 +721,11 @@ func TestVATReturnService_GenerateXML_Basic(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.GenerateXML(ctx, vr.ID)
+	result, err := svc.GenerateXML(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
@@ -734,7 +734,7 @@ func TestVATReturnService_GenerateXML_Basic(t *testing.T) {
 	}
 
 	// Verify XML is persisted.
-	fetched, err := svc.GetByID(ctx, vr.ID)
+	fetched, err := svc.GetByID(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -751,12 +751,12 @@ func TestVATReturnService_GenerateXML_NoDIC(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Without DIC setting, GenerateXML should fail.
-	_, err := svc.GenerateXML(ctx, vr.ID)
+	_, err := svc.GenerateXML(ctx, 1, vr.ID)
 	if err == nil {
 		t.Error("GenerateXML() should return error when DIC setting is missing")
 	}
@@ -766,7 +766,7 @@ func TestVATReturnService_GenerateXML_ZeroID(t *testing.T) {
 	svc, _ := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GenerateXML(ctx, 0)
+	_, err := svc.GenerateXML(ctx, 1, 0)
 	if err == nil {
 		t.Error("GenerateXML(0) should return error")
 	}
@@ -786,12 +786,12 @@ func TestVATReturnService_GetXMLData_Basic(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 5},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Before generating XML, GetXMLData should return nil/empty.
-	data, err := svc.GetXMLData(ctx, vr.ID)
+	data, err := svc.GetXMLData(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetXMLData() error: %v", err)
 	}
@@ -800,12 +800,12 @@ func TestVATReturnService_GetXMLData_Basic(t *testing.T) {
 	}
 
 	// Generate XML.
-	if _, err := svc.GenerateXML(ctx, vr.ID); err != nil {
+	if _, err := svc.GenerateXML(ctx, 1, vr.ID); err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 
 	// Now GetXMLData should return data.
-	data, err = svc.GetXMLData(ctx, vr.ID)
+	data, err = svc.GetXMLData(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetXMLData() after generate error: %v", err)
 	}
@@ -818,7 +818,7 @@ func TestVATReturnService_GetXMLData_ZeroID(t *testing.T) {
 	svc, _ := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GetXMLData(ctx, 0)
+	_, err := svc.GetXMLData(ctx, 1, 0)
 	if err == nil {
 		t.Error("GetXMLData(0) should return error")
 	}
@@ -828,7 +828,7 @@ func TestVATReturnService_GetXMLData_NotFound(t *testing.T) {
 	svc, _ := setupVATReturnSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GetXMLData(ctx, 9999)
+	_, err := svc.GetXMLData(ctx, 1, 9999)
 	if err == nil {
 		t.Error("GetXMLData(9999) should return error for non-existent ID")
 	}
@@ -861,11 +861,11 @@ func TestVATReturnService_Recalculate_PartialBusinessPercent(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, vr); err != nil {
+	if err := svc.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, vr.ID)
+	result, err := svc.Recalculate(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}

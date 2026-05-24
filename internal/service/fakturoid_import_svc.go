@@ -15,12 +15,6 @@ import (
 
 const attachmentDelay = 700 * time.Millisecond // rate limiting between attachment downloads
 
-// fallbackCompanyID is a transitional shim — Fakturoid import is not yet
-// company-scoped (T22 will thread companyID through this service). Until
-// then, all Fakturoid-imported rows land in the migration-025 default
-// company (id=1). Remove when this service gains an explicit companyID.
-const fallbackCompanyID int64 = 1 // remove in T22
-
 // FakturoidClient defines the interface for fetching data from Fakturoid.
 type FakturoidClient interface {
 	ListSubjects(ctx context.Context) ([]fakturoid.Subject, error)
@@ -67,9 +61,10 @@ func NewFakturoidImportService(
 	}
 }
 
-// ImportAll fetches all data from Fakturoid and imports new entities, skipping duplicates.
-// When downloadAttachments is true, it also downloads file attachments for newly imported entities.
-func (s *FakturoidImportService) ImportAll(ctx context.Context, client FakturoidClient, downloadAttachments bool) (*domain.FakturoidImportResult, error) {
+// ImportAll fetches all data from Fakturoid and imports new entities into the given company,
+// skipping duplicates. When downloadAttachments is true, it also downloads file attachments
+// for newly imported entities.
+func (s *FakturoidImportService) ImportAll(ctx context.Context, companyID int64, client FakturoidClient, downloadAttachments bool) (*domain.FakturoidImportResult, error) {
 	subjects, err := client.ListSubjects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fetching Fakturoid subjects: %w", err)
@@ -95,7 +90,7 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 		expenseByFakturoidID[exp.ID] = exp
 	}
 
-	preview := s.buildPreview(ctx, subjects, invoices, expenses)
+	preview := s.buildPreview(ctx, companyID, subjects, invoices, expenses)
 
 	result := &domain.FakturoidImportResult{}
 
@@ -114,13 +109,13 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 		}
 
 		contact := item.Entity.(*domain.Contact)
-		if err := s.contactSvc.Create(ctx, fallbackCompanyID, contact); err != nil {
+		if err := s.contactSvc.Create(ctx, companyID, contact); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("contact %d: %v", item.FakturoidID, err))
 			continue
 		}
 		subjectMap[item.FakturoidID] = contact.ID
 
-		if err := s.importRepo.Create(ctx, &domain.FakturoidImportLog{
+		if err := s.importRepo.Create(ctx, companyID, &domain.FakturoidImportLog{
 			FakturoidEntityType: "subject",
 			FakturoidID:         item.FakturoidID,
 			LocalEntityType:     "contact",
@@ -147,16 +142,16 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 			invoice.CustomerID = localID
 		}
 
-		if err := s.invoiceSvc.Create(ctx, fallbackCompanyID, invoice); err != nil {
+		if err := s.invoiceSvc.Create(ctx, companyID, invoice); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("invoice %d: %v", item.FakturoidID, err))
 			continue
 		}
 
 		if invoice.Status != domain.InvoiceStatusDraft {
-			_ = s.invoiceRepo.UpdateStatus(ctx, fallbackCompanyID, invoice.ID, invoice.Status)
+			_ = s.invoiceRepo.UpdateStatus(ctx, companyID, invoice.ID, invoice.Status)
 		}
 
-		if err := s.importRepo.Create(ctx, &domain.FakturoidImportLog{
+		if err := s.importRepo.Create(ctx, companyID, &domain.FakturoidImportLog{
 			FakturoidEntityType: "invoice",
 			FakturoidID:         item.FakturoidID,
 			LocalEntityType:     "invoice",
@@ -169,7 +164,7 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 		// Download attachments for newly imported invoice.
 		if downloadAttachments && s.invDocumentSvc != nil {
 			fakInv := invoiceByFakturoidID[item.FakturoidID]
-			s.downloadInvoiceAttachments(ctx, client, invoice.ID, fakInv.Attachments, result)
+			s.downloadInvoiceAttachments(ctx, companyID, client, invoice.ID, fakInv.Attachments, result)
 		}
 	}
 
@@ -188,12 +183,12 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 			}
 		}
 
-		if err := s.expenseSvc.Create(ctx, fallbackCompanyID, expense); err != nil {
+		if err := s.expenseSvc.Create(ctx, companyID, expense); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("expense %d: %v", item.FakturoidID, err))
 			continue
 		}
 
-		if err := s.importRepo.Create(ctx, &domain.FakturoidImportLog{
+		if err := s.importRepo.Create(ctx, companyID, &domain.FakturoidImportLog{
 			FakturoidEntityType: "expense",
 			FakturoidID:         item.FakturoidID,
 			LocalEntityType:     "expense",
@@ -206,15 +201,15 @@ func (s *FakturoidImportService) ImportAll(ctx context.Context, client Fakturoid
 		// Download attachments for newly imported expense.
 		if downloadAttachments && s.documentSvc != nil {
 			fakExp := expenseByFakturoidID[item.FakturoidID]
-			s.downloadExpenseAttachments(ctx, client, expense.ID, fakExp.Attachments, result)
+			s.downloadExpenseAttachments(ctx, companyID, client, expense.ID, fakExp.Attachments, result)
 		}
 	}
 
 	return result, nil
 }
 
-// downloadInvoiceAttachments downloads and stores attachments for an invoice.
-func (s *FakturoidImportService) downloadInvoiceAttachments(ctx context.Context, client FakturoidClient, invoiceID int64, attachments []fakturoid.Attachment, result *domain.FakturoidImportResult) {
+// downloadInvoiceAttachments downloads and stores attachments for an invoice within the given company.
+func (s *FakturoidImportService) downloadInvoiceAttachments(ctx context.Context, companyID int64, client FakturoidClient, invoiceID int64, attachments []fakturoid.Attachment, result *domain.FakturoidImportResult) {
 	for _, att := range attachments {
 		data, contentType, err := client.DownloadAttachment(ctx, att.DownloadURL)
 		if err != nil {
@@ -231,7 +226,7 @@ func (s *FakturoidImportService) downloadInvoiceAttachments(ctx context.Context,
 			contentType = att.ContentType
 		}
 
-		_, err = s.invDocumentSvc.Upload(ctx, fallbackCompanyID, invoiceID, filename, contentType, data)
+		_, err = s.invDocumentSvc.Upload(ctx, companyID, invoiceID, filename, contentType, data)
 		if err != nil {
 			slog.Warn("failed to store invoice attachment", "invoice_id", invoiceID, "filename", filename, "error", err)
 			result.AttachmentsSkipped++
@@ -248,8 +243,8 @@ func (s *FakturoidImportService) downloadInvoiceAttachments(ctx context.Context,
 	}
 }
 
-// downloadExpenseAttachments downloads and stores attachments for an expense.
-func (s *FakturoidImportService) downloadExpenseAttachments(ctx context.Context, client FakturoidClient, expenseID int64, attachments []fakturoid.Attachment, result *domain.FakturoidImportResult) {
+// downloadExpenseAttachments downloads and stores attachments for an expense within the given company.
+func (s *FakturoidImportService) downloadExpenseAttachments(ctx context.Context, companyID int64, client FakturoidClient, expenseID int64, attachments []fakturoid.Attachment, result *domain.FakturoidImportResult) {
 	for _, att := range attachments {
 		data, contentType, err := client.DownloadAttachment(ctx, att.DownloadURL)
 		if err != nil {
@@ -266,7 +261,7 @@ func (s *FakturoidImportService) downloadExpenseAttachments(ctx context.Context,
 			contentType = att.ContentType
 		}
 
-		_, err = s.documentSvc.Upload(ctx, fallbackCompanyID, expenseID, filename, contentType, bytes.NewReader(data))
+		_, err = s.documentSvc.Upload(ctx, companyID, expenseID, filename, contentType, bytes.NewReader(data))
 		if err != nil {
 			slog.Warn("failed to store expense attachment", "expense_id", expenseID, "filename", filename, "error", err)
 			result.AttachmentsSkipped++
@@ -283,8 +278,8 @@ func (s *FakturoidImportService) downloadExpenseAttachments(ctx context.Context,
 	}
 }
 
-// buildPreview constructs a preview from already-fetched Fakturoid data.
-func (s *FakturoidImportService) buildPreview(ctx context.Context, subjects []fakturoid.Subject, invoices []fakturoid.Invoice, expenses []fakturoid.Expense) *domain.FakturoidImportPreview {
+// buildPreview constructs a preview from already-fetched Fakturoid data for the given company.
+func (s *FakturoidImportService) buildPreview(ctx context.Context, companyID int64, subjects []fakturoid.Subject, invoices []fakturoid.Invoice, expenses []fakturoid.Expense) *domain.FakturoidImportPreview {
 	preview := &domain.FakturoidImportPreview{}
 
 	// Build subject ID -> local contact ID map for resolving references
@@ -292,7 +287,7 @@ func (s *FakturoidImportService) buildPreview(ctx context.Context, subjects []fa
 
 	// Process contacts
 	for _, subj := range subjects {
-		item := s.previewContact(ctx, subj)
+		item := s.previewContact(ctx, companyID, subj)
 		if item.Status == "duplicate" && item.ExistingID != nil {
 			subjectMap[subj.ID] = *item.ExistingID
 		}
@@ -301,25 +296,25 @@ func (s *FakturoidImportService) buildPreview(ctx context.Context, subjects []fa
 
 	// Process invoices
 	for _, inv := range invoices {
-		item := s.previewInvoice(ctx, inv, subjectMap)
+		item := s.previewInvoice(ctx, companyID, inv, subjectMap)
 		preview.Invoices = append(preview.Invoices, item)
 	}
 
 	// Process expenses
 	for _, exp := range expenses {
-		item := s.previewExpense(ctx, exp, subjectMap)
+		item := s.previewExpense(ctx, companyID, exp, subjectMap)
 		preview.Expenses = append(preview.Expenses, item)
 	}
 
 	return preview
 }
 
-// previewContact maps a Fakturoid subject to a domain contact and checks for duplicates.
-func (s *FakturoidImportService) previewContact(ctx context.Context, subj fakturoid.Subject) domain.FakturoidImportItem {
+// previewContact maps a Fakturoid subject to a domain contact and checks for duplicates within the given company.
+func (s *FakturoidImportService) previewContact(ctx context.Context, companyID int64, subj fakturoid.Subject) domain.FakturoidImportItem {
 	contact := mapSubjectToContact(subj)
 
 	// Check import log first
-	logEntry, err := s.importRepo.FindByFakturoidID(ctx, "subject", subj.ID)
+	logEntry, err := s.importRepo.FindByFakturoidID(ctx, companyID, "subject", subj.ID)
 	if err != nil {
 		slog.Warn("import log lookup failed", "entity", "subject", "id", subj.ID, "error", err)
 	}
@@ -335,7 +330,7 @@ func (s *FakturoidImportService) previewContact(ctx context.Context, subj faktur
 
 	// Check by ICO
 	if contact.ICO != "" {
-		existing, err := s.contactRepo.FindByICO(ctx, fallbackCompanyID, contact.ICO)
+		existing, err := s.contactRepo.FindByICO(ctx, companyID, contact.ICO)
 		if err == nil && existing != nil {
 			return domain.FakturoidImportItem{
 				FakturoidID: subj.ID,
@@ -348,7 +343,7 @@ func (s *FakturoidImportService) previewContact(ctx context.Context, subj faktur
 	}
 
 	// Check by exact name
-	contacts, _, err := s.contactRepo.List(ctx, fallbackCompanyID, domain.ContactFilter{Search: contact.Name, Limit: 1})
+	contacts, _, err := s.contactRepo.List(ctx, companyID, domain.ContactFilter{Search: contact.Name, Limit: 1})
 	if err == nil && len(contacts) > 0 && contacts[0].Name == contact.Name {
 		existingID := contacts[0].ID
 		return domain.FakturoidImportItem{
@@ -367,12 +362,12 @@ func (s *FakturoidImportService) previewContact(ctx context.Context, subj faktur
 	}
 }
 
-// previewInvoice maps a Fakturoid invoice and checks for duplicates.
-func (s *FakturoidImportService) previewInvoice(ctx context.Context, inv fakturoid.Invoice, subjectMap map[int64]int64) domain.FakturoidImportItem {
+// previewInvoice maps a Fakturoid invoice and checks for duplicates within the given company.
+func (s *FakturoidImportService) previewInvoice(ctx context.Context, companyID int64, inv fakturoid.Invoice, subjectMap map[int64]int64) domain.FakturoidImportItem {
 	invoice := mapFakturoidInvoice(inv, subjectMap)
 
 	// Check import log
-	logEntry, err := s.importRepo.FindByFakturoidID(ctx, "invoice", inv.ID)
+	logEntry, err := s.importRepo.FindByFakturoidID(ctx, companyID, "invoice", inv.ID)
 	if err != nil {
 		slog.Warn("import log lookup failed", "entity", "invoice", "id", inv.ID, "error", err)
 	}
@@ -388,7 +383,7 @@ func (s *FakturoidImportService) previewInvoice(ctx context.Context, inv fakturo
 
 	// Check by invoice number
 	if invoice.InvoiceNumber != "" {
-		invoices, _, err := s.invoiceRepo.List(ctx, fallbackCompanyID, domain.InvoiceFilter{Search: invoice.InvoiceNumber, Limit: 1})
+		invoices, _, err := s.invoiceRepo.List(ctx, companyID, domain.InvoiceFilter{Search: invoice.InvoiceNumber, Limit: 1})
 		if err == nil && len(invoices) > 0 && invoices[0].InvoiceNumber == invoice.InvoiceNumber {
 			existingID := invoices[0].ID
 			return domain.FakturoidImportItem{
@@ -408,12 +403,12 @@ func (s *FakturoidImportService) previewInvoice(ctx context.Context, inv fakturo
 	}
 }
 
-// previewExpense maps a Fakturoid expense and checks for duplicates.
-func (s *FakturoidImportService) previewExpense(ctx context.Context, exp fakturoid.Expense, subjectMap map[int64]int64) domain.FakturoidImportItem {
+// previewExpense maps a Fakturoid expense and checks for duplicates within the given company.
+func (s *FakturoidImportService) previewExpense(ctx context.Context, companyID int64, exp fakturoid.Expense, subjectMap map[int64]int64) domain.FakturoidImportItem {
 	expense := mapFakturoidExpense(exp, subjectMap)
 
 	// Check import log
-	logEntry, err := s.importRepo.FindByFakturoidID(ctx, "expense", exp.ID)
+	logEntry, err := s.importRepo.FindByFakturoidID(ctx, companyID, "expense", exp.ID)
 	if err != nil {
 		slog.Warn("import log lookup failed", "entity", "expense", "id", exp.ID, "error", err)
 	}
@@ -437,7 +432,7 @@ func (s *FakturoidImportService) previewExpense(ctx context.Context, exp fakturo
 			DateTo:   &issueDate,
 			Limit:    1,
 		}
-		expenses, _, err := s.expenseRepo.List(ctx, fallbackCompanyID, expFilter)
+		expenses, _, err := s.expenseRepo.List(ctx, companyID, expFilter)
 		if err == nil && len(expenses) > 0 && expenses[0].ExpenseNumber == expense.ExpenseNumber {
 			existingID := expenses[0].ID
 			return domain.FakturoidImportItem{

@@ -64,8 +64,8 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 	return sio, nil
 }
 
-// Create inserts a new social insurance overview into the database.
-func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
+// Create inserts a new social insurance overview scoped to the given company.
+func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, companyID int64, sio *domain.SocialInsuranceOverview) error {
 	now := time.Now()
 	sio.CreatedAt = now
 	sio.UpdatedAt = now
@@ -75,12 +75,13 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO social_insurance_overviews (
-			year, filing_type,
+			company_id, year, filing_type,
 			total_revenue, total_expenses, tax_base,
 			assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID,
 		sio.Year, sio.FilingType,
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
@@ -100,8 +101,8 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 	return nil
 }
 
-// Update modifies an existing social insurance overview.
-func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
+// Update modifies an existing social insurance overview within the given company.
+func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, companyID int64, sio *domain.SocialInsuranceOverview) error {
 	sio.UpdatedAt = time.Now()
 
 	var filedAt any
@@ -116,13 +117,13 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 			assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		sio.Year, sio.FilingType,
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
 		sio.XMLData, sio.Status, filedAt,
-		sio.UpdatedAt.Format(time.RFC3339), sio.ID,
+		sio.UpdatedAt.Format(time.RFC3339), sio.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating social_insurance_overview %d: %w", sio.ID, err)
@@ -130,9 +131,9 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 	return nil
 }
 
-// Delete removes a social insurance overview by ID.
-func (r *SocialInsuranceOverviewRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM social_insurance_overviews WHERE id = ?`, id)
+// Delete removes a social insurance overview by ID within the given company.
+func (r *SocialInsuranceOverviewRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM social_insurance_overviews WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting social_insurance_overview %d: %w", id, err)
 	}
@@ -147,9 +148,9 @@ func (r *SocialInsuranceOverviewRepository) Delete(ctx context.Context, id int64
 	return nil
 }
 
-// GetByID retrieves a social insurance overview by its ID.
-func (r *SocialInsuranceOverviewRepository) GetByID(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+socialInsuranceColumns+` FROM social_insurance_overviews WHERE id = ?`, id)
+// GetByID retrieves a social insurance overview by its ID within the given company.
+func (r *SocialInsuranceOverviewRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.SocialInsuranceOverview, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+socialInsuranceColumns+` FROM social_insurance_overviews WHERE id = ? AND company_id = ?`, id, companyID)
 	sio, err := scanSocialInsuranceOverview(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -160,11 +161,11 @@ func (r *SocialInsuranceOverviewRepository) GetByID(ctx context.Context, id int6
 	return sio, nil
 }
 
-// List retrieves all social insurance overviews for a given year.
-func (r *SocialInsuranceOverviewRepository) List(ctx context.Context, year int) ([]domain.SocialInsuranceOverview, error) {
+// List retrieves all social insurance overviews for a given year within the given company.
+func (r *SocialInsuranceOverviewRepository) List(ctx context.Context, companyID int64, year int) ([]domain.SocialInsuranceOverview, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+socialInsuranceColumns+` FROM social_insurance_overviews WHERE year = ? ORDER BY created_at ASC`,
-		year,
+		`SELECT `+socialInsuranceColumns+` FROM social_insurance_overviews WHERE company_id = ? AND year = ? ORDER BY created_at ASC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing social_insurance_overviews for year %d: %w", year, err)
@@ -185,11 +186,11 @@ func (r *SocialInsuranceOverviewRepository) List(ctx context.Context, year int) 
 	return result, nil
 }
 
-// GetByYear retrieves a social insurance overview for a specific year and filing type.
-func (r *SocialInsuranceOverviewRepository) GetByYear(ctx context.Context, year int, filingType string) (*domain.SocialInsuranceOverview, error) {
+// GetByYear retrieves a social insurance overview for a specific year and filing type within the given company.
+func (r *SocialInsuranceOverviewRepository) GetByYear(ctx context.Context, companyID int64, year int, filingType string) (*domain.SocialInsuranceOverview, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT `+socialInsuranceColumns+` FROM social_insurance_overviews WHERE year = ? AND filing_type = ?`,
-		year, filingType,
+		`SELECT `+socialInsuranceColumns+` FROM social_insurance_overviews WHERE company_id = ? AND year = ? AND filing_type = ?`,
+		companyID, year, filingType,
 	)
 	sio, err := scanSocialInsuranceOverview(row)
 	if err != nil {

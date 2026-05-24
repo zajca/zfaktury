@@ -40,6 +40,12 @@ func (h *VIESHandler) Routes() chi.Router {
 
 // Create handles POST /api/v1/vies-summaries.
 func (h *VIESHandler) Create(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req viesSummaryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -54,7 +60,7 @@ func (h *VIESHandler) Create(w http.ResponseWriter, r *http.Request) {
 		FilingType: req.FilingType,
 	}
 
-	if err := h.svc.Create(r.Context(), vs); err != nil {
+	if err := h.svc.Create(r.Context(), company.ID, vs); err != nil {
 		slog.Error("failed to create VIES summary", "error", err)
 		mapDomainError(w, err)
 		return
@@ -65,6 +71,12 @@ func (h *VIESHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/v1/vies-summaries?year=YYYY.
 func (h *VIESHandler) List(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := r.URL.Query().Get("year")
 	if yearStr == "" {
 		yearStr = strconv.Itoa(time.Now().Year())
@@ -75,7 +87,7 @@ func (h *VIESHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summaries, err := h.svc.List(r.Context(), year)
+	summaries, err := h.svc.List(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list VIES summaries", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list VIES summaries")
@@ -92,20 +104,26 @@ func (h *VIESHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /api/v1/vies-summaries/{id}.
 func (h *VIESHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid ID")
 		return
 	}
 
-	vs, err := h.svc.GetByID(r.Context(), id)
+	vs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get VIES summary", "error", err)
 		mapDomainError(w, err)
 		return
 	}
 
-	lines, err := h.svc.GetLines(r.Context(), id)
+	lines, err := h.svc.GetLines(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get VIES summary lines", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load lines")
@@ -117,13 +135,19 @@ func (h *VIESHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/v1/vies-summaries/{id}.
 func (h *VIESHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid ID")
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), id); err != nil {
+	if err := h.svc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete VIES summary", "error", err)
 		mapDomainError(w, err)
 		return
@@ -134,26 +158,32 @@ func (h *VIESHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Recalculate handles POST /api/v1/vies-summaries/{id}/recalculate.
 func (h *VIESHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid ID")
 		return
 	}
 
-	if err := h.svc.Recalculate(r.Context(), id); err != nil {
+	if err := h.svc.Recalculate(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to recalculate VIES summary", "error", err)
 		mapDomainError(w, err)
 		return
 	}
 
-	vs, err := h.svc.GetByID(r.Context(), id)
+	vs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get recalculated VIES summary", "error", err)
 		respondError(w, http.StatusInternalServerError, "recalculation succeeded but failed to load result")
 		return
 	}
 
-	lines, err := h.svc.GetLines(r.Context(), id)
+	lines, err := h.svc.GetLines(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get VIES summary lines", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load lines")
@@ -165,13 +195,19 @@ func (h *VIESHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
 
 // GenerateXML handles POST /api/v1/vies-summaries/{id}/generate-xml.
 func (h *VIESHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid ID")
 		return
 	}
 
-	settings, err := h.settingsSvc.GetAll(r.Context())
+	settings, err := h.settingsSvc.GetAll(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to load settings for XML generation", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load settings")
@@ -183,13 +219,13 @@ func (h *VIESHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.GenerateXML(r.Context(), id, dic); err != nil {
+	if err := h.svc.GenerateXML(r.Context(), company.ID, id, dic); err != nil {
 		slog.Error("failed to generate VIES XML", "error", err)
 		mapDomainError(w, err)
 		return
 	}
 
-	vs, err := h.svc.GetByID(r.Context(), id)
+	vs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get VIES summary after XML generation", "error", err)
 		respondError(w, http.StatusInternalServerError, "XML generated but failed to load result")
@@ -201,13 +237,19 @@ func (h *VIESHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 
 // DownloadXML handles GET /api/v1/vies-summaries/{id}/xml.
 func (h *VIESHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid ID")
 		return
 	}
 
-	vs, err := h.svc.GetByID(r.Context(), id)
+	vs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get VIES summary for XML download", "error", err)
 		mapDomainError(w, err)
@@ -230,19 +272,25 @@ func (h *VIESHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 
 // MarkFiled handles POST /api/v1/vies-summaries/{id}/mark-filed.
 func (h *VIESHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid ID")
 		return
 	}
 
-	if err := h.svc.MarkFiled(r.Context(), id); err != nil {
+	if err := h.svc.MarkFiled(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to mark VIES summary as filed", "error", err)
 		mapDomainError(w, err)
 		return
 	}
 
-	vs, err := h.svc.GetByID(r.Context(), id)
+	vs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get VIES summary after marking filed", "error", err)
 		respondError(w, http.StatusInternalServerError, "marked as filed but failed to load result")

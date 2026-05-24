@@ -13,11 +13,6 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
-// socialInsuranceFallbackCompanyID is a transitional shim — social insurance
-// service is not yet company-scoped (T22 will thread companyID through it).
-// Remove when this service gains an explicit companyID.
-const socialInsuranceFallbackCompanyID int64 = 1 // remove in T22
-
 // SocialInsuranceService provides business logic for social insurance overview management.
 type SocialInsuranceService struct {
 	repo                repository.SocialInsuranceOverviewRepo
@@ -50,8 +45,8 @@ func NewSocialInsuranceService(
 	}
 }
 
-// Create validates and persists a new social insurance overview.
-func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
+// Create validates and persists a new social insurance overview within the given company.
+func (s *SocialInsuranceService) Create(ctx context.Context, companyID int64, sio *domain.SocialInsuranceOverview) error {
 	if sio.Year < 2000 || sio.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -68,7 +63,7 @@ func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialI
 
 	// Check for existing regular filing for this year.
 	if sio.FilingType == domain.FilingTypeRegular {
-		existing, err := s.repo.GetByYear(ctx, sio.Year, sio.FilingType)
+		existing, err := s.repo.GetByYear(ctx, companyID, sio.Year, sio.FilingType)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return fmt.Errorf("checking existing social_insurance_overview: %w", err)
 		}
@@ -81,7 +76,7 @@ func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialI
 		sio.Status = domain.FilingStatusDraft
 	}
 
-	if err := s.repo.Create(ctx, sio); err != nil {
+	if err := s.repo.Create(ctx, companyID, sio); err != nil {
 		return fmt.Errorf("creating social_insurance_overview: %w", err)
 	}
 	if s.audit != nil {
@@ -90,37 +85,37 @@ func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialI
 	return nil
 }
 
-// GetByID retrieves a social insurance overview by its ID.
-func (s *SocialInsuranceService) GetByID(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
+// GetByID retrieves a social insurance overview by its ID within the given company.
+func (s *SocialInsuranceService) GetByID(ctx context.Context, companyID, id int64) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
-	sio, err := s.repo.GetByID(ctx, id)
+	sio, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching social_insurance_overview: %w", err)
 	}
 	return sio, nil
 }
 
-// List retrieves all social insurance overviews for a given year.
-func (s *SocialInsuranceService) List(ctx context.Context, year int) ([]domain.SocialInsuranceOverview, error) {
+// List retrieves all social insurance overviews for a given year within the given company.
+func (s *SocialInsuranceService) List(ctx context.Context, companyID int64, year int) ([]domain.SocialInsuranceOverview, error) {
 	if year == 0 {
 		year = time.Now().Year()
 	}
-	overviews, err := s.repo.List(ctx, year)
+	overviews, err := s.repo.List(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing social_insurance_overviews: %w", err)
 	}
 	return overviews, nil
 }
 
-// Delete removes a social insurance overview by ID. Filed overviews cannot be deleted.
-func (s *SocialInsuranceService) Delete(ctx context.Context, id int64) error {
+// Delete removes a social insurance overview by ID within the given company. Filed overviews cannot be deleted.
+func (s *SocialInsuranceService) Delete(ctx context.Context, companyID, id int64) error {
 	if id == 0 {
 		return fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	sio, err := s.repo.GetByID(ctx, id)
+	sio, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching social_insurance_overview for delete: %w", err)
 	}
@@ -128,7 +123,7 @@ func (s *SocialInsuranceService) Delete(ctx context.Context, id int64) error {
 		return domain.ErrFilingAlreadyFiled
 	}
 
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting social_insurance_overview: %w", err)
 	}
 	if s.audit != nil {
@@ -137,13 +132,13 @@ func (s *SocialInsuranceService) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// Recalculate recalculates the social insurance overview from invoices and expenses.
-func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
+// Recalculate recalculates the social insurance overview from invoices and expenses within the given company.
+func (s *SocialInsuranceService) Recalculate(ctx context.Context, companyID, id int64) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	sio, err := s.repo.GetByID(ctx, id)
+	sio, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching social_insurance_overview for recalculation: %w", err)
 	}
@@ -152,14 +147,14 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	}
 
 	// Calculate annual base from invoices and expenses.
-	annualBase, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, socialInsuranceFallbackCompanyID, sio.Year)
+	annualBase, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, companyID, sio.Year)
 	if err != nil {
 		return nil, fmt.Errorf("calculating annual base for social insurance: %w", err)
 	}
 
 	// Get flat_rate_percent from tax year settings.
 	flatRatePercent := 0
-	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, sio.Year)
+	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, companyID, sio.Year)
 	if err == nil {
 		flatRatePercent = tys.FlatRatePercent
 	}
@@ -177,7 +172,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	sio.TotalExpenses = usedExpenses
 
 	// Read prepayments from tax prepayments table.
-	_, socialTotal, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, sio.Year)
+	_, socialTotal, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, companyID, sio.Year)
 	if sumErr != nil {
 		return nil, fmt.Errorf("summing social prepayments: %w", sumErr)
 	}
@@ -202,7 +197,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
 
 	// Persist updated values.
-	if err := s.repo.Update(ctx, sio); err != nil {
+	if err := s.repo.Update(ctx, companyID, sio); err != nil {
 		return nil, fmt.Errorf("updating social_insurance_overview after recalculation: %w", err)
 	}
 
@@ -212,13 +207,13 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	return sio, nil
 }
 
-// GenerateXML generates the CSSZ XML for a social insurance overview.
-func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
+// GenerateXML generates the CSSZ XML for a social insurance overview within the given company.
+func (s *SocialInsuranceService) GenerateXML(ctx context.Context, companyID, id int64) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	sio, err := s.repo.GetByID(ctx, id)
+	sio, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching social_insurance_overview for XML generation: %w", err)
 	}
@@ -230,13 +225,13 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		"taxpayer_birth_number", "taxpayer_birth_date", "taxpayer_street",
 		"taxpayer_house_number", "taxpayer_postal_code", "taxpayer_city",
 	} {
-		val, err := s.settingsRepo.Get(ctx, key)
+		val, err := s.settingsRepo.Get(ctx, companyID, key)
 		if err == nil {
 			settings[key] = val
 		}
 	}
 	// Read flat_rate_percent from tax year settings for XML generation.
-	tys, tysErr := s.taxYearSettingsRepo.GetByYear(ctx, sio.Year)
+	tys, tysErr := s.taxYearSettingsRepo.GetByYear(ctx, companyID, sio.Year)
 	if tysErr == nil && tys.FlatRatePercent > 0 {
 		settings["flat_rate_percent"] = strconv.Itoa(tys.FlatRatePercent)
 		settings["flat_rate_expenses"] = "true"
@@ -248,7 +243,7 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	}
 
 	sio.XMLData = xmlData
-	if err := s.repo.Update(ctx, sio); err != nil {
+	if err := s.repo.Update(ctx, companyID, sio); err != nil {
 		return nil, fmt.Errorf("saving social_insurance_overview XML: %w", err)
 	}
 
@@ -258,25 +253,25 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	return sio, nil
 }
 
-// GetXMLData retrieves the stored XML data for a social insurance overview.
-func (s *SocialInsuranceService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+// GetXMLData retrieves the stored XML data for a social insurance overview within the given company.
+func (s *SocialInsuranceService) GetXMLData(ctx context.Context, companyID, id int64) ([]byte, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
-	sio, err := s.repo.GetByID(ctx, id)
+	sio, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching social_insurance_overview for XML data: %w", err)
 	}
 	return sio.XMLData, nil
 }
 
-// MarkFiled marks a social insurance overview as filed and records the timestamp.
-func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
+// MarkFiled marks a social insurance overview as filed within the given company and records the timestamp.
+func (s *SocialInsuranceService) MarkFiled(ctx context.Context, companyID, id int64) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	sio, err := s.repo.GetByID(ctx, id)
+	sio, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching social_insurance_overview for marking as filed: %w", err)
 	}
@@ -288,7 +283,7 @@ func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*doma
 	sio.Status = domain.FilingStatusFiled
 	sio.FiledAt = &now
 
-	if err := s.repo.Update(ctx, sio); err != nil {
+	if err := s.repo.Update(ctx, companyID, sio); err != nil {
 		return nil, fmt.Errorf("marking social_insurance_overview as filed: %w", err)
 	}
 	if s.audit != nil {

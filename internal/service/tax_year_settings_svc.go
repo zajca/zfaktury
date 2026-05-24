@@ -29,9 +29,10 @@ func NewTaxYearSettingsService(
 	}
 }
 
-// GetByYear returns tax year settings for a given year, defaulting to zero values if not found.
-func (s *TaxYearSettingsService) GetByYear(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
-	tys, err := s.settingsRepo.GetByYear(ctx, year)
+// GetByYear returns tax year settings for a given year within the given company,
+// defaulting to zero values if not found.
+func (s *TaxYearSettingsService) GetByYear(ctx context.Context, companyID int64, year int) (*domain.TaxYearSettings, error) {
+	tys, err := s.settingsRepo.GetByYear(ctx, companyID, year)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return &domain.TaxYearSettings{Year: year}, nil
@@ -41,9 +42,10 @@ func (s *TaxYearSettingsService) GetByYear(ctx context.Context, year int) (*doma
 	return tys, nil
 }
 
-// GetPrepayments returns 12 months of prepayments for a given year, filling missing months with zeros.
-func (s *TaxYearSettingsService) GetPrepayments(ctx context.Context, year int) ([]domain.TaxPrepayment, error) {
-	existing, err := s.prepaymentRepo.ListByYear(ctx, year)
+// GetPrepayments returns 12 months of prepayments for a given year within the given company,
+// filling missing months with zeros.
+func (s *TaxYearSettingsService) GetPrepayments(ctx context.Context, companyID int64, year int) ([]domain.TaxPrepayment, error) {
+	existing, err := s.prepaymentRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing prepayments for year %d: %w", year, err)
 	}
@@ -64,20 +66,20 @@ func (s *TaxYearSettingsService) GetPrepayments(ctx context.Context, year int) (
 	return result, nil
 }
 
-// Save upserts both tax year settings and all 12 months of prepayments.
-func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePercent int, prepayments []domain.TaxPrepayment) error {
+// Save upserts both tax year settings and all 12 months of prepayments within the given company.
+func (s *TaxYearSettingsService) Save(ctx context.Context, companyID int64, year int, flatRatePercent int, prepayments []domain.TaxPrepayment) error {
 	// Fetch existing settings before upsert for audit logging.
-	existing, _ := s.settingsRepo.GetByYear(ctx, year)
+	existing, _ := s.settingsRepo.GetByYear(ctx, companyID, year)
 
 	tys := &domain.TaxYearSettings{
 		Year:            year,
 		FlatRatePercent: flatRatePercent,
 	}
-	if err := s.settingsRepo.Upsert(ctx, tys); err != nil {
+	if err := s.settingsRepo.Upsert(ctx, companyID, tys); err != nil {
 		return fmt.Errorf("saving tax_year_settings: %w", err)
 	}
 
-	if err := s.prepaymentRepo.UpsertAll(ctx, year, prepayments); err != nil {
+	if err := s.prepaymentRepo.UpsertAll(ctx, companyID, year, prepayments); err != nil {
 		return fmt.Errorf("saving prepayments: %w", err)
 	}
 
@@ -95,7 +97,7 @@ func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePer
 	return nil
 }
 
-// GetPrepaymentSums returns the annual sum of prepayments for a given year.
-func (s *TaxYearSettingsService) GetPrepaymentSums(ctx context.Context, year int) (taxTotal, socialTotal, healthTotal domain.Amount, err error) {
-	return s.prepaymentRepo.SumByYear(ctx, year)
+// GetPrepaymentSums returns the annual sum of prepayments for a given year within the given company.
+func (s *TaxYearSettingsService) GetPrepaymentSums(ctx context.Context, companyID int64, year int) (taxTotal, socialTotal, healthTotal domain.Amount, err error) {
+	return s.prepaymentRepo.SumByYear(ctx, companyID, year)
 }

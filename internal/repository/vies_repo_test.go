@@ -23,7 +23,7 @@ func TestVIESSummaryRepository_CreateAndGetByID(t *testing.T) {
 		XMLData:    []byte("<xml>test</xml>"),
 	}
 
-	if err := repo.Create(ctx, vs); err != nil {
+	if err := repo.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if vs.ID == 0 {
@@ -36,7 +36,7 @@ func TestVIESSummaryRepository_CreateAndGetByID(t *testing.T) {
 		t.Errorf("Status = %q, want %q", vs.Status, domain.FilingStatusDraft)
 	}
 
-	got, err := repo.GetByID(ctx, vs.ID)
+	got, err := repo.GetByID(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestVIESSummaryRepository_Update(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		XMLData:    []byte("<xml>original</xml>"),
 	}
-	if err := repo.Create(ctx, vs); err != nil {
+	if err := repo.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -81,11 +81,11 @@ func TestVIESSummaryRepository_Update(t *testing.T) {
 	vs.Status = domain.FilingStatusReady
 	vs.Period.Quarter = 3
 
-	if err := repo.Update(ctx, vs); err != nil {
+	if err := repo.Update(ctx, 1, vs); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, vs.ID)
+	got, err := repo.GetByID(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -116,23 +116,23 @@ func TestVIESSummaryRepository_Delete(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vs); err != nil {
+	if err := repo.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Delete existing should succeed.
-	if err := repo.Delete(ctx, vs.ID); err != nil {
+	if err := repo.Delete(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
 	// Verify it is gone.
-	_, err := repo.GetByID(ctx, vs.ID)
+	_, err := repo.GetByID(ctx, 1, vs.ID)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID() after delete: got %v, want %v", err, domain.ErrNotFound)
 	}
 
 	// Delete non-existent should return ErrNotFound.
-	err = repo.Delete(ctx, 99999)
+	err = repo.Delete(ctx, 1, 99999)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Delete(non-existent): got %v, want %v", err, domain.ErrNotFound)
 	}
@@ -143,7 +143,7 @@ func TestVIESSummaryRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewVIESSummaryRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID(non-existent): got %v, want %v", err, domain.ErrNotFound)
 	}
@@ -163,7 +163,7 @@ func TestVIESSummaryRepository_List(t *testing.T) {
 			},
 			FilingType: domain.FilingTypeRegular,
 		}
-		if err := repo.Create(ctx, vs); err != nil {
+		if err := repo.Create(ctx, 1, vs); err != nil {
 			t.Fatalf("Create() error for Q%d: %v", q, err)
 		}
 	}
@@ -176,12 +176,12 @@ func TestVIESSummaryRepository_List(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vs2024); err != nil {
+	if err := repo.Create(ctx, 1, vs2024); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// List 2025 should return 3 entries.
-	list, err := repo.List(ctx, 2025)
+	list, err := repo.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List(2025) error: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestVIESSummaryRepository_List(t *testing.T) {
 	}
 
 	// List 2024 should return 1 entry.
-	list2024, err := repo.List(ctx, 2024)
+	list2024, err := repo.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List(2024) error: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestVIESSummaryRepository_List(t *testing.T) {
 	}
 
 	// List for year with no entries should return empty.
-	listEmpty, err := repo.List(ctx, 2020)
+	listEmpty, err := repo.List(ctx, 1, 2020)
 	if err != nil {
 		t.Fatalf("List(2020) error: %v", err)
 	}
@@ -227,12 +227,12 @@ func TestVIESSummaryRepository_GetByPeriod(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vs); err != nil {
+	if err := repo.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Find by matching year, quarter, filing type.
-	got, err := repo.GetByPeriod(ctx, 2025, 2, domain.FilingTypeRegular)
+	got, err := repo.GetByPeriod(ctx, 1, 2025, 2, domain.FilingTypeRegular)
 	if err != nil {
 		t.Fatalf("GetByPeriod() error: %v", err)
 	}
@@ -241,19 +241,19 @@ func TestVIESSummaryRepository_GetByPeriod(t *testing.T) {
 	}
 
 	// Non-existent quarter returns ErrNotFound.
-	_, err = repo.GetByPeriod(ctx, 2025, 4, domain.FilingTypeRegular)
+	_, err = repo.GetByPeriod(ctx, 1, 2025, 4, domain.FilingTypeRegular)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByPeriod(wrong quarter): got %v, want %v", err, domain.ErrNotFound)
 	}
 
 	// Non-existent filing type returns ErrNotFound.
-	_, err = repo.GetByPeriod(ctx, 2025, 2, domain.FilingTypeCorrective)
+	_, err = repo.GetByPeriod(ctx, 1, 2025, 2, domain.FilingTypeCorrective)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByPeriod(wrong filingType): got %v, want %v", err, domain.ErrNotFound)
 	}
 
 	// Non-existent year returns ErrNotFound.
-	_, err = repo.GetByPeriod(ctx, 2020, 2, domain.FilingTypeRegular)
+	_, err = repo.GetByPeriod(ctx, 1, 2020, 2, domain.FilingTypeRegular)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByPeriod(wrong year): got %v, want %v", err, domain.ErrNotFound)
 	}
@@ -272,7 +272,7 @@ func TestVIESSummaryRepository_CreateAndGetLines(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vs); err != nil {
+	if err := repo.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -293,11 +293,11 @@ func TestVIESSummaryRepository_CreateAndGetLines(t *testing.T) {
 		},
 	}
 
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
-	got, err := repo.GetLines(ctx, vs.ID)
+	got, err := repo.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -346,7 +346,7 @@ func TestVIESSummaryRepository_DeleteLines(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vs); err != nil {
+	if err := repo.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -366,12 +366,12 @@ func TestVIESSummaryRepository_DeleteLines(t *testing.T) {
 			ServiceCode:   domain.VIESServiceCode3,
 		},
 	}
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
 	// Verify lines exist.
-	got, err := repo.GetLines(ctx, vs.ID)
+	got, err := repo.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -380,12 +380,12 @@ func TestVIESSummaryRepository_DeleteLines(t *testing.T) {
 	}
 
 	// Delete all lines.
-	if err := repo.DeleteLines(ctx, vs.ID); err != nil {
+	if err := repo.DeleteLines(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("DeleteLines() error: %v", err)
 	}
 
 	// Verify lines are gone.
-	got, err = repo.GetLines(ctx, vs.ID)
+	got, err = repo.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() after delete error: %v", err)
 	}
@@ -394,7 +394,7 @@ func TestVIESSummaryRepository_DeleteLines(t *testing.T) {
 	}
 
 	// DeleteLines on a summary with no lines should not error.
-	if err := repo.DeleteLines(ctx, vs.ID); err != nil {
+	if err := repo.DeleteLines(ctx, 1, vs.ID); err != nil {
 		t.Errorf("DeleteLines() on empty: got %v, want nil", err)
 	}
 }

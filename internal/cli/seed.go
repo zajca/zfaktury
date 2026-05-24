@@ -761,7 +761,7 @@ func seedTaxYearSettings(ctx context.Context, svc *service.TaxYearSettingsServic
 			HealthAmount: domain.Amount(280000), // 2 800 CZK ZP
 		}
 	}
-	if err := svc.Save(ctx, 2025, 0, prepayments2025); err != nil {
+	if err := svc.Save(ctx, 1, 2025, 0, prepayments2025); err != nil {
 		return fmt.Errorf("saving 2025 settings: %w", err)
 	}
 
@@ -776,14 +776,14 @@ func seedTaxYearSettings(ctx context.Context, svc *service.TaxYearSettingsServic
 			HealthAmount: domain.Amount(320000), // 3 200 CZK ZP
 		}
 	}
-	return svc.Save(ctx, 2026, 0, prepayments2026)
+	return svc.Save(ctx, 1, 2026, 0, prepayments2026)
 }
 
 func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	// 2025 tax credits for Jan Novak.
 
 	// Spouse credit — wife on maternity, income under 68k limit.
-	if err := svc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+	if err := svc.UpsertSpouse(ctx, 1, &domain.TaxSpouseCredit{
 		Year:              2025,
 		SpouseName:        "Eva Novakova",
 		SpouseBirthNumber: "9055011234",
@@ -795,7 +795,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	}
 
 	// Two children.
-	if err := svc.CreateChild(ctx, &domain.TaxChildCredit{
+	if err := svc.CreateChild(ctx, 1, &domain.TaxChildCredit{
 		Year:          2025,
 		ChildName:     "Tomas Novak",
 		BirthNumber:   "1905151234",
@@ -805,7 +805,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	}); err != nil {
 		return fmt.Errorf("child 1 credit: %w", err)
 	}
-	if err := svc.CreateChild(ctx, &domain.TaxChildCredit{
+	if err := svc.CreateChild(ctx, 1, &domain.TaxChildCredit{
 		Year:          2025,
 		ChildName:     "Anna Novakova",
 		BirthNumber:   "2155201234",
@@ -817,7 +817,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	}
 
 	// Personal credits — taxpayer basic (automatic), no disability/student.
-	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+	if err := svc.UpsertPersonal(ctx, 1, &domain.TaxPersonalCredits{
 		Year:            2025,
 		IsStudent:       false,
 		StudentMonths:   0,
@@ -827,7 +827,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	}
 
 	// Deductions — mortgage interest and pension savings.
-	if err := svc.CreateDeduction(ctx, &domain.TaxDeduction{
+	if err := svc.CreateDeduction(ctx, 1, &domain.TaxDeduction{
 		Year:          2025,
 		Category:      "mortgage",
 		Description:   "Mortgage interest - flat in Praha 2",
@@ -835,7 +835,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	}); err != nil {
 		return fmt.Errorf("mortgage deduction: %w", err)
 	}
-	if err := svc.CreateDeduction(ctx, &domain.TaxDeduction{
+	if err := svc.CreateDeduction(ctx, 1, &domain.TaxDeduction{
 		Year:          2025,
 		Category:      "pension",
 		Description:   "Supplementary pension savings (doplnkove penzijni sporeni)",
@@ -843,7 +843,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 	}); err != nil {
 		return fmt.Errorf("pension deduction: %w", err)
 	}
-	if err := svc.CreateDeduction(ctx, &domain.TaxDeduction{
+	if err := svc.CreateDeduction(ctx, 1, &domain.TaxDeduction{
 		Year:          2025,
 		Category:      "life_insurance",
 		Description:   "Life insurance (zivotni pojisteni)",
@@ -872,7 +872,7 @@ func seedVATReturns(ctx context.Context, svc *service.VATReturnService) error {
 			FilingType: domain.FilingTypeRegular,
 			Status:     q.status,
 		}
-		if err := svc.Create(ctx, vr); err != nil {
+		if err := svc.Create(ctx, 1, vr); err != nil {
 			return fmt.Errorf("VAT return Q%d/2025: %w", q.quarter, err)
 		}
 	}
@@ -882,7 +882,7 @@ func seedVATReturns(ctx context.Context, svc *service.VATReturnService) error {
 		Period:     domain.TaxPeriod{Year: 2026, Quarter: 1},
 		FilingType: domain.FilingTypeRegular,
 	}
-	return svc.Create(ctx, vr)
+	return svc.Create(ctx, 1, vr)
 }
 
 func seedVATControlStatements(ctx context.Context, svc *service.VATControlStatementService) error {
@@ -893,7 +893,7 @@ func seedVATControlStatements(ctx context.Context, svc *service.VATControlStatem
 			FilingType: domain.FilingTypeRegular,
 			Status:     domain.FilingStatusFiled,
 		}
-		if err := svc.Create(ctx, cs); err != nil {
+		if err := svc.Create(ctx, 1, cs); err != nil {
 			return fmt.Errorf("control statement %d/2025: %w", m, err)
 		}
 	}
@@ -909,7 +909,7 @@ func seedVATControlStatements(ctx context.Context, svc *service.VATControlStatem
 			FilingType: domain.FilingTypeRegular,
 			Status:     status,
 		}
-		if err := svc.Create(ctx, cs); err != nil {
+		if err := svc.Create(ctx, 1, cs); err != nil {
 			return fmt.Errorf("control statement %d/2026: %w", m, err)
 		}
 	}
@@ -923,7 +923,7 @@ func seedVIESSummaries(ctx context.Context, svc *service.VIESSummaryService) err
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusFiled,
 	}
-	return svc.Create(ctx, vs)
+	return svc.Create(ctx, 1, vs)
 }
 
 func seedIncomeTaxReturn(ctx context.Context, svc *service.IncomeTaxReturnService) error {
@@ -933,7 +933,7 @@ func seedIncomeTaxReturn(ctx context.Context, svc *service.IncomeTaxReturnServic
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusFiled,
 	}
-	return svc.Create(ctx, itr)
+	return svc.Create(ctx, 1, itr)
 }
 
 func seedSocialInsurance(ctx context.Context, svc *service.SocialInsuranceService) error {
@@ -943,7 +943,7 @@ func seedSocialInsurance(ctx context.Context, svc *service.SocialInsuranceServic
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusFiled,
 	}
-	return svc.Create(ctx, sio)
+	return svc.Create(ctx, 1, sio)
 }
 
 func seedHealthInsurance(ctx context.Context, svc *service.HealthInsuranceService) error {
@@ -953,7 +953,7 @@ func seedHealthInsurance(ctx context.Context, svc *service.HealthInsuranceServic
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusFiled,
 	}
-	return svc.Create(ctx, hio)
+	return svc.Create(ctx, 1, hio)
 }
 
 func seedInvestments(ctx context.Context, svc *service.InvestmentIncomeService) error {
@@ -990,7 +990,7 @@ func seedInvestments(ctx context.Context, svc *service.InvestmentIncomeService) 
 	}
 	for i, e := range capitalEntries {
 		entry := e
-		if err := svc.CreateCapitalEntry(ctx, &entry); err != nil {
+		if err := svc.CreateCapitalEntry(ctx, 1, &entry); err != nil {
 			return fmt.Errorf("capital entry %d: %w", i+1, err)
 		}
 	}
@@ -1035,13 +1035,13 @@ func seedInvestments(ctx context.Context, svc *service.InvestmentIncomeService) 
 	}
 	for i, t := range transactions {
 		tx := t
-		if err := svc.CreateSecurityTransaction(ctx, &tx); err != nil {
+		if err := svc.CreateSecurityTransaction(ctx, 1, &tx); err != nil {
 			return fmt.Errorf("security transaction %d: %w", i+1, err)
 		}
 	}
 
 	// Recalculate FIFO for 2025 sell transactions.
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		return fmt.Errorf("recalculating FIFO: %w", err)
 	}
 
@@ -1073,5 +1073,5 @@ func seedSettings(ctx context.Context, svc *service.SettingsService) error {
 		service.SettingCSSZCode:         "11",
 		service.SettingHealthInsCode:    "111",
 	}
-	return svc.SetBulk(ctx, settings)
+	return svc.SetBulk(ctx, 1, settings)
 }

@@ -25,7 +25,7 @@ func TestVATControlStatementRepository_CreateAndGetByID(t *testing.T) {
 		Status:     domain.FilingStatusDraft,
 	}
 
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -39,7 +39,7 @@ func TestVATControlStatementRepository_CreateAndGetByID(t *testing.T) {
 		t.Error("expected UpdatedAt to be set")
 	}
 
-	got, err := repo.GetByID(ctx, cs.ID)
+	got, err := repo.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestVATControlStatementRepository_Update(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -85,11 +85,11 @@ func TestVATControlStatementRepository_Update(t *testing.T) {
 	cs.XMLData = []byte("<xml>updated</xml>")
 	cs.FilingType = domain.FilingTypeCorrective
 
-	if err := repo.Update(ctx, cs); err != nil {
+	if err := repo.Update(ctx, 1, cs); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, cs.ID)
+	got, err := repo.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -118,15 +118,15 @@ func TestVATControlStatementRepository_Delete_Existing(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := repo.Delete(ctx, cs.ID); err != nil {
+	if err := repo.Delete(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, cs.ID)
+	_, err := repo.GetByID(ctx, 1, cs.ID)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID after delete: got err %v, want domain.ErrNotFound", err)
 	}
@@ -145,7 +145,7 @@ func TestVATControlStatementRepository_Delete_WithLines(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -161,21 +161,21 @@ func TestVATControlStatementRepository_Delete_WithLines(t *testing.T) {
 			VATRatePercent:     21,
 		},
 	}
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
 	// Delete should remove both statement and lines.
-	if err := repo.Delete(ctx, cs.ID); err != nil {
+	if err := repo.Delete(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, cs.ID)
+	_, err := repo.GetByID(ctx, 1, cs.ID)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID after delete: got err %v, want domain.ErrNotFound", err)
 	}
 
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestVATControlStatementRepository_Delete_NotFound(t *testing.T) {
 	repo := NewVATControlStatementRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Delete non-existent: got err %v, want domain.ErrNotFound", err)
 	}
@@ -200,7 +200,7 @@ func TestVATControlStatementRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewVATControlStatementRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByID non-existent: got err %v, want domain.ErrNotFound", err)
 	}
@@ -221,7 +221,7 @@ func TestVATControlStatementRepository_List(t *testing.T) {
 			FilingType: domain.FilingTypeRegular,
 			Status:     domain.FilingStatusDraft,
 		}
-		if err := repo.Create(ctx, cs); err != nil {
+		if err := repo.Create(ctx, 1, cs); err != nil {
 			t.Fatalf("Create() error for month %d: %v", month, err)
 		}
 	}
@@ -235,12 +235,12 @@ func TestVATControlStatementRepository_List(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs2024); err != nil {
+	if err := repo.Create(ctx, 1, cs2024); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// List 2025 should return 3 items ordered by month ASC.
-	results, err := repo.List(ctx, 2025)
+	results, err := repo.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestVATControlStatementRepository_List(t *testing.T) {
 	}
 
 	// List 2024 should return 1.
-	results2024, err := repo.List(ctx, 2024)
+	results2024, err := repo.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -267,7 +267,7 @@ func TestVATControlStatementRepository_List(t *testing.T) {
 	}
 
 	// List year with no data should return empty.
-	results2023, err := repo.List(ctx, 2023)
+	results2023, err := repo.List(ctx, 1, 2023)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -289,11 +289,11 @@ func TestVATControlStatementRepository_GetByPeriod(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByPeriod(ctx, 2025, 7, domain.FilingTypeRegular)
+	got, err := repo.GetByPeriod(ctx, 1, 2025, 7, domain.FilingTypeRegular)
 	if err != nil {
 		t.Fatalf("GetByPeriod() error: %v", err)
 	}
@@ -305,13 +305,13 @@ func TestVATControlStatementRepository_GetByPeriod(t *testing.T) {
 	}
 
 	// Non-existent period.
-	_, err = repo.GetByPeriod(ctx, 2025, 8, domain.FilingTypeRegular)
+	_, err = repo.GetByPeriod(ctx, 1, 2025, 8, domain.FilingTypeRegular)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByPeriod non-existent: got err %v, want domain.ErrNotFound", err)
 	}
 
 	// Same period but different filing type.
-	_, err = repo.GetByPeriod(ctx, 2025, 7, domain.FilingTypeCorrective)
+	_, err = repo.GetByPeriod(ctx, 1, 2025, 7, domain.FilingTypeCorrective)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByPeriod wrong filing type: got err %v, want domain.ErrNotFound", err)
 	}
@@ -330,7 +330,7 @@ func TestVATControlStatementRepository_CreateAndGetLines_Nullable(t *testing.T) 
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -358,7 +358,7 @@ func TestVATControlStatementRepository_CreateAndGetLines_Nullable(t *testing.T) 
 		},
 	}
 
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
@@ -369,7 +369,7 @@ func TestVATControlStatementRepository_CreateAndGetLines_Nullable(t *testing.T) 
 		}
 	}
 
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestVATControlStatementRepository_CreateLines_WithInvoiceID(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -447,11 +447,11 @@ func TestVATControlStatementRepository_CreateLines_WithInvoiceID(t *testing.T) {
 		},
 	}
 
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -476,12 +476,12 @@ func TestVATControlStatementRepository_CreateLines_Empty(t *testing.T) {
 	ctx := context.Background()
 
 	// Empty slice should be a no-op.
-	if err := repo.CreateLines(ctx, []domain.VATControlStatementLine{}); err != nil {
+	if err := repo.CreateLines(ctx, 1, []domain.VATControlStatementLine{}); err != nil {
 		t.Fatalf("CreateLines(empty) error: %v", err)
 	}
 
 	// Nil slice should also be a no-op.
-	if err := repo.CreateLines(ctx, nil); err != nil {
+	if err := repo.CreateLines(ctx, 1, nil); err != nil {
 		t.Fatalf("CreateLines(nil) error: %v", err)
 	}
 }
@@ -502,7 +502,7 @@ func TestVATControlStatementRepository_CreateLines_WithExpenseID(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -521,11 +521,11 @@ func TestVATControlStatementRepository_CreateLines_WithExpenseID(t *testing.T) {
 		},
 	}
 
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -560,11 +560,11 @@ func TestVATControlStatementRepository_Create_WithFiledAt(t *testing.T) {
 		FiledAt:    &filedAt,
 	}
 
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, cs.ID)
+	got, err := repo.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -589,7 +589,7 @@ func TestVATControlStatementRepository_Update_WithFiledAt(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -597,11 +597,11 @@ func TestVATControlStatementRepository_Update_WithFiledAt(t *testing.T) {
 	cs.FiledAt = &filedAt
 	cs.Status = domain.FilingStatusFiled
 
-	if err := repo.Update(ctx, cs); err != nil {
+	if err := repo.Update(ctx, 1, cs); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, cs.ID)
+	got, err := repo.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -626,12 +626,12 @@ func TestVATControlStatementRepository_GetLines_Empty(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Statement exists but has no lines.
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -645,7 +645,7 @@ func TestVATControlStatementRepository_GetLines_NonExistentStatement(t *testing.
 	repo := NewVATControlStatementRepository(db)
 	ctx := context.Background()
 
-	gotLines, err := repo.GetLines(ctx, 99999)
+	gotLines, err := repo.GetLines(ctx, 1, 99999)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -660,7 +660,7 @@ func TestVATControlStatementRepository_DeleteLines_NonExistentStatement(t *testi
 	ctx := context.Background()
 
 	// Should not error even if no lines exist.
-	if err := repo.DeleteLines(ctx, 99999); err != nil {
+	if err := repo.DeleteLines(ctx, 1, 99999); err != nil {
 		t.Fatalf("DeleteLines() error: %v", err)
 	}
 }
@@ -670,7 +670,7 @@ func TestVATControlStatementRepository_List_Empty(t *testing.T) {
 	repo := NewVATControlStatementRepository(db)
 	ctx := context.Background()
 
-	results, err := repo.List(ctx, 2020)
+	results, err := repo.List(ctx, 1, 2020)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -692,7 +692,7 @@ func TestVATControlStatementRepository_CreateLines_MultipleLines(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -729,7 +729,7 @@ func TestVATControlStatementRepository_CreateLines_MultipleLines(t *testing.T) {
 		},
 	}
 
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
@@ -739,7 +739,7 @@ func TestVATControlStatementRepository_CreateLines_MultipleLines(t *testing.T) {
 		}
 	}
 
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -772,7 +772,7 @@ func TestVATControlStatementRepository_DeleteLines(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 		Status:     domain.FilingStatusDraft,
 	}
-	if err := repo.Create(ctx, cs); err != nil {
+	if err := repo.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -798,12 +798,12 @@ func TestVATControlStatementRepository_DeleteLines(t *testing.T) {
 			VATRatePercent:     21,
 		},
 	}
-	if err := repo.CreateLines(ctx, lines); err != nil {
+	if err := repo.CreateLines(ctx, 1, lines); err != nil {
 		t.Fatalf("CreateLines() error: %v", err)
 	}
 
 	// Verify lines exist.
-	gotLines, err := repo.GetLines(ctx, cs.ID)
+	gotLines, err := repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -812,12 +812,12 @@ func TestVATControlStatementRepository_DeleteLines(t *testing.T) {
 	}
 
 	// Delete all lines.
-	if err := repo.DeleteLines(ctx, cs.ID); err != nil {
+	if err := repo.DeleteLines(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("DeleteLines() error: %v", err)
 	}
 
 	// Verify lines are gone.
-	gotLines, err = repo.GetLines(ctx, cs.ID)
+	gotLines, err = repo.GetLines(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() after delete error: %v", err)
 	}
@@ -826,7 +826,7 @@ func TestVATControlStatementRepository_DeleteLines(t *testing.T) {
 	}
 
 	// Statement itself should still exist.
-	_, err = repo.GetByID(ctx, cs.ID)
+	_, err = repo.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Errorf("statement should still exist after DeleteLines, got err: %v", err)
 	}

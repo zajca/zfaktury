@@ -40,14 +40,14 @@ func NewTaxDocumentExtractionService(
 	}
 }
 
-// ExtractAmount reads a tax deduction document, sends it through OCR, and extracts
-// the monetary amount. The extraction result is persisted on the document record.
-func (s *TaxDocumentExtractionService) ExtractAmount(ctx context.Context, documentID int64) (*domain.TaxExtractionResult, error) {
+// ExtractAmount reads a tax deduction document within the given company, sends it through OCR,
+// and extracts the monetary amount. The extraction result is persisted on the document record.
+func (s *TaxDocumentExtractionService) ExtractAmount(ctx context.Context, companyID, documentID int64) (*domain.TaxExtractionResult, error) {
 	if documentID == 0 {
 		return nil, fmt.Errorf("document ID is required")
 	}
 
-	doc, err := s.docSvc.GetByID(ctx, documentID)
+	doc, err := s.docSvc.GetByID(ctx, companyID, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("getting document: %w", err)
 	}
@@ -57,12 +57,12 @@ func (s *TaxDocumentExtractionService) ExtractAmount(ctx context.Context, docume
 	}
 
 	// Fetch the parent deduction to get the year.
-	deduction, err := s.deductRepo.GetByID(ctx, doc.TaxDeductionID)
+	deduction, err := s.deductRepo.GetByID(ctx, companyID, doc.TaxDeductionID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching deduction: %w", err)
 	}
 
-	filePath, contentType, err := s.docSvc.GetFilePath(ctx, documentID)
+	filePath, contentType, err := s.docSvc.GetFilePath(ctx, companyID, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("getting document file path: %w", err)
 	}
@@ -96,7 +96,7 @@ func (s *TaxDocumentExtractionService) ExtractAmount(ctx context.Context, docume
 	}
 
 	// Persist extraction data on the document record.
-	if err := s.docRepo.UpdateExtraction(ctx, documentID, ocrResult.TotalAmount, confidence); err != nil {
+	if err := s.docRepo.UpdateExtraction(ctx, companyID, documentID, ocrResult.TotalAmount, confidence); err != nil {
 		return nil, fmt.Errorf("updating document extraction: %w", err)
 	}
 

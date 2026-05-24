@@ -52,8 +52,8 @@ func scanTaxSpouseCredit(s scanner) (*domain.TaxSpouseCredit, error) {
 	return c, nil
 }
 
-// Upsert inserts or replaces a spouse credit for a given year.
-func (r *TaxSpouseCreditRepository) Upsert(ctx context.Context, credit *domain.TaxSpouseCredit) error {
+// Upsert inserts or replaces a spouse credit for a given year within the given company.
+func (r *TaxSpouseCreditRepository) Upsert(ctx context.Context, companyID int64, credit *domain.TaxSpouseCredit) error {
 	now := time.Now()
 	credit.CreatedAt = now
 	credit.UpdatedAt = now
@@ -64,9 +64,9 @@ func (r *TaxSpouseCreditRepository) Upsert(ctx context.Context, credit *domain.T
 	}
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO tax_spouse_credits (year, spouse_name, spouse_birth_number, spouse_income, spouse_ztp, months_claimed, credit_amount, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		credit.Year, credit.SpouseName, credit.SpouseBirthNumber,
+		INSERT OR REPLACE INTO tax_spouse_credits (company_id, year, spouse_name, spouse_birth_number, spouse_income, spouse_ztp, months_claimed, credit_amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, credit.Year, credit.SpouseName, credit.SpouseBirthNumber,
 		credit.SpouseIncome, spouseZTP, credit.MonthsClaimed, credit.CreditAmount,
 		credit.CreatedAt.Format(time.RFC3339), credit.UpdatedAt.Format(time.RFC3339),
 	)
@@ -82,9 +82,9 @@ func (r *TaxSpouseCreditRepository) Upsert(ctx context.Context, credit *domain.T
 	return nil
 }
 
-// GetByYear retrieves the spouse credit for a given year.
-func (r *TaxSpouseCreditRepository) GetByYear(ctx context.Context, year int) (*domain.TaxSpouseCredit, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+taxSpouseCreditColumns+` FROM tax_spouse_credits WHERE year = ?`, year)
+// GetByYear retrieves the spouse credit for a given year within the given company.
+func (r *TaxSpouseCreditRepository) GetByYear(ctx context.Context, companyID int64, year int) (*domain.TaxSpouseCredit, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+taxSpouseCreditColumns+` FROM tax_spouse_credits WHERE company_id = ? AND year = ?`, companyID, year)
 	credit, err := scanTaxSpouseCredit(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -95,9 +95,9 @@ func (r *TaxSpouseCreditRepository) GetByYear(ctx context.Context, year int) (*d
 	return credit, nil
 }
 
-// DeleteByYear removes the spouse credit for a given year.
-func (r *TaxSpouseCreditRepository) DeleteByYear(ctx context.Context, year int) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM tax_spouse_credits WHERE year = ?`, year)
+// DeleteByYear removes the spouse credit for a given year within the given company.
+func (r *TaxSpouseCreditRepository) DeleteByYear(ctx context.Context, companyID int64, year int) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM tax_spouse_credits WHERE company_id = ? AND year = ?`, companyID, year)
 	if err != nil {
 		return fmt.Errorf("deleting tax_spouse_credit for year %d: %w", year, err)
 	}

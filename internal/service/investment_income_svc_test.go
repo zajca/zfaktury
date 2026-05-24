@@ -54,7 +54,7 @@ func TestInvestmentIncomeService_CreateCapitalEntry_Valid(t *testing.T) {
 		NeedsDeclaring:     false,
 	}
 
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("CreateCapitalEntry() error: %v", err)
 	}
 	if entry.ID == 0 {
@@ -76,7 +76,7 @@ func TestInvestmentIncomeService_CreateCapitalEntry_InvalidCategory(t *testing.T
 		GrossAmount: 5000,
 	}
 
-	err := svc.CreateCapitalEntry(ctx, entry)
+	err := svc.CreateCapitalEntry(ctx, 1, entry)
 	if err == nil {
 		t.Error("expected error for invalid category")
 	}
@@ -107,7 +107,7 @@ func TestInvestmentIncomeService_CreateCapitalEntry_AllCategories(t *testing.T) 
 				IncomeDate:  time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC),
 				GrossAmount: 1000,
 			}
-			if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+			if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 				t.Errorf("CreateCapitalEntry(%s) error: %v", cat, err)
 			}
 		})
@@ -127,7 +127,7 @@ func TestInvestmentIncomeService_UpdateCapitalEntry_Valid(t *testing.T) {
 		WithheldTaxCZ:      750,
 		WithheldTaxForeign: 250,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -135,14 +135,14 @@ func TestInvestmentIncomeService_UpdateCapitalEntry_Valid(t *testing.T) {
 	entry.GrossAmount = 8000
 	entry.WithheldTaxCZ = 1200
 	entry.WithheldTaxForeign = 0
-	if err := svc.UpdateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.UpdateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("UpdateCapitalEntry() error: %v", err)
 	}
 	if entry.NetAmount != 6800 {
 		t.Errorf("NetAmount = %d, want 6800", entry.NetAmount)
 	}
 
-	got, err := svc.GetCapitalEntry(ctx, entry.ID)
+	got, err := svc.GetCapitalEntry(ctx, 1, entry.ID)
 	if err != nil {
 		t.Fatalf("GetCapitalEntry() error: %v", err)
 	}
@@ -161,12 +161,12 @@ func TestInvestmentIncomeService_UpdateCapitalEntry_InvalidCategory(t *testing.T
 		IncomeDate:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		GrossAmount: 5000,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
 	entry.Category = "bad"
-	err := svc.UpdateCapitalEntry(ctx, entry)
+	err := svc.UpdateCapitalEntry(ctx, 1, entry)
 	if err == nil {
 		t.Error("expected error for invalid category on update")
 	}
@@ -185,15 +185,15 @@ func TestInvestmentIncomeService_DeleteCapitalEntry(t *testing.T) {
 		IncomeDate:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		GrossAmount: 1000,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if err := svc.DeleteCapitalEntry(ctx, entry.ID); err != nil {
+	if err := svc.DeleteCapitalEntry(ctx, 1, entry.ID); err != nil {
 		t.Fatalf("DeleteCapitalEntry() error: %v", err)
 	}
 
-	_, err := svc.GetCapitalEntry(ctx, entry.ID)
+	_, err := svc.GetCapitalEntry(ctx, 1, entry.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -203,7 +203,7 @@ func TestInvestmentIncomeService_GetCapitalEntry_NotFound(t *testing.T) {
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()
 
-	_, err := svc.GetCapitalEntry(ctx, 99999)
+	_, err := svc.GetCapitalEntry(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent entry")
 	}
@@ -221,7 +221,7 @@ func TestInvestmentIncomeService_ListCapitalEntries(t *testing.T) {
 			IncomeDate:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			GrossAmount: 1000,
 		}
-		if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+		if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 			t.Fatalf("Create: %v", err)
 		}
 	}
@@ -231,11 +231,11 @@ func TestInvestmentIncomeService_ListCapitalEntries(t *testing.T) {
 		IncomeDate:  time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 		GrossAmount: 500,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create 2024: %v", err)
 	}
 
-	entries, err := svc.ListCapitalEntries(ctx, 2025)
+	entries, err := svc.ListCapitalEntries(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListCapitalEntries() error: %v", err)
 	}
@@ -254,12 +254,12 @@ func TestInvestmentIncomeService_ComputeCapitalIncomeTotals(t *testing.T) {
 		{Year: 2025, Category: domain.CapitalCategoryInterest, IncomeDate: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), GrossAmount: 5000, WithheldTaxCZ: 750, NeedsDeclaring: true},
 	}
 	for i := range entries {
-		if err := svc.CreateCapitalEntry(ctx, &entries[i]); err != nil {
+		if err := svc.CreateCapitalEntry(ctx, 1, &entries[i]); err != nil {
 			t.Fatalf("Create: %v", err)
 		}
 	}
 
-	gross, tax, net, err := svc.ComputeCapitalIncomeTotals(ctx, 2025)
+	gross, tax, net, err := svc.ComputeCapitalIncomeTotals(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCapitalIncomeTotals() error: %v", err)
 	}
@@ -278,7 +278,7 @@ func TestInvestmentIncomeService_ComputeCapitalIncomeTotals_EmptyYear(t *testing
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()
 
-	gross, tax, net, err := svc.ComputeCapitalIncomeTotals(ctx, 2025)
+	gross, tax, net, err := svc.ComputeCapitalIncomeTotals(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCapitalIncomeTotals() error: %v", err)
 	}
@@ -300,11 +300,11 @@ func TestInvestmentIncomeService_ComputeCapitalIncomeTotals_ExcludesNonDeclaring
 		WithheldTaxCZ:  750,
 		NeedsDeclaring: false,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	gross, _, _, err := svc.ComputeCapitalIncomeTotals(ctx, 2025)
+	gross, _, _, err := svc.ComputeCapitalIncomeTotals(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -325,7 +325,7 @@ func TestInvestmentIncomeService_CreateSecurityTransaction_Valid(t *testing.T) {
 	tx.UnitPrice = 1500000
 	tx.Fees = 5000
 
-	if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 		t.Fatalf("CreateSecurityTransaction() error: %v", err)
 	}
 	if tx.ID == 0 {
@@ -345,7 +345,7 @@ func TestInvestmentIncomeService_CreateSecurityTransaction_InvalidAssetType(t *t
 		Quantity:        10000,
 	}
 
-	err := svc.CreateSecurityTransaction(ctx, tx)
+	err := svc.CreateSecurityTransaction(ctx, 1, tx)
 	if err == nil {
 		t.Error("expected error for invalid asset type")
 	}
@@ -366,7 +366,7 @@ func TestInvestmentIncomeService_CreateSecurityTransaction_InvalidTransactionTyp
 		Quantity:        10000,
 	}
 
-	err := svc.CreateSecurityTransaction(ctx, tx)
+	err := svc.CreateSecurityTransaction(ctx, 1, tx)
 	if err == nil {
 		t.Error("expected error for invalid transaction type")
 	}
@@ -392,7 +392,7 @@ func TestInvestmentIncomeService_CreateSecurityTransaction_AllAssetTypes(t *test
 		t.Run(at, func(t *testing.T) {
 			tx := testSecTx(2025, at, "Test-"+at, domain.TransactionTypeBuy,
 				time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100000)
-			if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+			if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 				t.Errorf("CreateSecurityTransaction(%s) error: %v", at, err)
 			}
 		})
@@ -406,17 +406,17 @@ func TestInvestmentIncomeService_UpdateSecurityTransaction_Valid(t *testing.T) {
 	tx := testSecTx(2025, domain.AssetTypeETF, "VWCE", domain.TransactionTypeBuy,
 		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 50000, 4000000)
 	tx.UnitPrice = 800000
-	if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
 	tx.AssetName = "VWCE.DE"
 	tx.TotalAmount = 4100000
-	if err := svc.UpdateSecurityTransaction(ctx, tx); err != nil {
+	if err := svc.UpdateSecurityTransaction(ctx, 1, tx); err != nil {
 		t.Fatalf("UpdateSecurityTransaction() error: %v", err)
 	}
 
-	got, err := svc.GetSecurityTransaction(ctx, tx.ID)
+	got, err := svc.GetSecurityTransaction(ctx, 1, tx.ID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -431,12 +431,12 @@ func TestInvestmentIncomeService_UpdateSecurityTransaction_InvalidAssetType(t *t
 
 	tx := testSecTx(2025, domain.AssetTypeStock, "X", domain.TransactionTypeBuy,
 		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100000)
-	if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
 	tx.AssetType = "invalid"
-	err := svc.UpdateSecurityTransaction(ctx, tx)
+	err := svc.UpdateSecurityTransaction(ctx, 1, tx)
 	if err == nil {
 		t.Error("expected error for invalid asset type on update")
 	}
@@ -448,12 +448,12 @@ func TestInvestmentIncomeService_UpdateSecurityTransaction_InvalidTransactionTyp
 
 	tx := testSecTx(2025, domain.AssetTypeStock, "X", domain.TransactionTypeBuy,
 		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100000)
-	if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
 	tx.TransactionType = "invalid"
-	err := svc.UpdateSecurityTransaction(ctx, tx)
+	err := svc.UpdateSecurityTransaction(ctx, 1, tx)
 	if err == nil {
 		t.Error("expected error for invalid transaction type on update")
 	}
@@ -465,15 +465,15 @@ func TestInvestmentIncomeService_DeleteSecurityTransaction(t *testing.T) {
 
 	tx := testSecTx(2025, domain.AssetTypeStock, "MSFT", domain.TransactionTypeBuy,
 		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 500000)
-	if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if err := svc.DeleteSecurityTransaction(ctx, tx.ID); err != nil {
+	if err := svc.DeleteSecurityTransaction(ctx, 1, tx.ID); err != nil {
 		t.Fatalf("DeleteSecurityTransaction() error: %v", err)
 	}
 
-	_, err := svc.GetSecurityTransaction(ctx, tx.ID)
+	_, err := svc.GetSecurityTransaction(ctx, 1, tx.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -483,7 +483,7 @@ func TestInvestmentIncomeService_GetSecurityTransaction_NotFound(t *testing.T) {
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()
 
-	_, err := svc.GetSecurityTransaction(ctx, 99999)
+	_, err := svc.GetSecurityTransaction(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent transaction")
 	}
@@ -496,12 +496,12 @@ func TestInvestmentIncomeService_ListSecurityTransactions(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		tx := testSecTx(2025, domain.AssetTypeStock, "AAPL", domain.TransactionTypeBuy,
 			time.Date(2025, 1, 1+i, 0, 0, 0, 0, time.UTC), 10000, 100000)
-		if err := svc.CreateSecurityTransaction(ctx, tx); err != nil {
+		if err := svc.CreateSecurityTransaction(ctx, 1, tx); err != nil {
 			t.Fatalf("Create: %v", err)
 		}
 	}
 
-	txs, err := svc.ListSecurityTransactions(ctx, 2025)
+	txs, err := svc.ListSecurityTransactions(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListSecurityTransactions() error: %v", err)
 	}
@@ -518,11 +518,11 @@ func TestInvestmentIncomeService_RecalculateFIFO_NoSells(t *testing.T) {
 
 	buy := testSecTx(2025, domain.AssetTypeStock, "AAPL", domain.TransactionTypeBuy,
 		time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), 100000, 1000000)
-	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy); err != nil {
 		t.Fatalf("Create buy: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 }
@@ -535,7 +535,7 @@ func TestInvestmentIncomeService_RecalculateFIFO_SimpleSell(t *testing.T) {
 	buy := testSecTx(2025, domain.AssetTypeStock, "AAPL", domain.TransactionTypeBuy,
 		time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC), 100000, 10000000)
 	buy.UnitPrice = 1000000
-	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy); err != nil {
 		t.Fatalf("Create buy: %v", err)
 	}
 
@@ -544,15 +544,15 @@ func TestInvestmentIncomeService_RecalculateFIFO_SimpleSell(t *testing.T) {
 		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 50000, 7500000)
 	sell.UnitPrice = 1500000
 	sell.Fees = 5000
-	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell); err != nil {
 		t.Fatalf("Create sell: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	got, err := svc.GetSecurityTransaction(ctx, 1, sell.ID)
 	if err != nil {
 		t.Fatalf("Get sell: %v", err)
 	}
@@ -580,21 +580,21 @@ func TestInvestmentIncomeService_RecalculateFIFO_TimeTestNotMet(t *testing.T) {
 
 	buy := testSecTx(2025, domain.AssetTypeStock, "GOOG", domain.TransactionTypeBuy,
 		time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 1000000)
-	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy); err != nil {
 		t.Fatalf("Create buy: %v", err)
 	}
 
 	sell := testSecTx(2025, domain.AssetTypeStock, "GOOG", domain.TransactionTypeSell,
 		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 2000000)
-	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell); err != nil {
 		t.Fatalf("Create sell: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	got, err := svc.GetSecurityTransaction(ctx, 1, sell.ID)
 	if err != nil {
 		t.Fatalf("Get sell: %v", err)
 	}
@@ -612,28 +612,28 @@ func TestInvestmentIncomeService_RecalculateFIFO_MultipleBuys(t *testing.T) {
 
 	buy1 := testSecTx(2025, domain.AssetTypeETF, "VWCE", domain.TransactionTypeBuy,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 50000, 5000000)
-	if err := svc.CreateSecurityTransaction(ctx, buy1); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy1); err != nil {
 		t.Fatalf("Create buy1: %v", err)
 	}
 
 	buy2 := testSecTx(2025, domain.AssetTypeETF, "VWCE", domain.TransactionTypeBuy,
 		time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC), 50000, 10000000)
-	if err := svc.CreateSecurityTransaction(ctx, buy2); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy2); err != nil {
 		t.Fatalf("Create buy2: %v", err)
 	}
 
 	// Sell 7 shares. FIFO: 5 from buy1 + 2 from buy2.
 	sell := testSecTx(2025, domain.AssetTypeETF, "VWCE", domain.TransactionTypeSell,
 		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 70000, 21000000)
-	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell); err != nil {
 		t.Fatalf("Create sell: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	got, err := svc.GetSecurityTransaction(ctx, 1, sell.ID)
 	if err != nil {
 		t.Fatalf("Get sell: %v", err)
 	}
@@ -653,39 +653,39 @@ func TestInvestmentIncomeService_RecalculateFIFO_ExemptionLimit2025(t *testing.T
 	// Create two sells whose combined exempt gains exceed the limit.
 	buy1 := testSecTx(2025, domain.AssetTypeStock, "BIG1", domain.TransactionTypeBuy,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100)
-	if err := svc.CreateSecurityTransaction(ctx, buy1); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy1); err != nil {
 		t.Fatalf("Create buy1: %v", err)
 	}
 
 	// First sell: gain just under the limit.
 	sell1 := testSecTx(2025, domain.AssetTypeStock, "BIG1", domain.TransactionTypeSell,
 		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 9_000_000_000)
-	if err := svc.CreateSecurityTransaction(ctx, sell1); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell1); err != nil {
 		t.Fatalf("Create sell1: %v", err)
 	}
 
 	buy2 := testSecTx(2025, domain.AssetTypeStock, "BIG2", domain.TransactionTypeBuy,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100)
-	if err := svc.CreateSecurityTransaction(ctx, buy2); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy2); err != nil {
 		t.Fatalf("Create buy2: %v", err)
 	}
 
 	// Second sell: gain that would push total over the limit.
 	sell2 := testSecTx(2025, domain.AssetTypeStock, "BIG2", domain.TransactionTypeSell,
 		time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC), 10000, 3_000_000_000)
-	if err := svc.CreateSecurityTransaction(ctx, sell2); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell2); err != nil {
 		t.Fatalf("Create sell2: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got1, err := svc.GetSecurityTransaction(ctx, sell1.ID)
+	got1, err := svc.GetSecurityTransaction(ctx, 1, sell1.ID)
 	if err != nil {
 		t.Fatalf("Get sell1: %v", err)
 	}
-	got2, err := svc.GetSecurityTransaction(ctx, sell2.ID)
+	got2, err := svc.GetSecurityTransaction(ctx, 1, sell2.ID)
 	if err != nil {
 		t.Fatalf("Get sell2: %v", err)
 	}
@@ -716,21 +716,21 @@ func TestInvestmentIncomeService_RecalculateFIFO_NoLimit2024(t *testing.T) {
 
 	buy := testSecTx(2024, domain.AssetTypeStock, "BIG", domain.TransactionTypeBuy,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100000)
-	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy); err != nil {
 		t.Fatalf("Create buy: %v", err)
 	}
 
 	sell := testSecTx(2024, domain.AssetTypeStock, "BIG", domain.TransactionTypeSell,
 		time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 200000000)
-	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell); err != nil {
 		t.Fatalf("Create sell: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2024); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2024); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	got, err := svc.GetSecurityTransaction(ctx, 1, sell.ID)
 	if err != nil {
 		t.Fatalf("Get sell: %v", err)
 	}
@@ -746,7 +746,7 @@ func TestInvestmentIncomeService_RecalculateFIFO_InvalidYear(t *testing.T) {
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()
 
-	err := svc.RecalculateFIFO(ctx, 2000)
+	err := svc.RecalculateFIFO(ctx, 1, 2000)
 	if err == nil {
 		t.Error("expected error for unsupported year")
 	}
@@ -758,15 +758,15 @@ func TestInvestmentIncomeService_RecalculateFIFO_SellWithNoMatchingBuys(t *testi
 
 	sell := testSecTx(2025, domain.AssetTypeStock, "ORPHAN", domain.TransactionTypeSell,
 		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 500000)
-	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell); err != nil {
 		t.Fatalf("Create sell: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	got, err := svc.GetSecurityTransaction(ctx, 1, sell.ID)
 	if err != nil {
 		t.Fatalf("Get sell: %v", err)
 	}
@@ -794,28 +794,28 @@ func TestInvestmentIncomeService_GetYearSummary(t *testing.T) {
 		WithheldTaxCZ:  1500,
 		NeedsDeclaring: true,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create capital: %v", err)
 	}
 
 	buy := testSecTx(2025, domain.AssetTypeStock, "TSLA", domain.TransactionTypeBuy,
 		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 500000)
-	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, buy); err != nil {
 		t.Fatalf("Create buy: %v", err)
 	}
 
 	sell := testSecTx(2025, domain.AssetTypeStock, "TSLA", domain.TransactionTypeSell,
 		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 1000000)
 	sell.Fees = 5000
-	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+	if err := svc.CreateSecurityTransaction(ctx, 1, sell); err != nil {
 		t.Fatalf("Create sell: %v", err)
 	}
 
-	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+	if err := svc.RecalculateFIFO(ctx, 1, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO: %v", err)
 	}
 
-	summary, err := svc.GetYearSummary(ctx, 2025)
+	summary, err := svc.GetYearSummary(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetYearSummary() error: %v", err)
 	}
@@ -841,7 +841,7 @@ func TestInvestmentIncomeService_GetYearSummary_Empty(t *testing.T) {
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()
 
-	summary, err := svc.GetYearSummary(ctx, 2025)
+	summary, err := svc.GetYearSummary(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetYearSummary() error: %v", err)
 	}
@@ -869,7 +869,7 @@ func TestInvestmentIncomeService_NetAmountCalculation(t *testing.T) {
 		WithheldTaxCZ:      3000,
 		WithheldTaxForeign: 2000,
 	}
-	if err := svc.CreateCapitalEntry(ctx, entry); err != nil {
+	if err := svc.CreateCapitalEntry(ctx, 1, entry); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 

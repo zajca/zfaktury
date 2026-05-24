@@ -49,9 +49,9 @@ func NewInvestmentDocumentService(
 	}
 }
 
-// Upload validates, stores, and registers a new investment document (broker statement).
-// data is read fully to enforce the size limit before writing to disk.
-func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platform string, filename string, contentType string, data io.Reader) (*domain.InvestmentDocument, error) {
+// Upload validates, stores, and registers a new investment document (broker statement)
+// within the given company. data is read fully to enforce the size limit before writing to disk.
+func (s *InvestmentDocumentService) Upload(ctx context.Context, companyID int64, year int, platform string, filename string, contentType string, data io.Reader) (*domain.InvestmentDocument, error) {
 	// Validate year.
 	if year < 2000 || year > 2100 {
 		return nil, fmt.Errorf("year must be between 2000 and 2100, got %d", year)
@@ -123,7 +123,7 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 		ExtractionStatus: domain.ExtractionPending,
 	}
 
-	if err := s.repo.Create(ctx, doc); err != nil {
+	if err := s.repo.Create(ctx, companyID, doc); err != nil {
 		// Clean up file on DB failure.
 		_ = os.Remove(storagePath)
 		return nil, fmt.Errorf("saving document record: %w", err)
@@ -143,53 +143,53 @@ func (s *InvestmentDocumentService) Upload(ctx context.Context, year int, platfo
 	return doc, nil
 }
 
-// GetByID retrieves an investment document's metadata by its ID.
-func (s *InvestmentDocumentService) GetByID(ctx context.Context, id int64) (*domain.InvestmentDocument, error) {
+// GetByID retrieves an investment document's metadata by its ID within the given company.
+func (s *InvestmentDocumentService) GetByID(ctx context.Context, companyID, id int64) (*domain.InvestmentDocument, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
-	doc, err := s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching document: %w", err)
 	}
 	return doc, nil
 }
 
-// ListByYear retrieves all active investment documents for a given year.
-func (s *InvestmentDocumentService) ListByYear(ctx context.Context, year int) ([]domain.InvestmentDocument, error) {
+// ListByYear retrieves all active investment documents for a given year within the given company.
+func (s *InvestmentDocumentService) ListByYear(ctx context.Context, companyID int64, year int) ([]domain.InvestmentDocument, error) {
 	if year < 2000 || year > 2100 {
 		return nil, fmt.Errorf("year must be between 2000 and 2100, got %d", year)
 	}
-	docs, err := s.repo.ListByYear(ctx, year)
+	docs, err := s.repo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing documents for year: %w", err)
 	}
 	return docs, nil
 }
 
-// Delete removes an investment document and all linked capital income entries and security transactions.
-func (s *InvestmentDocumentService) Delete(ctx context.Context, id int64) error {
+// Delete removes an investment document and all linked capital income entries and security transactions within the given company.
+func (s *InvestmentDocumentService) Delete(ctx context.Context, companyID, id int64) error {
 	if id == 0 {
 		return fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	doc, err := s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("getting document before delete: %w", err)
 	}
 
 	// Delete linked capital income entries.
-	if err := s.capitalRepo.DeleteByDocumentID(ctx, id); err != nil {
+	if err := s.capitalRepo.DeleteByDocumentID(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting linked capital income entries: %w", err)
 	}
 
 	// Delete linked security transactions.
-	if err := s.securityRepo.DeleteByDocumentID(ctx, id); err != nil {
+	if err := s.securityRepo.DeleteByDocumentID(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting linked security transactions: %w", err)
 	}
 
 	// Delete the document record.
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("soft-deleting document record: %w", err)
 	}
 
@@ -205,13 +205,13 @@ func (s *InvestmentDocumentService) Delete(ctx context.Context, id int64) error 
 	return nil
 }
 
-// GetFilePath returns the filesystem path and content type for serving a document.
+// GetFilePath returns the filesystem path and content type for serving a document within the given company.
 // It validates that the stored path is within the expected data directory.
-func (s *InvestmentDocumentService) GetFilePath(ctx context.Context, id int64) (string, string, error) {
+func (s *InvestmentDocumentService) GetFilePath(ctx context.Context, companyID, id int64) (string, string, error) {
 	if id == 0 {
 		return "", "", fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
-	doc, err := s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return "", "", fmt.Errorf("fetching document for file path: %w", err)
 	}

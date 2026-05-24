@@ -73,34 +73,34 @@ func NewSettingsService(repo *repository.SettingsRepository, audit *AuditService
 	return &SettingsService{repo: repo, audit: audit}
 }
 
-// GetAll retrieves all settings.
-func (s *SettingsService) GetAll(ctx context.Context) (map[string]string, error) {
-	settings, err := s.repo.GetAll(ctx)
+// GetAll retrieves all settings for the given company.
+func (s *SettingsService) GetAll(ctx context.Context, companyID int64) (map[string]string, error) {
+	settings, err := s.repo.GetAll(ctx, companyID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching all settings: %w", err)
 	}
 	return settings, nil
 }
 
-// Get retrieves a single setting by key.
-func (s *SettingsService) Get(ctx context.Context, key string) (string, error) {
+// Get retrieves a single setting by key within the given company.
+func (s *SettingsService) Get(ctx context.Context, companyID int64, key string) (string, error) {
 	if err := validateKey(key); err != nil {
 		return "", err
 	}
-	val, err := s.repo.Get(ctx, key)
+	val, err := s.repo.Get(ctx, companyID, key)
 	if err != nil {
 		return "", fmt.Errorf("fetching setting %q: %w", key, err)
 	}
 	return val, nil
 }
 
-// Set upserts a single setting.
-func (s *SettingsService) Set(ctx context.Context, key, value string) error {
+// Set upserts a single setting within the given company.
+func (s *SettingsService) Set(ctx context.Context, companyID int64, key, value string) error {
 	if err := validateKey(key); err != nil {
 		return err
 	}
-	oldVal, _ := s.repo.Get(ctx, key)
-	if err := s.repo.Set(ctx, key, value); err != nil {
+	oldVal, _ := s.repo.Get(ctx, companyID, key)
+	if err := s.repo.Set(ctx, companyID, key, value); err != nil {
 		return fmt.Errorf("setting %q: %w", key, err)
 	}
 	if s.audit != nil {
@@ -109,15 +109,15 @@ func (s *SettingsService) Set(ctx context.Context, key, value string) error {
 	return nil
 }
 
-// SetBulk upserts multiple settings at once.
-func (s *SettingsService) SetBulk(ctx context.Context, settings map[string]string) error {
+// SetBulk upserts multiple settings at once within the given company.
+func (s *SettingsService) SetBulk(ctx context.Context, companyID int64, settings map[string]string) error {
 	for key := range settings {
 		if err := validateKey(key); err != nil {
 			return err
 		}
 	}
-	oldSettings, _ := s.repo.GetAll(ctx)
-	if err := s.repo.SetBulk(ctx, settings); err != nil {
+	oldSettings, _ := s.repo.GetAll(ctx, companyID)
+	if err := s.repo.SetBulk(ctx, companyID, settings); err != nil {
 		return fmt.Errorf("setting bulk settings: %w", err)
 	}
 	if s.audit != nil {
@@ -136,9 +136,9 @@ func (s *SettingsService) SetBulk(ctx context.Context, settings map[string]strin
 	return nil
 }
 
-// GetPDFSettings retrieves the PDF template settings with defaults.
-func (s *SettingsService) GetPDFSettings(ctx context.Context) (PDFSettings, error) {
-	all, err := s.repo.GetAll(ctx)
+// GetPDFSettings retrieves the PDF template settings with defaults for the given company.
+func (s *SettingsService) GetPDFSettings(ctx context.Context, companyID int64) (PDFSettings, error) {
+	all, err := s.repo.GetAll(ctx, companyID)
 	if err != nil {
 		return PDFSettings{}, fmt.Errorf("fetching PDF settings: %w", err)
 	}
@@ -175,8 +175,8 @@ func (s *SettingsService) GetPDFSettings(ctx context.Context) (PDFSettings, erro
 	return ps, nil
 }
 
-// SavePDFSettings persists PDF template settings.
-func (s *SettingsService) SavePDFSettings(ctx context.Context, ps PDFSettings) error {
+// SavePDFSettings persists PDF template settings for the given company.
+func (s *SettingsService) SavePDFSettings(ctx context.Context, companyID int64, ps PDFSettings) error {
 	settings := map[string]string{
 		SettingPDFLogoPath:        ps.LogoPath,
 		SettingPDFAccentColor:     ps.AccentColor,
@@ -192,7 +192,7 @@ func (s *SettingsService) SavePDFSettings(ctx context.Context, ps PDFSettings) e
 		}
 	}
 
-	if err := s.repo.SetBulk(ctx, settings); err != nil {
+	if err := s.repo.SetBulk(ctx, companyID, settings); err != nil {
 		return fmt.Errorf("saving PDF settings: %w", err)
 	}
 

@@ -32,7 +32,7 @@ type reminderEmailSender interface {
 
 // reminderSettingsReader abstracts settings lookup for testability.
 type reminderSettingsReader interface {
-	Get(ctx context.Context, key string) (string, error)
+	Get(ctx context.Context, companyID int64, key string) (string, error)
 }
 
 // ReminderService provides business logic for payment reminders.
@@ -96,7 +96,7 @@ func (s *ReminderService) SendReminder(ctx context.Context, companyID, invoiceID
 	}
 
 	// Read company name from settings.
-	userName, _ := s.settingsReader.Get(ctx, "company_name")
+	userName, _ := s.settingsReader.Get(ctx, companyID, "company_name")
 
 	// Build template data.
 	data := email.ReminderData{

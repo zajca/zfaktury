@@ -38,7 +38,7 @@ func TestVIES_Create_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if vs.ID == 0 {
@@ -55,7 +55,7 @@ func TestVIES_Create_InvalidYear(t *testing.T) {
 
 	vs := validVIESSummary()
 	vs.Period.Year = 1999
-	err := svc.Create(ctx, vs)
+	err := svc.Create(ctx, 1, vs)
 	if err == nil {
 		t.Fatal("expected error for year 1999, got nil")
 	}
@@ -70,7 +70,7 @@ func TestVIES_Create_InvalidQuarter(t *testing.T) {
 
 	vs := validVIESSummary()
 	vs.Period.Quarter = 5
-	err := svc.Create(ctx, vs)
+	err := svc.Create(ctx, 1, vs)
 	if err == nil {
 		t.Fatal("expected error for quarter 5, got nil")
 	}
@@ -85,7 +85,7 @@ func TestVIES_Create_InvalidQuarterZero(t *testing.T) {
 
 	vs := validVIESSummary()
 	vs.Period.Quarter = 0
-	err := svc.Create(ctx, vs)
+	err := svc.Create(ctx, 1, vs)
 	if err == nil {
 		t.Fatal("expected error for quarter 0, got nil")
 	}
@@ -100,7 +100,7 @@ func TestVIES_Create_InvalidFilingType(t *testing.T) {
 
 	vs := validVIESSummary()
 	vs.FilingType = "bogus"
-	err := svc.Create(ctx, vs)
+	err := svc.Create(ctx, 1, vs)
 	if err == nil {
 		t.Fatal("expected error for invalid filing_type, got nil")
 	}
@@ -115,7 +115,7 @@ func TestVIES_Create_DefaultFilingType(t *testing.T) {
 
 	vs := validVIESSummary()
 	vs.FilingType = "" // should default to regular
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if vs.FilingType != domain.FilingTypeRegular {
@@ -128,12 +128,12 @@ func TestVIES_Create_DuplicatePeriod(t *testing.T) {
 	ctx := context.Background()
 
 	vs1 := validVIESSummary()
-	if err := svc.Create(ctx, vs1); err != nil {
+	if err := svc.Create(ctx, 1, vs1); err != nil {
 		t.Fatalf("first Create() error: %v", err)
 	}
 
 	vs2 := validVIESSummary()
-	err := svc.Create(ctx, vs2)
+	err := svc.Create(ctx, 1, vs2)
 	if err == nil {
 		t.Fatal("expected error for duplicate period, got nil")
 	}
@@ -147,11 +147,11 @@ func TestVIES_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, vs.ID)
+	got, err := svc.GetByID(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestVIES_GetByID_NotFound(t *testing.T) {
 	svc, _ := newVIESSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 99999)
+	_, err := svc.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Fatal("expected error for non-existent ID, got nil")
 	}
@@ -197,12 +197,12 @@ func TestVIES_List(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 	for _, vs := range []*domain.VIESSummary{vs1, vs2, vs3} {
-		if err := svc.Create(ctx, vs); err != nil {
+		if err := svc.Create(ctx, 1, vs); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
 	}
 
-	list, err := svc.List(ctx, 2025)
+	list, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestVIES_List(t *testing.T) {
 		t.Errorf("List(2025) returned %d items, want 2", len(list))
 	}
 
-	list2024, err := svc.List(ctx, 2024)
+	list2024, err := svc.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List(2024) error: %v", err)
 	}
@@ -224,16 +224,16 @@ func TestVIES_Delete_Draft(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := svc.Delete(ctx, vs.ID); err != nil {
+	if err := svc.Delete(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
 	// Verify it's gone.
-	_, err := svc.GetByID(ctx, vs.ID)
+	_, err := svc.GetByID(ctx, 1, vs.ID)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound after delete, got: %v", err)
 	}
@@ -244,14 +244,14 @@ func TestVIES_Delete_Filed(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if err := svc.MarkFiled(ctx, vs.ID); err != nil {
+	if err := svc.MarkFiled(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	err := svc.Delete(ctx, vs.ID)
+	err := svc.Delete(ctx, 1, vs.ID)
 	if err == nil {
 		t.Fatal("expected error when deleting filed summary, got nil")
 	}
@@ -264,7 +264,7 @@ func TestVIES_Delete_NotFound(t *testing.T) {
 	svc, _ := newVIESSvc(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 99999)
+	err := svc.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Fatal("expected error when deleting non-existent summary, got nil")
 	}
@@ -278,15 +278,15 @@ func TestVIES_MarkFiled(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := svc.MarkFiled(ctx, vs.ID); err != nil {
+	if err := svc.MarkFiled(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, vs.ID)
+	got, err := svc.GetByID(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -303,14 +303,14 @@ func TestVIES_MarkFiled_AlreadyFiled(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if err := svc.MarkFiled(ctx, vs.ID); err != nil {
+	if err := svc.MarkFiled(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("first MarkFiled() error: %v", err)
 	}
 
-	err := svc.MarkFiled(ctx, vs.ID)
+	err := svc.MarkFiled(ctx, 1, vs.ID)
 	if err == nil {
 		t.Fatal("expected error when marking already filed summary, got nil")
 	}
@@ -324,11 +324,11 @@ func TestVIES_GetLines_Empty(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -435,7 +435,7 @@ func TestVIES_Recalculate_BasicEUPartner(t *testing.T) {
 
 	// Create a VIES summary for Q1 2025.
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -451,11 +451,11 @@ func TestVIES_Recalculate_BasicEUPartner(t *testing.T) {
 		items,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -489,7 +489,7 @@ func TestVIES_Recalculate_MultipleEUPartners(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -514,11 +514,11 @@ func TestVIES_Recalculate_MultipleEUPartners(t *testing.T) {
 		domain.InvoiceStatusOverdue, domain.InvoiceTypeRegular, items,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -559,7 +559,7 @@ func TestVIES_Recalculate_CreditNoteReducesAmount(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -583,11 +583,11 @@ func TestVIES_Recalculate_CreditNoteReducesAmount(t *testing.T) {
 		domain.InvoiceStatusSent, domain.InvoiceTypeCreditNote, creditItems,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -609,7 +609,7 @@ func TestVIES_Recalculate_IgnoresDraftAndCancelledInvoices(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -631,11 +631,11 @@ func TestVIES_Recalculate_IgnoresDraftAndCancelledInvoices(t *testing.T) {
 		domain.InvoiceStatusCancelled, domain.InvoiceTypeRegular, items,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -654,7 +654,7 @@ func TestVIES_Recalculate_IgnoresNonEUContact(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -667,11 +667,11 @@ func TestVIES_Recalculate_IgnoresNonEUContact(t *testing.T) {
 		domain.InvoiceStatusSent, domain.InvoiceTypeRegular, items,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -689,7 +689,7 @@ func TestVIES_Recalculate_IgnoresDeliveryDateOutsideQuarter(t *testing.T) {
 	})
 
 	vs := validVIESSummary() // Q1 2025
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -704,11 +704,11 @@ func TestVIES_Recalculate_IgnoresDeliveryDateOutsideQuarter(t *testing.T) {
 		domain.InvoiceStatusSent, domain.InvoiceTypeRegular, items,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -722,14 +722,14 @@ func TestVIES_Recalculate_Filed_Error(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if err := svc.MarkFiled(ctx, vs.ID); err != nil {
+	if err := svc.MarkFiled(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	err := svc.Recalculate(ctx, vs.ID)
+	err := svc.Recalculate(ctx, 1, vs.ID)
 	if err == nil {
 		t.Fatal("expected error when recalculating filed summary, got nil")
 	}
@@ -747,7 +747,7 @@ func TestVIES_Recalculate_ReplacesOldLines(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -761,19 +761,19 @@ func TestVIES_Recalculate_ReplacesOldLines(t *testing.T) {
 	)
 
 	// First recalculate.
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("first Recalculate() error: %v", err)
 	}
-	lines1, _ := svc.GetLines(ctx, vs.ID)
+	lines1, _ := svc.GetLines(ctx, 1, vs.ID)
 	if len(lines1) != 1 {
 		t.Fatalf("expected 1 line after first recalculate, got %d", len(lines1))
 	}
 
 	// Second recalculate should replace, not duplicate.
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("second Recalculate() error: %v", err)
 	}
-	lines2, _ := svc.GetLines(ctx, vs.ID)
+	lines2, _ := svc.GetLines(ctx, 1, vs.ID)
 	if len(lines2) != 1 {
 		t.Errorf("expected 1 line after second recalculate, got %d (lines were duplicated)", len(lines2))
 	}
@@ -788,7 +788,7 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -808,11 +808,11 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 		domain.InvoiceStatusSent, domain.InvoiceTypeCreditNote, items,
 	)
 
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	lines, err := svc.GetLines(ctx, vs.ID)
+	lines, err := svc.GetLines(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() error: %v", err)
 	}
@@ -832,7 +832,7 @@ func TestVIES_GenerateXML_Valid(t *testing.T) {
 	})
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -846,17 +846,17 @@ func TestVIES_GenerateXML_Valid(t *testing.T) {
 	)
 
 	// Recalculate first to create lines.
-	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, vs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
 	// Generate XML.
-	if err := svc.GenerateXML(ctx, vs.ID, "CZ12345678"); err != nil {
+	if err := svc.GenerateXML(ctx, 1, vs.ID, "CZ12345678"); err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 
 	// Verify XML was stored.
-	updated, err := svc.GetByID(ctx, vs.ID)
+	updated, err := svc.GetByID(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -881,16 +881,16 @@ func TestVIES_GenerateXML_NoLines(t *testing.T) {
 	ctx := context.Background()
 
 	vs := validVIESSummary()
-	if err := svc.Create(ctx, vs); err != nil {
+	if err := svc.Create(ctx, 1, vs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// GenerateXML with no lines should succeed (empty summary is valid).
-	if err := svc.GenerateXML(ctx, vs.ID, "CZ87654321"); err != nil {
+	if err := svc.GenerateXML(ctx, 1, vs.ID, "CZ87654321"); err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 
-	updated, err := svc.GetByID(ctx, vs.ID)
+	updated, err := svc.GetByID(ctx, 1, vs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -903,7 +903,7 @@ func TestVIES_GenerateXML_NotFound(t *testing.T) {
 	svc, _ := newVIESSvc(t)
 	ctx := context.Background()
 
-	err := svc.GenerateXML(ctx, 99999, "CZ12345678")
+	err := svc.GenerateXML(ctx, 1, 99999, "CZ12345678")
 	if err == nil {
 		t.Fatal("expected error for non-existent ID, got nil")
 	}

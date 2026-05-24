@@ -14,7 +14,7 @@ func TestTaxYearSettingsRepository_GetByYear_NotFound(t *testing.T) {
 	repo := NewTaxYearSettingsRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByYear(ctx, 2099)
+	_, err := repo.GetByYear(ctx, 1, 2099)
 	if err == nil {
 		t.Fatal("expected error for nonexistent year, got nil")
 	}
@@ -32,11 +32,11 @@ func TestTaxYearSettingsRepository_Upsert_And_GetByYear(t *testing.T) {
 		Year:            2025,
 		FlatRatePercent: 60,
 	}
-	if err := repo.Upsert(ctx, tys); err != nil {
+	if err := repo.Upsert(ctx, 1, tys); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025)
+	got, err := repo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear: %v", err)
 	}
@@ -63,16 +63,16 @@ func TestTaxYearSettingsRepository_Upsert_Overwrites(t *testing.T) {
 		Year:            2025,
 		FlatRatePercent: 60,
 	}
-	if err := repo.Upsert(ctx, tys); err != nil {
+	if err := repo.Upsert(ctx, 1, tys); err != nil {
 		t.Fatalf("Upsert first: %v", err)
 	}
 
 	tys.FlatRatePercent = 80
-	if err := repo.Upsert(ctx, tys); err != nil {
+	if err := repo.Upsert(ctx, 1, tys); err != nil {
 		t.Fatalf("Upsert second: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025)
+	got, err := repo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear after overwrite: %v", err)
 	}

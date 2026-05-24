@@ -47,7 +47,7 @@ func seedSecurityTransaction(t *testing.T, repo *SecurityTransactionRepository, 
 	}
 
 	ctx := context.Background()
-	if err := repo.Create(ctx, tx); err != nil {
+	if err := repo.Create(ctx, 1, tx); err != nil {
 		t.Fatalf("seedSecurityTransaction: %v", err)
 	}
 	return tx
@@ -73,7 +73,7 @@ func TestSecurityTransactionRepository_Create(t *testing.T) {
 		ExchangeRate:    230000,
 	}
 
-	if err := repo.Create(ctx, tx); err != nil {
+	if err := repo.Create(ctx, 1, tx); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -108,11 +108,11 @@ func TestSecurityTransactionRepository_Create_WithDocumentID(t *testing.T) {
 		ExchangeRate:    250000,
 	}
 
-	if err := repo.Create(ctx, tx); err != nil {
+	if err := repo.Create(ctx, 1, tx); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, tx.ID)
+	got, err := repo.GetByID(ctx, 1, tx.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestSecurityTransactionRepository_GetByID(t *testing.T) {
 		Fees:      domain.NewAmount(25, 0),
 	})
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestSecurityTransactionRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewSecurityTransactionRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent transaction")
 	}
@@ -172,7 +172,7 @@ func TestSecurityTransactionRepository_ListByYear(t *testing.T) {
 	seedSecurityTransaction(t, repo, &domain.SecurityTransaction{Year: 2025, TransactionDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)})
 	seedSecurityTransaction(t, repo, &domain.SecurityTransaction{Year: 2024, TransactionDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)})
 
-	txs, err := repo.ListByYear(ctx, 2025)
+	txs, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestSecurityTransactionRepository_ListByYear_Empty(t *testing.T) {
 	repo := NewSecurityTransactionRepository(db)
 	ctx := context.Background()
 
-	txs, err := repo.ListByYear(ctx, 2099)
+	txs, err := repo.ListByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestSecurityTransactionRepository_ListByDocumentID(t *testing.T) {
 	seedSecurityTransaction(t, repo, &domain.SecurityTransaction{DocumentID: &docID})
 	seedSecurityTransaction(t, repo, nil) // no document_id
 
-	txs, err := repo.ListByDocumentID(ctx, docID)
+	txs, err := repo.ListByDocumentID(ctx, 1, docID)
 	if err != nil {
 		t.Fatalf("ListByDocumentID() error: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestSecurityTransactionRepository_ListBuysForFIFO(t *testing.T) {
 		TransactionType: domain.TransactionTypeBuy,
 	})
 
-	buys, err := repo.ListBuysForFIFO(ctx, "AAPL", domain.AssetTypeStock)
+	buys, err := repo.ListBuysForFIFO(ctx, 1, "AAPL", domain.AssetTypeStock)
 	if err != nil {
 		t.Fatalf("ListBuysForFIFO() error: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestSecurityTransactionRepository_ListSellsByYear(t *testing.T) {
 		TransactionDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
 	})
 
-	sells, err := repo.ListSellsByYear(ctx, 2025)
+	sells, err := repo.ListSellsByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListSellsByYear() error: %v", err)
 	}
@@ -312,11 +312,11 @@ func TestSecurityTransactionRepository_Update(t *testing.T) {
 	seeded.AssetName = "Updated Asset"
 	seeded.TotalAmount = domain.NewAmount(10000, 0)
 	seeded.TimeTestExempt = true
-	if err := repo.Update(ctx, seeded); err != nil {
+	if err := repo.Update(ctx, 1, seeded); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -345,7 +345,7 @@ func TestSecurityTransactionRepository_Update_NotFound(t *testing.T) {
 		TransactionDate: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 		CurrencyCode:    "USD",
 	}
-	err := repo.Update(ctx, tx)
+	err := repo.Update(ctx, 1, tx)
 	if err == nil {
 		t.Error("expected error for non-existent transaction")
 	}
@@ -361,11 +361,11 @@ func TestSecurityTransactionRepository_Delete(t *testing.T) {
 
 	seeded := seedSecurityTransaction(t, repo, nil)
 
-	if err := repo.Delete(ctx, seeded.ID); err != nil {
+	if err := repo.Delete(ctx, 1, seeded.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, seeded.ID)
+	_, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err == nil {
 		t.Error("expected error when getting deleted transaction")
 	}
@@ -376,7 +376,7 @@ func TestSecurityTransactionRepository_Delete_NotFound(t *testing.T) {
 	repo := NewSecurityTransactionRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent transaction")
 	}
@@ -398,11 +398,11 @@ func TestSecurityTransactionRepository_UpdateFIFOResults(t *testing.T) {
 	computedGain := domain.NewAmount(2000, 0)
 	exemptAmount := domain.NewAmount(2000, 0)
 
-	if err := repo.UpdateFIFOResults(ctx, seeded.ID, costBasis, computedGain, exemptAmount, true); err != nil {
+	if err := repo.UpdateFIFOResults(ctx, 1, seeded.ID, costBasis, computedGain, exemptAmount, true); err != nil {
 		t.Fatalf("UpdateFIFOResults() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestSecurityTransactionRepository_UpdateFIFOResults_NotFound(t *testing.T) 
 	repo := NewSecurityTransactionRepository(db)
 	ctx := context.Background()
 
-	err := repo.UpdateFIFOResults(ctx, 99999, 0, 0, 0, false)
+	err := repo.UpdateFIFOResults(ctx, 1, 99999, 0, 0, 0, false)
 	if err == nil {
 		t.Error("expected error for non-existent transaction")
 	}
@@ -446,11 +446,11 @@ func TestSecurityTransactionRepository_DeleteByDocumentID(t *testing.T) {
 	seedSecurityTransaction(t, repo, &domain.SecurityTransaction{DocumentID: &docID})
 	seedSecurityTransaction(t, repo, &domain.SecurityTransaction{DocumentID: &docID})
 
-	if err := repo.DeleteByDocumentID(ctx, docID); err != nil {
+	if err := repo.DeleteByDocumentID(ctx, 1, docID); err != nil {
 		t.Fatalf("DeleteByDocumentID() error: %v", err)
 	}
 
-	txs, err := repo.ListByDocumentID(ctx, docID)
+	txs, err := repo.ListByDocumentID(ctx, 1, docID)
 	if err != nil {
 		t.Fatalf("ListByDocumentID() error: %v", err)
 	}
@@ -465,7 +465,7 @@ func TestSecurityTransactionRepository_DeleteByDocumentID_NoEntries(t *testing.T
 	ctx := context.Background()
 
 	// Should not error even when no transactions exist for the document.
-	if err := repo.DeleteByDocumentID(ctx, 99999); err != nil {
+	if err := repo.DeleteByDocumentID(ctx, 1, 99999); err != nil {
 		t.Fatalf("DeleteByDocumentID() should not error for non-existent document, got: %v", err)
 	}
 }

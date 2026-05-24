@@ -94,8 +94,14 @@ func healthInsuranceFromDomain(hi *domain.HealthInsuranceOverview) healthInsuran
 	}
 }
 
-// Create handles POST /api/v1/health-insurance.
+// Create handles POST /health-insurance.
 func (h *HealthInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req healthInsuranceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -107,7 +113,7 @@ func (h *HealthInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 		FilingType: req.FilingType,
 	}
 
-	if err := h.svc.Create(r.Context(), hi); err != nil {
+	if err := h.svc.Create(r.Context(), company.ID, hi); err != nil {
 		slog.Error("failed to create health insurance overview", "error", err)
 		mapDomainError(w, err)
 		return
@@ -116,8 +122,14 @@ func (h *HealthInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 	respondJSON(w, http.StatusCreated, healthInsuranceFromDomain(hi))
 }
 
-// List handles GET /api/v1/health-insurance.
+// List handles GET /health-insurance.
 func (h *HealthInsuranceHandler) List(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year := 0
 	if v := r.URL.Query().Get("year"); v != "" {
 		parsed, err := strconv.Atoi(v)
@@ -128,7 +140,7 @@ func (h *HealthInsuranceHandler) List(w http.ResponseWriter, r *http.Request) {
 		year = parsed
 	}
 
-	overviews, err := h.svc.List(r.Context(), year)
+	overviews, err := h.svc.List(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list health insurance overviews", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list health insurance overviews")
@@ -143,15 +155,21 @@ func (h *HealthInsuranceHandler) List(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, items)
 }
 
-// GetByID handles GET /api/v1/health-insurance/{id}.
+// GetByID handles GET /health-insurance/{id}.
 func (h *HealthInsuranceHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
 		return
 	}
 
-	hi, err := h.svc.GetByID(r.Context(), id)
+	hi, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get health insurance overview", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -161,15 +179,21 @@ func (h *HealthInsuranceHandler) GetByID(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, healthInsuranceFromDomain(hi))
 }
 
-// Delete handles DELETE /api/v1/health-insurance/{id}.
+// Delete handles DELETE /health-insurance/{id}.
 func (h *HealthInsuranceHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), id); err != nil {
+	if err := h.svc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete health insurance overview", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -178,15 +202,21 @@ func (h *HealthInsuranceHandler) Delete(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Recalculate handles POST /api/v1/health-insurance/{id}/recalculate.
+// Recalculate handles POST /health-insurance/{id}/recalculate.
 func (h *HealthInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
 		return
 	}
 
-	hi, err := h.svc.Recalculate(r.Context(), id)
+	hi, err := h.svc.Recalculate(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to recalculate health insurance overview", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -196,15 +226,21 @@ func (h *HealthInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, healthInsuranceFromDomain(hi))
 }
 
-// GenerateXML handles POST /api/v1/health-insurance/{id}/generate-xml.
+// GenerateXML handles POST /health-insurance/{id}/generate-xml.
 func (h *HealthInsuranceHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
 		return
 	}
 
-	hi, err := h.svc.GenerateXML(r.Context(), id)
+	hi, err := h.svc.GenerateXML(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to generate health insurance overview XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -214,15 +250,21 @@ func (h *HealthInsuranceHandler) GenerateXML(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, healthInsuranceFromDomain(hi))
 }
 
-// DownloadXML handles GET /api/v1/health-insurance/{id}/xml.
+// DownloadXML handles GET /health-insurance/{id}/xml.
 func (h *HealthInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	xmlData, err := h.svc.GetXMLData(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get health insurance overview XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -242,15 +284,21 @@ func (h *HealthInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Requ
 	_, _ = w.Write(xmlData)
 }
 
-// MarkFiled handles POST /api/v1/health-insurance/{id}/mark-filed.
+// MarkFiled handles POST /health-insurance/{id}/mark-filed.
 func (h *HealthInsuranceHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
 		return
 	}
 
-	hi, err := h.svc.MarkFiled(r.Context(), id)
+	hi, err := h.svc.MarkFiled(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to mark health insurance overview as filed", "error", err, "id", id)
 		mapDomainError(w, err)

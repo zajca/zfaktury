@@ -26,7 +26,7 @@ func TestTaxSpouseCreditRepository_Upsert(t *testing.T) {
 		CreditAmount:      domain.NewAmount(24840, 0),
 	}
 
-	if err := repo.Upsert(ctx, credit); err != nil {
+	if err := repo.Upsert(ctx, 1, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
@@ -54,7 +54,7 @@ func TestTaxSpouseCreditRepository_Upsert_Replace(t *testing.T) {
 		MonthsClaimed:     12,
 		CreditAmount:      domain.NewAmount(24840, 0),
 	}
-	if err := repo.Upsert(ctx, credit); err != nil {
+	if err := repo.Upsert(ctx, 1, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
@@ -68,11 +68,11 @@ func TestTaxSpouseCreditRepository_Upsert_Replace(t *testing.T) {
 		MonthsClaimed:     6,
 		CreditAmount:      domain.NewAmount(12420, 0),
 	}
-	if err := repo.Upsert(ctx, credit2); err != nil {
+	if err := repo.Upsert(ctx, 1, credit2); err != nil {
 		t.Fatalf("Upsert() replace error: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025)
+	got, err := repo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear() error: %v", err)
 	}
@@ -101,11 +101,11 @@ func TestTaxSpouseCreditRepository_GetByYear(t *testing.T) {
 		MonthsClaimed:     8,
 		CreditAmount:      domain.NewAmount(24840, 0),
 	}
-	if err := repo.Upsert(ctx, credit); err != nil {
+	if err := repo.Upsert(ctx, 1, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025)
+	got, err := repo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear() error: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestTaxSpouseCreditRepository_GetByYear_NotFound(t *testing.T) {
 	repo := NewTaxSpouseCreditRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByYear(ctx, 2099)
+	_, err := repo.GetByYear(ctx, 1, 2099)
 	if err == nil {
 		t.Error("expected error for non-existent year")
 	}
@@ -160,15 +160,15 @@ func TestTaxSpouseCreditRepository_DeleteByYear(t *testing.T) {
 		MonthsClaimed:     12,
 		CreditAmount:      domain.NewAmount(24840, 0),
 	}
-	if err := repo.Upsert(ctx, credit); err != nil {
+	if err := repo.Upsert(ctx, 1, credit); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
-	if err := repo.DeleteByYear(ctx, 2025); err != nil {
+	if err := repo.DeleteByYear(ctx, 1, 2025); err != nil {
 		t.Fatalf("DeleteByYear() error: %v", err)
 	}
 
-	_, err := repo.GetByYear(ctx, 2025)
+	_, err := repo.GetByYear(ctx, 1, 2025)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -182,7 +182,7 @@ func TestTaxSpouseCreditRepository_DeleteByYear_NotFound(t *testing.T) {
 	repo := NewTaxSpouseCreditRepository(db)
 	ctx := context.Background()
 
-	err := repo.DeleteByYear(ctx, 2099)
+	err := repo.DeleteByYear(ctx, 1, 2099)
 	if err == nil {
 		t.Error("expected error for non-existent year")
 	}
@@ -208,7 +208,7 @@ func TestTaxChildCreditRepository_Create(t *testing.T) {
 		CreditAmount:  domain.NewAmount(15204, 0),
 	}
 
-	if err := repo.Create(ctx, credit); err != nil {
+	if err := repo.Create(ctx, 1, credit); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -234,7 +234,7 @@ func TestTaxChildCreditRepository_Update(t *testing.T) {
 		ZTP:           false,
 		CreditAmount:  domain.NewAmount(15204, 0),
 	}
-	if err := repo.Create(ctx, credit); err != nil {
+	if err := repo.Create(ctx, 1, credit); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -242,12 +242,12 @@ func TestTaxChildCreditRepository_Update(t *testing.T) {
 	credit.ZTP = true
 	credit.CreditAmount = domain.NewAmount(30408, 0)
 
-	if err := repo.Update(ctx, credit); err != nil {
+	if err := repo.Update(ctx, 1, credit); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
 	// Verify via ListByYear.
-	children, err := repo.ListByYear(ctx, 2025)
+	children, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -280,7 +280,7 @@ func TestTaxChildCreditRepository_Update_NotFound(t *testing.T) {
 		CreditAmount:  domain.NewAmount(15204, 0),
 	}
 
-	err := repo.Update(ctx, credit)
+	err := repo.Update(ctx, 1, credit)
 	if err == nil {
 		t.Error("expected error for non-existent update")
 	}
@@ -302,15 +302,15 @@ func TestTaxChildCreditRepository_Delete(t *testing.T) {
 		MonthsClaimed: 12,
 		CreditAmount:  domain.NewAmount(15204, 0),
 	}
-	if err := repo.Create(ctx, credit); err != nil {
+	if err := repo.Create(ctx, 1, credit); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := repo.Delete(ctx, credit.ID); err != nil {
+	if err := repo.Delete(ctx, 1, credit.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	children, err := repo.ListByYear(ctx, 2025)
+	children, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -324,7 +324,7 @@ func TestTaxChildCreditRepository_Delete_NotFound(t *testing.T) {
 	repo := NewTaxChildCreditRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent delete")
 	}
@@ -345,7 +345,7 @@ func TestTaxChildCreditRepository_ListByYear(t *testing.T) {
 		{Year: 2025, ChildName: "Child 3", BirthNumber: "3333333333", ChildOrder: 3, MonthsClaimed: 6, ZTP: true, CreditAmount: domain.NewAmount(27840, 0)},
 	}
 	for i := range children {
-		if err := repo.Create(ctx, &children[i]); err != nil {
+		if err := repo.Create(ctx, 1, &children[i]); err != nil {
 			t.Fatalf("Create() child %d error: %v", i+1, err)
 		}
 	}
@@ -354,12 +354,12 @@ func TestTaxChildCreditRepository_ListByYear(t *testing.T) {
 	otherYear := &domain.TaxChildCredit{
 		Year: 2024, ChildName: "Child Other", BirthNumber: "4444444444", ChildOrder: 1, MonthsClaimed: 12, CreditAmount: domain.NewAmount(15204, 0),
 	}
-	if err := repo.Create(ctx, otherYear); err != nil {
+	if err := repo.Create(ctx, 1, otherYear); err != nil {
 		t.Fatalf("Create() other year error: %v", err)
 	}
 
 	// List for 2025 should return 3 children ordered by child_order.
-	result, err := repo.ListByYear(ctx, 2025)
+	result, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear(2025) error: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestTaxChildCreditRepository_ListByYear(t *testing.T) {
 	}
 
 	// List for 2024 should return 1.
-	result2024, err := repo.ListByYear(ctx, 2024)
+	result2024, err := repo.ListByYear(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("ListByYear(2024) error: %v", err)
 	}
@@ -385,7 +385,7 @@ func TestTaxChildCreditRepository_ListByYear(t *testing.T) {
 	}
 
 	// List for non-existent year should return empty slice.
-	resultEmpty, err := repo.ListByYear(ctx, 2099)
+	resultEmpty, err := repo.ListByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("ListByYear(2099) error: %v", err)
 	}
@@ -410,7 +410,7 @@ func TestTaxPersonalCreditsRepository_Upsert(t *testing.T) {
 		CreditDisability: domain.NewAmount(2520, 0),
 	}
 
-	if err := repo.Upsert(ctx, credits); err != nil {
+	if err := repo.Upsert(ctx, 1, credits); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
@@ -435,7 +435,7 @@ func TestTaxPersonalCreditsRepository_Upsert_Replace(t *testing.T) {
 		CreditStudent:    domain.NewAmount(4020, 0),
 		CreditDisability: 0,
 	}
-	if err := repo.Upsert(ctx, credits); err != nil {
+	if err := repo.Upsert(ctx, 1, credits); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
@@ -448,11 +448,11 @@ func TestTaxPersonalCreditsRepository_Upsert_Replace(t *testing.T) {
 		CreditStudent:    0,
 		CreditDisability: domain.NewAmount(5040, 0),
 	}
-	if err := repo.Upsert(ctx, credits2); err != nil {
+	if err := repo.Upsert(ctx, 1, credits2); err != nil {
 		t.Fatalf("Upsert() replace error: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025)
+	got, err := repo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear() error: %v", err)
 	}
@@ -480,11 +480,11 @@ func TestTaxPersonalCreditsRepository_GetByYear(t *testing.T) {
 		CreditStudent:    domain.NewAmount(4020, 0),
 		CreditDisability: domain.NewAmount(2520, 0),
 	}
-	if err := repo.Upsert(ctx, credits); err != nil {
+	if err := repo.Upsert(ctx, 1, credits); err != nil {
 		t.Fatalf("Upsert() error: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025)
+	got, err := repo.GetByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetByYear() error: %v", err)
 	}
@@ -514,7 +514,7 @@ func TestTaxPersonalCreditsRepository_GetByYear_NotFound(t *testing.T) {
 	repo := NewTaxPersonalCreditsRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByYear(ctx, 2099)
+	_, err := repo.GetByYear(ctx, 1, 2099)
 	if err == nil {
 		t.Error("expected error for non-existent year")
 	}

@@ -144,6 +144,12 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 
 // Create handles POST /api/v1/income-tax-returns.
 func (h *IncomeTaxHandler) Create(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req incomeTaxRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -155,7 +161,7 @@ func (h *IncomeTaxHandler) Create(w http.ResponseWriter, r *http.Request) {
 		FilingType: req.FilingType,
 	}
 
-	if err := h.svc.Create(r.Context(), itr); err != nil {
+	if err := h.svc.Create(r.Context(), company.ID, itr); err != nil {
 		slog.Error("failed to create income tax return", "error", err)
 		mapDomainError(w, err)
 		return
@@ -166,6 +172,12 @@ func (h *IncomeTaxHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/v1/income-tax-returns.
 func (h *IncomeTaxHandler) List(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year := 0
 	if v := r.URL.Query().Get("year"); v != "" {
 		parsed, err := strconv.Atoi(v)
@@ -176,7 +188,7 @@ func (h *IncomeTaxHandler) List(w http.ResponseWriter, r *http.Request) {
 		year = parsed
 	}
 
-	returns, err := h.svc.List(r.Context(), year)
+	returns, err := h.svc.List(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list income tax returns", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list income tax returns")
@@ -193,13 +205,19 @@ func (h *IncomeTaxHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /api/v1/income-tax-returns/{id}.
 func (h *IncomeTaxHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid income tax return ID")
 		return
 	}
 
-	itr, err := h.svc.GetByID(r.Context(), id)
+	itr, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get income tax return", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -211,13 +229,19 @@ func (h *IncomeTaxHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/v1/income-tax-returns/{id}.
 func (h *IncomeTaxHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid income tax return ID")
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), id); err != nil {
+	if err := h.svc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete income tax return", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -228,13 +252,19 @@ func (h *IncomeTaxHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Recalculate handles POST /api/v1/income-tax-returns/{id}/recalculate.
 func (h *IncomeTaxHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid income tax return ID")
 		return
 	}
 
-	itr, err := h.svc.Recalculate(r.Context(), id)
+	itr, err := h.svc.Recalculate(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to recalculate income tax return", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -246,13 +276,19 @@ func (h *IncomeTaxHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
 
 // GenerateXML handles POST /api/v1/income-tax-returns/{id}/generate-xml.
 func (h *IncomeTaxHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid income tax return ID")
 		return
 	}
 
-	itr, err := h.svc.GenerateXML(r.Context(), id)
+	itr, err := h.svc.GenerateXML(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to generate income tax return XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -264,13 +300,19 @@ func (h *IncomeTaxHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 
 // DownloadXML handles GET /api/v1/income-tax-returns/{id}/xml.
 func (h *IncomeTaxHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid income tax return ID")
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	xmlData, err := h.svc.GetXMLData(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get income tax return XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -292,13 +334,19 @@ func (h *IncomeTaxHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 
 // MarkFiled handles POST /api/v1/income-tax-returns/{id}/mark-filed.
 func (h *IncomeTaxHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid income tax return ID")
 		return
 	}
 
-	itr, err := h.svc.MarkFiled(r.Context(), id)
+	itr, err := h.svc.MarkFiled(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to mark income tax return as filed", "error", err, "id", id)
 		mapDomainError(w, err)

@@ -35,7 +35,7 @@ func TestSocialInsuranceService_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if sio.ID == 0 {
@@ -51,7 +51,7 @@ func TestSocialInsuranceService_Create_DefaultFilingType(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if sio.FilingType != domain.FilingTypeRegular {
@@ -64,12 +64,12 @@ func TestSocialInsuranceService_Create_DuplicateRegular(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	sio2 := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	err := svc.Create(ctx, sio2)
+	err := svc.Create(ctx, 1, sio2)
 	if err == nil {
 		t.Error("expected error for duplicate regular filing")
 	}
@@ -83,7 +83,7 @@ func TestSocialInsuranceService_Create_InvalidYear(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 1999, FilingType: domain.FilingTypeRegular}
-	err := svc.Create(ctx, sio)
+	err := svc.Create(ctx, 1, sio)
 	if err == nil {
 		t.Error("expected error for invalid year")
 	}
@@ -97,7 +97,7 @@ func TestSocialInsuranceService_Create_InvalidFilingType(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: "bad"}
-	err := svc.Create(ctx, sio)
+	err := svc.Create(ctx, 1, sio)
 	if err == nil {
 		t.Error("expected error for invalid filing_type")
 	}
@@ -111,11 +111,11 @@ func TestSocialInsuranceService_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, sio.ID)
+	got, err := svc.GetByID(ctx, 1, sio.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestSocialInsuranceService_GetByID_ZeroID(t *testing.T) {
 	svc, _ := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 0)
+	_, err := svc.GetByID(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -142,15 +142,15 @@ func TestSocialInsuranceService_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := svc.Delete(ctx, sio.ID); err != nil {
+	if err := svc.Delete(ctx, 1, sio.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := svc.GetByID(ctx, sio.ID)
+	_, err := svc.GetByID(ctx, 1, sio.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -161,14 +161,14 @@ func TestSocialInsuranceService_Delete_Filed(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if _, err := svc.MarkFiled(ctx, sio.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, sio.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	err := svc.Delete(ctx, sio.ID)
+	err := svc.Delete(ctx, 1, sio.ID)
 	if err == nil {
 		t.Error("expected error when deleting filed overview")
 	}
@@ -181,7 +181,7 @@ func TestSocialInsuranceService_Delete_ZeroID(t *testing.T) {
 	svc, _ := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 0)
+	err := svc.Delete(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -196,12 +196,12 @@ func TestSocialInsuranceService_List(t *testing.T) {
 
 	for _, ft := range []string{domain.FilingTypeRegular, domain.FilingTypeCorrective} {
 		sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: ft}
-		if err := svc.Create(ctx, sio); err != nil {
+		if err := svc.Create(ctx, 1, sio); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
 	}
 
-	result, err := svc.List(ctx, 2025)
+	result, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -215,11 +215,11 @@ func TestSocialInsuranceService_MarkFiled(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	filed, err := svc.MarkFiled(ctx, sio.ID)
+	filed, err := svc.MarkFiled(ctx, 1, sio.ID)
 	if err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestSocialInsuranceService_MarkFiled(t *testing.T) {
 	}
 
 	// Double filing should fail.
-	_, err = svc.MarkFiled(ctx, sio.ID)
+	_, err = svc.MarkFiled(ctx, 1, sio.ID)
 	if err == nil {
 		t.Error("expected error for double filing")
 	}
@@ -241,7 +241,7 @@ func TestSocialInsuranceService_Recalculate_ZeroID(t *testing.T) {
 	svc, _ := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.Recalculate(ctx, 0)
+	_, err := svc.Recalculate(ctx, 1, 0)
 	if err == nil {
 		t.Error("Recalculate(0) should return error")
 	}
@@ -252,14 +252,14 @@ func TestSocialInsuranceService_Recalculate_Filed(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if _, err := svc.MarkFiled(ctx, sio.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, sio.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	_, err := svc.Recalculate(ctx, sio.ID)
+	_, err := svc.Recalculate(ctx, 1, sio.ID)
 	if err == nil {
 		t.Error("Recalculate() should return error for filed overview")
 	}
@@ -301,16 +301,16 @@ func TestSocialInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 
 	// Set up flat rate 60%.
 	tysRepo := repository.NewTaxYearSettingsRepository(db)
-	if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
+	if err := tysRepo.Upsert(ctx, 1, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
 		t.Fatalf("Upsert tax year settings: %v", err)
 	}
 
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, sio.ID)
+	result, err := svc.Recalculate(ctx, 1, sio.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -361,11 +361,11 @@ func TestSocialInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 
 	// No invoices -- revenue = 0, so assessment base should be the minimum.
 	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, sio); err != nil {
+	if err := svc.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, sio.ID)
+	result, err := svc.Recalculate(ctx, 1, sio.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}

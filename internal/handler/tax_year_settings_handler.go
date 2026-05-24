@@ -61,20 +61,26 @@ func parseYear(r *http.Request) (int, error) {
 
 // GetByYear handles GET /api/v1/tax-year-settings/{year}.
 func (h *TaxYearSettingsHandler) GetByYear(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := parseYear(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	tys, err := h.svc.GetByYear(r.Context(), year)
+	tys, err := h.svc.GetByYear(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to get tax year settings", "error", err, "year", year)
 		respondError(w, http.StatusInternalServerError, "failed to get tax year settings")
 		return
 	}
 
-	prepayments, err := h.svc.GetPrepayments(r.Context(), year)
+	prepayments, err := h.svc.GetPrepayments(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to get prepayments", "error", err, "year", year)
 		respondError(w, http.StatusInternalServerError, "failed to get prepayments")
@@ -100,6 +106,12 @@ func (h *TaxYearSettingsHandler) GetByYear(w http.ResponseWriter, r *http.Reques
 
 // Save handles PUT /api/v1/tax-year-settings/{year}.
 func (h *TaxYearSettingsHandler) Save(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := parseYear(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
@@ -137,7 +149,7 @@ func (h *TaxYearSettingsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if err := h.svc.Save(r.Context(), year, req.FlatRatePercent, prepayments); err != nil {
+	if err := h.svc.Save(r.Context(), company.ID, year, req.FlatRatePercent, prepayments); err != nil {
 		slog.Error("failed to save tax year settings", "error", err, "year", year)
 		respondError(w, http.StatusInternalServerError, "failed to save tax year settings")
 		return

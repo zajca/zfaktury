@@ -62,7 +62,13 @@ type pdfSettingsRequest struct {
 
 // GetPDFSettings handles GET /api/v1/settings/pdf.
 func (h *PDFSettingsHandler) GetPDFSettings(w http.ResponseWriter, r *http.Request) {
-	ps, err := h.settingsSvc.GetPDFSettings(r.Context())
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
+	ps, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to get PDF settings")
@@ -89,6 +95,12 @@ func (h *PDFSettingsHandler) GetPDFSettings(w http.ResponseWriter, r *http.Reque
 
 // UpdatePDFSettings handles PUT /api/v1/settings/pdf.
 func (h *PDFSettingsHandler) UpdatePDFSettings(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req pdfSettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -111,7 +123,7 @@ func (h *PDFSettingsHandler) UpdatePDFSettings(w http.ResponseWriter, r *http.Re
 	}
 
 	// Preserve existing logo_path (not settable via this endpoint).
-	existing, err := h.settingsSvc.GetPDFSettings(r.Context())
+	existing, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get existing PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load existing settings")
@@ -127,7 +139,7 @@ func (h *PDFSettingsHandler) UpdatePDFSettings(w http.ResponseWriter, r *http.Re
 		FontSize:        req.FontSize,
 	}
 
-	if err := h.settingsSvc.SavePDFSettings(r.Context(), ps); err != nil {
+	if err := h.settingsSvc.SavePDFSettings(r.Context(), company.ID, ps); err != nil {
 		slog.Error("failed to save PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to save PDF settings")
 		return
@@ -163,6 +175,12 @@ const maxLogoSize = 2 << 20
 
 // UploadLogo handles POST /api/v1/settings/logo.
 func (h *PDFSettingsHandler) UploadLogo(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	if err := r.ParseMultipartForm(maxLogoSize); err != nil {
 		respondError(w, http.StatusBadRequest, "failed to parse multipart form or file exceeds 2MB limit")
 		return
@@ -214,14 +232,14 @@ func (h *PDFSettingsHandler) UploadLogo(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Update the pdf.logo_path setting.
-	ps, err := h.settingsSvc.GetPDFSettings(r.Context())
+	ps, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to update settings")
 		return
 	}
 	ps.LogoPath = logoPath
-	if err := h.settingsSvc.SavePDFSettings(r.Context(), ps); err != nil {
+	if err := h.settingsSvc.SavePDFSettings(r.Context(), company.ID, ps); err != nil {
 		slog.Error("failed to save logo path setting", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to update settings")
 		return
@@ -234,7 +252,13 @@ func (h *PDFSettingsHandler) UploadLogo(w http.ResponseWriter, r *http.Request) 
 
 // GetLogo handles GET /api/v1/settings/logo.
 func (h *PDFSettingsHandler) GetLogo(w http.ResponseWriter, r *http.Request) {
-	ps, err := h.settingsSvc.GetPDFSettings(r.Context())
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
+	ps, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to get settings")
@@ -269,7 +293,13 @@ func (h *PDFSettingsHandler) GetLogo(w http.ResponseWriter, r *http.Request) {
 
 // DeleteLogo handles DELETE /api/v1/settings/logo.
 func (h *PDFSettingsHandler) DeleteLogo(w http.ResponseWriter, r *http.Request) {
-	ps, err := h.settingsSvc.GetPDFSettings(r.Context())
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
+	ps, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to get settings")
@@ -282,7 +312,7 @@ func (h *PDFSettingsHandler) DeleteLogo(w http.ResponseWriter, r *http.Request) 
 
 	// Clear the logo_path setting.
 	ps.LogoPath = ""
-	if err := h.settingsSvc.SavePDFSettings(r.Context(), ps); err != nil {
+	if err := h.settingsSvc.SavePDFSettings(r.Context(), company.ID, ps); err != nil {
 		slog.Error("failed to clear logo path setting", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to update settings")
 		return
@@ -293,7 +323,13 @@ func (h *PDFSettingsHandler) DeleteLogo(w http.ResponseWriter, r *http.Request) 
 
 // PreviewPDF handles GET /api/v1/settings/pdf-preview.
 func (h *PDFSettingsHandler) PreviewPDF(w http.ResponseWriter, r *http.Request) {
-	ps, err := h.settingsSvc.GetPDFSettings(r.Context())
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
+	ps, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get PDF settings for preview", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load PDF settings")
@@ -310,7 +346,7 @@ func (h *PDFSettingsHandler) PreviewPDF(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Load supplier info.
-	settings, err := h.settingsSvc.GetAll(r.Context())
+	settings, err := h.settingsSvc.GetAll(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to load supplier settings for preview", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")

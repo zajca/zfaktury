@@ -452,14 +452,14 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplier, err := h.loadPDFSupplierInfo(r)
+	supplier, err := h.loadPDFSupplierInfo(r, company.ID)
 	if err != nil {
 		slog.Error("failed to load supplier settings for PDF", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
 		return
 	}
 
-	pdfSettings, err := h.loadPDFSettings(r)
+	pdfSettings, err := h.loadPDFSettings(r, company.ID)
 	if err != nil {
 		slog.Error("failed to load PDF settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load PDF settings")
@@ -506,7 +506,7 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 	iban := invoice.IBAN
 	swift := invoice.SWIFT
 	if iban == "" {
-		supplier, err := h.loadPDFSupplierInfo(r)
+		supplier, err := h.loadPDFSupplierInfo(r, company.ID)
 		if err != nil {
 			slog.Error("failed to load supplier settings for QR", "error", err)
 			respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
@@ -535,8 +535,8 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // loadPDFSupplierInfo reads supplier information from application settings for PDF generation.
-func (h *InvoiceHandler) loadPDFSupplierInfo(r *http.Request) (pdf.SupplierInfo, error) {
-	settings, err := h.settingsSvc.GetAll(r.Context())
+func (h *InvoiceHandler) loadPDFSupplierInfo(r *http.Request, companyID int64) (pdf.SupplierInfo, error) {
+	settings, err := h.settingsSvc.GetAll(r.Context(), companyID)
 	if err != nil {
 		return pdf.SupplierInfo{}, fmt.Errorf("loading settings: %w", err)
 	}
@@ -559,8 +559,8 @@ func (h *InvoiceHandler) loadPDFSupplierInfo(r *http.Request) (pdf.SupplierInfo,
 }
 
 // loadPDFSettings reads PDF template settings from the settings service.
-func (h *InvoiceHandler) loadPDFSettings(r *http.Request) (pdf.PDFSettings, error) {
-	svcSettings, err := h.settingsSvc.GetPDFSettings(r.Context())
+func (h *InvoiceHandler) loadPDFSettings(r *http.Request, companyID int64) (pdf.PDFSettings, error) {
+	svcSettings, err := h.settingsSvc.GetPDFSettings(r.Context(), companyID)
 	if err != nil {
 		return pdf.PDFSettings{}, fmt.Errorf("loading PDF settings: %w", err)
 	}
@@ -575,8 +575,8 @@ func (h *InvoiceHandler) loadPDFSettings(r *http.Request) (pdf.PDFSettings, erro
 }
 
 // loadSupplierInfo reads supplier information from application settings.
-func (h *InvoiceHandler) loadSupplierInfo(r *http.Request) (isdoc.SupplierInfo, error) {
-	settings, err := h.settingsSvc.GetAll(r.Context())
+func (h *InvoiceHandler) loadSupplierInfo(r *http.Request, companyID int64) (isdoc.SupplierInfo, error) {
+	settings, err := h.settingsSvc.GetAll(r.Context(), companyID)
 	if err != nil {
 		return isdoc.SupplierInfo{}, fmt.Errorf("loading settings: %w", err)
 	}
@@ -618,7 +618,7 @@ func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplier, err := h.loadSupplierInfo(r)
+	supplier, err := h.loadSupplierInfo(r, company.ID)
 	if err != nil {
 		slog.Error("failed to load supplier info", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
@@ -668,7 +668,7 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	supplier, err := h.loadSupplierInfo(r)
+	supplier, err := h.loadSupplierInfo(r, company.ID)
 	if err != nil {
 		slog.Error("failed to load supplier info", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")

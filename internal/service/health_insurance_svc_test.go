@@ -35,7 +35,7 @@ func TestHealthInsuranceService_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if hi.ID == 0 {
@@ -51,7 +51,7 @@ func TestHealthInsuranceService_Create_DefaultFilingType(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if hi.FilingType != domain.FilingTypeRegular {
@@ -64,12 +64,12 @@ func TestHealthInsuranceService_Create_DuplicateRegular(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	hi2 := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	err := svc.Create(ctx, hi2)
+	err := svc.Create(ctx, 1, hi2)
 	if err == nil {
 		t.Error("expected error for duplicate regular filing")
 	}
@@ -83,7 +83,7 @@ func TestHealthInsuranceService_Create_InvalidYear(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 1999, FilingType: domain.FilingTypeRegular}
-	err := svc.Create(ctx, hi)
+	err := svc.Create(ctx, 1, hi)
 	if err == nil {
 		t.Error("expected error for invalid year")
 	}
@@ -97,7 +97,7 @@ func TestHealthInsuranceService_Create_InvalidFilingType(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: "bad"}
-	err := svc.Create(ctx, hi)
+	err := svc.Create(ctx, 1, hi)
 	if err == nil {
 		t.Error("expected error for invalid filing_type")
 	}
@@ -111,11 +111,11 @@ func TestHealthInsuranceService_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, hi.ID)
+	got, err := svc.GetByID(ctx, 1, hi.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestHealthInsuranceService_GetByID_ZeroID(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 0)
+	_, err := svc.GetByID(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -142,15 +142,15 @@ func TestHealthInsuranceService_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := svc.Delete(ctx, hi.ID); err != nil {
+	if err := svc.Delete(ctx, 1, hi.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := svc.GetByID(ctx, hi.ID)
+	_, err := svc.GetByID(ctx, 1, hi.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -161,14 +161,14 @@ func TestHealthInsuranceService_Delete_Filed(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if _, err := svc.MarkFiled(ctx, hi.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, hi.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	err := svc.Delete(ctx, hi.ID)
+	err := svc.Delete(ctx, 1, hi.ID)
 	if err == nil {
 		t.Error("expected error when deleting filed overview")
 	}
@@ -181,7 +181,7 @@ func TestHealthInsuranceService_Delete_ZeroID(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 0)
+	err := svc.Delete(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -196,12 +196,12 @@ func TestHealthInsuranceService_List(t *testing.T) {
 
 	for _, ft := range []string{domain.FilingTypeRegular, domain.FilingTypeCorrective} {
 		hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: ft}
-		if err := svc.Create(ctx, hi); err != nil {
+		if err := svc.Create(ctx, 1, hi); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
 	}
 
-	result, err := svc.List(ctx, 2025)
+	result, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -215,11 +215,11 @@ func TestHealthInsuranceService_MarkFiled(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	filed, err := svc.MarkFiled(ctx, hi.ID)
+	filed, err := svc.MarkFiled(ctx, 1, hi.ID)
 	if err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestHealthInsuranceService_MarkFiled(t *testing.T) {
 	}
 
 	// Double filing should fail.
-	_, err = svc.MarkFiled(ctx, hi.ID)
+	_, err = svc.MarkFiled(ctx, 1, hi.ID)
 	if err == nil {
 		t.Error("expected error for double filing")
 	}
@@ -241,7 +241,7 @@ func TestHealthInsuranceService_Recalculate_ZeroID(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.Recalculate(ctx, 0)
+	_, err := svc.Recalculate(ctx, 1, 0)
 	if err == nil {
 		t.Error("Recalculate(0) should return error")
 	}
@@ -252,14 +252,14 @@ func TestHealthInsuranceService_Recalculate_Filed(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if _, err := svc.MarkFiled(ctx, hi.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, hi.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	_, err := svc.Recalculate(ctx, hi.ID)
+	_, err := svc.Recalculate(ctx, 1, hi.ID)
 	if err == nil {
 		t.Error("Recalculate() should return error for filed overview")
 	}
@@ -301,16 +301,16 @@ func TestHealthInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 
 	// Set up flat rate 60%.
 	tysRepo := repository.NewTaxYearSettingsRepository(db)
-	if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
+	if err := tysRepo.Upsert(ctx, 1, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
 		t.Fatalf("Upsert tax year settings: %v", err)
 	}
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, hi.ID)
+	result, err := svc.Recalculate(ctx, 1, hi.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -355,11 +355,11 @@ func TestHealthInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 
 	// No invoices -- revenue = 0, so should use minimum assessment base.
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, hi.ID)
+	result, err := svc.Recalculate(ctx, 1, hi.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -391,16 +391,16 @@ func TestHealthInsuranceService_Recalculate_WithPrepayments(t *testing.T) {
 		{Month: 2, TaxAmount: 0, SocialAmount: 0, HealthAmount: domain.NewAmount(3000, 0)},
 		{Month: 3, TaxAmount: 0, SocialAmount: 0, HealthAmount: domain.NewAmount(3000, 0)},
 	}
-	if err := tpRepo.UpsertAll(ctx, 2025, prepayments); err != nil {
+	if err := tpRepo.UpsertAll(ctx, 1, 2025, prepayments); err != nil {
 		t.Fatalf("UpsertAll prepayments: %v", err)
 	}
 
 	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, hi); err != nil {
+	if err := svc.Create(ctx, 1, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, hi.ID)
+	result, err := svc.Recalculate(ctx, 1, hi.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}

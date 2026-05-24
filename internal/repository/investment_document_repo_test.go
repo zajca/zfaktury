@@ -37,7 +37,7 @@ func seedInvestmentDocument(t *testing.T, repo *InvestmentDocumentRepository, do
 	}
 
 	ctx := context.Background()
-	if err := repo.Create(ctx, doc); err != nil {
+	if err := repo.Create(ctx, 1, doc); err != nil {
 		t.Fatalf("seedInvestmentDocument: %v", err)
 	}
 	return doc
@@ -58,7 +58,7 @@ func TestInvestmentDocumentRepository_Create(t *testing.T) {
 		ExtractionStatus: domain.ExtractionPending,
 	}
 
-	if err := repo.Create(ctx, doc); err != nil {
+	if err := repo.Create(ctx, 1, doc); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -85,7 +85,7 @@ func TestInvestmentDocumentRepository_GetByID(t *testing.T) {
 		Size:     99999,
 	})
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestInvestmentDocumentRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewInvestmentDocumentRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent document")
 	}
@@ -130,7 +130,7 @@ func TestInvestmentDocumentRepository_ListByYear(t *testing.T) {
 	seedInvestmentDocument(t, repo, &domain.InvestmentDocument{Year: 2025, Filename: "doc2.pdf"})
 	seedInvestmentDocument(t, repo, &domain.InvestmentDocument{Year: 2024, Filename: "doc3.pdf"})
 
-	docs, err := repo.ListByYear(ctx, 2025)
+	docs, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestInvestmentDocumentRepository_ListByYear_Empty(t *testing.T) {
 	repo := NewInvestmentDocumentRepository(db)
 	ctx := context.Background()
 
-	docs, err := repo.ListByYear(ctx, 2099)
+	docs, err := repo.ListByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -161,11 +161,11 @@ func TestInvestmentDocumentRepository_Delete(t *testing.T) {
 
 	seeded := seedInvestmentDocument(t, repo, nil)
 
-	if err := repo.Delete(ctx, seeded.ID); err != nil {
+	if err := repo.Delete(ctx, 1, seeded.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, seeded.ID)
+	_, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err == nil {
 		t.Error("expected error when getting deleted document")
 	}
@@ -176,7 +176,7 @@ func TestInvestmentDocumentRepository_Delete_NotFound(t *testing.T) {
 	repo := NewInvestmentDocumentRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent document")
 	}
@@ -192,11 +192,11 @@ func TestInvestmentDocumentRepository_UpdateExtraction(t *testing.T) {
 
 	seeded := seedInvestmentDocument(t, repo, nil)
 
-	if err := repo.UpdateExtraction(ctx, seeded.ID, domain.ExtractionExtracted, ""); err != nil {
+	if err := repo.UpdateExtraction(ctx, 1, seeded.ID, domain.ExtractionExtracted, ""); err != nil {
 		t.Fatalf("UpdateExtraction() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -212,11 +212,11 @@ func TestInvestmentDocumentRepository_UpdateExtraction_WithError(t *testing.T) {
 
 	seeded := seedInvestmentDocument(t, repo, nil)
 
-	if err := repo.UpdateExtraction(ctx, seeded.ID, domain.ExtractionFailed, "OCR service unavailable"); err != nil {
+	if err := repo.UpdateExtraction(ctx, 1, seeded.ID, domain.ExtractionFailed, "OCR service unavailable"); err != nil {
 		t.Fatalf("UpdateExtraction() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -233,7 +233,7 @@ func TestInvestmentDocumentRepository_UpdateExtraction_NotFound(t *testing.T) {
 	repo := NewInvestmentDocumentRepository(db)
 	ctx := context.Background()
 
-	err := repo.UpdateExtraction(ctx, 99999, domain.ExtractionExtracted, "")
+	err := repo.UpdateExtraction(ctx, 1, 99999, domain.ExtractionExtracted, "")
 	if err == nil {
 		t.Error("expected error for non-existent document")
 	}

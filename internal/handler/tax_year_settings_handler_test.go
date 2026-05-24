@@ -22,6 +22,7 @@ func setupTaxYearSettingsRouter(t *testing.T) *chi.Mux {
 	h := NewTaxYearSettingsHandler(svc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/tax-year-settings", h.Routes())
 	return r
 }

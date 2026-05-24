@@ -32,13 +32,13 @@ func NewInvestmentIncomeService(
 
 // --- Capital Income CRUD (§8) ---
 
-// CreateCapitalEntry validates and creates a new capital income entry.
-func (s *InvestmentIncomeService) CreateCapitalEntry(ctx context.Context, entry *domain.CapitalIncomeEntry) error {
+// CreateCapitalEntry validates and creates a new capital income entry within the given company.
+func (s *InvestmentIncomeService) CreateCapitalEntry(ctx context.Context, companyID int64, entry *domain.CapitalIncomeEntry) error {
 	if err := validateCapitalCategory(entry.Category); err != nil {
 		return err
 	}
 	entry.NetAmount = entry.GrossAmount - entry.WithheldTaxCZ - entry.WithheldTaxForeign
-	if err := s.capitalRepo.Create(ctx, entry); err != nil {
+	if err := s.capitalRepo.Create(ctx, companyID, entry); err != nil {
 		return fmt.Errorf("creating capital entry: %w", err)
 	}
 	if s.audit != nil {
@@ -47,21 +47,21 @@ func (s *InvestmentIncomeService) CreateCapitalEntry(ctx context.Context, entry 
 	return nil
 }
 
-// UpdateCapitalEntry validates and updates an existing capital income entry.
-func (s *InvestmentIncomeService) UpdateCapitalEntry(ctx context.Context, entry *domain.CapitalIncomeEntry) error {
+// UpdateCapitalEntry validates and updates an existing capital income entry within the given company.
+func (s *InvestmentIncomeService) UpdateCapitalEntry(ctx context.Context, companyID int64, entry *domain.CapitalIncomeEntry) error {
 	if err := validateCapitalCategory(entry.Category); err != nil {
 		return err
 	}
 	var existing *domain.CapitalIncomeEntry
 	if s.audit != nil {
 		var err error
-		existing, err = s.capitalRepo.GetByID(ctx, entry.ID)
+		existing, err = s.capitalRepo.GetByID(ctx, companyID, entry.ID)
 		if err != nil {
 			return fmt.Errorf("fetching capital entry for audit: %w", err)
 		}
 	}
 	entry.NetAmount = entry.GrossAmount - entry.WithheldTaxCZ - entry.WithheldTaxForeign
-	if err := s.capitalRepo.Update(ctx, entry); err != nil {
+	if err := s.capitalRepo.Update(ctx, companyID, entry); err != nil {
 		return fmt.Errorf("updating capital entry: %w", err)
 	}
 	if s.audit != nil {
@@ -70,9 +70,9 @@ func (s *InvestmentIncomeService) UpdateCapitalEntry(ctx context.Context, entry 
 	return nil
 }
 
-// DeleteCapitalEntry deletes a capital income entry by ID.
-func (s *InvestmentIncomeService) DeleteCapitalEntry(ctx context.Context, id int64) error {
-	if err := s.capitalRepo.Delete(ctx, id); err != nil {
+// DeleteCapitalEntry deletes a capital income entry by ID within the given company.
+func (s *InvestmentIncomeService) DeleteCapitalEntry(ctx context.Context, companyID, id int64) error {
+	if err := s.capitalRepo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting capital entry: %w", err)
 	}
 	if s.audit != nil {
@@ -81,27 +81,27 @@ func (s *InvestmentIncomeService) DeleteCapitalEntry(ctx context.Context, id int
 	return nil
 }
 
-// GetCapitalEntry retrieves a capital income entry by ID.
-func (s *InvestmentIncomeService) GetCapitalEntry(ctx context.Context, id int64) (*domain.CapitalIncomeEntry, error) {
-	entry, err := s.capitalRepo.GetByID(ctx, id)
+// GetCapitalEntry retrieves a capital income entry by ID within the given company.
+func (s *InvestmentIncomeService) GetCapitalEntry(ctx context.Context, companyID, id int64) (*domain.CapitalIncomeEntry, error) {
+	entry, err := s.capitalRepo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching capital entry: %w", err)
 	}
 	return entry, nil
 }
 
-// ListCapitalEntries retrieves all capital income entries for a given year.
-func (s *InvestmentIncomeService) ListCapitalEntries(ctx context.Context, year int) ([]domain.CapitalIncomeEntry, error) {
-	entries, err := s.capitalRepo.ListByYear(ctx, year)
+// ListCapitalEntries retrieves all capital income entries for a given year within the given company.
+func (s *InvestmentIncomeService) ListCapitalEntries(ctx context.Context, companyID int64, year int) ([]domain.CapitalIncomeEntry, error) {
+	entries, err := s.capitalRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing capital entries: %w", err)
 	}
 	return entries, nil
 }
 
-// ComputeCapitalIncomeTotals returns aggregated gross, tax, and net amounts for capital income in a year.
-func (s *InvestmentIncomeService) ComputeCapitalIncomeTotals(ctx context.Context, year int) (gross, tax, net domain.Amount, err error) {
-	gross, tax, net, err = s.capitalRepo.SumByYear(ctx, year)
+// ComputeCapitalIncomeTotals returns aggregated gross, tax, and net amounts for capital income in a year within the given company.
+func (s *InvestmentIncomeService) ComputeCapitalIncomeTotals(ctx context.Context, companyID int64, year int) (gross, tax, net domain.Amount, err error) {
+	gross, tax, net, err = s.capitalRepo.SumByYear(ctx, companyID, year)
 	if err != nil {
 		err = fmt.Errorf("computing capital income totals: %w", err)
 	}
@@ -110,15 +110,15 @@ func (s *InvestmentIncomeService) ComputeCapitalIncomeTotals(ctx context.Context
 
 // --- Security Transaction CRUD (§10) ---
 
-// CreateSecurityTransaction validates and creates a new security transaction.
-func (s *InvestmentIncomeService) CreateSecurityTransaction(ctx context.Context, tx *domain.SecurityTransaction) error {
+// CreateSecurityTransaction validates and creates a new security transaction within the given company.
+func (s *InvestmentIncomeService) CreateSecurityTransaction(ctx context.Context, companyID int64, tx *domain.SecurityTransaction) error {
 	if err := validateAssetType(tx.AssetType); err != nil {
 		return err
 	}
 	if err := validateTransactionType(tx.TransactionType); err != nil {
 		return err
 	}
-	if err := s.securityRepo.Create(ctx, tx); err != nil {
+	if err := s.securityRepo.Create(ctx, companyID, tx); err != nil {
 		return fmt.Errorf("creating security transaction: %w", err)
 	}
 	if s.audit != nil {
@@ -127,8 +127,8 @@ func (s *InvestmentIncomeService) CreateSecurityTransaction(ctx context.Context,
 	return nil
 }
 
-// UpdateSecurityTransaction validates and updates an existing security transaction.
-func (s *InvestmentIncomeService) UpdateSecurityTransaction(ctx context.Context, tx *domain.SecurityTransaction) error {
+// UpdateSecurityTransaction validates and updates an existing security transaction within the given company.
+func (s *InvestmentIncomeService) UpdateSecurityTransaction(ctx context.Context, companyID int64, tx *domain.SecurityTransaction) error {
 	if err := validateAssetType(tx.AssetType); err != nil {
 		return err
 	}
@@ -138,12 +138,12 @@ func (s *InvestmentIncomeService) UpdateSecurityTransaction(ctx context.Context,
 	var existing *domain.SecurityTransaction
 	if s.audit != nil {
 		var err error
-		existing, err = s.securityRepo.GetByID(ctx, tx.ID)
+		existing, err = s.securityRepo.GetByID(ctx, companyID, tx.ID)
 		if err != nil {
 			return fmt.Errorf("fetching security transaction for audit: %w", err)
 		}
 	}
-	if err := s.securityRepo.Update(ctx, tx); err != nil {
+	if err := s.securityRepo.Update(ctx, companyID, tx); err != nil {
 		return fmt.Errorf("updating security transaction: %w", err)
 	}
 	if s.audit != nil {
@@ -152,9 +152,9 @@ func (s *InvestmentIncomeService) UpdateSecurityTransaction(ctx context.Context,
 	return nil
 }
 
-// DeleteSecurityTransaction deletes a security transaction by ID.
-func (s *InvestmentIncomeService) DeleteSecurityTransaction(ctx context.Context, id int64) error {
-	if err := s.securityRepo.Delete(ctx, id); err != nil {
+// DeleteSecurityTransaction deletes a security transaction by ID within the given company.
+func (s *InvestmentIncomeService) DeleteSecurityTransaction(ctx context.Context, companyID, id int64) error {
+	if err := s.securityRepo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting security transaction: %w", err)
 	}
 	if s.audit != nil {
@@ -163,18 +163,18 @@ func (s *InvestmentIncomeService) DeleteSecurityTransaction(ctx context.Context,
 	return nil
 }
 
-// GetSecurityTransaction retrieves a security transaction by ID.
-func (s *InvestmentIncomeService) GetSecurityTransaction(ctx context.Context, id int64) (*domain.SecurityTransaction, error) {
-	tx, err := s.securityRepo.GetByID(ctx, id)
+// GetSecurityTransaction retrieves a security transaction by ID within the given company.
+func (s *InvestmentIncomeService) GetSecurityTransaction(ctx context.Context, companyID, id int64) (*domain.SecurityTransaction, error) {
+	tx, err := s.securityRepo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching security transaction: %w", err)
 	}
 	return tx, nil
 }
 
-// ListSecurityTransactions retrieves all security transactions for a given year.
-func (s *InvestmentIncomeService) ListSecurityTransactions(ctx context.Context, year int) ([]domain.SecurityTransaction, error) {
-	txs, err := s.securityRepo.ListByYear(ctx, year)
+// ListSecurityTransactions retrieves all security transactions for a given year within the given company.
+func (s *InvestmentIncomeService) ListSecurityTransactions(ctx context.Context, companyID int64, year int) ([]domain.SecurityTransaction, error) {
+	txs, err := s.securityRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing security transactions: %w", err)
 	}
@@ -189,14 +189,14 @@ type assetGroupKey struct {
 	AssetType string
 }
 
-// RecalculateFIFO recomputes FIFO cost basis, gains, and time test exemptions for all sells in a year.
-func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int) error {
+// RecalculateFIFO recomputes FIFO cost basis, gains, and time test exemptions for all sells in a year within the given company.
+func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, companyID int64, year int) error {
 	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return fmt.Errorf("getting tax constants for FIFO: %w", err)
 	}
 
-	sells, err := s.securityRepo.ListSellsByYear(ctx, year)
+	sells, err := s.securityRepo.ListSellsByYear(ctx, companyID, year)
 	if err != nil {
 		return fmt.Errorf("listing sells for FIFO: %w", err)
 	}
@@ -235,7 +235,7 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 		})
 
 		// Load all buys for this asset group.
-		buys, err := s.securityRepo.ListBuysForFIFO(ctx, key.AssetName, key.AssetType)
+		buys, err := s.securityRepo.ListBuysForFIFO(ctx, companyID, key.AssetName, key.AssetType)
 		if err != nil {
 			return fmt.Errorf("listing buys for FIFO asset %s/%s: %w", key.AssetName, key.AssetType, err)
 		}
@@ -303,7 +303,7 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 				cumulativeExempt += exemptAmount
 			}
 
-			if err := s.securityRepo.UpdateFIFOResults(ctx, sell.ID, costBasis, computedGain, exemptAmount, timeTestExempt); err != nil {
+			if err := s.securityRepo.UpdateFIFOResults(ctx, companyID, sell.ID, costBasis, computedGain, exemptAmount, timeTestExempt); err != nil {
 				return fmt.Errorf("updating FIFO results for sell %d: %w", sell.ID, err)
 			}
 		}
@@ -314,14 +314,14 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 
 // --- Year Summary ---
 
-// GetYearSummary aggregates investment income data for a given year.
-func (s *InvestmentIncomeService) GetYearSummary(ctx context.Context, year int) (*domain.InvestmentYearSummary, error) {
-	capitalGross, capitalTax, capitalNet, err := s.ComputeCapitalIncomeTotals(ctx, year)
+// GetYearSummary aggregates investment income data for a given year within the given company.
+func (s *InvestmentIncomeService) GetYearSummary(ctx context.Context, companyID int64, year int) (*domain.InvestmentYearSummary, error) {
+	capitalGross, capitalTax, capitalNet, err := s.ComputeCapitalIncomeTotals(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("computing capital income for year summary: %w", err)
 	}
 
-	sells, err := s.securityRepo.ListSellsByYear(ctx, year)
+	sells, err := s.securityRepo.ListSellsByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing sells for year summary: %w", err)
 	}

@@ -66,8 +66,8 @@ func scanVATReturn(s scanner) (*domain.VATReturn, error) {
 	return vr, nil
 }
 
-// Create inserts a new VAT return into the database.
-func (r *VATReturnRepository) Create(ctx context.Context, vr *domain.VATReturn) error {
+// Create inserts a new VAT return into the database scoped to the given company.
+func (r *VATReturnRepository) Create(ctx context.Context, companyID int64, vr *domain.VATReturn) error {
 	now := time.Now()
 	vr.CreatedAt = now
 	vr.UpdatedAt = now
@@ -77,13 +77,15 @@ func (r *VATReturnRepository) Create(ctx context.Context, vr *domain.VATReturn) 
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO vat_returns (
+			company_id,
 			year, month, quarter, filing_type,
 			output_vat_base_21, output_vat_amount_21, output_vat_base_12, output_vat_amount_12, output_vat_base_0,
 			reverse_charge_base_21, reverse_charge_amount_21, reverse_charge_base_12, reverse_charge_amount_12,
 			input_vat_base_21, input_vat_amount_21, input_vat_base_12, input_vat_amount_12,
 			total_output_vat, total_input_vat, net_vat,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID,
 		vr.Period.Year, vr.Period.Month, vr.Period.Quarter, vr.FilingType,
 		vr.OutputVATBase21, vr.OutputVATAmount21, vr.OutputVATBase12, vr.OutputVATAmount12, vr.OutputVATBase0,
 		vr.ReverseChargeBase21, vr.ReverseChargeAmount21, vr.ReverseChargeBase12, vr.ReverseChargeAmount12,
@@ -104,8 +106,8 @@ func (r *VATReturnRepository) Create(ctx context.Context, vr *domain.VATReturn) 
 	return nil
 }
 
-// Update modifies an existing VAT return.
-func (r *VATReturnRepository) Update(ctx context.Context, vr *domain.VATReturn) error {
+// Update modifies an existing VAT return within the given company.
+func (r *VATReturnRepository) Update(ctx context.Context, companyID int64, vr *domain.VATReturn) error {
 	vr.UpdatedAt = time.Now()
 
 	var filedAt any
@@ -125,7 +127,7 @@ func (r *VATReturnRepository) Update(ctx context.Context, vr *domain.VATReturn) 
 			input_vat_base_12 = ?, input_vat_amount_12 = ?,
 			total_output_vat = ?, total_input_vat = ?, net_vat = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		vr.Period.Year, vr.Period.Month, vr.Period.Quarter, vr.FilingType,
 		vr.OutputVATBase21, vr.OutputVATAmount21,
 		vr.OutputVATBase12, vr.OutputVATAmount12,
@@ -136,7 +138,7 @@ func (r *VATReturnRepository) Update(ctx context.Context, vr *domain.VATReturn) 
 		vr.InputVATBase12, vr.InputVATAmount12,
 		vr.TotalOutputVAT, vr.TotalInputVAT, vr.NetVAT,
 		vr.XMLData, vr.Status, filedAt,
-		vr.UpdatedAt.Format(time.RFC3339), vr.ID,
+		vr.UpdatedAt.Format(time.RFC3339), vr.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating vat_return %d: %w", vr.ID, err)
@@ -144,9 +146,9 @@ func (r *VATReturnRepository) Update(ctx context.Context, vr *domain.VATReturn) 
 	return nil
 }
 
-// Delete removes a VAT return by ID.
-func (r *VATReturnRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM vat_returns WHERE id = ?`, id)
+// Delete removes a VAT return by ID within the given company.
+func (r *VATReturnRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM vat_returns WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting vat_return %d: %w", id, err)
 	}
@@ -161,9 +163,9 @@ func (r *VATReturnRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GetByID retrieves a VAT return by its ID.
-func (r *VATReturnRepository) GetByID(ctx context.Context, id int64) (*domain.VATReturn, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+vatReturnColumns+` FROM vat_returns WHERE id = ?`, id)
+// GetByID retrieves a VAT return by its ID within the given company.
+func (r *VATReturnRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.VATReturn, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+vatReturnColumns+` FROM vat_returns WHERE id = ? AND company_id = ?`, id, companyID)
 	vr, err := scanVATReturn(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -174,11 +176,11 @@ func (r *VATReturnRepository) GetByID(ctx context.Context, id int64) (*domain.VA
 	return vr, nil
 }
 
-// List retrieves all VAT returns for a given year.
-func (r *VATReturnRepository) List(ctx context.Context, year int) ([]domain.VATReturn, error) {
+// List retrieves all VAT returns for a given year within the given company.
+func (r *VATReturnRepository) List(ctx context.Context, companyID int64, year int) ([]domain.VATReturn, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+vatReturnColumns+` FROM vat_returns WHERE year = ? ORDER BY month ASC, quarter ASC`,
-		year,
+		`SELECT `+vatReturnColumns+` FROM vat_returns WHERE company_id = ? AND year = ? ORDER BY month ASC, quarter ASC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing vat_returns for year %d: %w", year, err)
@@ -199,11 +201,11 @@ func (r *VATReturnRepository) List(ctx context.Context, year int) ([]domain.VATR
 	return result, nil
 }
 
-// GetByPeriod retrieves a VAT return for a specific period.
-func (r *VATReturnRepository) GetByPeriod(ctx context.Context, year, month, quarter int, filingType string) (*domain.VATReturn, error) {
+// GetByPeriod retrieves a VAT return for a specific period within the given company.
+func (r *VATReturnRepository) GetByPeriod(ctx context.Context, companyID int64, year, month, quarter int, filingType string) (*domain.VATReturn, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT `+vatReturnColumns+` FROM vat_returns WHERE year = ? AND month = ? AND quarter = ? AND filing_type = ?`,
-		year, month, quarter, filingType,
+		`SELECT `+vatReturnColumns+` FROM vat_returns WHERE company_id = ? AND year = ? AND month = ? AND quarter = ? AND filing_type = ?`,
+		companyID, year, month, quarter, filingType,
 	)
 	vr, err := scanVATReturn(row)
 	if err != nil {
@@ -216,22 +218,23 @@ func (r *VATReturnRepository) GetByPeriod(ctx context.Context, year, month, quar
 }
 
 // LinkInvoices associates invoices with a VAT return via the junction table.
-func (r *VATReturnRepository) LinkInvoices(ctx context.Context, vatReturnID int64, invoiceIDs []int64) error {
+// All operations are scoped to the given company.
+func (r *VATReturnRepository) LinkInvoices(ctx context.Context, companyID, vatReturnID int64, invoiceIDs []int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction for linking invoices: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(ctx, `DELETE FROM vat_return_invoices WHERE vat_return_id = ?`, vatReturnID)
+	_, err = tx.ExecContext(ctx, `DELETE FROM vat_return_invoices WHERE vat_return_id = ? AND company_id = ?`, vatReturnID, companyID)
 	if err != nil {
 		return fmt.Errorf("clearing existing invoice links for vat_return %d: %w", vatReturnID, err)
 	}
 
 	for _, invID := range invoiceIDs {
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO vat_return_invoices (vat_return_id, invoice_id) VALUES (?, ?)`,
-			vatReturnID, invID,
+			`INSERT INTO vat_return_invoices (company_id, vat_return_id, invoice_id) VALUES (?, ?, ?)`,
+			companyID, vatReturnID, invID,
 		)
 		if err != nil {
 			return fmt.Errorf("linking invoice %d to vat_return %d: %w", invID, vatReturnID, err)
@@ -245,22 +248,23 @@ func (r *VATReturnRepository) LinkInvoices(ctx context.Context, vatReturnID int6
 }
 
 // LinkExpenses associates expenses with a VAT return via the junction table.
-func (r *VATReturnRepository) LinkExpenses(ctx context.Context, vatReturnID int64, expenseIDs []int64) error {
+// All operations are scoped to the given company.
+func (r *VATReturnRepository) LinkExpenses(ctx context.Context, companyID, vatReturnID int64, expenseIDs []int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction for linking expenses: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(ctx, `DELETE FROM vat_return_expenses WHERE vat_return_id = ?`, vatReturnID)
+	_, err = tx.ExecContext(ctx, `DELETE FROM vat_return_expenses WHERE vat_return_id = ? AND company_id = ?`, vatReturnID, companyID)
 	if err != nil {
 		return fmt.Errorf("clearing existing expense links for vat_return %d: %w", vatReturnID, err)
 	}
 
 	for _, expID := range expenseIDs {
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO vat_return_expenses (vat_return_id, expense_id) VALUES (?, ?)`,
-			vatReturnID, expID,
+			`INSERT INTO vat_return_expenses (company_id, vat_return_id, expense_id) VALUES (?, ?, ?)`,
+			companyID, vatReturnID, expID,
 		)
 		if err != nil {
 			return fmt.Errorf("linking expense %d to vat_return %d: %w", expID, vatReturnID, err)
@@ -273,11 +277,11 @@ func (r *VATReturnRepository) LinkExpenses(ctx context.Context, vatReturnID int6
 	return nil
 }
 
-// GetLinkedInvoiceIDs returns invoice IDs linked to a VAT return.
-func (r *VATReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, vatReturnID int64) ([]int64, error) {
+// GetLinkedInvoiceIDs returns invoice IDs linked to a VAT return within the given company.
+func (r *VATReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, companyID, vatReturnID int64) ([]int64, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT invoice_id FROM vat_return_invoices WHERE vat_return_id = ? ORDER BY invoice_id`,
-		vatReturnID,
+		`SELECT invoice_id FROM vat_return_invoices WHERE vat_return_id = ? AND company_id = ? ORDER BY invoice_id`,
+		vatReturnID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("querying linked invoices for vat_return %d: %w", vatReturnID, err)
@@ -298,11 +302,11 @@ func (r *VATReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, vatReturn
 	return ids, nil
 }
 
-// GetLinkedExpenseIDs returns expense IDs linked to a VAT return.
-func (r *VATReturnRepository) GetLinkedExpenseIDs(ctx context.Context, vatReturnID int64) ([]int64, error) {
+// GetLinkedExpenseIDs returns expense IDs linked to a VAT return within the given company.
+func (r *VATReturnRepository) GetLinkedExpenseIDs(ctx context.Context, companyID, vatReturnID int64) ([]int64, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT expense_id FROM vat_return_expenses WHERE vat_return_id = ? ORDER BY expense_id`,
-		vatReturnID,
+		`SELECT expense_id FROM vat_return_expenses WHERE vat_return_id = ? AND company_id = ? ORDER BY expense_id`,
+		vatReturnID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("querying linked expenses for vat_return %d: %w", vatReturnID, err)

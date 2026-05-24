@@ -11,11 +11,6 @@ import (
 	"github.com/zajca/zfaktury/internal/vatxml"
 )
 
-// vatControlFallbackCompanyID is a transitional shim — VAT control statement
-// service is not yet company-scoped (T22 will thread companyID through it).
-// Remove when this service gains an explicit companyID.
-const vatControlFallbackCompanyID int64 = 1 // remove in T22
-
 // VATControlStatementService provides business logic for VAT control statements.
 type VATControlStatementService struct {
 	repo     repository.VATControlStatementRepo
@@ -44,8 +39,8 @@ func NewVATControlStatementService(
 	}
 }
 
-// Create validates and persists a new control statement.
-func (s *VATControlStatementService) Create(ctx context.Context, cs *domain.VATControlStatement) error {
+// Create validates and persists a new control statement within the given company.
+func (s *VATControlStatementService) Create(ctx context.Context, companyID int64, cs *domain.VATControlStatement) error {
 	if cs.Period.Year < 2000 || cs.Period.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -63,7 +58,7 @@ func (s *VATControlStatementService) Create(ctx context.Context, cs *domain.VATC
 	}
 
 	// Check for existing statement in same period with same filing type.
-	existing, err := s.repo.GetByPeriod(ctx, cs.Period.Year, cs.Period.Month, cs.FilingType)
+	existing, err := s.repo.GetByPeriod(ctx, companyID, cs.Period.Year, cs.Period.Month, cs.FilingType)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return fmt.Errorf("checking existing control statement: %w", err)
 	}
@@ -73,7 +68,7 @@ func (s *VATControlStatementService) Create(ctx context.Context, cs *domain.VATC
 
 	cs.Status = domain.FilingStatusDraft
 
-	if err := s.repo.Create(ctx, cs); err != nil {
+	if err := s.repo.Create(ctx, companyID, cs); err != nil {
 		return fmt.Errorf("creating control statement: %w", err)
 	}
 	if s.audit != nil {
@@ -82,27 +77,27 @@ func (s *VATControlStatementService) Create(ctx context.Context, cs *domain.VATC
 	return nil
 }
 
-// GetByID retrieves a control statement by ID.
-func (s *VATControlStatementService) GetByID(ctx context.Context, id int64) (*domain.VATControlStatement, error) {
-	cs, err := s.repo.GetByID(ctx, id)
+// GetByID retrieves a control statement by ID within the given company.
+func (s *VATControlStatementService) GetByID(ctx context.Context, companyID, id int64) (*domain.VATControlStatement, error) {
+	cs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching control statement: %w", err)
 	}
 	return cs, nil
 }
 
-// List retrieves all control statements for a given year.
-func (s *VATControlStatementService) List(ctx context.Context, year int) ([]domain.VATControlStatement, error) {
-	statements, err := s.repo.List(ctx, year)
+// List retrieves all control statements for a given year within the given company.
+func (s *VATControlStatementService) List(ctx context.Context, companyID int64, year int) ([]domain.VATControlStatement, error) {
+	statements, err := s.repo.List(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing control statements: %w", err)
 	}
 	return statements, nil
 }
 
-// Delete removes a control statement. Cannot delete filed statements.
-func (s *VATControlStatementService) Delete(ctx context.Context, id int64) error {
-	cs, err := s.repo.GetByID(ctx, id)
+// Delete removes a control statement within the given company. Cannot delete filed statements.
+func (s *VATControlStatementService) Delete(ctx context.Context, companyID, id int64) error {
+	cs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching control statement for delete: %w", err)
 	}
@@ -110,7 +105,7 @@ func (s *VATControlStatementService) Delete(ctx context.Context, id int64) error
 		return fmt.Errorf("cannot delete a filed control statement: %w", domain.ErrInvalidInput)
 	}
 
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting control statement: %w", err)
 	}
 	if s.audit != nil {
@@ -119,18 +114,18 @@ func (s *VATControlStatementService) Delete(ctx context.Context, id int64) error
 	return nil
 }
 
-// GetLines retrieves lines for a control statement.
-func (s *VATControlStatementService) GetLines(ctx context.Context, controlStatementID int64) ([]domain.VATControlStatementLine, error) {
-	lines, err := s.repo.GetLines(ctx, controlStatementID)
+// GetLines retrieves lines for a control statement within the given company.
+func (s *VATControlStatementService) GetLines(ctx context.Context, companyID, controlStatementID int64) ([]domain.VATControlStatementLine, error) {
+	lines, err := s.repo.GetLines(ctx, companyID, controlStatementID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching control statement lines: %w", err)
 	}
 	return lines, nil
 }
 
-// Recalculate rebuilds all lines for a control statement from invoices and expenses.
-func (s *VATControlStatementService) Recalculate(ctx context.Context, id int64) error {
-	cs, err := s.repo.GetByID(ctx, id)
+// Recalculate rebuilds all lines for a control statement from invoices and expenses within the given company.
+func (s *VATControlStatementService) Recalculate(ctx context.Context, companyID, id int64) error {
+	cs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching control statement for recalculate: %w", err)
 	}
@@ -145,32 +140,32 @@ func (s *VATControlStatementService) Recalculate(ctx context.Context, id int64) 
 	var lines []domain.VATControlStatementLine
 
 	// Process output invoices (by delivery_date).
-	invoiceLines, err := s.buildInvoiceLines(ctx, id, monthStart, monthEnd)
+	invoiceLines, err := s.buildInvoiceLines(ctx, companyID, id, monthStart, monthEnd)
 	if err != nil {
 		return fmt.Errorf("building invoice lines: %w", err)
 	}
 	lines = append(lines, invoiceLines...)
 
 	// Process input expenses (by issue_date).
-	expenseLines, err := s.buildExpenseLines(ctx, id, monthStart, monthEnd)
+	expenseLines, err := s.buildExpenseLines(ctx, companyID, id, monthStart, monthEnd)
 	if err != nil {
 		return fmt.Errorf("building expense lines: %w", err)
 	}
 	lines = append(lines, expenseLines...)
 
 	// Delete old lines and create new ones.
-	if err := s.repo.DeleteLines(ctx, id); err != nil {
+	if err := s.repo.DeleteLines(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting old control statement lines: %w", err)
 	}
 	if len(lines) > 0 {
-		if err := s.repo.CreateLines(ctx, lines); err != nil {
+		if err := s.repo.CreateLines(ctx, companyID, lines); err != nil {
 			return fmt.Errorf("creating control statement lines: %w", err)
 		}
 	}
 
 	// Update status to ready.
 	cs.Status = domain.FilingStatusReady
-	if err := s.repo.Update(ctx, cs); err != nil {
+	if err := s.repo.Update(ctx, companyID, cs); err != nil {
 		return fmt.Errorf("updating control statement status: %w", err)
 	}
 
@@ -181,7 +176,7 @@ func (s *VATControlStatementService) Recalculate(ctx context.Context, id int64) 
 }
 
 // buildInvoiceLines processes invoices for the given period and builds control statement lines.
-func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID int64, monthStart, monthEnd time.Time) ([]domain.VATControlStatementLine, error) {
+func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, companyID, csID int64, monthStart, monthEnd time.Time) ([]domain.VATControlStatementLine, error) {
 	// Get invoices with delivery_date in the month, status sent/paid/overdue.
 	filter := domain.InvoiceFilter{
 		DateFrom: &monthStart,
@@ -190,7 +185,7 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 		Offset:   0,
 	}
 
-	allInvoices, _, err := s.invoices.List(ctx, vatControlFallbackCompanyID, filter)
+	allInvoices, _, err := s.invoices.List(ctx, companyID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("listing invoices: %w", err)
 	}
@@ -218,13 +213,13 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 
 	for _, inv := range invoices {
 		// Load full invoice with items.
-		fullInv, err := s.invoices.GetByID(ctx, vatControlFallbackCompanyID, inv.ID)
+		fullInv, err := s.invoices.GetByID(ctx, companyID, inv.ID)
 		if err != nil {
 			return nil, fmt.Errorf("fetching invoice %d: %w", inv.ID, err)
 		}
 
 		// Load customer contact to check DIC.
-		contact, err := s.contacts.GetByID(ctx, vatControlFallbackCompanyID, fullInv.CustomerID)
+		contact, err := s.contacts.GetByID(ctx, companyID, fullInv.CustomerID)
 		if err != nil {
 			return nil, fmt.Errorf("fetching contact for invoice %d: %w", inv.ID, err)
 		}
@@ -300,7 +295,7 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 }
 
 // buildExpenseLines processes expenses for the given period and builds control statement lines.
-func (s *VATControlStatementService) buildExpenseLines(ctx context.Context, csID int64, monthStart, monthEnd time.Time) ([]domain.VATControlStatementLine, error) {
+func (s *VATControlStatementService) buildExpenseLines(ctx context.Context, companyID, csID int64, monthStart, monthEnd time.Time) ([]domain.VATControlStatementLine, error) {
 	filter := domain.ExpenseFilter{
 		DateFrom: &monthStart,
 		DateTo:   &monthEnd,
@@ -308,7 +303,7 @@ func (s *VATControlStatementService) buildExpenseLines(ctx context.Context, csID
 		Offset:   0,
 	}
 
-	allExpenses, _, err := s.expenses.List(ctx, vatControlFallbackCompanyID, filter)
+	allExpenses, _, err := s.expenses.List(ctx, companyID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("listing expenses: %w", err)
 	}
@@ -334,7 +329,7 @@ func (s *VATControlStatementService) buildExpenseLines(ctx context.Context, csID
 		// Check vendor DIC if vendor exists.
 		var vendorDIC string
 		if exp.VendorID != nil {
-			contact, err := s.contacts.GetByID(ctx, vatControlFallbackCompanyID, *exp.VendorID)
+			contact, err := s.contacts.GetByID(ctx, companyID, *exp.VendorID)
 			if err != nil {
 				return nil, fmt.Errorf("fetching vendor for expense %d: %w", exp.ID, err)
 			}
@@ -393,15 +388,15 @@ func (s *VATControlStatementService) buildExpenseLines(ctx context.Context, csID
 	return lines, nil
 }
 
-// GenerateXML generates and stores the XML for a control statement.
+// GenerateXML generates and stores the XML for a control statement within the given company.
 // The dic parameter is the taxpayer's DIC (e.g. "CZ12345678").
-func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, dic string) ([]byte, error) {
-	cs, err := s.repo.GetByID(ctx, id)
+func (s *VATControlStatementService) GenerateXML(ctx context.Context, companyID, id int64, dic string) ([]byte, error) {
+	cs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching control statement for XML generation: %w", err)
 	}
 
-	lines, err := s.repo.GetLines(ctx, id)
+	lines, err := s.repo.GetLines(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching lines for XML generation: %w", err)
 	}
@@ -412,7 +407,7 @@ func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, 
 	}
 
 	cs.XMLData = xmlData
-	if err := s.repo.Update(ctx, cs); err != nil {
+	if err := s.repo.Update(ctx, companyID, cs); err != nil {
 		return nil, fmt.Errorf("storing generated XML: %w", err)
 	}
 
@@ -422,9 +417,9 @@ func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, 
 	return xmlData, nil
 }
 
-// MarkFiled marks a control statement as filed.
-func (s *VATControlStatementService) MarkFiled(ctx context.Context, id int64) error {
-	cs, err := s.repo.GetByID(ctx, id)
+// MarkFiled marks a control statement as filed within the given company.
+func (s *VATControlStatementService) MarkFiled(ctx context.Context, companyID, id int64) error {
+	cs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching control statement for mark filed: %w", err)
 	}
@@ -433,7 +428,7 @@ func (s *VATControlStatementService) MarkFiled(ctx context.Context, id int64) er
 	cs.Status = domain.FilingStatusFiled
 	cs.FiledAt = &now
 
-	if err := s.repo.Update(ctx, cs); err != nil {
+	if err := s.repo.Update(ctx, companyID, cs); err != nil {
 		return fmt.Errorf("marking control statement as filed: %w", err)
 	}
 	if s.audit != nil {

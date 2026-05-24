@@ -19,7 +19,7 @@ func TestIncomeTaxReturnRepository_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -45,11 +45,11 @@ func TestIncomeTaxReturnRepository_GetByID(t *testing.T) {
 		TotalRevenue:   domain.NewAmount(500000, 0),
 		ActualExpenses: domain.NewAmount(200000, 0),
 	}
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, itr.ID)
+	got, err := repo.GetByID(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestIncomeTaxReturnRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewIncomeTaxReturnRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent income_tax_return")
 	}
@@ -88,7 +88,7 @@ func TestIncomeTaxReturnRepository_Update(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -96,11 +96,11 @@ func TestIncomeTaxReturnRepository_Update(t *testing.T) {
 	itr.TaxBase = domain.NewAmount(800000, 0)
 	itr.TotalTax = domain.NewAmount(120000, 0)
 
-	if err := repo.Update(ctx, itr); err != nil {
+	if err := repo.Update(ctx, 1, itr); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, itr.ID)
+	got, err := repo.GetByID(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -121,15 +121,15 @@ func TestIncomeTaxReturnRepository_Delete(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := repo.Delete(ctx, itr.ID); err != nil {
+	if err := repo.Delete(ctx, 1, itr.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, itr.ID)
+	_, err := repo.GetByID(ctx, 1, itr.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -140,7 +140,7 @@ func TestIncomeTaxReturnRepository_Delete_NotFound(t *testing.T) {
 	repo := NewIncomeTaxReturnRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent delete")
 	}
@@ -168,12 +168,12 @@ func TestIncomeTaxReturnRepository_List(t *testing.T) {
 			Year:       f.year,
 			FilingType: f.filingType,
 		}
-		if err := repo.Create(ctx, itr); err != nil {
+		if err := repo.Create(ctx, 1, itr); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
 	}
 
-	returns, err := repo.List(ctx, 2025)
+	returns, err := repo.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestIncomeTaxReturnRepository_List(t *testing.T) {
 		t.Errorf("List(2025) returned %d items, want 2", len(returns))
 	}
 
-	returns2024, err := repo.List(ctx, 2024)
+	returns2024, err := repo.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -199,11 +199,11 @@ func TestIncomeTaxReturnRepository_GetByYear(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025, domain.FilingTypeRegular)
+	got, err := repo.GetByYear(ctx, 1, 2025, domain.FilingTypeRegular)
 	if err != nil {
 		t.Fatalf("GetByYear() error: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestIncomeTaxReturnRepository_GetByYear(t *testing.T) {
 	}
 
 	// Non-existent year.
-	_, err = repo.GetByYear(ctx, 2099, domain.FilingTypeRegular)
+	_, err = repo.GetByYear(ctx, 1, 2099, domain.FilingTypeRegular)
 	if err == nil {
 		t.Error("expected error for non-existent year")
 	}
@@ -230,7 +230,7 @@ func TestIncomeTaxReturnRepository_LinkInvoices(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -241,11 +241,11 @@ func TestIncomeTaxReturnRepository_LinkInvoices(t *testing.T) {
 	})
 
 	// Link invoices.
-	if err := repo.LinkInvoices(ctx, itr.ID, []int64{inv.ID}); err != nil {
+	if err := repo.LinkInvoices(ctx, 1, itr.ID, []int64{inv.ID}); err != nil {
 		t.Fatalf("LinkInvoices() error: %v", err)
 	}
 
-	ids, err := repo.GetLinkedInvoiceIDs(ctx, itr.ID)
+	ids, err := repo.GetLinkedInvoiceIDs(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedInvoiceIDs() error: %v", err)
 	}
@@ -254,10 +254,10 @@ func TestIncomeTaxReturnRepository_LinkInvoices(t *testing.T) {
 	}
 
 	// Re-link with empty list should clear.
-	if err := repo.LinkInvoices(ctx, itr.ID, []int64{}); err != nil {
+	if err := repo.LinkInvoices(ctx, 1, itr.ID, []int64{}); err != nil {
 		t.Fatalf("LinkInvoices() clear error: %v", err)
 	}
-	ids, err = repo.GetLinkedInvoiceIDs(ctx, itr.ID)
+	ids, err = repo.GetLinkedInvoiceIDs(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedInvoiceIDs() error: %v", err)
 	}
@@ -275,18 +275,18 @@ func TestIncomeTaxReturnRepository_LinkExpenses(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, itr); err != nil {
+	if err := repo.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	exp1 := testutil.SeedExpense(t, db, 1, &domain.Expense{Description: "Expense 1"})
 	exp2 := testutil.SeedExpense(t, db, 1, &domain.Expense{Description: "Expense 2"})
 
-	if err := repo.LinkExpenses(ctx, itr.ID, []int64{exp1.ID, exp2.ID}); err != nil {
+	if err := repo.LinkExpenses(ctx, 1, itr.ID, []int64{exp1.ID, exp2.ID}); err != nil {
 		t.Fatalf("LinkExpenses() error: %v", err)
 	}
 
-	ids, err := repo.GetLinkedExpenseIDs(ctx, itr.ID)
+	ids, err := repo.GetLinkedExpenseIDs(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
 	}
@@ -295,10 +295,10 @@ func TestIncomeTaxReturnRepository_LinkExpenses(t *testing.T) {
 	}
 
 	// Re-link with empty list should clear.
-	if err := repo.LinkExpenses(ctx, itr.ID, []int64{}); err != nil {
+	if err := repo.LinkExpenses(ctx, 1, itr.ID, []int64{}); err != nil {
 		t.Fatalf("LinkExpenses() clear error: %v", err)
 	}
-	ids, err = repo.GetLinkedExpenseIDs(ctx, itr.ID)
+	ids, err = repo.GetLinkedExpenseIDs(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
 	}

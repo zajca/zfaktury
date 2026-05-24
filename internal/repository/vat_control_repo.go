@@ -82,8 +82,8 @@ func scanControlStatementLine(s scanner) (domain.VATControlStatementLine, error)
 	return line, nil
 }
 
-// Create inserts a new control statement.
-func (r *VATControlStatementRepository) Create(ctx context.Context, cs *domain.VATControlStatement) error {
+// Create inserts a new control statement scoped to the given company.
+func (r *VATControlStatementRepository) Create(ctx context.Context, companyID int64, cs *domain.VATControlStatement) error {
 	now := time.Now()
 	cs.CreatedAt = now
 	cs.UpdatedAt = now
@@ -95,8 +95,9 @@ func (r *VATControlStatementRepository) Create(ctx context.Context, cs *domain.V
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO vat_control_statements (
-			year, month, filing_type, xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			company_id, year, month, filing_type, xml_data, status, filed_at, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID,
 		cs.Period.Year, cs.Period.Month, cs.FilingType,
 		cs.XMLData, cs.Status, filedAt,
 		cs.CreatedAt.Format(time.RFC3339), cs.UpdatedAt.Format(time.RFC3339),
@@ -113,8 +114,8 @@ func (r *VATControlStatementRepository) Create(ctx context.Context, cs *domain.V
 	return nil
 }
 
-// Update modifies an existing control statement.
-func (r *VATControlStatementRepository) Update(ctx context.Context, cs *domain.VATControlStatement) error {
+// Update modifies an existing control statement within the given company.
+func (r *VATControlStatementRepository) Update(ctx context.Context, companyID int64, cs *domain.VATControlStatement) error {
 	cs.UpdatedAt = time.Now()
 
 	var filedAt any
@@ -126,9 +127,9 @@ func (r *VATControlStatementRepository) Update(ctx context.Context, cs *domain.V
 		UPDATE vat_control_statements SET
 			year = ?, month = ?, filing_type = ?, xml_data = ?,
 			status = ?, filed_at = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		cs.Period.Year, cs.Period.Month, cs.FilingType, cs.XMLData,
-		cs.Status, filedAt, cs.UpdatedAt.Format(time.RFC3339), cs.ID,
+		cs.Status, filedAt, cs.UpdatedAt.Format(time.RFC3339), cs.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating control statement %d: %w", cs.ID, err)
@@ -136,20 +137,20 @@ func (r *VATControlStatementRepository) Update(ctx context.Context, cs *domain.V
 	return nil
 }
 
-// Delete removes a control statement and its lines.
-func (r *VATControlStatementRepository) Delete(ctx context.Context, id int64) error {
+// Delete removes a control statement and its lines within the given company.
+func (r *VATControlStatementRepository) Delete(ctx context.Context, companyID, id int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction for control statement delete: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(ctx, `DELETE FROM vat_control_statement_lines WHERE control_statement_id = ?`, id)
+	_, err = tx.ExecContext(ctx, `DELETE FROM vat_control_statement_lines WHERE control_statement_id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting control statement lines for %d: %w", id, err)
 	}
 
-	result, err := tx.ExecContext(ctx, `DELETE FROM vat_control_statements WHERE id = ?`, id)
+	result, err := tx.ExecContext(ctx, `DELETE FROM vat_control_statements WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting control statement %d: %w", id, err)
 	}
@@ -168,11 +169,11 @@ func (r *VATControlStatementRepository) Delete(ctx context.Context, id int64) er
 	return nil
 }
 
-// GetByID retrieves a control statement by ID.
-func (r *VATControlStatementRepository) GetByID(ctx context.Context, id int64) (*domain.VATControlStatement, error) {
+// GetByID retrieves a control statement by ID within the given company.
+func (r *VATControlStatementRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.VATControlStatement, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT id, year, month, filing_type, xml_data, status, filed_at, created_at, updated_at
-		FROM vat_control_statements WHERE id = ?`, id,
+		FROM vat_control_statements WHERE id = ? AND company_id = ?`, id, companyID,
 	)
 
 	cs, err := scanControlStatement(row)
@@ -185,12 +186,12 @@ func (r *VATControlStatementRepository) GetByID(ctx context.Context, id int64) (
 	return cs, nil
 }
 
-// List retrieves all control statements for a given year.
-func (r *VATControlStatementRepository) List(ctx context.Context, year int) ([]domain.VATControlStatement, error) {
+// List retrieves all control statements for a given year within the given company.
+func (r *VATControlStatementRepository) List(ctx context.Context, companyID int64, year int) ([]domain.VATControlStatement, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, year, month, filing_type, xml_data, status, filed_at, created_at, updated_at
-		FROM vat_control_statements WHERE year = ?
-		ORDER BY month ASC`, year,
+		FROM vat_control_statements WHERE company_id = ? AND year = ?
+		ORDER BY month ASC`, companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing control statements for year %d: %w", year, err)
@@ -211,12 +212,12 @@ func (r *VATControlStatementRepository) List(ctx context.Context, year int) ([]d
 	return result, nil
 }
 
-// GetByPeriod retrieves a control statement for a specific period and filing type.
-func (r *VATControlStatementRepository) GetByPeriod(ctx context.Context, year, month int, filingType string) (*domain.VATControlStatement, error) {
+// GetByPeriod retrieves a control statement for a specific period and filing type within the given company.
+func (r *VATControlStatementRepository) GetByPeriod(ctx context.Context, companyID int64, year, month int, filingType string) (*domain.VATControlStatement, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT id, year, month, filing_type, xml_data, status, filed_at, created_at, updated_at
-		FROM vat_control_statements WHERE year = ? AND month = ? AND filing_type = ?`,
-		year, month, filingType,
+		FROM vat_control_statements WHERE company_id = ? AND year = ? AND month = ? AND filing_type = ?`,
+		companyID, year, month, filingType,
 	)
 
 	cs, err := scanControlStatement(row)
@@ -229,8 +230,8 @@ func (r *VATControlStatementRepository) GetByPeriod(ctx context.Context, year, m
 	return cs, nil
 }
 
-// CreateLines inserts multiple control statement lines.
-func (r *VATControlStatementRepository) CreateLines(ctx context.Context, lines []domain.VATControlStatementLine) error {
+// CreateLines inserts multiple control statement lines for the given company.
+func (r *VATControlStatementRepository) CreateLines(ctx context.Context, companyID int64, lines []domain.VATControlStatementLine) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -243,9 +244,9 @@ func (r *VATControlStatementRepository) CreateLines(ctx context.Context, lines [
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO vat_control_statement_lines (
-			control_statement_id, section, partner_dic, document_number,
+			company_id, control_statement_id, section, partner_dic, document_number,
 			dppd, base, vat, vat_rate_percent, invoice_id, expense_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("preparing control statement line insert: %w", err)
 	}
@@ -253,6 +254,7 @@ func (r *VATControlStatementRepository) CreateLines(ctx context.Context, lines [
 
 	for i, line := range lines {
 		result, err := stmt.ExecContext(ctx,
+			companyID,
 			line.ControlStatementID, line.Section, line.PartnerDIC, line.DocumentNumber,
 			line.DPPD, line.Base, line.VAT, line.VATRatePercent,
 			line.InvoiceID, line.ExpenseID,
@@ -273,10 +275,10 @@ func (r *VATControlStatementRepository) CreateLines(ctx context.Context, lines [
 	return nil
 }
 
-// DeleteLines removes all lines for a given control statement.
-func (r *VATControlStatementRepository) DeleteLines(ctx context.Context, controlStatementID int64) error {
+// DeleteLines removes all lines for a given control statement within the given company.
+func (r *VATControlStatementRepository) DeleteLines(ctx context.Context, companyID, controlStatementID int64) error {
 	_, err := r.db.ExecContext(ctx, `
-		DELETE FROM vat_control_statement_lines WHERE control_statement_id = ?`, controlStatementID,
+		DELETE FROM vat_control_statement_lines WHERE control_statement_id = ? AND company_id = ?`, controlStatementID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("deleting control statement lines for %d: %w", controlStatementID, err)
@@ -284,13 +286,13 @@ func (r *VATControlStatementRepository) DeleteLines(ctx context.Context, control
 	return nil
 }
 
-// GetLines retrieves all lines for a given control statement.
-func (r *VATControlStatementRepository) GetLines(ctx context.Context, controlStatementID int64) ([]domain.VATControlStatementLine, error) {
+// GetLines retrieves all lines for a given control statement within the given company.
+func (r *VATControlStatementRepository) GetLines(ctx context.Context, companyID, controlStatementID int64) ([]domain.VATControlStatementLine, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, control_statement_id, section, partner_dic, document_number,
 			dppd, base, vat, vat_rate_percent, invoice_id, expense_id
-		FROM vat_control_statement_lines WHERE control_statement_id = ?
-		ORDER BY section ASC, id ASC`, controlStatementID,
+		FROM vat_control_statement_lines WHERE control_statement_id = ? AND company_id = ?
+		ORDER BY section ASC, id ASC`, controlStatementID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("querying control statement lines for %d: %w", controlStatementID, err)

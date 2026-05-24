@@ -13,7 +13,7 @@ func TestTaxPrepaymentRepository_ListByYear_Empty(t *testing.T) {
 	repo := NewTaxPrepaymentRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.ListByYear(ctx, 2025)
+	result, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear on empty DB: %v", err)
 	}
@@ -33,11 +33,11 @@ func TestTaxPrepaymentRepository_UpsertAll_And_ListByYear(t *testing.T) {
 		{Month: 3, TaxAmount: 120000, SocialAmount: 220000, HealthAmount: 320000},
 	}
 
-	if err := repo.UpsertAll(ctx, 2025, prepayments); err != nil {
+	if err := repo.UpsertAll(ctx, 1, 2025, prepayments); err != nil {
 		t.Fatalf("UpsertAll: %v", err)
 	}
 
-	result, err := repo.ListByYear(ctx, 2025)
+	result, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestTaxPrepaymentRepository_UpsertAll_And_ListByYear(t *testing.T) {
 	}
 
 	// Verify different year returns nothing
-	other, err := repo.ListByYear(ctx, 2024)
+	other, err := repo.ListByYear(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("ListByYear other year: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestTaxPrepaymentRepository_UpsertAll_Replaces(t *testing.T) {
 		{Month: 2, TaxAmount: 110000, SocialAmount: 210000, HealthAmount: 310000},
 		{Month: 3, TaxAmount: 120000, SocialAmount: 220000, HealthAmount: 320000},
 	}
-	if err := repo.UpsertAll(ctx, 2025, first); err != nil {
+	if err := repo.UpsertAll(ctx, 1, 2025, first); err != nil {
 		t.Fatalf("UpsertAll first: %v", err)
 	}
 
@@ -95,11 +95,11 @@ func TestTaxPrepaymentRepository_UpsertAll_Replaces(t *testing.T) {
 		{Month: 1, TaxAmount: 500000, SocialAmount: 600000, HealthAmount: 700000},
 		{Month: 2, TaxAmount: 550000, SocialAmount: 650000, HealthAmount: 750000},
 	}
-	if err := repo.UpsertAll(ctx, 2025, second); err != nil {
+	if err := repo.UpsertAll(ctx, 1, 2025, second); err != nil {
 		t.Fatalf("UpsertAll second: %v", err)
 	}
 
-	result, err := repo.ListByYear(ctx, 2025)
+	result, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear after replace: %v", err)
 	}
@@ -124,11 +124,11 @@ func TestTaxPrepaymentRepository_SumByYear(t *testing.T) {
 		{Month: 2, TaxAmount: 150000, SocialAmount: 250000, HealthAmount: 350000},
 		{Month: 3, TaxAmount: 200000, SocialAmount: 300000, HealthAmount: 400000},
 	}
-	if err := repo.UpsertAll(ctx, 2025, prepayments); err != nil {
+	if err := repo.UpsertAll(ctx, 1, 2025, prepayments); err != nil {
 		t.Fatalf("UpsertAll: %v", err)
 	}
 
-	taxTotal, socialTotal, healthTotal, err := repo.SumByYear(ctx, 2025)
+	taxTotal, socialTotal, healthTotal, err := repo.SumByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("SumByYear: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestTaxPrepaymentRepository_SumByYear(t *testing.T) {
 	}
 
 	// Empty year returns zeros
-	taxEmpty, socialEmpty, healthEmpty, err := repo.SumByYear(ctx, 2024)
+	taxEmpty, socialEmpty, healthEmpty, err := repo.SumByYear(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("SumByYear empty year: %v", err)
 	}

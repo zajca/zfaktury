@@ -230,6 +230,12 @@ func securityTxFromDomain(tx *domain.SecurityTransaction) securityTransactionRes
 
 // UploadDocument handles POST /documents (multipart form).
 func (h *InvestmentIncomeHandler) UploadDocument(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	// Hard cap on request body to prevent memory exhaustion.
 	r.Body = http.MaxBytesReader(w, r.Body, 34<<20) // 34 MB (32 MB file + overhead)
 	// 32 MB max form size.
@@ -267,7 +273,7 @@ func (h *InvestmentIncomeHandler) UploadDocument(w http.ResponseWriter, r *http.
 		contentType = "application/octet-stream"
 	}
 
-	doc, err := h.docSvc.Upload(r.Context(), year, platform, header.Filename, contentType, file)
+	doc, err := h.docSvc.Upload(r.Context(), company.ID, year, platform, header.Filename, contentType, file)
 	if err != nil {
 		slog.Error("failed to upload investment document", "error", err)
 		mapDomainError(w, err)
@@ -279,6 +285,12 @@ func (h *InvestmentIncomeHandler) UploadDocument(w http.ResponseWriter, r *http.
 
 // ListDocuments handles GET /documents?year=.
 func (h *InvestmentIncomeHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := r.URL.Query().Get("year")
 	if yearStr == "" {
 		respondError(w, http.StatusBadRequest, "year query parameter is required")
@@ -290,7 +302,7 @@ func (h *InvestmentIncomeHandler) ListDocuments(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	docs, err := h.docSvc.ListByYear(r.Context(), year)
+	docs, err := h.docSvc.ListByYear(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list investment documents", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list documents")
@@ -307,13 +319,19 @@ func (h *InvestmentIncomeHandler) ListDocuments(w http.ResponseWriter, r *http.R
 
 // DeleteDocument handles DELETE /documents/{id}.
 func (h *InvestmentIncomeHandler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid document ID")
 		return
 	}
 
-	if err := h.docSvc.Delete(r.Context(), id); err != nil {
+	if err := h.docSvc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete investment document", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -324,6 +342,12 @@ func (h *InvestmentIncomeHandler) DeleteDocument(w http.ResponseWriter, r *http.
 
 // ExtractDocument handles POST /documents/{id}/extract.
 func (h *InvestmentIncomeHandler) ExtractDocument(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	if h.extractionSvc == nil {
 		respondError(w, http.StatusNotImplemented, "OCR not configured")
 		return
@@ -335,7 +359,7 @@ func (h *InvestmentIncomeHandler) ExtractDocument(w http.ResponseWriter, r *http
 		return
 	}
 
-	result, err := h.extractionSvc.ExtractFromDocument(r.Context(), id)
+	result, err := h.extractionSvc.ExtractFromDocument(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to extract investment document", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -368,13 +392,19 @@ func (h *InvestmentIncomeHandler) ExtractDocument(w http.ResponseWriter, r *http
 
 // DownloadDocument handles GET /documents/{id}/download.
 func (h *InvestmentIncomeHandler) DownloadDocument(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid document ID")
 		return
 	}
 
-	filePath, contentType, err := h.docSvc.GetFilePath(r.Context(), id)
+	filePath, contentType, err := h.docSvc.GetFilePath(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get investment document file path", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -382,7 +412,7 @@ func (h *InvestmentIncomeHandler) DownloadDocument(w http.ResponseWriter, r *htt
 	}
 
 	// Get the document metadata for the filename.
-	doc, err := h.docSvc.GetByID(r.Context(), id)
+	doc, err := h.docSvc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get investment document metadata", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -398,6 +428,12 @@ func (h *InvestmentIncomeHandler) DownloadDocument(w http.ResponseWriter, r *htt
 
 // ListCapitalIncome handles GET /capital-income?year=.
 func (h *InvestmentIncomeHandler) ListCapitalIncome(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := r.URL.Query().Get("year")
 	if yearStr == "" {
 		respondError(w, http.StatusBadRequest, "year query parameter is required")
@@ -409,7 +445,7 @@ func (h *InvestmentIncomeHandler) ListCapitalIncome(w http.ResponseWriter, r *ht
 		return
 	}
 
-	entries, err := h.investmentSvc.ListCapitalEntries(r.Context(), year)
+	entries, err := h.investmentSvc.ListCapitalEntries(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list capital income entries", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list capital income entries")
@@ -426,6 +462,12 @@ func (h *InvestmentIncomeHandler) ListCapitalIncome(w http.ResponseWriter, r *ht
 
 // CreateCapitalIncome handles POST /capital-income.
 func (h *InvestmentIncomeHandler) CreateCapitalIncome(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req capitalIncomeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -450,7 +492,7 @@ func (h *InvestmentIncomeHandler) CreateCapitalIncome(w http.ResponseWriter, r *
 		NeedsDeclaring:     req.NeedsDeclaring,
 	}
 
-	if err := h.investmentSvc.CreateCapitalEntry(r.Context(), entry); err != nil {
+	if err := h.investmentSvc.CreateCapitalEntry(r.Context(), company.ID, entry); err != nil {
 		slog.Error("failed to create capital income entry", "error", err)
 		mapDomainError(w, err)
 		return
@@ -461,6 +503,12 @@ func (h *InvestmentIncomeHandler) CreateCapitalIncome(w http.ResponseWriter, r *
 
 // UpdateCapitalIncome handles PUT /capital-income/{id}.
 func (h *InvestmentIncomeHandler) UpdateCapitalIncome(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid capital income entry ID")
@@ -492,7 +540,7 @@ func (h *InvestmentIncomeHandler) UpdateCapitalIncome(w http.ResponseWriter, r *
 		NeedsDeclaring:     req.NeedsDeclaring,
 	}
 
-	if err := h.investmentSvc.UpdateCapitalEntry(r.Context(), entry); err != nil {
+	if err := h.investmentSvc.UpdateCapitalEntry(r.Context(), company.ID, entry); err != nil {
 		slog.Error("failed to update capital income entry", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -503,13 +551,19 @@ func (h *InvestmentIncomeHandler) UpdateCapitalIncome(w http.ResponseWriter, r *
 
 // DeleteCapitalIncome handles DELETE /capital-income/{id}.
 func (h *InvestmentIncomeHandler) DeleteCapitalIncome(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid capital income entry ID")
 		return
 	}
 
-	if err := h.investmentSvc.DeleteCapitalEntry(r.Context(), id); err != nil {
+	if err := h.investmentSvc.DeleteCapitalEntry(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete capital income entry", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -522,6 +576,12 @@ func (h *InvestmentIncomeHandler) DeleteCapitalIncome(w http.ResponseWriter, r *
 
 // ListSecurityTransactions handles GET /security-transactions?year=.
 func (h *InvestmentIncomeHandler) ListSecurityTransactions(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := r.URL.Query().Get("year")
 	if yearStr == "" {
 		respondError(w, http.StatusBadRequest, "year query parameter is required")
@@ -533,7 +593,7 @@ func (h *InvestmentIncomeHandler) ListSecurityTransactions(w http.ResponseWriter
 		return
 	}
 
-	txs, err := h.investmentSvc.ListSecurityTransactions(r.Context(), year)
+	txs, err := h.investmentSvc.ListSecurityTransactions(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list security transactions", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list security transactions")
@@ -550,6 +610,12 @@ func (h *InvestmentIncomeHandler) ListSecurityTransactions(w http.ResponseWriter
 
 // CreateSecurityTransaction handles POST /security-transactions.
 func (h *InvestmentIncomeHandler) CreateSecurityTransaction(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req securityTransactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -577,7 +643,7 @@ func (h *InvestmentIncomeHandler) CreateSecurityTransaction(w http.ResponseWrite
 		ExchangeRate:    req.ExchangeRate,
 	}
 
-	if err := h.investmentSvc.CreateSecurityTransaction(r.Context(), tx); err != nil {
+	if err := h.investmentSvc.CreateSecurityTransaction(r.Context(), company.ID, tx); err != nil {
 		slog.Error("failed to create security transaction", "error", err)
 		mapDomainError(w, err)
 		return
@@ -588,6 +654,12 @@ func (h *InvestmentIncomeHandler) CreateSecurityTransaction(w http.ResponseWrite
 
 // UpdateSecurityTransaction handles PUT /security-transactions/{id}.
 func (h *InvestmentIncomeHandler) UpdateSecurityTransaction(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid security transaction ID")
@@ -622,7 +694,7 @@ func (h *InvestmentIncomeHandler) UpdateSecurityTransaction(w http.ResponseWrite
 		ExchangeRate:    req.ExchangeRate,
 	}
 
-	if err := h.investmentSvc.UpdateSecurityTransaction(r.Context(), tx); err != nil {
+	if err := h.investmentSvc.UpdateSecurityTransaction(r.Context(), company.ID, tx); err != nil {
 		slog.Error("failed to update security transaction", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -633,13 +705,19 @@ func (h *InvestmentIncomeHandler) UpdateSecurityTransaction(w http.ResponseWrite
 
 // DeleteSecurityTransaction handles DELETE /security-transactions/{id}.
 func (h *InvestmentIncomeHandler) DeleteSecurityTransaction(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid security transaction ID")
 		return
 	}
 
-	if err := h.investmentSvc.DeleteSecurityTransaction(r.Context(), id); err != nil {
+	if err := h.investmentSvc.DeleteSecurityTransaction(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete security transaction", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -652,6 +730,12 @@ func (h *InvestmentIncomeHandler) DeleteSecurityTransaction(w http.ResponseWrite
 
 // GetYearSummary handles GET /summary/{year}.
 func (h *InvestmentIncomeHandler) GetYearSummary(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := chi.URLParam(r, "year")
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
@@ -659,7 +743,7 @@ func (h *InvestmentIncomeHandler) GetYearSummary(w http.ResponseWriter, r *http.
 		return
 	}
 
-	summary, err := h.investmentSvc.GetYearSummary(r.Context(), year)
+	summary, err := h.investmentSvc.GetYearSummary(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to get investment year summary", "error", err, "year", year)
 		respondError(w, http.StatusInternalServerError, "failed to get year summary")
@@ -680,6 +764,12 @@ func (h *InvestmentIncomeHandler) GetYearSummary(w http.ResponseWriter, r *http.
 
 // RecalculateFIFO handles POST /recalculate-fifo/{year}.
 func (h *InvestmentIncomeHandler) RecalculateFIFO(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := chi.URLParam(r, "year")
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
@@ -687,14 +777,14 @@ func (h *InvestmentIncomeHandler) RecalculateFIFO(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err := h.investmentSvc.RecalculateFIFO(r.Context(), year); err != nil {
+	if err := h.investmentSvc.RecalculateFIFO(r.Context(), company.ID, year); err != nil {
 		slog.Error("failed to recalculate FIFO", "error", err, "year", year)
 		mapDomainError(w, err)
 		return
 	}
 
 	// Return the updated summary after recalculation.
-	summary, err := h.investmentSvc.GetYearSummary(r.Context(), year)
+	summary, err := h.investmentSvc.GetYearSummary(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to get summary after FIFO recalculation", "error", err, "year", year)
 		respondError(w, http.StatusInternalServerError, "FIFO recalculated but failed to get summary")

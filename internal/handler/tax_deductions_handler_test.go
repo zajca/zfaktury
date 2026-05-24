@@ -29,6 +29,7 @@ func setupTaxDeductionsRouter(t *testing.T) *chi.Mux {
 	h := NewTaxDeductionsHandler(creditsSvc, docSvc, nil)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/tax-deductions", h.Routes())
 	return r
 }

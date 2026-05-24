@@ -29,7 +29,7 @@ func TestInvestmentDocumentService_Upload_ValidPDF(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload() error: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestInvestmentDocumentService_Upload_ValidImage(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(jpegMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformRevolut, "photo.jpg", "image/jpeg", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformRevolut, "photo.jpg", "image/jpeg", data)
 	if err != nil {
 		t.Fatalf("Upload() error: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestInvestmentDocumentService_Upload_ValidPNG(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pngMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformTrading212, "screenshot.png", "image/png", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformTrading212, "screenshot.png", "image/png", data)
 	if err != nil {
 		t.Fatalf("Upload() error: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestInvestmentDocumentService_Upload_InvalidYear(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			data := bytes.NewReader(pdfMagic)
-			_, err := svc.Upload(ctx, tt.year, domain.PlatformPortu, "file.pdf", "application/pdf", data)
+			_, err := svc.Upload(ctx, 1, tt.year, domain.PlatformPortu, "file.pdf", "application/pdf", data)
 			if err == nil {
 				t.Errorf("expected error for year %d", tt.year)
 			}
@@ -109,7 +109,7 @@ func TestInvestmentDocumentService_Upload_InvalidPlatform(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	_, err := svc.Upload(ctx, 2025, "unknown_broker", "file.pdf", "application/pdf", data)
+	_, err := svc.Upload(ctx, 1, 2025, "unknown_broker", "file.pdf", "application/pdf", data)
 	if err == nil {
 		t.Error("expected error for invalid platform")
 	}
@@ -120,7 +120,7 @@ func TestInvestmentDocumentService_Upload_InvalidContentType(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader([]byte("not a valid file"))
-	_, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "file.exe", "application/octet-stream", data)
+	_, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "file.exe", "application/octet-stream", data)
 	if err == nil {
 		t.Error("expected error for disallowed content type")
 	}
@@ -133,7 +133,7 @@ func TestInvestmentDocumentService_Upload_EmptyFilename(t *testing.T) {
 	// sanitizeFilename("") returns "." via filepath.Base, so upload succeeds.
 	// This tests that the service doesn't panic on empty input.
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload() error: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestInvestmentDocumentService_Upload_SanitizesFilename(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "../../etc/passwd", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "../../etc/passwd", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload() error: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestInvestmentDocumentService_Upload_TooLarge(t *testing.T) {
 	ctx := context.Background()
 
 	oversized := bytes.NewReader(bytes.Repeat([]byte("a"), maxDocumentSize+1))
-	_, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "huge.pdf", "application/pdf", oversized)
+	_, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "huge.pdf", "application/pdf", oversized)
 	if err == nil {
 		t.Error("expected error for oversized file")
 	}
@@ -182,7 +182,7 @@ func TestInvestmentDocumentService_Upload_AllPlatforms(t *testing.T) {
 	for _, p := range platforms {
 		t.Run(p, func(t *testing.T) {
 			data := bytes.NewReader(pdfMagic)
-			_, err := svc.Upload(ctx, 2025, p, "file.pdf", "application/pdf", data)
+			_, err := svc.Upload(ctx, 1, 2025, p, "file.pdf", "application/pdf", data)
 			if err != nil {
 				t.Errorf("Upload(%s) error: %v", p, err)
 			}
@@ -195,12 +195,12 @@ func TestInvestmentDocumentService_GetByID_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "test.pdf", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "test.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, doc.ID)
+	got, err := svc.GetByID(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestInvestmentDocumentService_GetByID_ZeroID(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 0)
+	_, err := svc.GetByID(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -229,7 +229,7 @@ func TestInvestmentDocumentService_GetByID_NotFound(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 99999)
+	_, err := svc.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent document")
 	}
@@ -242,17 +242,17 @@ func TestInvestmentDocumentService_ListByYear(t *testing.T) {
 	// Upload two documents for 2025.
 	for _, name := range []string{"doc1.pdf", "doc2.pdf"} {
 		data := bytes.NewReader(pdfMagic)
-		if _, err := svc.Upload(ctx, 2025, domain.PlatformPortu, name, "application/pdf", data); err != nil {
+		if _, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, name, "application/pdf", data); err != nil {
 			t.Fatalf("Upload %s: %v", name, err)
 		}
 	}
 	// Upload one for 2024.
 	data := bytes.NewReader(pdfMagic)
-	if _, err := svc.Upload(ctx, 2024, domain.PlatformPortu, "old.pdf", "application/pdf", data); err != nil {
+	if _, err := svc.Upload(ctx, 1, 2024, domain.PlatformPortu, "old.pdf", "application/pdf", data); err != nil {
 		t.Fatalf("Upload old.pdf: %v", err)
 	}
 
-	docs, err := svc.ListByYear(ctx, 2025)
+	docs, err := svc.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestInvestmentDocumentService_ListByYear_InvalidYear(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	_, err := svc.ListByYear(ctx, 1999)
+	_, err := svc.ListByYear(ctx, 1, 1999)
 	if err == nil {
 		t.Error("expected error for invalid year")
 	}
@@ -275,7 +275,7 @@ func TestInvestmentDocumentService_ListByYear_Empty(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	docs, err := svc.ListByYear(ctx, 2025)
+	docs, err := svc.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -289,17 +289,17 @@ func TestInvestmentDocumentService_Delete_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "todelete.pdf", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "todelete.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	if err := svc.Delete(ctx, doc.ID); err != nil {
+	if err := svc.Delete(ctx, 1, doc.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
 	// Verify deleted.
-	_, err = svc.GetByID(ctx, doc.ID)
+	_, err = svc.GetByID(ctx, 1, doc.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -309,7 +309,7 @@ func TestInvestmentDocumentService_Delete_ZeroID(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 0)
+	err := svc.Delete(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -322,7 +322,7 @@ func TestInvestmentDocumentService_Delete_NotFound(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 99999)
+	err := svc.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error when deleting non-existent document")
 	}
@@ -333,12 +333,12 @@ func TestInvestmentDocumentService_GetFilePath_Valid(t *testing.T) {
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "file.pdf", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "file.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	path, ct, err := svc.GetFilePath(ctx, doc.ID)
+	path, ct, err := svc.GetFilePath(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("GetFilePath() error: %v", err)
 	}
@@ -354,7 +354,7 @@ func TestInvestmentDocumentService_GetFilePath_ZeroID(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	_, _, err := svc.GetFilePath(ctx, 0)
+	_, _, err := svc.GetFilePath(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -367,7 +367,7 @@ func TestInvestmentDocumentService_GetFilePath_NotFound(t *testing.T) {
 	svc, _ := newInvestmentDocumentService(t)
 	ctx := context.Background()
 
-	_, _, err := svc.GetFilePath(ctx, 99999)
+	_, _, err := svc.GetFilePath(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent document")
 	}
@@ -384,7 +384,7 @@ func TestInvestmentDocumentService_Delete_CascadesLinkedEntries(t *testing.T) {
 
 	// Upload a document.
 	data := bytes.NewReader(pdfMagic)
-	doc, err := svc.Upload(ctx, 2025, domain.PlatformPortu, "cascade.pdf", "application/pdf", data)
+	doc, err := svc.Upload(ctx, 1, 2025, domain.PlatformPortu, "cascade.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
@@ -399,7 +399,7 @@ func TestInvestmentDocumentService_Delete_CascadesLinkedEntries(t *testing.T) {
 		GrossAmount: 10000,
 		NetAmount:   10000,
 	}
-	if err := capitalRepo.Create(ctx, capitalEntry); err != nil {
+	if err := capitalRepo.Create(ctx, 1, capitalEntry); err != nil {
 		t.Fatalf("Create capital: %v", err)
 	}
 
@@ -416,23 +416,23 @@ func TestInvestmentDocumentService_Delete_CascadesLinkedEntries(t *testing.T) {
 		TotalAmount:     500000,
 		CurrencyCode:    "CZK",
 	}
-	if err := securityRepo.Create(ctx, secTx); err != nil {
+	if err := securityRepo.Create(ctx, 1, secTx); err != nil {
 		t.Fatalf("Create security tx: %v", err)
 	}
 
 	// Delete the document -- should cascade delete linked entries.
-	if err := svc.Delete(ctx, doc.ID); err != nil {
+	if err := svc.Delete(ctx, 1, doc.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
 	// Verify capital entry is deleted.
-	_, err = capitalRepo.GetByID(ctx, capitalEntry.ID)
+	_, err = capitalRepo.GetByID(ctx, 1, capitalEntry.ID)
 	if err == nil {
 		t.Error("expected capital entry to be deleted after document delete")
 	}
 
 	// Verify security transaction is deleted.
-	_, err = securityRepo.GetByID(ctx, secTx.ID)
+	_, err = securityRepo.GetByID(ctx, 1, secTx.ID)
 	if err == nil {
 		t.Error("expected security transaction to be deleted after document delete")
 	}

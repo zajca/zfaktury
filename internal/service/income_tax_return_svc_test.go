@@ -35,7 +35,7 @@ func TestIncomeTaxReturnService_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if itr.ID == 0 {
@@ -54,7 +54,7 @@ func TestIncomeTaxReturnService_Create_DefaultFilingType(t *testing.T) {
 		Year: 2025,
 	}
 
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 	if itr.FilingType != domain.FilingTypeRegular {
@@ -70,7 +70,7 @@ func TestIncomeTaxReturnService_Create_DuplicateRegular(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func TestIncomeTaxReturnService_Create_DuplicateRegular(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	err := svc.Create(ctx, itr2)
+	err := svc.Create(ctx, 1, itr2)
 	if err == nil {
 		t.Error("expected error for duplicate regular filing")
 	}
@@ -96,7 +96,7 @@ func TestIncomeTaxReturnService_Create_InvalidYear(t *testing.T) {
 			Year:       year,
 			FilingType: domain.FilingTypeRegular,
 		}
-		err := svc.Create(ctx, itr)
+		err := svc.Create(ctx, 1, itr)
 		if err == nil {
 			t.Errorf("expected error for year %d", year)
 		}
@@ -114,7 +114,7 @@ func TestIncomeTaxReturnService_Create_InvalidFilingType(t *testing.T) {
 		Year:       2025,
 		FilingType: "invalid",
 	}
-	err := svc.Create(ctx, itr)
+	err := svc.Create(ctx, 1, itr)
 	if err == nil {
 		t.Error("expected error for invalid filing_type")
 	}
@@ -131,11 +131,11 @@ func TestIncomeTaxReturnService_GetByID(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := svc.GetByID(ctx, itr.ID)
+	got, err := svc.GetByID(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestIncomeTaxReturnService_GetByID_ZeroID(t *testing.T) {
 	svc, _ := setupIncomeTaxSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GetByID(ctx, 0)
+	_, err := svc.GetByID(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -165,15 +165,15 @@ func TestIncomeTaxReturnService_Delete(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := svc.Delete(ctx, itr.ID); err != nil {
+	if err := svc.Delete(ctx, 1, itr.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := svc.GetByID(ctx, itr.ID)
+	_, err := svc.GetByID(ctx, 1, itr.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -187,16 +187,16 @@ func TestIncomeTaxReturnService_Delete_Filed(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Mark as filed.
-	if _, err := svc.MarkFiled(ctx, itr.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, itr.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	err := svc.Delete(ctx, itr.ID)
+	err := svc.Delete(ctx, 1, itr.ID)
 	if err == nil {
 		t.Error("expected error when deleting filed return")
 	}
@@ -209,7 +209,7 @@ func TestIncomeTaxReturnService_Delete_ZeroID(t *testing.T) {
 	svc, _ := setupIncomeTaxSvc(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 0)
+	err := svc.Delete(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero ID")
 	}
@@ -227,12 +227,12 @@ func TestIncomeTaxReturnService_List(t *testing.T) {
 			Year:       2025,
 			FilingType: ft,
 		}
-		if err := svc.Create(ctx, itr); err != nil {
+		if err := svc.Create(ctx, 1, itr); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
 	}
 
-	returns, err := svc.List(ctx, 2025)
+	returns, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestIncomeTaxReturnService_List_DefaultYear(t *testing.T) {
 	ctx := context.Background()
 
 	// year=0 should default to current year and not error.
-	_, err := svc.List(ctx, 0)
+	_, err := svc.List(ctx, 1, 0)
 	if err != nil {
 		t.Fatalf("List(0) error: %v", err)
 	}
@@ -260,11 +260,11 @@ func TestIncomeTaxReturnService_MarkFiled(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	filed, err := svc.MarkFiled(ctx, itr.ID)
+	filed, err := svc.MarkFiled(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
@@ -276,7 +276,7 @@ func TestIncomeTaxReturnService_MarkFiled(t *testing.T) {
 	}
 
 	// Cannot mark as filed again.
-	_, err = svc.MarkFiled(ctx, itr.ID)
+	_, err = svc.MarkFiled(ctx, 1, itr.ID)
 	if err == nil {
 		t.Error("expected error for double filing")
 	}
@@ -289,7 +289,7 @@ func TestIncomeTaxReturnService_Recalculate_ZeroID(t *testing.T) {
 	svc, _ := setupIncomeTaxSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.Recalculate(ctx, 0)
+	_, err := svc.Recalculate(ctx, 1, 0)
 	if err == nil {
 		t.Error("Recalculate(0) should return error")
 	}
@@ -303,14 +303,14 @@ func TestIncomeTaxReturnService_Recalculate_Filed(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
-	if _, err := svc.MarkFiled(ctx, itr.ID); err != nil {
+	if _, err := svc.MarkFiled(ctx, 1, itr.ID); err != nil {
 		t.Fatalf("MarkFiled() error: %v", err)
 	}
 
-	_, err := svc.Recalculate(ctx, itr.ID)
+	_, err := svc.Recalculate(ctx, 1, itr.ID)
 	if err == nil {
 		t.Error("Recalculate() should return error for filed return")
 	}
@@ -353,7 +353,7 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 
 	// Set up tax year settings with 60% flat rate.
 	tysRepo := repository.NewTaxYearSettingsRepository(db)
-	if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
+	if err := tysRepo.Upsert(ctx, 1, &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60}); err != nil {
 		t.Fatalf("Upsert tax year settings: %v", err)
 	}
 
@@ -362,11 +362,11 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, itr.ID)
+	result, err := svc.Recalculate(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -450,11 +450,11 @@ func TestIncomeTaxReturnService_Recalculate_ActualExpenses(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, itr.ID)
+	result, err := svc.Recalculate(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
@@ -488,7 +488,7 @@ func TestIncomeTaxReturnService_Recalculate_WithPrepayments(t *testing.T) {
 		{Month: 1, TaxAmount: domain.NewAmount(5000, 0), SocialAmount: 0, HealthAmount: 0},
 		{Month: 2, TaxAmount: domain.NewAmount(5000, 0), SocialAmount: 0, HealthAmount: 0},
 	}
-	if err := tpRepo.UpsertAll(ctx, 2025, prepayments); err != nil {
+	if err := tpRepo.UpsertAll(ctx, 1, 2025, prepayments); err != nil {
 		t.Fatalf("UpsertAll prepayments: %v", err)
 	}
 
@@ -496,11 +496,11 @@ func TestIncomeTaxReturnService_Recalculate_WithPrepayments(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, itr); err != nil {
+	if err := svc.Create(ctx, 1, itr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	result, err := svc.Recalculate(ctx, itr.ID)
+	result, err := svc.Recalculate(ctx, 1, itr.ID)
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}

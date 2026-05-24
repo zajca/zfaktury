@@ -21,6 +21,7 @@ func setupSettingsRouter(t *testing.T) *chi.Mux {
 	h := NewSettingsHandler(settingsSvc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/settings", h.Routes())
 	return r
 }

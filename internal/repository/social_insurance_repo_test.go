@@ -19,7 +19,7 @@ func TestSocialInsuranceOverviewRepository_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := repo.Create(ctx, sio); err != nil {
+	if err := repo.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -46,11 +46,11 @@ func TestSocialInsuranceOverviewRepository_GetByID(t *testing.T) {
 		TotalExpenses:  domain.NewAmount(300000, 0),
 		TotalInsurance: domain.NewAmount(145000, 0),
 	}
-	if err := repo.Create(ctx, sio); err != nil {
+	if err := repo.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, sio.ID)
+	got, err := repo.GetByID(ctx, 1, sio.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestSocialInsuranceOverviewRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewSocialInsuranceOverviewRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent social_insurance_overview")
 	}
@@ -89,7 +89,7 @@ func TestSocialInsuranceOverviewRepository_Update(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, sio); err != nil {
+	if err := repo.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -97,11 +97,11 @@ func TestSocialInsuranceOverviewRepository_Update(t *testing.T) {
 	sio.TotalInsurance = domain.NewAmount(175000, 0)
 	sio.Difference = domain.NewAmount(50000, 0)
 
-	if err := repo.Update(ctx, sio); err != nil {
+	if err := repo.Update(ctx, 1, sio); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, sio.ID)
+	got, err := repo.GetByID(ctx, 1, sio.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -122,15 +122,15 @@ func TestSocialInsuranceOverviewRepository_Delete(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, sio); err != nil {
+	if err := repo.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := repo.Delete(ctx, sio.ID); err != nil {
+	if err := repo.Delete(ctx, 1, sio.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, sio.ID)
+	_, err := repo.GetByID(ctx, 1, sio.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -141,7 +141,7 @@ func TestSocialInsuranceOverviewRepository_Delete_NotFound(t *testing.T) {
 	repo := NewSocialInsuranceOverviewRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent delete")
 	}
@@ -160,7 +160,7 @@ func TestSocialInsuranceOverviewRepository_List(t *testing.T) {
 			Year:       2025,
 			FilingType: ft,
 		}
-		if err := repo.Create(ctx, sio); err != nil {
+		if err := repo.Create(ctx, 1, sio); err != nil {
 			t.Fatalf("Create() %d error: %v", i, err)
 		}
 	}
@@ -170,11 +170,11 @@ func TestSocialInsuranceOverviewRepository_List(t *testing.T) {
 		Year:       2024,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, sio2024); err != nil {
+	if err := repo.Create(ctx, 1, sio2024); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	returns, err := repo.List(ctx, 2025)
+	returns, err := repo.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestSocialInsuranceOverviewRepository_List(t *testing.T) {
 		t.Errorf("List(2025) returned %d items, want 2", len(returns))
 	}
 
-	returns2024, err := repo.List(ctx, 2024)
+	returns2024, err := repo.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -200,11 +200,11 @@ func TestSocialInsuranceOverviewRepository_GetByYear(t *testing.T) {
 		Year:       2025,
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, sio); err != nil {
+	if err := repo.Create(ctx, 1, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByYear(ctx, 2025, domain.FilingTypeRegular)
+	got, err := repo.GetByYear(ctx, 1, 2025, domain.FilingTypeRegular)
 	if err != nil {
 		t.Fatalf("GetByYear() error: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestSocialInsuranceOverviewRepository_GetByYear(t *testing.T) {
 	}
 
 	// Non-existent.
-	_, err = repo.GetByYear(ctx, 2099, domain.FilingTypeRegular)
+	_, err = repo.GetByYear(ctx, 1, 2099, domain.FilingTypeRegular)
 	if err == nil {
 		t.Error("expected error for non-existent year")
 	}

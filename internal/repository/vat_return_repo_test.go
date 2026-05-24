@@ -21,7 +21,7 @@ func TestVATReturnRepository_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -50,11 +50,11 @@ func TestVATReturnRepository_GetByID(t *testing.T) {
 		OutputVATBase21:   1000000,
 		OutputVATAmount21: 210000,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, vr.ID)
+	got, err := repo.GetByID(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestVATReturnRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewVATReturnRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent vat_return")
 	}
@@ -98,7 +98,7 @@ func TestVATReturnRepository_List(t *testing.T) {
 			},
 			FilingType: domain.FilingTypeRegular,
 		}
-		if err := repo.Create(ctx, vr); err != nil {
+		if err := repo.Create(ctx, 1, vr); err != nil {
 			t.Fatalf("Create() error for month %d: %v", month, err)
 		}
 	}
@@ -111,12 +111,12 @@ func TestVATReturnRepository_List(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr2024); err != nil {
+	if err := repo.Create(ctx, 1, vr2024); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// List 2025.
-	returns, err := repo.List(ctx, 2025)
+	returns, err := repo.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestVATReturnRepository_List(t *testing.T) {
 	}
 
 	// List 2024.
-	returns2024, err := repo.List(ctx, 2024)
+	returns2024, err := repo.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -146,11 +146,11 @@ func TestVATReturnRepository_GetByPeriod(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByPeriod(ctx, 2025, 7, 0, domain.FilingTypeRegular)
+	got, err := repo.GetByPeriod(ctx, 1, 2025, 7, 0, domain.FilingTypeRegular)
 	if err != nil {
 		t.Fatalf("GetByPeriod() error: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestVATReturnRepository_GetByPeriod(t *testing.T) {
 	}
 
 	// Non-existent period.
-	_, err = repo.GetByPeriod(ctx, 2025, 8, 0, domain.FilingTypeRegular)
+	_, err = repo.GetByPeriod(ctx, 1, 2025, 8, 0, domain.FilingTypeRegular)
 	if err == nil {
 		t.Error("expected error for non-existent period")
 	}
@@ -177,15 +177,15 @@ func TestVATReturnRepository_Delete(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := repo.Delete(ctx, vr.ID); err != nil {
+	if err := repo.Delete(ctx, 1, vr.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, vr.ID)
+	_, err := repo.GetByID(ctx, 1, vr.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -204,7 +204,7 @@ func TestVATReturnRepository_LinkInvoices(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -215,12 +215,12 @@ func TestVATReturnRepository_LinkInvoices(t *testing.T) {
 	})
 
 	// Link invoices.
-	if err := repo.LinkInvoices(ctx, vr.ID, []int64{inv.ID}); err != nil {
+	if err := repo.LinkInvoices(ctx, 1, vr.ID, []int64{inv.ID}); err != nil {
 		t.Fatalf("LinkInvoices() error: %v", err)
 	}
 
 	// Verify linked IDs.
-	ids, err := repo.GetLinkedInvoiceIDs(ctx, vr.ID)
+	ids, err := repo.GetLinkedInvoiceIDs(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedInvoiceIDs() error: %v", err)
 	}
@@ -229,10 +229,10 @@ func TestVATReturnRepository_LinkInvoices(t *testing.T) {
 	}
 
 	// Re-link with empty list should clear.
-	if err := repo.LinkInvoices(ctx, vr.ID, []int64{}); err != nil {
+	if err := repo.LinkInvoices(ctx, 1, vr.ID, []int64{}); err != nil {
 		t.Fatalf("LinkInvoices() clear error: %v", err)
 	}
-	ids, err = repo.GetLinkedInvoiceIDs(ctx, vr.ID)
+	ids, err = repo.GetLinkedInvoiceIDs(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedInvoiceIDs() error: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestVATReturnRepository_LinkExpenses(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -263,12 +263,12 @@ func TestVATReturnRepository_LinkExpenses(t *testing.T) {
 	exp2 := testutil.SeedExpense(t, db, 1, &domain.Expense{Description: "Expense 2"})
 
 	// Link expenses.
-	if err := repo.LinkExpenses(ctx, vr.ID, []int64{exp1.ID, exp2.ID}); err != nil {
+	if err := repo.LinkExpenses(ctx, 1, vr.ID, []int64{exp1.ID, exp2.ID}); err != nil {
 		t.Fatalf("LinkExpenses() error: %v", err)
 	}
 
 	// Verify linked IDs.
-	ids, err := repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	ids, err := repo.GetLinkedExpenseIDs(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
 	}
@@ -283,10 +283,10 @@ func TestVATReturnRepository_LinkExpenses(t *testing.T) {
 	}
 
 	// Re-link with just one expense should replace the list.
-	if err := repo.LinkExpenses(ctx, vr.ID, []int64{exp2.ID}); err != nil {
+	if err := repo.LinkExpenses(ctx, 1, vr.ID, []int64{exp2.ID}); err != nil {
 		t.Fatalf("LinkExpenses() replace error: %v", err)
 	}
-	ids, err = repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	ids, err = repo.GetLinkedExpenseIDs(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
 	}
@@ -298,10 +298,10 @@ func TestVATReturnRepository_LinkExpenses(t *testing.T) {
 	}
 
 	// Re-link with empty list should clear.
-	if err := repo.LinkExpenses(ctx, vr.ID, []int64{}); err != nil {
+	if err := repo.LinkExpenses(ctx, 1, vr.ID, []int64{}); err != nil {
 		t.Fatalf("LinkExpenses() clear error: %v", err)
 	}
-	ids, err = repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	ids, err = repo.GetLinkedExpenseIDs(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
 	}
@@ -322,11 +322,11 @@ func TestVATReturnRepository_GetLinkedExpenseIDs_Empty(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	ids, err := repo.GetLinkedExpenseIDs(ctx, vr.ID)
+	ids, err := repo.GetLinkedExpenseIDs(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetLinkedExpenseIDs() error: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestVATReturnRepository_Update(t *testing.T) {
 		},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := repo.Create(ctx, vr); err != nil {
+	if err := repo.Create(ctx, 1, vr); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -357,11 +357,11 @@ func TestVATReturnRepository_Update(t *testing.T) {
 	vr.TotalOutputVAT = 105000
 	vr.NetVAT = 105000
 
-	if err := repo.Update(ctx, vr); err != nil {
+	if err := repo.Update(ctx, 1, vr); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, vr.ID)
+	got, err := repo.GetByID(ctx, 1, vr.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}

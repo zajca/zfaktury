@@ -13,12 +13,6 @@ import (
 	"github.com/zajca/zfaktury/internal/vatxml"
 )
 
-// vatReturnFallbackCompanyID is a transitional shim — VAT-return service is
-// not yet company-scoped (T22 will thread companyID through it). Until then,
-// all VAT-return computations operate against the migration-025 default
-// company (id=1). Remove when this service gains an explicit companyID.
-const vatReturnFallbackCompanyID int64 = 1 // remove in T22
-
 // VATReturnService provides business logic for VAT return management.
 type VATReturnService struct {
 	repo         repository.VATReturnRepo
@@ -45,8 +39,8 @@ func NewVATReturnService(
 	}
 }
 
-// Create validates and persists a new VAT return.
-func (s *VATReturnService) Create(ctx context.Context, vr *domain.VATReturn) error {
+// Create validates and persists a new VAT return within the given company.
+func (s *VATReturnService) Create(ctx context.Context, companyID int64, vr *domain.VATReturn) error {
 	if vr.Period.Year < 2000 || vr.Period.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -71,7 +65,7 @@ func (s *VATReturnService) Create(ctx context.Context, vr *domain.VATReturn) err
 
 	// Check for existing filing in same period (for regular filings).
 	if vr.FilingType == domain.FilingTypeRegular {
-		existing, err := s.repo.GetByPeriod(ctx, vr.Period.Year, vr.Period.Month, vr.Period.Quarter, vr.FilingType)
+		existing, err := s.repo.GetByPeriod(ctx, companyID, vr.Period.Year, vr.Period.Month, vr.Period.Quarter, vr.FilingType)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return fmt.Errorf("checking existing vat_return: %w", err)
 		}
@@ -84,7 +78,7 @@ func (s *VATReturnService) Create(ctx context.Context, vr *domain.VATReturn) err
 		vr.Status = domain.FilingStatusDraft
 	}
 
-	if err := s.repo.Create(ctx, vr); err != nil {
+	if err := s.repo.Create(ctx, companyID, vr); err != nil {
 		return fmt.Errorf("creating vat_return: %w", err)
 	}
 	if s.audit != nil {
@@ -93,37 +87,37 @@ func (s *VATReturnService) Create(ctx context.Context, vr *domain.VATReturn) err
 	return nil
 }
 
-// GetByID retrieves a VAT return by its ID.
-func (s *VATReturnService) GetByID(ctx context.Context, id int64) (*domain.VATReturn, error) {
+// GetByID retrieves a VAT return by its ID within the given company.
+func (s *VATReturnService) GetByID(ctx context.Context, companyID, id int64) (*domain.VATReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
-	vr, err := s.repo.GetByID(ctx, id)
+	vr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching vat_return: %w", err)
 	}
 	return vr, nil
 }
 
-// List retrieves all VAT returns for a given year.
-func (s *VATReturnService) List(ctx context.Context, year int) ([]domain.VATReturn, error) {
+// List retrieves all VAT returns for a given year within the given company.
+func (s *VATReturnService) List(ctx context.Context, companyID int64, year int) ([]domain.VATReturn, error) {
 	if year == 0 {
 		year = time.Now().Year()
 	}
-	returns, err := s.repo.List(ctx, year)
+	returns, err := s.repo.List(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing vat_returns: %w", err)
 	}
 	return returns, nil
 }
 
-// Delete removes a VAT return by ID. Filed returns cannot be deleted.
-func (s *VATReturnService) Delete(ctx context.Context, id int64) error {
+// Delete removes a VAT return by ID within the given company. Filed returns cannot be deleted.
+func (s *VATReturnService) Delete(ctx context.Context, companyID, id int64) error {
 	if id == 0 {
 		return fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	vr, err := s.repo.GetByID(ctx, id)
+	vr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching vat_return for delete: %w", err)
 	}
@@ -131,7 +125,7 @@ func (s *VATReturnService) Delete(ctx context.Context, id int64) error {
 		return domain.ErrFilingAlreadyFiled
 	}
 
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting vat_return: %w", err)
 	}
 	if s.audit != nil {
@@ -140,13 +134,13 @@ func (s *VATReturnService) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// Recalculate recalculates the VAT return amounts from linked invoices and expenses.
-func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.VATReturn, error) {
+// Recalculate recalculates the VAT return amounts from linked invoices and expenses within the given company.
+func (s *VATReturnService) Recalculate(ctx context.Context, companyID, id int64) (*domain.VATReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	vr, err := s.repo.GetByID(ctx, id)
+	vr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching vat_return for recalculation: %w", err)
 	}
@@ -161,8 +155,7 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	dateFrom, dateTo := periodDateRange(vr.Period)
 
 	// Query invoices in the period: sent, paid, overdue; NOT credit_note type.
-	// fallbackCompanyID: VAT returns service is not yet company-scoped (remove in T22).
-	invoices, _, err := s.invoiceRepo.List(ctx, vatReturnFallbackCompanyID, domain.InvoiceFilter{
+	invoices, _, err := s.invoiceRepo.List(ctx, companyID, domain.InvoiceFilter{
 		DateFrom: &dateFrom,
 		DateTo:   &dateTo,
 		Limit:    10000,
@@ -186,7 +179,7 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 
 		invoiceIDs = append(invoiceIDs, inv.ID)
 
-		fullInv, err := s.invoiceRepo.GetByID(ctx, vatReturnFallbackCompanyID, inv.ID)
+		fullInv, err := s.invoiceRepo.GetByID(ctx, companyID, inv.ID)
 		if err != nil {
 			return nil, fmt.Errorf("fetching invoice %d items for vat_return: %w", inv.ID, err)
 		}
@@ -207,7 +200,7 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	}
 
 	// Query expenses in the period: tax deductible only.
-	expenses, _, err := s.expenseRepo.List(ctx, vatReturnFallbackCompanyID, domain.ExpenseFilter{
+	expenses, _, err := s.expenseRepo.List(ctx, companyID, domain.ExpenseFilter{
 		DateFrom: &dateFrom,
 		DateTo:   &dateTo,
 		Limit:    10000,
@@ -253,15 +246,15 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	vr.NetVAT = result.NetVAT
 
 	// Persist updated values.
-	if err := s.repo.Update(ctx, vr); err != nil {
+	if err := s.repo.Update(ctx, companyID, vr); err != nil {
 		return nil, fmt.Errorf("updating vat_return after recalculation: %w", err)
 	}
 
 	// Link invoices and expenses.
-	if err := s.repo.LinkInvoices(ctx, vr.ID, invoiceIDs); err != nil {
+	if err := s.repo.LinkInvoices(ctx, companyID, vr.ID, invoiceIDs); err != nil {
 		return nil, fmt.Errorf("linking invoices to vat_return: %w", err)
 	}
-	if err := s.repo.LinkExpenses(ctx, vr.ID, expenseIDs); err != nil {
+	if err := s.repo.LinkExpenses(ctx, companyID, vr.ID, expenseIDs); err != nil {
 		return nil, fmt.Errorf("linking expenses to vat_return: %w", err)
 	}
 
@@ -271,18 +264,18 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	return vr, nil
 }
 
-// GenerateXML generates the EPO XML for a VAT return and stores it.
-func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.VATReturn, error) {
+// GenerateXML generates the EPO XML for a VAT return within the given company and stores it.
+func (s *VATReturnService) GenerateXML(ctx context.Context, companyID, id int64) (*domain.VATReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	vr, err := s.repo.GetByID(ctx, id)
+	vr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching vat_return for XML generation: %w", err)
 	}
 
-	info, err := s.buildTaxpayerInfo(ctx)
+	info, err := s.buildTaxpayerInfo(ctx, companyID)
 	if err != nil {
 		return nil, fmt.Errorf("building taxpayer info for XML generation: %w", err)
 	}
@@ -294,7 +287,7 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 	}
 
 	vr.XMLData = xmlData
-	if err := s.repo.Update(ctx, vr); err != nil {
+	if err := s.repo.Update(ctx, companyID, vr); err != nil {
 		return nil, fmt.Errorf("storing XML data for vat_return: %w", err)
 	}
 
@@ -304,10 +297,10 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 	return vr, nil
 }
 
-// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo.
-func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.TaxpayerInfo, error) {
+// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo for the given company.
+func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context, companyID int64) (vatxml.TaxpayerInfo, error) {
 	getSetting := func(key string) string {
-		val, err := s.settingsRepo.Get(ctx, key)
+		val, err := s.settingsRepo.Get(ctx, companyID, key)
 		if err != nil {
 			return ""
 		}
@@ -338,25 +331,25 @@ func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.Taxpay
 	}, nil
 }
 
-// GetXMLData retrieves the stored XML data for a VAT return.
-func (s *VATReturnService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+// GetXMLData retrieves the stored XML data for a VAT return within the given company.
+func (s *VATReturnService) GetXMLData(ctx context.Context, companyID, id int64) ([]byte, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
-	vr, err := s.repo.GetByID(ctx, id)
+	vr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching vat_return for XML data: %w", err)
 	}
 	return vr.XMLData, nil
 }
 
-// MarkFiled marks a VAT return as filed and records the timestamp.
-func (s *VATReturnService) MarkFiled(ctx context.Context, id int64) (*domain.VATReturn, error) {
+// MarkFiled marks a VAT return as filed within the given company and records the timestamp.
+func (s *VATReturnService) MarkFiled(ctx context.Context, companyID, id int64) (*domain.VATReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	vr, err := s.repo.GetByID(ctx, id)
+	vr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching vat_return for marking as filed: %w", err)
 	}
@@ -368,7 +361,7 @@ func (s *VATReturnService) MarkFiled(ctx context.Context, id int64) (*domain.VAT
 	vr.Status = domain.FilingStatusFiled
 	vr.FiledAt = &now
 
-	if err := s.repo.Update(ctx, vr); err != nil {
+	if err := s.repo.Update(ctx, companyID, vr); err != nil {
 		return nil, fmt.Errorf("marking vat_return as filed: %w", err)
 	}
 	if s.audit != nil {

@@ -36,11 +36,11 @@ func TestTaxCreditsService_UpsertSpouse(t *testing.T) {
 		MonthsClaimed: 12,
 	}
 
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	got, err := svc.GetSpouse(ctx, 2025)
+	got, err := svc.GetSpouse(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetSpouse() error: %v", err)
 	}
@@ -62,17 +62,17 @@ func TestTaxCreditsService_UpsertSpouse_Update(t *testing.T) {
 		SpouseIncome:  domain.NewAmount(50000, 0),
 		MonthsClaimed: 12,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
 	// Update with different months.
 	credit.MonthsClaimed = 6
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() update error: %v", err)
 	}
 
-	got, err := svc.GetSpouse(ctx, 2025)
+	got, err := svc.GetSpouse(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetSpouse() error: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestTaxCreditsService_UpsertSpouse_InvalidYear(t *testing.T) {
 			SpouseIncome:  0,
 			MonthsClaimed: 12,
 		}
-		err := svc.UpsertSpouse(ctx, credit)
+		err := svc.UpsertSpouse(ctx, 1, credit)
 		if err == nil {
 			t.Errorf("expected error for year %d", year)
 		}
@@ -111,7 +111,7 @@ func TestTaxCreditsService_UpsertSpouse_EmptyName(t *testing.T) {
 		SpouseName:    "",
 		MonthsClaimed: 12,
 	}
-	err := svc.UpsertSpouse(ctx, credit)
+	err := svc.UpsertSpouse(ctx, 1, credit)
 	if err == nil {
 		t.Error("expected error for empty spouse name")
 	}
@@ -130,7 +130,7 @@ func TestTaxCreditsService_UpsertSpouse_InvalidMonths(t *testing.T) {
 			SpouseName:    "Test",
 			MonthsClaimed: months,
 		}
-		err := svc.UpsertSpouse(ctx, credit)
+		err := svc.UpsertSpouse(ctx, 1, credit)
 		if err == nil {
 			t.Errorf("expected error for months=%d", months)
 		}
@@ -151,7 +151,7 @@ func TestTaxCreditsService_UpsertSpouse_ValidMonthsBoundary(t *testing.T) {
 		SpouseIncome:  0,
 		MonthsClaimed: 1,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Errorf("UpsertSpouse(months=1) unexpected error: %v", err)
 	}
 
@@ -162,7 +162,7 @@ func TestTaxCreditsService_UpsertSpouse_ValidMonthsBoundary(t *testing.T) {
 		SpouseIncome:  0,
 		MonthsClaimed: 12,
 	}
-	if err := svc.UpsertSpouse(ctx, credit2); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit2); err != nil {
 		t.Errorf("UpsertSpouse(months=12) unexpected error: %v", err)
 	}
 }
@@ -177,7 +177,7 @@ func TestTaxCreditsService_UpsertSpouse_NegativeIncome(t *testing.T) {
 		SpouseIncome:  -1,
 		MonthsClaimed: 12,
 	}
-	err := svc.UpsertSpouse(ctx, credit)
+	err := svc.UpsertSpouse(ctx, 1, credit)
 	if err == nil {
 		t.Error("expected error for negative spouse income")
 	}
@@ -195,15 +195,15 @@ func TestTaxCreditsService_DeleteSpouse(t *testing.T) {
 		SpouseName:    "Jana",
 		MonthsClaimed: 12,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	if err := svc.DeleteSpouse(ctx, 2025); err != nil {
+	if err := svc.DeleteSpouse(ctx, 1, 2025); err != nil {
 		t.Fatalf("DeleteSpouse() error: %v", err)
 	}
 
-	_, err := svc.GetSpouse(ctx, 2025)
+	_, err := svc.GetSpouse(ctx, 1, 2025)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -225,11 +225,11 @@ func TestTaxCreditsService_ComputeCredits_SpouseProportionalMonths(t *testing.T)
 		SpouseIncome:  domain.NewAmount(50000, 0), // below 68000 CZK
 		MonthsClaimed: 6,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -251,11 +251,11 @@ func TestTaxCreditsService_ComputeCredits_SpouseFullYear(t *testing.T) {
 		SpouseIncome:  domain.NewAmount(60000, 0),
 		MonthsClaimed: 12,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -277,11 +277,11 @@ func TestTaxCreditsService_ComputeCredits_SpouseIncomeAboveThreshold(t *testing.
 		SpouseIncome:  domain.NewAmount(68000, 0),
 		MonthsClaimed: 12,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -302,11 +302,11 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPDoubling(t *testing.T) {
 		SpouseZTP:     true,
 		MonthsClaimed: 12,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -329,11 +329,11 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPPartialMonths(t *testing.T) {
 		SpouseZTP:     true,
 		MonthsClaimed: 3,
 	}
-	if err := svc.UpsertSpouse(ctx, credit); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -355,11 +355,11 @@ func TestTaxCreditsService_ComputeCredits_StudentProportional(t *testing.T) {
 		IsStudent:     true,
 		StudentMonths: 8,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, _, studentCredit, err := svc.ComputeCredits(ctx, 2025)
+	_, _, studentCredit, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -380,11 +380,11 @@ func TestTaxCreditsService_ComputeCredits_StudentFullYear(t *testing.T) {
 		IsStudent:     true,
 		StudentMonths: 12,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, _, studentCredit, err := svc.ComputeCredits(ctx, 2025)
+	_, _, studentCredit, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -405,11 +405,11 @@ func TestTaxCreditsService_ComputeCredits_StudentNotFlagged(t *testing.T) {
 		IsStudent:     false,
 		StudentMonths: 12,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, _, studentCredit, err := svc.ComputeCredits(ctx, 2025)
+	_, _, studentCredit, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -427,11 +427,11 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel1(t *testing.T) {
 		Year:            2025,
 		DisabilityLevel: 1,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 2025)
+	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -450,11 +450,11 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel2(t *testing.T) {
 		Year:            2025,
 		DisabilityLevel: 2,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 2025)
+	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -473,11 +473,11 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel3_ZTPP(t *testing.T) {
 		Year:            2025,
 		DisabilityLevel: 3,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 2025)
+	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -493,7 +493,7 @@ func TestTaxCreditsService_ComputeCredits_NoData(t *testing.T) {
 	ctx := context.Background()
 
 	// No spouse, no personal credits -> all zeros.
-	spouse, disability, student, err := svc.ComputeCredits(ctx, 2025)
+	spouse, disability, student, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -514,7 +514,7 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 		SpouseZTP:     true,
 		MonthsClaimed: 6,
 	}
-	if err := svc.UpsertSpouse(ctx, spouseCr); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, spouseCr); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
@@ -525,11 +525,11 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 		StudentMonths:   10,
 		DisabilityLevel: 1,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	spouseAmt, disabilityAmt, studentAmt, err := svc.ComputeCredits(ctx, 2025)
+	spouseAmt, disabilityAmt, studentAmt, err := svc.ComputeCredits(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -563,11 +563,11 @@ func TestTaxCreditsService_ComputeChildBenefit_SingleChild(t *testing.T) {
 		ChildOrder:    1,
 		MonthsClaimed: 12,
 	}
-	if err := svc.CreateChild(ctx, child); err != nil {
+	if err := svc.CreateChild(ctx, 1, child); err != nil {
 		t.Fatalf("CreateChild() error: %v", err)
 	}
 
-	total, err := svc.ComputeChildBenefit(ctx, 2025)
+	total, err := svc.ComputeChildBenefit(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
@@ -588,12 +588,12 @@ func TestTaxCreditsService_ComputeChildBenefit_MultipleChildren(t *testing.T) {
 		{Year: 2025, ChildName: "Jan", ChildOrder: 3, MonthsClaimed: 12},
 	}
 	for i := range children {
-		if err := svc.CreateChild(ctx, &children[i]); err != nil {
+		if err := svc.CreateChild(ctx, 1, &children[i]); err != nil {
 			t.Fatalf("CreateChild(%d) error: %v", i, err)
 		}
 	}
 
-	total, err := svc.ComputeChildBenefit(ctx, 2025)
+	total, err := svc.ComputeChildBenefit(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
@@ -615,11 +615,11 @@ func TestTaxCreditsService_ComputeChildBenefit_PartialMonths(t *testing.T) {
 		ChildOrder:    1,
 		MonthsClaimed: 6,
 	}
-	if err := svc.CreateChild(ctx, child); err != nil {
+	if err := svc.CreateChild(ctx, 1, child); err != nil {
 		t.Fatalf("CreateChild() error: %v", err)
 	}
 
-	total, err := svc.ComputeChildBenefit(ctx, 2025)
+	total, err := svc.ComputeChildBenefit(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
@@ -642,11 +642,11 @@ func TestTaxCreditsService_ComputeChildBenefit_ZTPDoubling(t *testing.T) {
 		MonthsClaimed: 12,
 		ZTP:           true,
 	}
-	if err := svc.CreateChild(ctx, child); err != nil {
+	if err := svc.CreateChild(ctx, 1, child); err != nil {
 		t.Fatalf("CreateChild() error: %v", err)
 	}
 
-	total, err := svc.ComputeChildBenefit(ctx, 2025)
+	total, err := svc.ComputeChildBenefit(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
@@ -662,7 +662,7 @@ func TestTaxCreditsService_ComputeChildBenefit_NoChildren(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
-	total, err := svc.ComputeChildBenefit(ctx, 2025)
+	total, err := svc.ComputeChildBenefit(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ComputeChildBenefit() error: %v", err)
 	}
@@ -683,7 +683,7 @@ func TestTaxCreditsService_CreateChild_InvalidOrder(t *testing.T) {
 			ChildOrder:    order,
 			MonthsClaimed: 12,
 		}
-		err := svc.CreateChild(ctx, child)
+		err := svc.CreateChild(ctx, 1, child)
 		if err == nil {
 			t.Errorf("expected error for order=%d", order)
 		}
@@ -703,7 +703,7 @@ func TestTaxCreditsService_CreateChild_InvalidMonths(t *testing.T) {
 			ChildOrder:    1,
 			MonthsClaimed: months,
 		}
-		err := svc.CreateChild(ctx, child)
+		err := svc.CreateChild(ctx, 1, child)
 		if err == nil {
 			t.Errorf("expected error for months=%d", months)
 		}
@@ -724,12 +724,12 @@ func TestTaxCreditsService_ListChildren(t *testing.T) {
 			ChildOrder:    order,
 			MonthsClaimed: 12,
 		}
-		if err := svc.CreateChild(ctx, child); err != nil {
+		if err := svc.CreateChild(ctx, 1, child); err != nil {
 			t.Fatalf("CreateChild() error: %v", err)
 		}
 	}
 
-	children, err := svc.ListChildren(ctx, 2025)
+	children, err := svc.ListChildren(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListChildren() error: %v", err)
 	}
@@ -748,15 +748,15 @@ func TestTaxCreditsService_DeleteChild(t *testing.T) {
 		ChildOrder:    1,
 		MonthsClaimed: 12,
 	}
-	if err := svc.CreateChild(ctx, child); err != nil {
+	if err := svc.CreateChild(ctx, 1, child); err != nil {
 		t.Fatalf("CreateChild() error: %v", err)
 	}
 
-	if err := svc.DeleteChild(ctx, child.ID); err != nil {
+	if err := svc.DeleteChild(ctx, 1, child.ID); err != nil {
 		t.Fatalf("DeleteChild() error: %v", err)
 	}
 
-	children, err := svc.ListChildren(ctx, 2025)
+	children, err := svc.ListChildren(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListChildren() error: %v", err)
 	}
@@ -776,7 +776,7 @@ func TestTaxCreditsService_UpsertPersonal_InvalidStudentMonths(t *testing.T) {
 			Year:          2025,
 			StudentMonths: months,
 		}
-		err := svc.UpsertPersonal(ctx, personal)
+		err := svc.UpsertPersonal(ctx, 1, personal)
 		if err == nil {
 			t.Errorf("expected error for student months=%d", months)
 		}
@@ -795,7 +795,7 @@ func TestTaxCreditsService_UpsertPersonal_InvalidDisabilityLevel(t *testing.T) {
 			Year:            2025,
 			DisabilityLevel: level,
 		}
-		err := svc.UpsertPersonal(ctx, personal)
+		err := svc.UpsertPersonal(ctx, 1, personal)
 		if err == nil {
 			t.Errorf("expected error for disability level=%d", level)
 		}
@@ -815,11 +815,11 @@ func TestTaxCreditsService_GetPersonal(t *testing.T) {
 		StudentMonths:   10,
 		DisabilityLevel: 2,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	got, err := svc.GetPersonal(ctx, 2025)
+	got, err := svc.GetPersonal(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetPersonal() error: %v", err)
 	}
@@ -846,12 +846,12 @@ func TestTaxCreditsService_ComputeDeductions_BelowCap(t *testing.T) {
 		Description:   "Mortgage interest",
 		ClaimedAmount: domain.NewAmount(100000, 0), // 100k CZK, cap is 150k
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
 	taxBase := domain.NewAmount(1000000, 0)
-	total, err := svc.ComputeDeductions(ctx, 2025, taxBase)
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, taxBase)
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -861,7 +861,7 @@ func TestTaxCreditsService_ComputeDeductions_BelowCap(t *testing.T) {
 	}
 
 	// Verify the deduction was updated with max and allowed amounts.
-	deductions, _ := svc.ListDeductions(ctx, 2025)
+	deductions, _ := svc.ListDeductions(ctx, 1, 2025)
 	if len(deductions) != 1 {
 		t.Fatalf("expected 1 deduction, got %d", len(deductions))
 	}
@@ -884,12 +884,12 @@ func TestTaxCreditsService_ComputeDeductions_AboveCap(t *testing.T) {
 		Description:   "Life insurance",
 		ClaimedAmount: domain.NewAmount(30000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
 	taxBase := domain.NewAmount(1000000, 0)
-	total, err := svc.ComputeDeductions(ctx, 2025, taxBase)
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, taxBase)
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -916,15 +916,15 @@ func TestTaxCreditsService_ComputeDeductions_MultipleSameCategory(t *testing.T) 
 		Description:   "Pension 2",
 		ClaimedAmount: domain.NewAmount(15000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded1); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded1); err != nil {
 		t.Fatalf("CreateDeduction(1) error: %v", err)
 	}
-	if err := svc.CreateDeduction(ctx, ded2); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded2); err != nil {
 		t.Fatalf("CreateDeduction(2) error: %v", err)
 	}
 
 	taxBase := domain.NewAmount(1000000, 0)
-	total, err := svc.ComputeDeductions(ctx, 2025, taxBase)
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, taxBase)
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -946,12 +946,12 @@ func TestTaxCreditsService_ComputeDeductions_DonationProportionalCap(t *testing.
 		Description:   "Charity",
 		ClaimedAmount: domain.NewAmount(200000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
 	taxBase := domain.NewAmount(1000000, 0) // 15% = 150000
-	total, err := svc.ComputeDeductions(ctx, 2025, taxBase)
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, taxBase)
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -973,12 +973,12 @@ func TestTaxCreditsService_ComputeDeductions_UnionDuesCap(t *testing.T) {
 		Description:   "Union",
 		ClaimedAmount: domain.NewAmount(5000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
 	taxBase := domain.NewAmount(1000000, 0)
-	total, err := svc.ComputeDeductions(ctx, 2025, taxBase)
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, taxBase)
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -998,13 +998,13 @@ func TestTaxCreditsService_ComputeDeductions_MixedCategories(t *testing.T) {
 		{Year: 2025, Category: domain.DeductionPension, Description: "Pension", ClaimedAmount: domain.NewAmount(10000, 0)},
 	}
 	for i := range deductions {
-		if err := svc.CreateDeduction(ctx, &deductions[i]); err != nil {
+		if err := svc.CreateDeduction(ctx, 1, &deductions[i]); err != nil {
 			t.Fatalf("CreateDeduction(%d) error: %v", i, err)
 		}
 	}
 
 	taxBase := domain.NewAmount(1000000, 0)
-	total, err := svc.ComputeDeductions(ctx, 2025, taxBase)
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, taxBase)
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -1020,7 +1020,7 @@ func TestTaxCreditsService_ComputeDeductions_NoDeductions(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
-	total, err := svc.ComputeDeductions(ctx, 2025, domain.NewAmount(1000000, 0))
+	total, err := svc.ComputeDeductions(ctx, 1, 2025, domain.NewAmount(1000000, 0))
 	if err != nil {
 		t.Fatalf("ComputeDeductions() error: %v", err)
 	}
@@ -1040,7 +1040,7 @@ func TestTaxCreditsService_CreateDeduction_InvalidCategory(t *testing.T) {
 		Category:      "invalid_category",
 		ClaimedAmount: domain.NewAmount(1000, 0),
 	}
-	err := svc.CreateDeduction(ctx, ded)
+	err := svc.CreateDeduction(ctx, 1, ded)
 	if err == nil {
 		t.Error("expected error for invalid category")
 	}
@@ -1058,7 +1058,7 @@ func TestTaxCreditsService_CreateDeduction_NegativeAmount(t *testing.T) {
 		Category:      domain.DeductionMortgage,
 		ClaimedAmount: -1,
 	}
-	err := svc.CreateDeduction(ctx, ded)
+	err := svc.CreateDeduction(ctx, 1, ded)
 	if err == nil {
 		t.Error("expected error for negative amount")
 	}
@@ -1077,17 +1077,17 @@ func TestTaxCreditsService_UpdateDeduction(t *testing.T) {
 		Description:   "Original",
 		ClaimedAmount: domain.NewAmount(50000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
 	ded.Description = "Updated"
 	ded.ClaimedAmount = domain.NewAmount(75000, 0)
-	if err := svc.UpdateDeduction(ctx, ded); err != nil {
+	if err := svc.UpdateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("UpdateDeduction() error: %v", err)
 	}
 
-	got, err := svc.GetDeduction(ctx, ded.ID)
+	got, err := svc.GetDeduction(ctx, 1, ded.ID)
 	if err != nil {
 		t.Fatalf("GetDeduction() error: %v", err)
 	}
@@ -1108,15 +1108,15 @@ func TestTaxCreditsService_DeleteDeduction(t *testing.T) {
 		Category:      domain.DeductionMortgage,
 		ClaimedAmount: domain.NewAmount(50000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
-	if err := svc.DeleteDeduction(ctx, ded.ID); err != nil {
+	if err := svc.DeleteDeduction(ctx, 1, ded.ID); err != nil {
 		t.Fatalf("DeleteDeduction() error: %v", err)
 	}
 
-	deductions, err := svc.ListDeductions(ctx, 2025)
+	deductions, err := svc.ListDeductions(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListDeductions() error: %v", err)
 	}
@@ -1140,7 +1140,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 		MonthsClaimed: 10,
 		CreditAmount:  domain.NewAmount(99999, 0), // should be zeroed
 	}
-	if err := svc.UpsertSpouse(ctx, spouse); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, spouse); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
@@ -1152,7 +1152,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 		ZTP:           true,
 		CreditAmount:  domain.NewAmount(88888, 0),
 	}
-	if err := svc.CreateChild(ctx, child); err != nil {
+	if err := svc.CreateChild(ctx, 1, child); err != nil {
 		t.Fatalf("CreateChild() error: %v", err)
 	}
 
@@ -1163,7 +1163,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 		DisabilityLevel: 2,
 		CreditStudent:   domain.NewAmount(77777, 0),
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, 1, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
@@ -1173,17 +1173,17 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 		Description:   "Mortgage",
 		ClaimedAmount: domain.NewAmount(100000, 0),
 	}
-	if err := svc.CreateDeduction(ctx, ded); err != nil {
+	if err := svc.CreateDeduction(ctx, 1, ded); err != nil {
 		t.Fatalf("CreateDeduction() error: %v", err)
 	}
 
 	// Copy to 2025.
-	if err := svc.CopyFromYear(ctx, 2024, 2025); err != nil {
+	if err := svc.CopyFromYear(ctx, 1, 2024, 2025); err != nil {
 		t.Fatalf("CopyFromYear() error: %v", err)
 	}
 
 	// Verify spouse was copied.
-	copiedSpouse, err := svc.GetSpouse(ctx, 2025)
+	copiedSpouse, err := svc.GetSpouse(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetSpouse(2025) error: %v", err)
 	}
@@ -1201,7 +1201,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	}
 
 	// Verify child was copied.
-	copiedChildren, err := svc.ListChildren(ctx, 2025)
+	copiedChildren, err := svc.ListChildren(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListChildren(2025) error: %v", err)
 	}
@@ -1222,7 +1222,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	}
 
 	// Verify personal was copied.
-	copiedPersonal, err := svc.GetPersonal(ctx, 2025)
+	copiedPersonal, err := svc.GetPersonal(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetPersonal(2025) error: %v", err)
 	}
@@ -1237,7 +1237,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	}
 
 	// Verify deduction was copied.
-	copiedDeds, err := svc.ListDeductions(ctx, 2025)
+	copiedDeds, err := svc.ListDeductions(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListDeductions(2025) error: %v", err)
 	}
@@ -1259,7 +1259,7 @@ func TestTaxCreditsService_CopyFromYear_SameYear(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
-	err := svc.CopyFromYear(ctx, 2025, 2025)
+	err := svc.CopyFromYear(ctx, 1, 2025, 2025)
 	if err == nil {
 		t.Error("expected error for same source/target year")
 	}
@@ -1278,7 +1278,7 @@ func TestTaxCreditsService_CopyFromYear_SkipsExistingData(t *testing.T) {
 		SpouseName:    "Source Jana",
 		MonthsClaimed: 10,
 	}
-	if err := svc.UpsertSpouse(ctx, srcSpouse); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, srcSpouse); err != nil {
 		t.Fatalf("UpsertSpouse(source) error: %v", err)
 	}
 
@@ -1288,16 +1288,16 @@ func TestTaxCreditsService_CopyFromYear_SkipsExistingData(t *testing.T) {
 		SpouseName:    "Target Jana",
 		MonthsClaimed: 6,
 	}
-	if err := svc.UpsertSpouse(ctx, targetSpouse); err != nil {
+	if err := svc.UpsertSpouse(ctx, 1, targetSpouse); err != nil {
 		t.Fatalf("UpsertSpouse(target) error: %v", err)
 	}
 
 	// Copy should skip spouse since target already has it.
-	if err := svc.CopyFromYear(ctx, 2024, 2025); err != nil {
+	if err := svc.CopyFromYear(ctx, 1, 2024, 2025); err != nil {
 		t.Fatalf("CopyFromYear() error: %v", err)
 	}
 
-	got, err := svc.GetSpouse(ctx, 2025)
+	got, err := svc.GetSpouse(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("GetSpouse(2025) error: %v", err)
 	}
@@ -1315,16 +1315,16 @@ func TestTaxCreditsService_CopyFromYear_EmptySource(t *testing.T) {
 	ctx := context.Background()
 
 	// Copy from empty year -- should not fail.
-	if err := svc.CopyFromYear(ctx, 2024, 2025); err != nil {
+	if err := svc.CopyFromYear(ctx, 1, 2024, 2025); err != nil {
 		t.Fatalf("CopyFromYear(empty source) error: %v", err)
 	}
 
 	// Target should have no data.
-	_, err := svc.GetSpouse(ctx, 2025)
+	_, err := svc.GetSpouse(ctx, 1, 2025)
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for spouse, got: %v", err)
 	}
-	children, _ := svc.ListChildren(ctx, 2025)
+	children, _ := svc.ListChildren(ctx, 1, 2025)
 	if len(children) != 0 {
 		t.Errorf("expected 0 children, got %d", len(children))
 	}

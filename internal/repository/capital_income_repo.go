@@ -71,8 +71,8 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-// Create inserts a new capital income entry into the database.
-func (r *CapitalIncomeRepository) Create(ctx context.Context, entry *domain.CapitalIncomeEntry) error {
+// Create inserts a new capital income entry into the database scoped to the given company.
+func (r *CapitalIncomeRepository) Create(ctx context.Context, companyID int64, entry *domain.CapitalIncomeEntry) error {
 	now := time.Now()
 	entry.CreatedAt = now
 	entry.UpdatedAt = now
@@ -83,9 +83,9 @@ func (r *CapitalIncomeRepository) Create(ctx context.Context, entry *domain.Capi
 	}
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO capital_income_entries (year, document_id, category, description, income_date, gross_amount, withheld_tax_cz, withheld_tax_foreign, country_code, needs_declaring, net_amount, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		entry.Year, documentID, entry.Category, entry.Description,
+		INSERT INTO capital_income_entries (company_id, year, document_id, category, description, income_date, gross_amount, withheld_tax_cz, withheld_tax_foreign, country_code, needs_declaring, net_amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, entry.Year, documentID, entry.Category, entry.Description,
 		entry.IncomeDate.Format("2006-01-02"),
 		entry.GrossAmount, entry.WithheldTaxCZ, entry.WithheldTaxForeign,
 		entry.CountryCode, boolToInt(entry.NeedsDeclaring), entry.NetAmount,
@@ -103,8 +103,8 @@ func (r *CapitalIncomeRepository) Create(ctx context.Context, entry *domain.Capi
 	return nil
 }
 
-// Update modifies an existing capital income entry.
-func (r *CapitalIncomeRepository) Update(ctx context.Context, entry *domain.CapitalIncomeEntry) error {
+// Update modifies an existing capital income entry within the given company.
+func (r *CapitalIncomeRepository) Update(ctx context.Context, companyID int64, entry *domain.CapitalIncomeEntry) error {
 	entry.UpdatedAt = time.Now()
 
 	var documentID *int64
@@ -117,12 +117,12 @@ func (r *CapitalIncomeRepository) Update(ctx context.Context, entry *domain.Capi
 			year = ?, document_id = ?, category = ?, description = ?, income_date = ?,
 			gross_amount = ?, withheld_tax_cz = ?, withheld_tax_foreign = ?,
 			country_code = ?, needs_declaring = ?, net_amount = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		entry.Year, documentID, entry.Category, entry.Description,
 		entry.IncomeDate.Format("2006-01-02"),
 		entry.GrossAmount, entry.WithheldTaxCZ, entry.WithheldTaxForeign,
 		entry.CountryCode, boolToInt(entry.NeedsDeclaring), entry.NetAmount,
-		entry.UpdatedAt.Format(time.RFC3339), entry.ID,
+		entry.UpdatedAt.Format(time.RFC3339), entry.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating capital_income_entry %d: %w", entry.ID, err)
@@ -137,9 +137,9 @@ func (r *CapitalIncomeRepository) Update(ctx context.Context, entry *domain.Capi
 	return nil
 }
 
-// Delete removes a capital income entry by ID.
-func (r *CapitalIncomeRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM capital_income_entries WHERE id = ?`, id)
+// Delete removes a capital income entry by ID within the given company.
+func (r *CapitalIncomeRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM capital_income_entries WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting capital_income_entry %d: %w", id, err)
 	}
@@ -154,9 +154,9 @@ func (r *CapitalIncomeRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GetByID retrieves a capital income entry by its ID.
-func (r *CapitalIncomeRepository) GetByID(ctx context.Context, id int64) (*domain.CapitalIncomeEntry, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+capitalIncomeColumns+` FROM capital_income_entries WHERE id = ?`, id)
+// GetByID retrieves a capital income entry by its ID within the given company.
+func (r *CapitalIncomeRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.CapitalIncomeEntry, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+capitalIncomeColumns+` FROM capital_income_entries WHERE id = ? AND company_id = ?`, id, companyID)
 	entry, err := scanCapitalIncomeEntry(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -167,11 +167,11 @@ func (r *CapitalIncomeRepository) GetByID(ctx context.Context, id int64) (*domai
 	return entry, nil
 }
 
-// ListByYear retrieves all capital income entries for a given year, ordered by income_date.
-func (r *CapitalIncomeRepository) ListByYear(ctx context.Context, year int) ([]domain.CapitalIncomeEntry, error) {
+// ListByYear retrieves all capital income entries for a given year within the given company, ordered by income_date.
+func (r *CapitalIncomeRepository) ListByYear(ctx context.Context, companyID int64, year int) ([]domain.CapitalIncomeEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+capitalIncomeColumns+` FROM capital_income_entries WHERE year = ? ORDER BY income_date ASC, id ASC`,
-		year,
+		`SELECT `+capitalIncomeColumns+` FROM capital_income_entries WHERE company_id = ? AND year = ? ORDER BY income_date ASC, id ASC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing capital_income_entries for year %d: %w", year, err)
@@ -192,11 +192,11 @@ func (r *CapitalIncomeRepository) ListByYear(ctx context.Context, year int) ([]d
 	return result, nil
 }
 
-// ListByDocumentID retrieves all capital income entries for a given document ID.
-func (r *CapitalIncomeRepository) ListByDocumentID(ctx context.Context, documentID int64) ([]domain.CapitalIncomeEntry, error) {
+// ListByDocumentID retrieves all capital income entries for a given document ID within the given company.
+func (r *CapitalIncomeRepository) ListByDocumentID(ctx context.Context, companyID, documentID int64) ([]domain.CapitalIncomeEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+capitalIncomeColumns+` FROM capital_income_entries WHERE document_id = ? ORDER BY income_date ASC, id ASC`,
-		documentID,
+		`SELECT `+capitalIncomeColumns+` FROM capital_income_entries WHERE company_id = ? AND document_id = ? ORDER BY income_date ASC, id ASC`,
+		companyID, documentID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing capital_income_entries for document %d: %w", documentID, err)
@@ -218,13 +218,13 @@ func (r *CapitalIncomeRepository) ListByDocumentID(ctx context.Context, document
 }
 
 // SumByYear returns the sum of gross_amount, withheld taxes, and net_amount
-// for entries where needs_declaring = 1 in a given year.
-func (r *CapitalIncomeRepository) SumByYear(ctx context.Context, year int) (grossTotal, taxTotal, netTotal domain.Amount, err error) {
+// for entries where needs_declaring = 1 in a given year within the given company.
+func (r *CapitalIncomeRepository) SumByYear(ctx context.Context, companyID int64, year int) (grossTotal, taxTotal, netTotal domain.Amount, err error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(gross_amount), 0), COALESCE(SUM(withheld_tax_cz + withheld_tax_foreign), 0), COALESCE(SUM(net_amount), 0)
 		FROM capital_income_entries
-		WHERE year = ? AND needs_declaring = 1`,
-		year,
+		WHERE company_id = ? AND year = ? AND needs_declaring = 1`,
+		companyID, year,
 	)
 	if err = row.Scan(&grossTotal, &taxTotal, &netTotal); err != nil {
 		err = fmt.Errorf("summing capital_income_entries for year %d: %w", year, err)
@@ -233,9 +233,9 @@ func (r *CapitalIncomeRepository) SumByYear(ctx context.Context, year int) (gros
 	return
 }
 
-// DeleteByDocumentID removes all capital income entries for a given document ID.
-func (r *CapitalIncomeRepository) DeleteByDocumentID(ctx context.Context, documentID int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM capital_income_entries WHERE document_id = ?`, documentID)
+// DeleteByDocumentID removes all capital income entries for a given document ID within the given company.
+func (r *CapitalIncomeRepository) DeleteByDocumentID(ctx context.Context, companyID, documentID int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM capital_income_entries WHERE company_id = ? AND document_id = ?`, companyID, documentID)
 	if err != nil {
 		return fmt.Errorf("deleting capital_income_entries for document %d: %w", documentID, err)
 	}

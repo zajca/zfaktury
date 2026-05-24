@@ -27,6 +27,7 @@ func setupTaxCreditsRouter(t *testing.T) *chi.Mux {
 	h := NewTaxCreditsHandler(svc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/tax-credits", h.Routes())
 	return r
 }

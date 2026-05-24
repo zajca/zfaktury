@@ -45,14 +45,14 @@ func NewInvestmentExtractionService(
 	}
 }
 
-// ExtractFromDocument reads a broker statement, sends it through AI, and extracts
-// investment data (capital income entries and security transactions).
-func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, documentID int64) (*domain.InvestmentExtractionResult, error) {
+// ExtractFromDocument reads a broker statement within the given company, sends it through AI,
+// and extracts investment data (capital income entries and security transactions).
+func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, companyID, documentID int64) (*domain.InvestmentExtractionResult, error) {
 	if documentID == 0 {
 		return nil, fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	doc, err := s.docSvc.GetByID(ctx, documentID)
+	doc, err := s.docSvc.GetByID(ctx, companyID, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("getting document: %w", err)
 	}
@@ -61,7 +61,7 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 		return nil, fmt.Errorf("document content type %q is not supported for extraction; supported: image/jpeg, image/png, application/pdf", doc.ContentType)
 	}
 
-	filePath, contentType, err := s.docSvc.GetFilePath(ctx, documentID)
+	filePath, contentType, err := s.docSvc.GetFilePath(ctx, companyID, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("getting document file path: %w", err)
 	}
@@ -78,13 +78,13 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 	rawResponse, err := s.provider.ProcessWithPrompt(ctx, fileData, contentType, sysPrompt, usrPrompt)
 	if err != nil {
 		// Mark extraction as failed.
-		_ = s.docRepo.UpdateExtraction(ctx, documentID, domain.ExtractionFailed, err.Error())
+		_ = s.docRepo.UpdateExtraction(ctx, companyID, documentID, domain.ExtractionFailed, err.Error())
 		return nil, fmt.Errorf("AI processing failed: %w", err)
 	}
 
 	parsed, err := ocr.ParseInvestmentJSON(rawResponse)
 	if err != nil {
-		_ = s.docRepo.UpdateExtraction(ctx, documentID, domain.ExtractionFailed, err.Error())
+		_ = s.docRepo.UpdateExtraction(ctx, companyID, documentID, domain.ExtractionFailed, err.Error())
 		return nil, fmt.Errorf("parsing AI response: %w", err)
 	}
 
@@ -122,8 +122,8 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 			NetAmount:          domain.Amount(netAmount),
 		}
 
-		if err := s.capitalRepo.Create(ctx, capitalEntry); err != nil {
-			_ = s.docRepo.UpdateExtraction(ctx, documentID, domain.ExtractionFailed, fmt.Sprintf("creating capital entry: %v", err))
+		if err := s.capitalRepo.Create(ctx, companyID, capitalEntry); err != nil {
+			_ = s.docRepo.UpdateExtraction(ctx, companyID, documentID, domain.ExtractionFailed, fmt.Sprintf("creating capital entry: %v", err))
 			return nil, fmt.Errorf("creating capital income entry: %w", err)
 		}
 
@@ -155,8 +155,8 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 			ExchangeRate:    ocr.ExchangeRateToInt(tx.ExchangeRate),
 		}
 
-		if err := s.securityRepo.Create(ctx, secTx); err != nil {
-			_ = s.docRepo.UpdateExtraction(ctx, documentID, domain.ExtractionFailed, fmt.Sprintf("creating transaction: %v", err))
+		if err := s.securityRepo.Create(ctx, companyID, secTx); err != nil {
+			_ = s.docRepo.UpdateExtraction(ctx, companyID, documentID, domain.ExtractionFailed, fmt.Sprintf("creating transaction: %v", err))
 			return nil, fmt.Errorf("creating security transaction: %w", err)
 		}
 
@@ -164,7 +164,7 @@ func (s *InvestmentExtractionService) ExtractFromDocument(ctx context.Context, d
 	}
 
 	// Mark extraction as successful.
-	if err := s.docRepo.UpdateExtraction(ctx, documentID, domain.ExtractionExtracted, ""); err != nil {
+	if err := s.docRepo.UpdateExtraction(ctx, companyID, documentID, domain.ExtractionExtracted, ""); err != nil {
 		return nil, fmt.Errorf("updating document extraction status: %w", err)
 	}
 

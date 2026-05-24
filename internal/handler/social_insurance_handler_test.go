@@ -32,6 +32,7 @@ func setupSocialInsuranceRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	h := NewSocialInsuranceHandler(svc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/social-insurance", h.Routes())
 	return r, db
 }

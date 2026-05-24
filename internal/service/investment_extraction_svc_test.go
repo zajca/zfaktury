@@ -85,12 +85,12 @@ func TestInvestmentExtractionService_ExtractFromDocument_Success(t *testing.T) {
 
 	// Upload a document first.
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 1, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	result, err := extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	result, err := extractionSvc.ExtractFromDocument(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("ExtractFromDocument() error: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_Success(t *testing.T) {
 	}
 
 	// Verify document extraction status is updated.
-	updatedDoc, err := docSvc.GetByID(ctx, doc.ID)
+	updatedDoc, err := docSvc.GetByID(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("GetByID after extract: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_ZeroID(t *testing.T) {
 	extractionSvc, _, _, _ := newInvestmentExtractionTestService(t, provider)
 	ctx := context.Background()
 
-	_, err := extractionSvc.ExtractFromDocument(ctx, 0)
+	_, err := extractionSvc.ExtractFromDocument(ctx, 1, 0)
 	if err == nil {
 		t.Error("expected error for zero document ID")
 	}
@@ -143,7 +143,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_NotFound(t *testing.T) 
 	extractionSvc, _, _, _ := newInvestmentExtractionTestService(t, provider)
 	ctx := context.Background()
 
-	_, err := extractionSvc.ExtractFromDocument(ctx, 99999)
+	_, err := extractionSvc.ExtractFromDocument(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent document")
 	}
@@ -156,12 +156,12 @@ func TestInvestmentExtractionService_ExtractFromDocument_UnsupportedContentType(
 
 	// Upload a WebP image (not supported for extraction).
 	data := bytes.NewReader(webpMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "file.webp", "image/webp", data)
+	doc, err := docSvc.Upload(ctx, 1, 2025, domain.PlatformPortu, "file.webp", "image/webp", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	_, err = extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	_, err = extractionSvc.ExtractFromDocument(ctx, 1, doc.ID)
 	if err == nil {
 		t.Error("expected error for unsupported content type")
 	}
@@ -175,18 +175,18 @@ func TestInvestmentExtractionService_ExtractFromDocument_ProviderError(t *testin
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 1, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	_, err = extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	_, err = extractionSvc.ExtractFromDocument(ctx, 1, doc.ID)
 	if err == nil {
 		t.Error("expected error when provider fails")
 	}
 
 	// Verify extraction status is marked as failed.
-	updatedDoc, err := docSvc.GetByID(ctx, doc.ID)
+	updatedDoc, err := docSvc.GetByID(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -203,18 +203,18 @@ func TestInvestmentExtractionService_ExtractFromDocument_InvalidJSON(t *testing.
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 1, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	_, err = extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	_, err = extractionSvc.ExtractFromDocument(ctx, 1, doc.ID)
 	if err == nil {
 		t.Error("expected error for invalid JSON response")
 	}
 
 	// Verify extraction is marked failed.
-	updatedDoc, err := docSvc.GetByID(ctx, doc.ID)
+	updatedDoc, err := docSvc.GetByID(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -230,12 +230,12 @@ func TestInvestmentExtractionService_ExtractFromDocument_EmptyResult(t *testing.
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "empty.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 1, 2025, domain.PlatformPortu, "empty.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	result, err := extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	result, err := extractionSvc.ExtractFromDocument(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("ExtractFromDocument() error: %v", err)
 	}
@@ -257,12 +257,12 @@ func TestInvestmentExtractionService_ExtractFromDocument_PersistsEntries(t *test
 	ctx := context.Background()
 
 	data := bytes.NewReader(pdfMagic)
-	doc, err := docSvc.Upload(ctx, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
+	doc, err := docSvc.Upload(ctx, 1, 2025, domain.PlatformPortu, "statement.pdf", "application/pdf", data)
 	if err != nil {
 		t.Fatalf("Upload: %v", err)
 	}
 
-	result, err := extractionSvc.ExtractFromDocument(ctx, doc.ID)
+	result, err := extractionSvc.ExtractFromDocument(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("ExtractFromDocument: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_PersistsEntries(t *test
 	if len(result.CapitalEntries) == 0 {
 		t.Fatal("expected at least one capital entry")
 	}
-	capitalEntries, err := capitalRepo.ListByDocumentID(ctx, doc.ID)
+	capitalEntries, err := capitalRepo.ListByDocumentID(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("ListByDocumentID capital: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestInvestmentExtractionService_ExtractFromDocument_PersistsEntries(t *test
 	if len(result.Transactions) == 0 {
 		t.Fatal("expected at least one transaction")
 	}
-	secTxs, err := securityRepo.ListByDocumentID(ctx, doc.ID)
+	secTxs, err := securityRepo.ListByDocumentID(ctx, 1, doc.ID)
 	if err != nil {
 		t.Fatalf("ListByDocumentID security: %v", err)
 	}

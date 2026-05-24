@@ -49,16 +49,16 @@ func scanTaxDeduction(s scanner) (*domain.TaxDeduction, error) {
 	return d, nil
 }
 
-// Create inserts a new tax deduction into the database.
-func (r *TaxDeductionRepository) Create(ctx context.Context, ded *domain.TaxDeduction) error {
+// Create inserts a new tax deduction into the database scoped to the given company.
+func (r *TaxDeductionRepository) Create(ctx context.Context, companyID int64, ded *domain.TaxDeduction) error {
 	now := time.Now()
 	ded.CreatedAt = now
 	ded.UpdatedAt = now
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO tax_deductions (year, category, description, claimed_amount, max_amount, allowed_amount, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		ded.Year, ded.Category, ded.Description,
+		INSERT INTO tax_deductions (company_id, year, category, description, claimed_amount, max_amount, allowed_amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, ded.Year, ded.Category, ded.Description,
 		ded.ClaimedAmount, ded.MaxAmount, ded.AllowedAmount,
 		ded.CreatedAt.Format(time.RFC3339), ded.UpdatedAt.Format(time.RFC3339),
 	)
@@ -74,18 +74,18 @@ func (r *TaxDeductionRepository) Create(ctx context.Context, ded *domain.TaxDedu
 	return nil
 }
 
-// Update modifies an existing tax deduction.
-func (r *TaxDeductionRepository) Update(ctx context.Context, ded *domain.TaxDeduction) error {
+// Update modifies an existing tax deduction within the given company.
+func (r *TaxDeductionRepository) Update(ctx context.Context, companyID int64, ded *domain.TaxDeduction) error {
 	ded.UpdatedAt = time.Now()
 
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE tax_deductions SET
 			year = ?, category = ?, description = ?, claimed_amount = ?,
 			max_amount = ?, allowed_amount = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		ded.Year, ded.Category, ded.Description, ded.ClaimedAmount,
 		ded.MaxAmount, ded.AllowedAmount,
-		ded.UpdatedAt.Format(time.RFC3339), ded.ID,
+		ded.UpdatedAt.Format(time.RFC3339), ded.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating tax_deduction %d: %w", ded.ID, err)
@@ -100,9 +100,9 @@ func (r *TaxDeductionRepository) Update(ctx context.Context, ded *domain.TaxDedu
 	return nil
 }
 
-// Delete removes a tax deduction by ID.
-func (r *TaxDeductionRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM tax_deductions WHERE id = ?`, id)
+// Delete removes a tax deduction by ID within the given company.
+func (r *TaxDeductionRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM tax_deductions WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting tax_deduction %d: %w", id, err)
 	}
@@ -117,9 +117,9 @@ func (r *TaxDeductionRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GetByID retrieves a tax deduction by its ID.
-func (r *TaxDeductionRepository) GetByID(ctx context.Context, id int64) (*domain.TaxDeduction, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+taxDeductionColumns+` FROM tax_deductions WHERE id = ?`, id)
+// GetByID retrieves a tax deduction by its ID within the given company.
+func (r *TaxDeductionRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.TaxDeduction, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+taxDeductionColumns+` FROM tax_deductions WHERE id = ? AND company_id = ?`, id, companyID)
 	ded, err := scanTaxDeduction(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -130,11 +130,11 @@ func (r *TaxDeductionRepository) GetByID(ctx context.Context, id int64) (*domain
 	return ded, nil
 }
 
-// ListByYear retrieves all tax deductions for a given year, ordered by category and id.
-func (r *TaxDeductionRepository) ListByYear(ctx context.Context, year int) ([]domain.TaxDeduction, error) {
+// ListByYear retrieves all tax deductions for a given year within the given company, ordered by category and id.
+func (r *TaxDeductionRepository) ListByYear(ctx context.Context, companyID int64, year int) ([]domain.TaxDeduction, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+taxDeductionColumns+` FROM tax_deductions WHERE year = ? ORDER BY category, id`,
-		year,
+		`SELECT `+taxDeductionColumns+` FROM tax_deductions WHERE company_id = ? AND year = ? ORDER BY category, id`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing tax_deductions for year %d: %w", year, err)

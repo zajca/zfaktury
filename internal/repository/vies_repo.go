@@ -75,8 +75,8 @@ func scanVIESSummaryLine(s scanner) (*domain.VIESSummaryLine, error) {
 
 const viesSummaryCols = `id, year, quarter, filing_type, xml_data, status, filed_at, created_at, updated_at`
 
-// Create inserts a new VIES summary into the database.
-func (r *VIESSummaryRepository) Create(ctx context.Context, vs *domain.VIESSummary) error {
+// Create inserts a new VIES summary into the database scoped to the given company.
+func (r *VIESSummaryRepository) Create(ctx context.Context, companyID int64, vs *domain.VIESSummary) error {
 	now := time.Now()
 	vs.CreatedAt = now
 	vs.UpdatedAt = now
@@ -92,9 +92,10 @@ func (r *VIESSummaryRepository) Create(ctx context.Context, vs *domain.VIESSumma
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO vies_summaries (
-			year, quarter, filing_type, xml_data, status, filed_at,
+			company_id, year, quarter, filing_type, xml_data, status, filed_at,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID,
 		vs.Period.Year, vs.Period.Quarter, vs.FilingType,
 		vs.XMLData, vs.Status, filedAt,
 		vs.CreatedAt.Format(time.RFC3339), vs.UpdatedAt.Format(time.RFC3339),
@@ -111,8 +112,8 @@ func (r *VIESSummaryRepository) Create(ctx context.Context, vs *domain.VIESSumma
 	return nil
 }
 
-// Update updates an existing VIES summary.
-func (r *VIESSummaryRepository) Update(ctx context.Context, vs *domain.VIESSummary) error {
+// Update updates an existing VIES summary within the given company.
+func (r *VIESSummaryRepository) Update(ctx context.Context, companyID int64, vs *domain.VIESSummary) error {
 	vs.UpdatedAt = time.Now()
 
 	var filedAt any
@@ -125,10 +126,10 @@ func (r *VIESSummaryRepository) Update(ctx context.Context, vs *domain.VIESSumma
 			year = ?, quarter = ?, filing_type = ?,
 			xml_data = ?, status = ?, filed_at = ?,
 			updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		vs.Period.Year, vs.Period.Quarter, vs.FilingType,
 		vs.XMLData, vs.Status, filedAt,
-		vs.UpdatedAt.Format(time.RFC3339), vs.ID,
+		vs.UpdatedAt.Format(time.RFC3339), vs.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating VIES summary: %w", err)
@@ -136,9 +137,9 @@ func (r *VIESSummaryRepository) Update(ctx context.Context, vs *domain.VIESSumma
 	return nil
 }
 
-// Delete removes a VIES summary by ID.
-func (r *VIESSummaryRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM vies_summaries WHERE id = ?`, id)
+// Delete removes a VIES summary by ID within the given company.
+func (r *VIESSummaryRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM vies_summaries WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting VIES summary: %w", err)
 	}
@@ -152,10 +153,10 @@ func (r *VIESSummaryRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GetByID retrieves a VIES summary by ID.
-func (r *VIESSummaryRepository) GetByID(ctx context.Context, id int64) (*domain.VIESSummary, error) {
+// GetByID retrieves a VIES summary by ID within the given company.
+func (r *VIESSummaryRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.VIESSummary, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT `+viesSummaryCols+` FROM vies_summaries WHERE id = ?`, id,
+		`SELECT `+viesSummaryCols+` FROM vies_summaries WHERE id = ? AND company_id = ?`, id, companyID,
 	)
 	vs, err := scanVIESSummaryRow(row)
 	if err != nil {
@@ -167,10 +168,10 @@ func (r *VIESSummaryRepository) GetByID(ctx context.Context, id int64) (*domain.
 	return vs, nil
 }
 
-// List retrieves all VIES summaries for a given year.
-func (r *VIESSummaryRepository) List(ctx context.Context, year int) ([]domain.VIESSummary, error) {
+// List retrieves all VIES summaries for a given year within the given company.
+func (r *VIESSummaryRepository) List(ctx context.Context, companyID int64, year int) ([]domain.VIESSummary, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+viesSummaryCols+` FROM vies_summaries WHERE year = ? ORDER BY quarter ASC`, year,
+		`SELECT `+viesSummaryCols+` FROM vies_summaries WHERE company_id = ? AND year = ? ORDER BY quarter ASC`, companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing VIES summaries: %w", err)
@@ -191,11 +192,11 @@ func (r *VIESSummaryRepository) List(ctx context.Context, year int) ([]domain.VI
 	return result, nil
 }
 
-// GetByPeriod retrieves a VIES summary for a specific year, quarter, and filing type.
-func (r *VIESSummaryRepository) GetByPeriod(ctx context.Context, year, quarter int, filingType string) (*domain.VIESSummary, error) {
+// GetByPeriod retrieves a VIES summary for a specific year, quarter, and filing type within the given company.
+func (r *VIESSummaryRepository) GetByPeriod(ctx context.Context, companyID int64, year, quarter int, filingType string) (*domain.VIESSummary, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT `+viesSummaryCols+` FROM vies_summaries WHERE year = ? AND quarter = ? AND filing_type = ?`,
-		year, quarter, filingType,
+		`SELECT `+viesSummaryCols+` FROM vies_summaries WHERE company_id = ? AND year = ? AND quarter = ? AND filing_type = ?`,
+		companyID, year, quarter, filingType,
 	)
 	vs, err := scanVIESSummaryRow(row)
 	if err != nil {
@@ -207,13 +208,14 @@ func (r *VIESSummaryRepository) GetByPeriod(ctx context.Context, year, quarter i
 	return vs, nil
 }
 
-// CreateLines inserts multiple VIES summary lines.
-func (r *VIESSummaryRepository) CreateLines(ctx context.Context, lines []domain.VIESSummaryLine) error {
+// CreateLines inserts multiple VIES summary lines for the given company.
+func (r *VIESSummaryRepository) CreateLines(ctx context.Context, companyID int64, lines []domain.VIESSummaryLine) error {
 	for _, line := range lines {
 		result, err := r.db.ExecContext(ctx, `
 			INSERT INTO vies_summary_lines (
-				vies_summary_id, partner_dic, country_code, total_amount, service_code
-			) VALUES (?, ?, ?, ?, ?)`,
+				company_id, vies_summary_id, partner_dic, country_code, total_amount, service_code
+			) VALUES (?, ?, ?, ?, ?, ?)`,
+			companyID,
 			line.VIESSummaryID, line.PartnerDIC, line.CountryCode,
 			line.TotalAmount, line.ServiceCode,
 		)
@@ -228,21 +230,21 @@ func (r *VIESSummaryRepository) CreateLines(ctx context.Context, lines []domain.
 	return nil
 }
 
-// DeleteLines removes all lines for a given VIES summary.
-func (r *VIESSummaryRepository) DeleteLines(ctx context.Context, viesSummaryID int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM vies_summary_lines WHERE vies_summary_id = ?`, viesSummaryID)
+// DeleteLines removes all lines for a given VIES summary within the given company.
+func (r *VIESSummaryRepository) DeleteLines(ctx context.Context, companyID, viesSummaryID int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM vies_summary_lines WHERE vies_summary_id = ? AND company_id = ?`, viesSummaryID, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting VIES summary lines: %w", err)
 	}
 	return nil
 }
 
-// GetLines retrieves all lines for a given VIES summary.
-func (r *VIESSummaryRepository) GetLines(ctx context.Context, viesSummaryID int64) ([]domain.VIESSummaryLine, error) {
+// GetLines retrieves all lines for a given VIES summary within the given company.
+func (r *VIESSummaryRepository) GetLines(ctx context.Context, companyID, viesSummaryID int64) ([]domain.VIESSummaryLine, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, vies_summary_id, partner_dic, country_code, total_amount, service_code
-		FROM vies_summary_lines WHERE vies_summary_id = ? ORDER BY country_code, partner_dic`,
-		viesSummaryID,
+		FROM vies_summary_lines WHERE vies_summary_id = ? AND company_id = ? ORDER BY country_code, partner_dic`,
+		viesSummaryID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing VIES summary lines: %w", err)

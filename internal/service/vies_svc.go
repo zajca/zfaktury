@@ -11,11 +11,6 @@ import (
 	"github.com/zajca/zfaktury/internal/vatxml"
 )
 
-// viesFallbackCompanyID is a transitional shim — VIES summary service is not
-// yet company-scoped (T22 will thread companyID through it). Remove when this
-// service gains an explicit companyID.
-const viesFallbackCompanyID int64 = 1 // remove in T22
-
 // VIESSummaryService provides business logic for VIES summary management.
 type VIESSummaryService struct {
 	repo     repository.VIESSummaryRepo
@@ -39,8 +34,8 @@ func NewVIESSummaryService(
 	}
 }
 
-// Create validates and persists a new VIES summary.
-func (s *VIESSummaryService) Create(ctx context.Context, vs *domain.VIESSummary) error {
+// Create validates and persists a new VIES summary within the given company.
+func (s *VIESSummaryService) Create(ctx context.Context, companyID int64, vs *domain.VIESSummary) error {
 	if vs.Period.Year < 2000 || vs.Period.Year > 2100 {
 		return fmt.Errorf("creating VIES summary: %w: year out of valid range", domain.ErrInvalidInput)
 	}
@@ -58,7 +53,7 @@ func (s *VIESSummaryService) Create(ctx context.Context, vs *domain.VIESSummary)
 	}
 
 	// Check for duplicate period.
-	existing, err := s.repo.GetByPeriod(ctx, vs.Period.Year, vs.Period.Quarter, vs.FilingType)
+	existing, err := s.repo.GetByPeriod(ctx, companyID, vs.Period.Year, vs.Period.Quarter, vs.FilingType)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return fmt.Errorf("checking existing VIES summary: %w", err)
 	}
@@ -67,7 +62,7 @@ func (s *VIESSummaryService) Create(ctx context.Context, vs *domain.VIESSummary)
 	}
 
 	vs.Status = domain.FilingStatusDraft
-	if err := s.repo.Create(ctx, vs); err != nil {
+	if err := s.repo.Create(ctx, companyID, vs); err != nil {
 		return fmt.Errorf("creating VIES summary: %w", err)
 	}
 	if s.audit != nil {
@@ -76,36 +71,36 @@ func (s *VIESSummaryService) Create(ctx context.Context, vs *domain.VIESSummary)
 	return nil
 }
 
-// GetByID retrieves a VIES summary by ID.
-func (s *VIESSummaryService) GetByID(ctx context.Context, id int64) (*domain.VIESSummary, error) {
-	vs, err := s.repo.GetByID(ctx, id)
+// GetByID retrieves a VIES summary by ID within the given company.
+func (s *VIESSummaryService) GetByID(ctx context.Context, companyID, id int64) (*domain.VIESSummary, error) {
+	vs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching VIES summary: %w", err)
 	}
 	return vs, nil
 }
 
-// GetLines retrieves lines for a VIES summary.
-func (s *VIESSummaryService) GetLines(ctx context.Context, viesSummaryID int64) ([]domain.VIESSummaryLine, error) {
-	lines, err := s.repo.GetLines(ctx, viesSummaryID)
+// GetLines retrieves lines for a VIES summary within the given company.
+func (s *VIESSummaryService) GetLines(ctx context.Context, companyID, viesSummaryID int64) ([]domain.VIESSummaryLine, error) {
+	lines, err := s.repo.GetLines(ctx, companyID, viesSummaryID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching VIES summary lines: %w", err)
 	}
 	return lines, nil
 }
 
-// List retrieves all VIES summaries for a given year.
-func (s *VIESSummaryService) List(ctx context.Context, year int) ([]domain.VIESSummary, error) {
-	summaries, err := s.repo.List(ctx, year)
+// List retrieves all VIES summaries for a given year within the given company.
+func (s *VIESSummaryService) List(ctx context.Context, companyID int64, year int) ([]domain.VIESSummary, error) {
+	summaries, err := s.repo.List(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing VIES summaries: %w", err)
 	}
 	return summaries, nil
 }
 
-// Delete removes a VIES summary and its lines.
-func (s *VIESSummaryService) Delete(ctx context.Context, id int64) error {
-	vs, err := s.repo.GetByID(ctx, id)
+// Delete removes a VIES summary and its lines within the given company.
+func (s *VIESSummaryService) Delete(ctx context.Context, companyID, id int64) error {
+	vs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for deletion: %w", err)
 	}
@@ -113,10 +108,10 @@ func (s *VIESSummaryService) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("deleting VIES summary: %w: cannot delete a filed summary", domain.ErrInvalidInput)
 	}
 
-	if err := s.repo.DeleteLines(ctx, id); err != nil {
+	if err := s.repo.DeleteLines(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting VIES summary lines: %w", err)
 	}
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting VIES summary: %w", err)
 	}
 	if s.audit != nil {
@@ -133,12 +128,12 @@ func quarterDateRange(year, quarter int) (time.Time, time.Time) {
 	return start, end
 }
 
-// Recalculate recomputes lines for a VIES summary from invoice data.
+// Recalculate recomputes lines for a VIES summary from invoice data within the given company.
 // It finds all sent/paid/overdue invoices in the quarter, identifies EU partners,
 // groups by partner DIC, and sums base amounts (SubtotalAmount, no VAT for intra-EU).
 // Credit notes reduce amounts.
-func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
-	vs, err := s.repo.GetByID(ctx, id)
+func (s *VIESSummaryService) Recalculate(ctx context.Context, companyID, id int64) error {
+	vs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for recalculation: %w", err)
 	}
@@ -158,7 +153,7 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 		Offset:   0,
 	}
 
-	invoices, _, err := s.invoices.List(ctx, viesFallbackCompanyID, filter)
+	invoices, _, err := s.invoices.List(ctx, companyID, filter)
 	if err != nil {
 		return fmt.Errorf("listing invoices for VIES recalculation: %w", err)
 	}
@@ -187,7 +182,7 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 		}
 
 		// Load customer to check if EU partner.
-		customer, err := s.contacts.GetByID(ctx, viesFallbackCompanyID, inv.CustomerID)
+		customer, err := s.contacts.GetByID(ctx, companyID, inv.CustomerID)
 		if err != nil {
 			return fmt.Errorf("fetching customer %d: %w", inv.CustomerID, err)
 		}
@@ -231,11 +226,11 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 	}
 
 	// Replace old lines with new ones.
-	if err := s.repo.DeleteLines(ctx, id); err != nil {
+	if err := s.repo.DeleteLines(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting old VIES summary lines: %w", err)
 	}
 	if len(lines) > 0 {
-		if err := s.repo.CreateLines(ctx, lines); err != nil {
+		if err := s.repo.CreateLines(ctx, companyID, lines); err != nil {
 			return fmt.Errorf("creating new VIES summary lines: %w", err)
 		}
 	}
@@ -246,14 +241,14 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GenerateXML generates the EPO XML for a VIES summary and stores it.
-func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic string) error {
-	vs, err := s.repo.GetByID(ctx, id)
+// GenerateXML generates the EPO XML for a VIES summary and stores it within the given company.
+func (s *VIESSummaryService) GenerateXML(ctx context.Context, companyID, id int64, dic string) error {
+	vs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for XML generation: %w", err)
 	}
 
-	lines, err := s.repo.GetLines(ctx, id)
+	lines, err := s.repo.GetLines(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary lines for XML generation: %w", err)
 	}
@@ -265,7 +260,7 @@ func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic stri
 	}
 
 	vs.XMLData = xmlData
-	if err := s.repo.Update(ctx, vs); err != nil {
+	if err := s.repo.Update(ctx, companyID, vs); err != nil {
 		return fmt.Errorf("storing VIES XML data: %w", err)
 	}
 
@@ -275,9 +270,9 @@ func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic stri
 	return nil
 }
 
-// MarkFiled marks a VIES summary as filed.
-func (s *VIESSummaryService) MarkFiled(ctx context.Context, id int64) error {
-	vs, err := s.repo.GetByID(ctx, id)
+// MarkFiled marks a VIES summary as filed within the given company.
+func (s *VIESSummaryService) MarkFiled(ctx context.Context, companyID, id int64) error {
+	vs, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for filing: %w", err)
 	}
@@ -290,7 +285,7 @@ func (s *VIESSummaryService) MarkFiled(ctx context.Context, id int64) error {
 	vs.Status = domain.FilingStatusFiled
 	vs.FiledAt = &now
 
-	if err := s.repo.Update(ctx, vs); err != nil {
+	if err := s.repo.Update(ctx, companyID, vs); err != nil {
 		return fmt.Errorf("updating VIES summary status: %w", err)
 	}
 	if s.audit != nil {

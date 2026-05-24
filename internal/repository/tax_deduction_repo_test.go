@@ -23,7 +23,7 @@ func TestTaxDeductionRepository_Create(t *testing.T) {
 		AllowedAmount: domain.NewAmount(150000, 0),
 	}
 
-	if err := repo.Create(ctx, ded); err != nil {
+	if err := repo.Create(ctx, 1, ded); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -51,11 +51,11 @@ func TestTaxDeductionRepository_GetByID(t *testing.T) {
 		MaxAmount:     domain.NewAmount(24000, 0),
 		AllowedAmount: domain.NewAmount(24000, 0),
 	}
-	if err := repo.Create(ctx, ded); err != nil {
+	if err := repo.Create(ctx, 1, ded); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, ded.ID)
+	got, err := repo.GetByID(ctx, 1, ded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestTaxDeductionRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewTaxDeductionRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent ID")
 	}
@@ -110,7 +110,7 @@ func TestTaxDeductionRepository_Update(t *testing.T) {
 		MaxAmount:     domain.NewAmount(24000, 0),
 		AllowedAmount: domain.NewAmount(12000, 0),
 	}
-	if err := repo.Create(ctx, ded); err != nil {
+	if err := repo.Create(ctx, 1, ded); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -118,11 +118,11 @@ func TestTaxDeductionRepository_Update(t *testing.T) {
 	ded.ClaimedAmount = domain.NewAmount(20000, 0)
 	ded.AllowedAmount = domain.NewAmount(20000, 0)
 
-	if err := repo.Update(ctx, ded); err != nil {
+	if err := repo.Update(ctx, 1, ded); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, ded.ID)
+	got, err := repo.GetByID(ctx, 1, ded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() after update error: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestTaxDeductionRepository_Update_NotFound(t *testing.T) {
 		AllowedAmount: domain.NewAmount(1000, 0),
 	}
 
-	err := repo.Update(ctx, ded)
+	err := repo.Update(ctx, 1, ded)
 	if err == nil {
 		t.Error("expected error for non-existent update")
 	}
@@ -174,15 +174,15 @@ func TestTaxDeductionRepository_Delete(t *testing.T) {
 		MaxAmount:     domain.NewAmount(5000, 0),
 		AllowedAmount: domain.NewAmount(3000, 0),
 	}
-	if err := repo.Create(ctx, ded); err != nil {
+	if err := repo.Create(ctx, 1, ded); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if err := repo.Delete(ctx, ded.ID); err != nil {
+	if err := repo.Delete(ctx, 1, ded.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, ded.ID)
+	_, err := repo.GetByID(ctx, 1, ded.ID)
 	if err == nil {
 		t.Error("expected error after delete")
 	}
@@ -196,7 +196,7 @@ func TestTaxDeductionRepository_Delete_NotFound(t *testing.T) {
 	repo := NewTaxDeductionRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent delete")
 	}
@@ -217,7 +217,7 @@ func TestTaxDeductionRepository_ListByYear(t *testing.T) {
 		{Year: 2025, Category: domain.DeductionDonation, Description: "Dar nemocnici", ClaimedAmount: domain.NewAmount(5000, 0), MaxAmount: domain.NewAmount(50000, 0), AllowedAmount: domain.NewAmount(5000, 0)},
 	}
 	for i := range deductions {
-		if err := repo.Create(ctx, &deductions[i]); err != nil {
+		if err := repo.Create(ctx, 1, &deductions[i]); err != nil {
 			t.Fatalf("Create() deduction %d error: %v", i+1, err)
 		}
 	}
@@ -227,12 +227,12 @@ func TestTaxDeductionRepository_ListByYear(t *testing.T) {
 		Year: 2024, Category: domain.DeductionMortgage, Description: "Uroky 2024",
 		ClaimedAmount: domain.NewAmount(80000, 0), MaxAmount: domain.NewAmount(300000, 0), AllowedAmount: domain.NewAmount(80000, 0),
 	}
-	if err := repo.Create(ctx, otherYear); err != nil {
+	if err := repo.Create(ctx, 1, otherYear); err != nil {
 		t.Fatalf("Create() other year error: %v", err)
 	}
 
 	// List for 2025 should return 3 deductions ordered by category, id.
-	result, err := repo.ListByYear(ctx, 2025)
+	result, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear(2025) error: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestTaxDeductionRepository_ListByYear(t *testing.T) {
 	}
 
 	// List for 2024 should return 1.
-	result2024, err := repo.ListByYear(ctx, 2024)
+	result2024, err := repo.ListByYear(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("ListByYear(2024) error: %v", err)
 	}
@@ -261,7 +261,7 @@ func TestTaxDeductionRepository_ListByYear(t *testing.T) {
 	}
 
 	// List for non-existent year should return empty slice.
-	resultEmpty, err := repo.ListByYear(ctx, 2099)
+	resultEmpty, err := repo.ListByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("ListByYear(2099) error: %v", err)
 	}

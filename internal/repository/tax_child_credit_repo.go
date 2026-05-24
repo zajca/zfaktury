@@ -9,6 +9,7 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
+
 // TaxChildCreditRepository handles persistence of TaxChildCredit entities.
 type TaxChildCreditRepository struct {
 	db *sql.DB
@@ -51,8 +52,8 @@ func scanTaxChildCredit(s scanner) (*domain.TaxChildCredit, error) {
 	return c, nil
 }
 
-// Create inserts a new child credit into the database.
-func (r *TaxChildCreditRepository) Create(ctx context.Context, credit *domain.TaxChildCredit) error {
+// Create inserts a new child credit into the database scoped to the given company.
+func (r *TaxChildCreditRepository) Create(ctx context.Context, companyID int64, credit *domain.TaxChildCredit) error {
 	now := time.Now()
 	credit.CreatedAt = now
 	credit.UpdatedAt = now
@@ -63,9 +64,9 @@ func (r *TaxChildCreditRepository) Create(ctx context.Context, credit *domain.Ta
 	}
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO tax_child_credits (year, child_name, birth_number, child_order, months_claimed, ztp, credit_amount, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		credit.Year, credit.ChildName, credit.BirthNumber,
+		INSERT INTO tax_child_credits (company_id, year, child_name, birth_number, child_order, months_claimed, ztp, credit_amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, credit.Year, credit.ChildName, credit.BirthNumber,
 		credit.ChildOrder, credit.MonthsClaimed, ztp, credit.CreditAmount,
 		credit.CreatedAt.Format(time.RFC3339), credit.UpdatedAt.Format(time.RFC3339),
 	)
@@ -81,8 +82,8 @@ func (r *TaxChildCreditRepository) Create(ctx context.Context, credit *domain.Ta
 	return nil
 }
 
-// Update modifies an existing child credit.
-func (r *TaxChildCreditRepository) Update(ctx context.Context, credit *domain.TaxChildCredit) error {
+// Update modifies an existing child credit within the given company.
+func (r *TaxChildCreditRepository) Update(ctx context.Context, companyID int64, credit *domain.TaxChildCredit) error {
 	credit.UpdatedAt = time.Now()
 
 	var ztp int
@@ -94,10 +95,10 @@ func (r *TaxChildCreditRepository) Update(ctx context.Context, credit *domain.Ta
 		UPDATE tax_child_credits SET
 			year = ?, child_name = ?, birth_number = ?, child_order = ?,
 			months_claimed = ?, ztp = ?, credit_amount = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		credit.Year, credit.ChildName, credit.BirthNumber, credit.ChildOrder,
 		credit.MonthsClaimed, ztp, credit.CreditAmount,
-		credit.UpdatedAt.Format(time.RFC3339), credit.ID,
+		credit.UpdatedAt.Format(time.RFC3339), credit.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating tax_child_credit %d: %w", credit.ID, err)
@@ -112,9 +113,9 @@ func (r *TaxChildCreditRepository) Update(ctx context.Context, credit *domain.Ta
 	return nil
 }
 
-// Delete removes a child credit by ID.
-func (r *TaxChildCreditRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM tax_child_credits WHERE id = ?`, id)
+// Delete removes a child credit by ID within the given company.
+func (r *TaxChildCreditRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM tax_child_credits WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting tax_child_credit %d: %w", id, err)
 	}
@@ -129,11 +130,11 @@ func (r *TaxChildCreditRepository) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListByYear retrieves all child credits for a given year, ordered by child_order.
-func (r *TaxChildCreditRepository) ListByYear(ctx context.Context, year int) ([]domain.TaxChildCredit, error) {
+// ListByYear retrieves all child credits for a given year within the given company, ordered by child_order.
+func (r *TaxChildCreditRepository) ListByYear(ctx context.Context, companyID int64, year int) ([]domain.TaxChildCredit, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+taxChildCreditColumns+` FROM tax_child_credits WHERE year = ? ORDER BY child_order`,
-		year,
+		`SELECT `+taxChildCreditColumns+` FROM tax_child_credits WHERE company_id = ? AND year = ? ORDER BY child_order`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing tax_child_credits for year %d: %w", year, err)
@@ -153,3 +154,4 @@ func (r *TaxChildCreditRepository) ListByYear(ctx context.Context, year int) ([]
 	}
 	return result, nil
 }
+

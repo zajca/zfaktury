@@ -32,6 +32,7 @@ func setupIncomeTaxRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	h := NewIncomeTaxHandler(svc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/income-tax-returns", h.Routes())
 	return r, db
 }

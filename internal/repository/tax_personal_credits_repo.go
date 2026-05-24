@@ -52,8 +52,8 @@ func scanTaxPersonalCredits(s scanner) (*domain.TaxPersonalCredits, error) {
 	return c, nil
 }
 
-// Upsert inserts or replaces the personal credits for a given year.
-func (r *TaxPersonalCreditsRepository) Upsert(ctx context.Context, credits *domain.TaxPersonalCredits) error {
+// Upsert inserts or replaces the personal credits for a given year within the given company.
+func (r *TaxPersonalCreditsRepository) Upsert(ctx context.Context, companyID int64, credits *domain.TaxPersonalCredits) error {
 	now := time.Now()
 	credits.CreatedAt = now
 	credits.UpdatedAt = now
@@ -64,9 +64,9 @@ func (r *TaxPersonalCreditsRepository) Upsert(ctx context.Context, credits *doma
 	}
 
 	_, err := r.db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO tax_personal_credits (year, is_student, student_months, disability_level, credit_student, credit_disability, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		credits.Year, isStudent, credits.StudentMonths, credits.DisabilityLevel,
+		INSERT OR REPLACE INTO tax_personal_credits (company_id, year, is_student, student_months, disability_level, credit_student, credit_disability, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, credits.Year, isStudent, credits.StudentMonths, credits.DisabilityLevel,
 		credits.CreditStudent, credits.CreditDisability,
 		credits.CreatedAt.Format(time.RFC3339), credits.UpdatedAt.Format(time.RFC3339),
 	)
@@ -76,9 +76,9 @@ func (r *TaxPersonalCreditsRepository) Upsert(ctx context.Context, credits *doma
 	return nil
 }
 
-// GetByYear retrieves the personal credits for a given year.
-func (r *TaxPersonalCreditsRepository) GetByYear(ctx context.Context, year int) (*domain.TaxPersonalCredits, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+taxPersonalCreditsColumns+` FROM tax_personal_credits WHERE year = ?`, year)
+// GetByYear retrieves the personal credits for a given year within the given company.
+func (r *TaxPersonalCreditsRepository) GetByYear(ctx context.Context, companyID int64, year int) (*domain.TaxPersonalCredits, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+taxPersonalCreditsColumns+` FROM tax_personal_credits WHERE company_id = ? AND year = ?`, companyID, year)
 	credits, err := scanTaxPersonalCredits(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

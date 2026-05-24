@@ -38,8 +38,8 @@ func NewTaxCreditsService(
 
 // --- Spouse credit CRUD ---
 
-// UpsertSpouse validates and persists a spouse credit for the given year.
-func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.TaxSpouseCredit) error {
+// UpsertSpouse validates and persists a spouse credit for the given year within the given company.
+func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, companyID int64, credit *domain.TaxSpouseCredit) error {
 	if credit.Year < 2000 || credit.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -54,9 +54,9 @@ func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.Tax
 	}
 	var existing *domain.TaxSpouseCredit
 	if s.audit != nil {
-		existing, _ = s.spouseRepo.GetByYear(ctx, credit.Year)
+		existing, _ = s.spouseRepo.GetByYear(ctx, companyID, credit.Year)
 	}
-	if err := s.spouseRepo.Upsert(ctx, credit); err != nil {
+	if err := s.spouseRepo.Upsert(ctx, companyID, credit); err != nil {
 		return fmt.Errorf("upserting spouse credit: %w", err)
 	}
 	if s.audit != nil {
@@ -69,18 +69,18 @@ func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.Tax
 	return nil
 }
 
-// GetSpouse retrieves the spouse credit for a given year.
-func (s *TaxCreditsService) GetSpouse(ctx context.Context, year int) (*domain.TaxSpouseCredit, error) {
-	credit, err := s.spouseRepo.GetByYear(ctx, year)
+// GetSpouse retrieves the spouse credit for a given year within the given company.
+func (s *TaxCreditsService) GetSpouse(ctx context.Context, companyID int64, year int) (*domain.TaxSpouseCredit, error) {
+	credit, err := s.spouseRepo.GetByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching spouse credit: %w", err)
 	}
 	return credit, nil
 }
 
-// DeleteSpouse removes the spouse credit for a given year.
-func (s *TaxCreditsService) DeleteSpouse(ctx context.Context, year int) error {
-	if err := s.spouseRepo.DeleteByYear(ctx, year); err != nil {
+// DeleteSpouse removes the spouse credit for a given year within the given company.
+func (s *TaxCreditsService) DeleteSpouse(ctx context.Context, companyID int64, year int) error {
+	if err := s.spouseRepo.DeleteByYear(ctx, companyID, year); err != nil {
 		return fmt.Errorf("deleting spouse credit: %w", err)
 	}
 	if s.audit != nil {
@@ -91,8 +91,8 @@ func (s *TaxCreditsService) DeleteSpouse(ctx context.Context, year int) error {
 
 // --- Child credit CRUD ---
 
-// CreateChild validates and persists a new child credit entry.
-func (s *TaxCreditsService) CreateChild(ctx context.Context, credit *domain.TaxChildCredit) error {
+// CreateChild validates and persists a new child credit entry within the given company.
+func (s *TaxCreditsService) CreateChild(ctx context.Context, companyID int64, credit *domain.TaxChildCredit) error {
 	if credit.Year < 2000 || credit.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -102,7 +102,7 @@ func (s *TaxCreditsService) CreateChild(ctx context.Context, credit *domain.TaxC
 	if credit.MonthsClaimed < 1 || credit.MonthsClaimed > 12 {
 		return fmt.Errorf("months claimed must be 1-12: %w", domain.ErrInvalidInput)
 	}
-	if err := s.childRepo.Create(ctx, credit); err != nil {
+	if err := s.childRepo.Create(ctx, companyID, credit); err != nil {
 		return fmt.Errorf("creating child credit: %w", err)
 	}
 	if s.audit != nil {
@@ -111,8 +111,8 @@ func (s *TaxCreditsService) CreateChild(ctx context.Context, credit *domain.TaxC
 	return nil
 }
 
-// UpdateChild validates and updates an existing child credit entry.
-func (s *TaxCreditsService) UpdateChild(ctx context.Context, credit *domain.TaxChildCredit) error {
+// UpdateChild validates and updates an existing child credit entry within the given company.
+func (s *TaxCreditsService) UpdateChild(ctx context.Context, companyID int64, credit *domain.TaxChildCredit) error {
 	if credit.Year < 2000 || credit.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -124,7 +124,7 @@ func (s *TaxCreditsService) UpdateChild(ctx context.Context, credit *domain.TaxC
 	}
 	var existing *domain.TaxChildCredit
 	if s.audit != nil {
-		children, _ := s.childRepo.ListByYear(ctx, credit.Year)
+		children, _ := s.childRepo.ListByYear(ctx, companyID, credit.Year)
 		for i := range children {
 			if children[i].ID == credit.ID {
 				existing = &children[i]
@@ -132,7 +132,7 @@ func (s *TaxCreditsService) UpdateChild(ctx context.Context, credit *domain.TaxC
 			}
 		}
 	}
-	if err := s.childRepo.Update(ctx, credit); err != nil {
+	if err := s.childRepo.Update(ctx, companyID, credit); err != nil {
 		return fmt.Errorf("updating child credit: %w", err)
 	}
 	if s.audit != nil {
@@ -141,9 +141,9 @@ func (s *TaxCreditsService) UpdateChild(ctx context.Context, credit *domain.TaxC
 	return nil
 }
 
-// DeleteChild removes a child credit entry by ID.
-func (s *TaxCreditsService) DeleteChild(ctx context.Context, id int64) error {
-	if err := s.childRepo.Delete(ctx, id); err != nil {
+// DeleteChild removes a child credit entry by ID within the given company.
+func (s *TaxCreditsService) DeleteChild(ctx context.Context, companyID, id int64) error {
+	if err := s.childRepo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting child credit: %w", err)
 	}
 	if s.audit != nil {
@@ -152,9 +152,9 @@ func (s *TaxCreditsService) DeleteChild(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListChildren retrieves all child credit entries for a given year.
-func (s *TaxCreditsService) ListChildren(ctx context.Context, year int) ([]domain.TaxChildCredit, error) {
-	children, err := s.childRepo.ListByYear(ctx, year)
+// ListChildren retrieves all child credit entries for a given year within the given company.
+func (s *TaxCreditsService) ListChildren(ctx context.Context, companyID int64, year int) ([]domain.TaxChildCredit, error) {
+	children, err := s.childRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing child credits: %w", err)
 	}
@@ -163,8 +163,8 @@ func (s *TaxCreditsService) ListChildren(ctx context.Context, year int) ([]domai
 
 // --- Personal credits CRUD ---
 
-// UpsertPersonal validates and persists personal credits for the given year.
-func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.TaxPersonalCredits) error {
+// UpsertPersonal validates and persists personal credits for the given year within the given company.
+func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, companyID int64, credits *domain.TaxPersonalCredits) error {
 	if credits.Year < 2000 || credits.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -176,9 +176,9 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 	}
 	var existing *domain.TaxPersonalCredits
 	if s.audit != nil {
-		existing, _ = s.personalRepo.GetByYear(ctx, credits.Year)
+		existing, _ = s.personalRepo.GetByYear(ctx, companyID, credits.Year)
 	}
-	if err := s.personalRepo.Upsert(ctx, credits); err != nil {
+	if err := s.personalRepo.Upsert(ctx, companyID, credits); err != nil {
 		return fmt.Errorf("upserting personal credits: %w", err)
 	}
 	if s.audit != nil {
@@ -191,9 +191,9 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 	return nil
 }
 
-// GetPersonal retrieves personal credits for a given year.
-func (s *TaxCreditsService) GetPersonal(ctx context.Context, year int) (*domain.TaxPersonalCredits, error) {
-	credits, err := s.personalRepo.GetByYear(ctx, year)
+// GetPersonal retrieves personal credits for a given year within the given company.
+func (s *TaxCreditsService) GetPersonal(ctx context.Context, companyID int64, year int) (*domain.TaxPersonalCredits, error) {
+	credits, err := s.personalRepo.GetByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching personal credits: %w", err)
 	}
@@ -211,8 +211,8 @@ var validDeductionCategories = map[string]bool{
 	domain.DeductionUnionDues:     true,
 }
 
-// CreateDeduction validates and persists a new deduction entry.
-func (s *TaxCreditsService) CreateDeduction(ctx context.Context, ded *domain.TaxDeduction) error {
+// CreateDeduction validates and persists a new deduction entry within the given company.
+func (s *TaxCreditsService) CreateDeduction(ctx context.Context, companyID int64, ded *domain.TaxDeduction) error {
 	if ded.Year < 2000 || ded.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -222,7 +222,7 @@ func (s *TaxCreditsService) CreateDeduction(ctx context.Context, ded *domain.Tax
 	if ded.ClaimedAmount < 0 || ded.ClaimedAmount > domain.NewAmount(100_000_000, 0) {
 		return fmt.Errorf("claimed amount out of valid range: %w", domain.ErrInvalidInput)
 	}
-	if err := s.deductionRepo.Create(ctx, ded); err != nil {
+	if err := s.deductionRepo.Create(ctx, companyID, ded); err != nil {
 		return fmt.Errorf("creating deduction: %w", err)
 	}
 	if s.audit != nil {
@@ -231,8 +231,8 @@ func (s *TaxCreditsService) CreateDeduction(ctx context.Context, ded *domain.Tax
 	return nil
 }
 
-// UpdateDeduction validates and updates an existing deduction entry.
-func (s *TaxCreditsService) UpdateDeduction(ctx context.Context, ded *domain.TaxDeduction) error {
+// UpdateDeduction validates and updates an existing deduction entry within the given company.
+func (s *TaxCreditsService) UpdateDeduction(ctx context.Context, companyID int64, ded *domain.TaxDeduction) error {
 	if ded.Year < 2000 || ded.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -244,9 +244,9 @@ func (s *TaxCreditsService) UpdateDeduction(ctx context.Context, ded *domain.Tax
 	}
 	var existing *domain.TaxDeduction
 	if s.audit != nil {
-		existing, _ = s.deductionRepo.GetByID(ctx, ded.ID)
+		existing, _ = s.deductionRepo.GetByID(ctx, companyID, ded.ID)
 	}
-	if err := s.deductionRepo.Update(ctx, ded); err != nil {
+	if err := s.deductionRepo.Update(ctx, companyID, ded); err != nil {
 		return fmt.Errorf("updating deduction: %w", err)
 	}
 	if s.audit != nil {
@@ -255,9 +255,9 @@ func (s *TaxCreditsService) UpdateDeduction(ctx context.Context, ded *domain.Tax
 	return nil
 }
 
-// DeleteDeduction removes a deduction entry by ID.
-func (s *TaxCreditsService) DeleteDeduction(ctx context.Context, id int64) error {
-	if err := s.deductionRepo.Delete(ctx, id); err != nil {
+// DeleteDeduction removes a deduction entry by ID within the given company.
+func (s *TaxCreditsService) DeleteDeduction(ctx context.Context, companyID, id int64) error {
+	if err := s.deductionRepo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting deduction: %w", err)
 	}
 	if s.audit != nil {
@@ -266,18 +266,18 @@ func (s *TaxCreditsService) DeleteDeduction(ctx context.Context, id int64) error
 	return nil
 }
 
-// GetDeduction retrieves a deduction entry by ID.
-func (s *TaxCreditsService) GetDeduction(ctx context.Context, id int64) (*domain.TaxDeduction, error) {
-	ded, err := s.deductionRepo.GetByID(ctx, id)
+// GetDeduction retrieves a deduction entry by ID within the given company.
+func (s *TaxCreditsService) GetDeduction(ctx context.Context, companyID, id int64) (*domain.TaxDeduction, error) {
+	ded, err := s.deductionRepo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching deduction: %w", err)
 	}
 	return ded, nil
 }
 
-// ListDeductions retrieves all deduction entries for a given year.
-func (s *TaxCreditsService) ListDeductions(ctx context.Context, year int) ([]domain.TaxDeduction, error) {
-	deductions, err := s.deductionRepo.ListByYear(ctx, year)
+// ListDeductions retrieves all deduction entries for a given year within the given company.
+func (s *TaxCreditsService) ListDeductions(ctx context.Context, companyID int64, year int) ([]domain.TaxDeduction, error) {
+	deductions, err := s.deductionRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing deductions: %w", err)
 	}
@@ -286,16 +286,16 @@ func (s *TaxCreditsService) ListDeductions(ctx context.Context, year int) ([]dom
 
 // --- Computation methods ---
 
-// ComputeCredits computes the spouse, disability, and student credit amounts for the given year.
-// Returns zero amounts for credits that have no data (ErrNotFound).
-func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spouseCredit, disabilityCredit, studentCredit domain.Amount, err error) {
+// ComputeCredits computes the spouse, disability, and student credit amounts for the given year
+// within the given company. Returns zero amounts for credits that have no data (ErrNotFound).
+func (s *TaxCreditsService) ComputeCredits(ctx context.Context, companyID int64, year int) (spouseCredit, disabilityCredit, studentCredit domain.Amount, err error) {
 	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("getting tax constants for credits: %w", err)
 	}
 
 	// Spouse credit.
-	spouse, err := s.spouseRepo.GetByYear(ctx, year)
+	spouse, err := s.spouseRepo.GetByYear(ctx, companyID, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return 0, 0, 0, fmt.Errorf("fetching spouse credit for compute: %w", err)
 	}
@@ -304,7 +304,7 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 	}
 
 	// Personal credits (student + disability).
-	personal, err := s.personalRepo.GetByYear(ctx, year)
+	personal, err := s.personalRepo.GetByYear(ctx, companyID, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return 0, 0, 0, fmt.Errorf("fetching personal credits for compute: %w", err)
 	}
@@ -315,14 +315,14 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 	return spouseCredit, disabilityCredit, studentCredit, nil
 }
 
-// ComputeChildBenefit computes the total child benefit amount for the given year.
-func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, year int) (domain.Amount, error) {
+// ComputeChildBenefit computes the total child benefit amount for the given year within the given company.
+func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, companyID int64, year int) (domain.Amount, error) {
 	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return 0, fmt.Errorf("getting tax constants for child benefit: %w", err)
 	}
 
-	children, err := s.childRepo.ListByYear(ctx, year)
+	children, err := s.childRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return 0, fmt.Errorf("listing children for benefit compute: %w", err)
 	}
@@ -340,16 +340,16 @@ func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, year int) (
 	return calc.ComputeChildBenefit(calcChildren, constants), nil
 }
 
-// ComputeDeductions computes allowed deduction amounts for the given year,
+// ComputeDeductions computes allowed deduction amounts for the given year within the given company,
 // applying statutory caps per category. Updates each deduction's MaxAmount and
 // AllowedAmount via the repository.
-func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, taxBase domain.Amount) (domain.Amount, error) {
+func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, companyID int64, year int, taxBase domain.Amount) (domain.Amount, error) {
 	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
 		return 0, fmt.Errorf("getting tax constants for deductions: %w", err)
 	}
 
-	deductions, err := s.deductionRepo.ListByYear(ctx, year)
+	deductions, err := s.deductionRepo.ListByYear(ctx, companyID, year)
 	if err != nil {
 		return 0, fmt.Errorf("listing deductions for compute: %w", err)
 	}
@@ -380,7 +380,7 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 		ded.MaxAmount = categoryCaps[ded.Category]
 		ded.AllowedAmount = result.AllowedAmounts[i]
 
-		if err := s.deductionRepo.Update(ctx, ded); err != nil {
+		if err := s.deductionRepo.Update(ctx, companyID, ded); err != nil {
 			return 0, fmt.Errorf("updating deduction %d after compute: %w", ded.ID, err)
 		}
 	}
@@ -388,16 +388,16 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 	return result.TotalAllowed, nil
 }
 
-// CopyFromYear copies credits and deductions from sourceYear to targetYear.
+// CopyFromYear copies credits and deductions from sourceYear to targetYear within the given company.
 // Skips if the target year already has data. Copied entries have zero computed amounts.
-func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, targetYear int) error {
+func (s *TaxCreditsService) CopyFromYear(ctx context.Context, companyID int64, sourceYear, targetYear int) error {
 	if sourceYear == targetYear {
 		return fmt.Errorf("source and target year must differ: %w", domain.ErrInvalidInput)
 	}
 
 	// Check if target already has data -- skip each entity type independently.
 	spouseCopied := false
-	existingSpouse, err := s.spouseRepo.GetByYear(ctx, targetYear)
+	existingSpouse, err := s.spouseRepo.GetByYear(ctx, companyID, targetYear)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return fmt.Errorf("checking existing spouse credit for copy: %w", err)
 	}
@@ -406,7 +406,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 	}
 
 	childrenCopied := false
-	existingChildren, err := s.childRepo.ListByYear(ctx, targetYear)
+	existingChildren, err := s.childRepo.ListByYear(ctx, companyID, targetYear)
 	if err != nil {
 		return fmt.Errorf("checking existing child credits for copy: %w", err)
 	}
@@ -415,7 +415,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 	}
 
 	personalCopied := false
-	existingPersonal, err := s.personalRepo.GetByYear(ctx, targetYear)
+	existingPersonal, err := s.personalRepo.GetByYear(ctx, companyID, targetYear)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return fmt.Errorf("checking existing personal credits for copy: %w", err)
 	}
@@ -424,7 +424,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 	}
 
 	deductionsCopied := false
-	existingDeductions, err := s.deductionRepo.ListByYear(ctx, targetYear)
+	existingDeductions, err := s.deductionRepo.ListByYear(ctx, companyID, targetYear)
 	if err != nil {
 		return fmt.Errorf("checking existing deductions for copy: %w", err)
 	}
@@ -434,7 +434,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 
 	// Copy spouse credit.
 	if !spouseCopied {
-		srcSpouse, err := s.spouseRepo.GetByYear(ctx, sourceYear)
+		srcSpouse, err := s.spouseRepo.GetByYear(ctx, companyID, sourceYear)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return fmt.Errorf("fetching source spouse credit for copy: %w", err)
 		}
@@ -444,7 +444,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newSpouse.Year = targetYear
 			newSpouse.MonthsClaimed = 12
 			newSpouse.CreditAmount = 0
-			if err := s.spouseRepo.Upsert(ctx, &newSpouse); err != nil {
+			if err := s.spouseRepo.Upsert(ctx, companyID, &newSpouse); err != nil {
 				return fmt.Errorf("copying spouse credit: %w", err)
 			}
 		}
@@ -452,7 +452,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 
 	// Copy children.
 	if !childrenCopied {
-		srcChildren, err := s.childRepo.ListByYear(ctx, sourceYear)
+		srcChildren, err := s.childRepo.ListByYear(ctx, companyID, sourceYear)
 		if err != nil {
 			return fmt.Errorf("fetching source child credits for copy: %w", err)
 		}
@@ -462,7 +462,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newChild.Year = targetYear
 			newChild.MonthsClaimed = 12
 			newChild.CreditAmount = 0
-			if err := s.childRepo.Create(ctx, &newChild); err != nil {
+			if err := s.childRepo.Create(ctx, companyID, &newChild); err != nil {
 				return fmt.Errorf("copying child credit: %w", err)
 			}
 		}
@@ -470,7 +470,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 
 	// Copy personal credits.
 	if !personalCopied {
-		srcPersonal, err := s.personalRepo.GetByYear(ctx, sourceYear)
+		srcPersonal, err := s.personalRepo.GetByYear(ctx, companyID, sourceYear)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return fmt.Errorf("fetching source personal credits for copy: %w", err)
 		}
@@ -479,7 +479,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newPersonal.Year = targetYear
 			newPersonal.CreditStudent = 0
 			newPersonal.CreditDisability = 0
-			if err := s.personalRepo.Upsert(ctx, &newPersonal); err != nil {
+			if err := s.personalRepo.Upsert(ctx, companyID, &newPersonal); err != nil {
 				return fmt.Errorf("copying personal credits: %w", err)
 			}
 		}
@@ -487,7 +487,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 
 	// Copy deductions (empty amounts, same categories).
 	if !deductionsCopied {
-		srcDeductions, err := s.deductionRepo.ListByYear(ctx, sourceYear)
+		srcDeductions, err := s.deductionRepo.ListByYear(ctx, companyID, sourceYear)
 		if err != nil {
 			return fmt.Errorf("fetching source deductions for copy: %w", err)
 		}
@@ -498,7 +498,7 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newDed.ClaimedAmount = 0
 			newDed.MaxAmount = 0
 			newDed.AllowedAmount = 0
-			if err := s.deductionRepo.Create(ctx, &newDed); err != nil {
+			if err := s.deductionRepo.Create(ctx, companyID, &newDed); err != nil {
 				return fmt.Errorf("copying deduction: %w", err)
 			}
 		}

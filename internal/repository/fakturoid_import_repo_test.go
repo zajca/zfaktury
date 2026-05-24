@@ -21,7 +21,7 @@ func TestFakturoidImportLogRepository_CreateAndFind(t *testing.T) {
 		LocalID:             7,
 	}
 
-	if err := repo.Create(ctx, entry); err != nil {
+	if err := repo.Create(ctx, 1, entry); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -30,7 +30,7 @@ func TestFakturoidImportLogRepository_CreateAndFind(t *testing.T) {
 	}
 
 	// Find by Fakturoid ID.
-	found, err := repo.FindByFakturoidID(ctx, "contact", 42)
+	found, err := repo.FindByFakturoidID(ctx, 1, "contact", 42)
 	if err != nil {
 		t.Fatalf("FindByFakturoidID() error: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestFakturoidImportLogRepository_FindByFakturoidID_NotFound(t *testing.T) {
 	repo := NewFakturoidImportLogRepository(db)
 	ctx := context.Background()
 
-	found, err := repo.FindByFakturoidID(ctx, "contact", 99999)
+	found, err := repo.FindByFakturoidID(ctx, 1, "contact", 99999)
 	if err != nil {
 		t.Fatalf("FindByFakturoidID() error: %v", err)
 	}
@@ -83,13 +83,13 @@ func TestFakturoidImportLogRepository_ListByEntityType(t *testing.T) {
 		{FakturoidEntityType: "invoice", FakturoidID: 3, LocalEntityType: "invoice", LocalID: 20},
 	}
 	for i := range entries {
-		if err := repo.Create(ctx, &entries[i]); err != nil {
+		if err := repo.Create(ctx, 1, &entries[i]); err != nil {
 			t.Fatalf("Create() entry %d error: %v", i, err)
 		}
 	}
 
 	// List contacts only.
-	contacts, err := repo.ListByEntityType(ctx, "contact")
+	contacts, err := repo.ListByEntityType(ctx, 1, "contact")
 	if err != nil {
 		t.Fatalf("ListByEntityType() error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestFakturoidImportLogRepository_ListByEntityType(t *testing.T) {
 	}
 
 	// List invoices only.
-	invoices, err := repo.ListByEntityType(ctx, "invoice")
+	invoices, err := repo.ListByEntityType(ctx, 1, "invoice")
 	if err != nil {
 		t.Fatalf("ListByEntityType() error: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestFakturoidImportLogRepository_ListByEntityType(t *testing.T) {
 	}
 
 	// List non-existent type.
-	empty, err := repo.ListByEntityType(ctx, "expense")
+	empty, err := repo.ListByEntityType(ctx, 1, "expense")
 	if err != nil {
 		t.Fatalf("ListByEntityType() error: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestFakturoidImportLogRepository_UniqueConstraint(t *testing.T) {
 		LocalEntityType:     "contact",
 		LocalID:             7,
 	}
-	if err := repo.Create(ctx, entry1); err != nil {
+	if err := repo.Create(ctx, 1, entry1); err != nil {
 		t.Fatalf("Create() first entry error: %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestFakturoidImportLogRepository_UniqueConstraint(t *testing.T) {
 		LocalEntityType:     "contact",
 		LocalID:             99,
 	}
-	err := repo.Create(ctx, entry2)
+	err := repo.Create(ctx, 1, entry2)
 	if err == nil {
 		t.Fatal("expected error for duplicate (fakturoid_entity_type, fakturoid_id)")
 	}
@@ -153,7 +153,7 @@ func TestFakturoidImportLogRepository_UniqueConstraint(t *testing.T) {
 		LocalEntityType:     "invoice",
 		LocalID:             15,
 	}
-	if err := repo.Create(ctx, entry3); err != nil {
+	if err := repo.Create(ctx, 1, entry3); err != nil {
 		t.Fatalf("Create() different entity type error: %v", err)
 	}
 }

@@ -36,6 +36,7 @@ func setupInvestmentRouter(t *testing.T) *chi.Mux {
 	h := NewInvestmentIncomeHandler(investmentSvc, docSvc, nil)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Route("/api/v1/investments", func(api chi.Router) {
 		api.Mount("/", h.Routes())
 	})
@@ -757,6 +758,7 @@ func setupInvestmentRouterWithExtraction(t *testing.T, provider ocr.Provider) *c
 	h := NewInvestmentIncomeHandler(investmentSvc, docSvc, extractionSvc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Route("/api/v1/investments", func(api chi.Router) {
 		api.Mount("/", h.Routes())
 	})

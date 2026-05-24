@@ -96,6 +96,12 @@ func socialInsuranceFromDomain(sio *domain.SocialInsuranceOverview) socialInsura
 
 // Create handles POST /api/v1/social-insurance.
 func (h *SocialInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req socialInsuranceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -107,7 +113,7 @@ func (h *SocialInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 		FilingType: req.FilingType,
 	}
 
-	if err := h.svc.Create(r.Context(), sio); err != nil {
+	if err := h.svc.Create(r.Context(), company.ID, sio); err != nil {
 		slog.Error("failed to create social insurance overview", "error", err)
 		mapDomainError(w, err)
 		return
@@ -118,6 +124,12 @@ func (h *SocialInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 
 // List handles GET /api/v1/social-insurance.
 func (h *SocialInsuranceHandler) List(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year := 0
 	if v := r.URL.Query().Get("year"); v != "" {
 		parsed, err := strconv.Atoi(v)
@@ -128,7 +140,7 @@ func (h *SocialInsuranceHandler) List(w http.ResponseWriter, r *http.Request) {
 		year = parsed
 	}
 
-	overviews, err := h.svc.List(r.Context(), year)
+	overviews, err := h.svc.List(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list social insurance overviews", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list social insurance overviews")
@@ -145,13 +157,19 @@ func (h *SocialInsuranceHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /api/v1/social-insurance/{id}.
 func (h *SocialInsuranceHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
 		return
 	}
 
-	sio, err := h.svc.GetByID(r.Context(), id)
+	sio, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get social insurance overview", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -163,13 +181,19 @@ func (h *SocialInsuranceHandler) GetByID(w http.ResponseWriter, r *http.Request)
 
 // Delete handles DELETE /api/v1/social-insurance/{id}.
 func (h *SocialInsuranceHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), id); err != nil {
+	if err := h.svc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete social insurance overview", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -180,13 +204,19 @@ func (h *SocialInsuranceHandler) Delete(w http.ResponseWriter, r *http.Request) 
 
 // Recalculate handles POST /api/v1/social-insurance/{id}/recalculate.
 func (h *SocialInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
 		return
 	}
 
-	sio, err := h.svc.Recalculate(r.Context(), id)
+	sio, err := h.svc.Recalculate(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to recalculate social insurance overview", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -198,13 +228,19 @@ func (h *SocialInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Requ
 
 // GenerateXML handles POST /api/v1/social-insurance/{id}/generate-xml.
 func (h *SocialInsuranceHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
 		return
 	}
 
-	sio, err := h.svc.GenerateXML(r.Context(), id)
+	sio, err := h.svc.GenerateXML(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to generate social insurance XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -216,13 +252,19 @@ func (h *SocialInsuranceHandler) GenerateXML(w http.ResponseWriter, r *http.Requ
 
 // DownloadXML handles GET /api/v1/social-insurance/{id}/xml.
 func (h *SocialInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	xmlData, err := h.svc.GetXMLData(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get social insurance XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -244,13 +286,19 @@ func (h *SocialInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Requ
 
 // MarkFiled handles POST /api/v1/social-insurance/{id}/mark-filed.
 func (h *SocialInsuranceHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
 		return
 	}
 
-	sio, err := h.svc.MarkFiled(r.Context(), id)
+	sio, err := h.svc.MarkFiled(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to mark social insurance overview as filed", "error", err, "id", id)
 		mapDomainError(w, err)

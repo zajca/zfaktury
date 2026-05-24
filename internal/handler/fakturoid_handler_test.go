@@ -15,6 +15,7 @@ func TestFakturoidImport_MissingCredentials(t *testing.T) {
 	svc := &service.FakturoidImportService{}
 	h := NewFakturoidHandler(svc)
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/import/fakturoid", h.Routes())
 
 	body := `{"slug":"","email":"","client_id":"","client_secret":""}`
@@ -32,6 +33,7 @@ func TestFakturoidImport_InvalidBody(t *testing.T) {
 	svc := &service.FakturoidImportService{}
 	h := NewFakturoidHandler(svc)
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/import/fakturoid", h.Routes())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/import/fakturoid/import", strings.NewReader("invalid json"))
@@ -56,6 +58,7 @@ func TestFakturoidImport_PartialCredentials(t *testing.T) {
 	svc := &service.FakturoidImportService{}
 	h := NewFakturoidHandler(svc)
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/import/fakturoid", h.Routes())
 
 	tests := []struct {

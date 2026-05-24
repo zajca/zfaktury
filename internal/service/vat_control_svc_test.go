@@ -29,7 +29,7 @@ func newMockVATControlStatementRepo() *mockVATControlStatementRepo {
 	}
 }
 
-func (m *mockVATControlStatementRepo) Create(_ context.Context, cs *domain.VATControlStatement) error {
+func (m *mockVATControlStatementRepo) Create(_ context.Context, _ int64, cs *domain.VATControlStatement) error {
 	cs.ID = m.nextID
 	m.nextID++
 	cs.CreatedAt = time.Now()
@@ -39,14 +39,14 @@ func (m *mockVATControlStatementRepo) Create(_ context.Context, cs *domain.VATCo
 	return nil
 }
 
-func (m *mockVATControlStatementRepo) Update(_ context.Context, cs *domain.VATControlStatement) error {
+func (m *mockVATControlStatementRepo) Update(_ context.Context, _ int64, cs *domain.VATControlStatement) error {
 	cs.UpdatedAt = time.Now()
 	clone := *cs
 	m.statements[cs.ID] = &clone
 	return nil
 }
 
-func (m *mockVATControlStatementRepo) Delete(_ context.Context, id int64) error {
+func (m *mockVATControlStatementRepo) Delete(_ context.Context, _, id int64) error {
 	if _, ok := m.statements[id]; !ok {
 		return domain.ErrNotFound
 	}
@@ -55,7 +55,7 @@ func (m *mockVATControlStatementRepo) Delete(_ context.Context, id int64) error 
 	return nil
 }
 
-func (m *mockVATControlStatementRepo) GetByID(_ context.Context, id int64) (*domain.VATControlStatement, error) {
+func (m *mockVATControlStatementRepo) GetByID(_ context.Context, _, id int64) (*domain.VATControlStatement, error) {
 	cs, ok := m.statements[id]
 	if !ok {
 		return nil, domain.ErrNotFound
@@ -64,7 +64,7 @@ func (m *mockVATControlStatementRepo) GetByID(_ context.Context, id int64) (*dom
 	return &clone, nil
 }
 
-func (m *mockVATControlStatementRepo) List(_ context.Context, year int) ([]domain.VATControlStatement, error) {
+func (m *mockVATControlStatementRepo) List(_ context.Context, _ int64, year int) ([]domain.VATControlStatement, error) {
 	var result []domain.VATControlStatement
 	for _, cs := range m.statements {
 		if cs.Period.Year == year {
@@ -74,7 +74,7 @@ func (m *mockVATControlStatementRepo) List(_ context.Context, year int) ([]domai
 	return result, nil
 }
 
-func (m *mockVATControlStatementRepo) GetByPeriod(_ context.Context, year, month int, filingType string) (*domain.VATControlStatement, error) {
+func (m *mockVATControlStatementRepo) GetByPeriod(_ context.Context, _ int64, year, month int, filingType string) (*domain.VATControlStatement, error) {
 	for _, cs := range m.statements {
 		if cs.Period.Year == year && cs.Period.Month == month && cs.FilingType == filingType {
 			clone := *cs
@@ -84,7 +84,7 @@ func (m *mockVATControlStatementRepo) GetByPeriod(_ context.Context, year, month
 	return nil, domain.ErrNotFound
 }
 
-func (m *mockVATControlStatementRepo) CreateLines(_ context.Context, lines []domain.VATControlStatementLine) error {
+func (m *mockVATControlStatementRepo) CreateLines(_ context.Context, _ int64, lines []domain.VATControlStatementLine) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -97,12 +97,12 @@ func (m *mockVATControlStatementRepo) CreateLines(_ context.Context, lines []dom
 	return nil
 }
 
-func (m *mockVATControlStatementRepo) DeleteLines(_ context.Context, controlStatementID int64) error {
+func (m *mockVATControlStatementRepo) DeleteLines(_ context.Context, _, controlStatementID int64) error {
 	delete(m.lines, controlStatementID)
 	return nil
 }
 
-func (m *mockVATControlStatementRepo) GetLines(_ context.Context, controlStatementID int64) ([]domain.VATControlStatementLine, error) {
+func (m *mockVATControlStatementRepo) GetLines(_ context.Context, _, controlStatementID int64) ([]domain.VATControlStatementLine, error) {
 	return m.lines[controlStatementID], nil
 }
 
@@ -202,7 +202,7 @@ func TestVATControlStatementService_Create(t *testing.T) {
 		FilingType: domain.FilingTypeRegular,
 	}
 
-	err := svc.Create(context.Background(), cs)
+	err := svc.Create(context.Background(), 1, cs)
 	if err != nil {
 		t.Fatalf("Create() returned error: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestVATControlStatementService_Create_Duplicate(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(context.Background(), cs1); err != nil {
+	if err := svc.Create(context.Background(), 1, cs1); err != nil {
 		t.Fatalf("first Create() returned error: %v", err)
 	}
 
@@ -230,7 +230,7 @@ func TestVATControlStatementService_Create_Duplicate(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	err := svc.Create(context.Background(), cs2)
+	err := svc.Create(context.Background(), 1, cs2)
 	if err == nil {
 		t.Error("second Create() should return error for duplicate")
 	}
@@ -243,7 +243,7 @@ func TestVATControlStatementService_Create_InvalidMonth(t *testing.T) {
 	cs := &domain.VATControlStatement{
 		Period: domain.TaxPeriod{Year: 2025, Month: 13},
 	}
-	err := svc.Create(context.Background(), cs)
+	err := svc.Create(context.Background(), 1, cs)
 	if err == nil {
 		t.Error("Create() should return error for invalid month")
 	}
@@ -257,13 +257,13 @@ func TestVATControlStatementService_Delete_Filed(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	_ = svc.Create(context.Background(), cs)
+	_ = svc.Create(context.Background(), 1, cs)
 
 	// Mark as filed directly in repo.
 	stored := repo.statements[cs.ID]
 	stored.Status = domain.FilingStatusFiled
 
-	err := svc.Delete(context.Background(), cs.ID)
+	err := svc.Delete(context.Background(), 1, cs.ID)
 	if err == nil {
 		t.Error("Delete() should return error for filed statement")
 	}
@@ -368,17 +368,17 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(context.Background(), cs); err != nil {
+	if err := svc.Create(context.Background(), 1, cs); err != nil {
 		t.Fatalf("Create() returned error: %v", err)
 	}
 
 	// Recalculate.
-	if err := svc.Recalculate(context.Background(), cs.ID); err != nil {
+	if err := svc.Recalculate(context.Background(), 1, cs.ID); err != nil {
 		t.Fatalf("Recalculate() returned error: %v", err)
 	}
 
 	// Check lines.
-	lines, err := svc.GetLines(context.Background(), cs.ID)
+	lines, err := svc.GetLines(context.Background(), 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetLines() returned error: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 	}
 
 	// Verify status updated to ready.
-	updated, _ := svc.GetByID(context.Background(), cs.ID)
+	updated, _ := svc.GetByID(context.Background(), 1, cs.ID)
 	if updated.Status != domain.FilingStatusReady {
 		t.Errorf("status after recalculate = %q, want %q", updated.Status, domain.FilingStatusReady)
 	}
@@ -441,14 +441,14 @@ func TestVATControlStatementService_MarkFiled(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	_ = svc.Create(context.Background(), cs)
+	_ = svc.Create(context.Background(), 1, cs)
 
-	err := svc.MarkFiled(context.Background(), cs.ID)
+	err := svc.MarkFiled(context.Background(), 1, cs.ID)
 	if err != nil {
 		t.Fatalf("MarkFiled() returned error: %v", err)
 	}
 
-	updated, _ := svc.GetByID(context.Background(), cs.ID)
+	updated, _ := svc.GetByID(context.Background(), 1, cs.ID)
 	if updated.Status != domain.FilingStatusFiled {
 		t.Errorf("status = %q, want %q", updated.Status, domain.FilingStatusFiled)
 	}
@@ -474,7 +474,7 @@ func TestVATControlStatementService_List_Empty(t *testing.T) {
 	svc, _ := setupVATControlSvc(t)
 	ctx := context.Background()
 
-	result, err := svc.List(ctx, 2025)
+	result, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -493,7 +493,7 @@ func TestVATControlStatementService_List_MultipleStatements(t *testing.T) {
 			Period:     domain.TaxPeriod{Year: 2025, Month: m},
 			FilingType: domain.FilingTypeRegular,
 		}
-		if err := svc.Create(ctx, cs); err != nil {
+		if err := svc.Create(ctx, 1, cs); err != nil {
 			t.Fatalf("Create(month=%d) error: %v", m, err)
 		}
 	}
@@ -503,12 +503,12 @@ func TestVATControlStatementService_List_MultipleStatements(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2024, Month: 12},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, cs2024); err != nil {
+	if err := svc.Create(ctx, 1, cs2024); err != nil {
 		t.Fatalf("Create(2024/12) error: %v", err)
 	}
 
 	// List for 2025 should return 3.
-	result, err := svc.List(ctx, 2025)
+	result, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List(2025) error: %v", err)
 	}
@@ -517,7 +517,7 @@ func TestVATControlStatementService_List_MultipleStatements(t *testing.T) {
 	}
 
 	// List for 2024 should return 1.
-	result2024, err := svc.List(ctx, 2024)
+	result2024, err := svc.List(ctx, 1, 2024)
 	if err != nil {
 		t.Fatalf("List(2024) error: %v", err)
 	}
@@ -534,12 +534,12 @@ func TestVATControlStatementService_List_FiltersByYear(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2023, Month: 5},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, cs); err != nil {
+	if err := svc.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// List for a different year returns empty.
-	result, err := svc.List(ctx, 2025)
+	result, err := svc.List(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
 	}
@@ -556,17 +556,17 @@ func TestVATControlStatementService_Delete_Draft(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 4},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, cs); err != nil {
+	if err := svc.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Delete draft should succeed.
-	if err := svc.Delete(ctx, cs.ID); err != nil {
+	if err := svc.Delete(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
 	// GetByID after delete should fail.
-	_, err := svc.GetByID(ctx, cs.ID)
+	_, err := svc.GetByID(ctx, 1, cs.ID)
 	if err == nil {
 		t.Error("GetByID() should return error after delete")
 	}
@@ -576,7 +576,7 @@ func TestVATControlStatementService_Delete_NotFound(t *testing.T) {
 	svc, _ := setupVATControlSvc(t)
 	ctx := context.Background()
 
-	err := svc.Delete(ctx, 9999)
+	err := svc.Delete(ctx, 1, 9999)
 	if err == nil {
 		t.Error("Delete() should return error for non-existent ID")
 	}
@@ -590,17 +590,17 @@ func TestVATControlStatementService_Delete_Ready(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 5},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, cs); err != nil {
+	if err := svc.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Recalculate to move to "ready" status.
-	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
 	// Delete ready statement should succeed (only filed is blocked).
-	if err := svc.Delete(ctx, cs.ID); err != nil {
+	if err := svc.Delete(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("Delete() of ready statement should succeed, got error: %v", err)
 	}
 }
@@ -619,11 +619,11 @@ func TestVATControlStatementService_GenerateXML_Basic(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, cs); err != nil {
+	if err := svc.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	xmlData, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	xmlData, err := svc.GenerateXML(ctx, 1, cs.ID, "CZ12345678")
 	if err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
@@ -632,7 +632,7 @@ func TestVATControlStatementService_GenerateXML_Basic(t *testing.T) {
 	}
 
 	// Verify XML is stored on the statement.
-	updated, err := svc.GetByID(ctx, cs.ID)
+	updated, err := svc.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -679,17 +679,17 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
 		FilingType: domain.FilingTypeRegular,
 	}
-	if err := svc.Create(ctx, cs); err != nil {
+	if err := svc.Create(ctx, 1, cs); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
 	// Recalculate to generate lines.
-	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+	if err := svc.Recalculate(ctx, 1, cs.ID); err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
 	// Generate XML with lines.
-	xmlData, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	xmlData, err := svc.GenerateXML(ctx, 1, cs.ID, "CZ12345678")
 	if err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
@@ -698,7 +698,7 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 	}
 
 	// Verify XML is non-empty and stored.
-	updated, err := svc.GetByID(ctx, cs.ID)
+	updated, err := svc.GetByID(ctx, 1, cs.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -711,7 +711,7 @@ func TestVATControlStatementService_GenerateXML_NotFound(t *testing.T) {
 	svc, _ := setupVATControlSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GenerateXML(ctx, 9999, "CZ12345678")
+	_, err := svc.GenerateXML(ctx, 1, 9999, "CZ12345678")
 	if err == nil {
 		t.Error("GenerateXML() should return error for non-existent ID")
 	}

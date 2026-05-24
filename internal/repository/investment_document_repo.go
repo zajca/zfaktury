@@ -54,16 +54,16 @@ func scanInvestmentDocument(s scanner) (*domain.InvestmentDocument, error) {
 	return d, nil
 }
 
-// Create inserts a new investment document into the database.
-func (r *InvestmentDocumentRepository) Create(ctx context.Context, doc *domain.InvestmentDocument) error {
+// Create inserts a new investment document into the database scoped to the given company.
+func (r *InvestmentDocumentRepository) Create(ctx context.Context, companyID int64, doc *domain.InvestmentDocument) error {
 	now := time.Now()
 	doc.CreatedAt = now
 	doc.UpdatedAt = now
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO investment_documents (year, platform, filename, content_type, storage_path, size, extraction_status, extraction_error, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		doc.Year, doc.Platform, doc.Filename, doc.ContentType, doc.StoragePath,
+		INSERT INTO investment_documents (company_id, year, platform, filename, content_type, storage_path, size, extraction_status, extraction_error, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, doc.Year, doc.Platform, doc.Filename, doc.ContentType, doc.StoragePath,
 		doc.Size, doc.ExtractionStatus, doc.ExtractionError,
 		doc.CreatedAt.Format(time.RFC3339), doc.UpdatedAt.Format(time.RFC3339),
 	)
@@ -79,9 +79,9 @@ func (r *InvestmentDocumentRepository) Create(ctx context.Context, doc *domain.I
 	return nil
 }
 
-// GetByID retrieves an investment document by its ID.
-func (r *InvestmentDocumentRepository) GetByID(ctx context.Context, id int64) (*domain.InvestmentDocument, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+investmentDocumentColumns+` FROM investment_documents WHERE id = ?`, id)
+// GetByID retrieves an investment document by its ID within the given company.
+func (r *InvestmentDocumentRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.InvestmentDocument, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+investmentDocumentColumns+` FROM investment_documents WHERE id = ? AND company_id = ?`, id, companyID)
 	doc, err := scanInvestmentDocument(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -92,11 +92,11 @@ func (r *InvestmentDocumentRepository) GetByID(ctx context.Context, id int64) (*
 	return doc, nil
 }
 
-// ListByYear retrieves all investment documents for a given year, ordered by created_at.
-func (r *InvestmentDocumentRepository) ListByYear(ctx context.Context, year int) ([]domain.InvestmentDocument, error) {
+// ListByYear retrieves all investment documents for a given year within the given company, ordered by created_at.
+func (r *InvestmentDocumentRepository) ListByYear(ctx context.Context, companyID int64, year int) ([]domain.InvestmentDocument, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+investmentDocumentColumns+` FROM investment_documents WHERE year = ? ORDER BY created_at DESC`,
-		year,
+		`SELECT `+investmentDocumentColumns+` FROM investment_documents WHERE company_id = ? AND year = ? ORDER BY created_at DESC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing investment_documents for year %d: %w", year, err)
@@ -117,9 +117,9 @@ func (r *InvestmentDocumentRepository) ListByYear(ctx context.Context, year int)
 	return result, nil
 }
 
-// Delete removes an investment document by ID.
-func (r *InvestmentDocumentRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM investment_documents WHERE id = ?`, id)
+// Delete removes an investment document by ID within the given company.
+func (r *InvestmentDocumentRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM investment_documents WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting investment_document %d: %w", id, err)
 	}
@@ -134,13 +134,13 @@ func (r *InvestmentDocumentRepository) Delete(ctx context.Context, id int64) err
 	return nil
 }
 
-// UpdateExtraction updates the extraction status and error for an investment document.
-func (r *InvestmentDocumentRepository) UpdateExtraction(ctx context.Context, id int64, status string, extractionError string) error {
+// UpdateExtraction updates the extraction status and error for an investment document within the given company.
+func (r *InvestmentDocumentRepository) UpdateExtraction(ctx context.Context, companyID, id int64, status string, extractionError string) error {
 	now := time.Now()
 
 	result, err := r.db.ExecContext(ctx, `
-		UPDATE investment_documents SET extraction_status = ?, extraction_error = ?, updated_at = ? WHERE id = ?`,
-		status, extractionError, now.Format(time.RFC3339), id,
+		UPDATE investment_documents SET extraction_status = ?, extraction_error = ?, updated_at = ? WHERE id = ? AND company_id = ?`,
+		status, extractionError, now.Format(time.RFC3339), id, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating extraction for investment_document %d: %w", id, err)

@@ -19,7 +19,11 @@ import (
 //   - T20: Contact, Category, Sequence (this file's initial coverage)
 //   - T21: Invoice, Expense + child docs/items, recurring invoices/expenses,
 //     status history, payment reminders
-//   - T22: tax, insurance, vat, vies, investment verticals
+//   - T22: Settings, VAT (return + control statement + VIES), income tax,
+//     social/health insurance, tax year settings, tax prepayments,
+//     spouse/child/personal credits, tax deductions + documents,
+//     investment documents, capital income, security transactions,
+//     fakturoid import log
 //
 // Each leakCase seeds an entity under company id=1 and asserts that
 // company id=2 cannot see it via GetByID (ErrNotFound) or List (empty).
@@ -382,6 +386,547 @@ var leakCases = []leakCase{
 			list, err := repo.ListByInvoiceID(context.Background(), wrongCompanyID, 1)
 			if err != nil {
 				t.Fatalf("ReminderRepository.ListByInvoiceID(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "SettingsRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewSettingsRepository(db)
+			if err := repo.Set(context.Background(), companyID, "company_name", "Leak-test"); err != nil {
+				t.Fatalf("seeding setting: %v", err)
+			}
+			// No int id; return 0 (we probe via Get/GetAll keyed by name).
+			return 0
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewSettingsRepository(db)
+			_, err := repo.Get(context.Background(), wrongCompanyID, "company_name")
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewSettingsRepository(db)
+			all, err := repo.GetAll(context.Background(), wrongCompanyID)
+			if err != nil {
+				t.Fatalf("SettingsRepository.GetAll(other company) error: %v", err)
+			}
+			return len(all)
+		},
+	},
+	{
+		name: "VATReturnRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewVATReturnRepository(db)
+			vr := &domain.VATReturn{
+				Period:     domain.TaxPeriod{Year: 2030, Quarter: 1},
+				FilingType: domain.FilingTypeRegular,
+				Status:     domain.FilingStatusDraft,
+			}
+			if err := repo.Create(context.Background(), companyID, vr); err != nil {
+				t.Fatalf("seeding vat_return: %v", err)
+			}
+			return vr.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewVATReturnRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewVATReturnRepository(db)
+			list, err := repo.List(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("VATReturnRepository.List(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "VATControlStatementRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewVATControlStatementRepository(db)
+			cs := &domain.VATControlStatement{
+				Period:     domain.TaxPeriod{Year: 2030, Month: 1},
+				FilingType: domain.FilingTypeRegular,
+				Status:     domain.FilingStatusDraft,
+			}
+			if err := repo.Create(context.Background(), companyID, cs); err != nil {
+				t.Fatalf("seeding control statement: %v", err)
+			}
+			return cs.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewVATControlStatementRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewVATControlStatementRepository(db)
+			list, err := repo.List(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("VATControlStatementRepository.List(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "VIESSummaryRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewVIESSummaryRepository(db)
+			vs := &domain.VIESSummary{
+				Period:     domain.TaxPeriod{Year: 2030, Quarter: 1},
+				FilingType: domain.FilingTypeRegular,
+				Status:     domain.FilingStatusDraft,
+			}
+			if err := repo.Create(context.Background(), companyID, vs); err != nil {
+				t.Fatalf("seeding vies summary: %v", err)
+			}
+			return vs.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewVIESSummaryRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewVIESSummaryRepository(db)
+			list, err := repo.List(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("VIESSummaryRepository.List(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "IncomeTaxReturnRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewIncomeTaxReturnRepository(db)
+			itr := &domain.IncomeTaxReturn{
+				Year:       2030,
+				FilingType: domain.FilingTypeRegular,
+				Status:     domain.FilingStatusDraft,
+			}
+			if err := repo.Create(context.Background(), companyID, itr); err != nil {
+				t.Fatalf("seeding income tax return: %v", err)
+			}
+			return itr.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewIncomeTaxReturnRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewIncomeTaxReturnRepository(db)
+			list, err := repo.List(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("IncomeTaxReturnRepository.List(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "SocialInsuranceOverviewRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewSocialInsuranceOverviewRepository(db)
+			sio := &domain.SocialInsuranceOverview{
+				Year:       2030,
+				FilingType: domain.FilingTypeRegular,
+				Status:     domain.FilingStatusDraft,
+			}
+			if err := repo.Create(context.Background(), companyID, sio); err != nil {
+				t.Fatalf("seeding social insurance overview: %v", err)
+			}
+			return sio.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewSocialInsuranceOverviewRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewSocialInsuranceOverviewRepository(db)
+			list, err := repo.List(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("SocialInsuranceOverviewRepository.List(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "HealthInsuranceOverviewRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewHealthInsuranceOverviewRepository(db)
+			hi := &domain.HealthInsuranceOverview{
+				Year:       2030,
+				FilingType: domain.FilingTypeRegular,
+				Status:     domain.FilingStatusDraft,
+			}
+			if err := repo.Create(context.Background(), companyID, hi); err != nil {
+				t.Fatalf("seeding health insurance overview: %v", err)
+			}
+			return hi.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewHealthInsuranceOverviewRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewHealthInsuranceOverviewRepository(db)
+			list, err := repo.List(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("HealthInsuranceOverviewRepository.List(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "TaxYearSettingsRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewTaxYearSettingsRepository(db)
+			tys := &domain.TaxYearSettings{Year: 2030, FlatRatePercent: 40}
+			if err := repo.Upsert(context.Background(), companyID, tys); err != nil {
+				t.Fatalf("seeding tax_year_settings: %v", err)
+			}
+			return int64(tys.Year)
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewTaxYearSettingsRepository(db)
+			_, err := repo.GetByYear(context.Background(), wrongCompanyID, int(entityID))
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			// TaxYearSettings has no List; reuse GetByYear and check ErrNotFound for the seeded year.
+			repo := NewTaxYearSettingsRepository(db)
+			_, err := repo.GetByYear(context.Background(), wrongCompanyID, 2030)
+			if err == nil {
+				return 1 // leak
+			}
+			return 0
+		},
+	},
+	{
+		name: "TaxPrepaymentRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewTaxPrepaymentRepository(db)
+			prepayments := []domain.TaxPrepayment{
+				{Year: 2030, Month: 1, TaxAmount: domain.Amount(100)},
+			}
+			if err := repo.UpsertAll(context.Background(), companyID, 2030, prepayments); err != nil {
+				t.Fatalf("seeding tax_prepayments: %v", err)
+			}
+			return 2030
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			// TaxPrepayments has no GetByID; probe via ListByYear.
+			repo := NewTaxPrepaymentRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, int(entityID))
+			if err != nil {
+				return err
+			}
+			if len(list) > 0 {
+				return nil // leak
+			}
+			return domain.ErrNotFound
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewTaxPrepaymentRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("TaxPrepaymentRepository.ListByYear(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "TaxSpouseCreditRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewTaxSpouseCreditRepository(db)
+			credit := &domain.TaxSpouseCredit{
+				Year:          2030,
+				SpouseName:    "Leak-test Spouse",
+				MonthsClaimed: 12,
+			}
+			if err := repo.Upsert(context.Background(), companyID, credit); err != nil {
+				t.Fatalf("seeding spouse credit: %v", err)
+			}
+			return credit.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewTaxSpouseCreditRepository(db)
+			_, err := repo.GetByYear(context.Background(), wrongCompanyID, 2030)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewTaxSpouseCreditRepository(db)
+			_, err := repo.GetByYear(context.Background(), wrongCompanyID, 2030)
+			if err == nil {
+				return 1 // leak
+			}
+			return 0
+		},
+	},
+	{
+		name: "TaxChildCreditRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewTaxChildCreditRepository(db)
+			credit := &domain.TaxChildCredit{
+				Year:          2030,
+				ChildName:     "Leak-test Child",
+				ChildOrder:    1,
+				MonthsClaimed: 12,
+			}
+			if err := repo.Create(context.Background(), companyID, credit); err != nil {
+				t.Fatalf("seeding child credit: %v", err)
+			}
+			return credit.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			// TaxChildCredit has no GetByID; probe via ListByYear.
+			repo := NewTaxChildCreditRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				return err
+			}
+			if len(list) > 0 {
+				return nil // leak
+			}
+			return domain.ErrNotFound
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewTaxChildCreditRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("TaxChildCreditRepository.ListByYear(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "TaxPersonalCreditsRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewTaxPersonalCreditsRepository(db)
+			credits := &domain.TaxPersonalCredits{
+				Year:      2030,
+				IsStudent: false,
+			}
+			if err := repo.Upsert(context.Background(), companyID, credits); err != nil {
+				t.Fatalf("seeding personal credits: %v", err)
+			}
+			return 2030
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewTaxPersonalCreditsRepository(db)
+			_, err := repo.GetByYear(context.Background(), wrongCompanyID, int(entityID))
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewTaxPersonalCreditsRepository(db)
+			_, err := repo.GetByYear(context.Background(), wrongCompanyID, 2030)
+			if err == nil {
+				return 1 // leak
+			}
+			return 0
+		},
+	},
+	{
+		name: "TaxDeductionRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewTaxDeductionRepository(db)
+			ded := &domain.TaxDeduction{
+				Year:          2030,
+				Category:      "mortgage",
+				Description:   "Leak-test deduction",
+				ClaimedAmount: domain.Amount(100),
+			}
+			if err := repo.Create(context.Background(), companyID, ded); err != nil {
+				t.Fatalf("seeding tax deduction: %v", err)
+			}
+			return ded.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewTaxDeductionRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewTaxDeductionRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("TaxDeductionRepository.ListByYear(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "TaxDeductionDocumentRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			// Need a parent deduction for the FK.
+			dedRepo := NewTaxDeductionRepository(db)
+			ded := &domain.TaxDeduction{Year: 2030, Category: "mortgage", Description: "Parent"}
+			if err := dedRepo.Create(context.Background(), companyID, ded); err != nil {
+				t.Fatalf("seeding parent deduction: %v", err)
+			}
+			repo := NewTaxDeductionDocumentRepository(db)
+			doc := &domain.TaxDeductionDocument{
+				TaxDeductionID: ded.ID,
+				Filename:       "leak.pdf",
+				ContentType:    "application/pdf",
+				StoragePath:    "/tmp/leak.pdf",
+				Size:           100,
+			}
+			if err := repo.Create(context.Background(), companyID, doc); err != nil {
+				t.Fatalf("seeding tax_deduction_document: %v", err)
+			}
+			return doc.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewTaxDeductionDocumentRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewTaxDeductionDocumentRepository(db)
+			// Probe with the seeded deduction's id (1); company 2 must not see it.
+			list, err := repo.ListByDeductionID(context.Background(), wrongCompanyID, 1)
+			if err != nil {
+				t.Fatalf("TaxDeductionDocumentRepository.ListByDeductionID(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "InvestmentDocumentRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewInvestmentDocumentRepository(db)
+			doc := &domain.InvestmentDocument{
+				Year:             2030,
+				Platform:         "portu",
+				Filename:         "leak.pdf",
+				ContentType:      "application/pdf",
+				StoragePath:      "/tmp/leak.pdf",
+				Size:             100,
+				ExtractionStatus: domain.ExtractionPending,
+			}
+			if err := repo.Create(context.Background(), companyID, doc); err != nil {
+				t.Fatalf("seeding investment_document: %v", err)
+			}
+			return doc.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewInvestmentDocumentRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewInvestmentDocumentRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("InvestmentDocumentRepository.ListByYear(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "CapitalIncomeRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewCapitalIncomeRepository(db)
+			entry := &domain.CapitalIncomeEntry{
+				Year:        2030,
+				Category:    domain.CapitalCategoryDividendCZ,
+				Description: "Leak-test",
+				IncomeDate:  time.Now(),
+				GrossAmount: domain.Amount(1000),
+				NetAmount:   domain.Amount(1000),
+			}
+			if err := repo.Create(context.Background(), companyID, entry); err != nil {
+				t.Fatalf("seeding capital_income_entry: %v", err)
+			}
+			return entry.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewCapitalIncomeRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewCapitalIncomeRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("CapitalIncomeRepository.ListByYear(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "SecurityTransactionRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewSecurityTransactionRepository(db)
+			tx := &domain.SecurityTransaction{
+				Year:            2030,
+				AssetType:       domain.AssetTypeStock,
+				AssetName:       "Leak-test ASSET",
+				TransactionType: domain.TransactionTypeBuy,
+				TransactionDate: time.Now(),
+				Quantity:        100,
+				UnitPrice:       domain.Amount(1000),
+				TotalAmount:     domain.Amount(100000),
+				CurrencyCode:    domain.CurrencyCZK,
+				ExchangeRate:    100,
+			}
+			if err := repo.Create(context.Background(), companyID, tx); err != nil {
+				t.Fatalf("seeding security_transaction: %v", err)
+			}
+			return tx.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			repo := NewSecurityTransactionRepository(db)
+			_, err := repo.GetByID(context.Background(), wrongCompanyID, entityID)
+			return err
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewSecurityTransactionRepository(db)
+			list, err := repo.ListByYear(context.Background(), wrongCompanyID, 2030)
+			if err != nil {
+				t.Fatalf("SecurityTransactionRepository.ListByYear(other company) error: %v", err)
+			}
+			return len(list)
+		},
+	},
+	{
+		name: "FakturoidImportLogRepository",
+		seed: func(t *testing.T, db *sql.DB, companyID int64) int64 {
+			repo := NewFakturoidImportLogRepository(db)
+			entry := &domain.FakturoidImportLog{
+				FakturoidEntityType: "subject",
+				FakturoidID:         12345,
+				LocalEntityType:     "contact",
+				LocalID:             1,
+			}
+			if err := repo.Create(context.Background(), companyID, entry); err != nil {
+				t.Fatalf("seeding fakturoid_import_log: %v", err)
+			}
+			return entry.ID
+		},
+		getByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID, entityID int64) error {
+			// FakturoidImportLog has no GetByID; probe via FindByFakturoidID.
+			repo := NewFakturoidImportLogRepository(db)
+			entry, err := repo.FindByFakturoidID(context.Background(), wrongCompanyID, "subject", 12345)
+			if err != nil {
+				return err
+			}
+			if entry != nil {
+				return nil // leak
+			}
+			return domain.ErrNotFound
+		},
+		listByOtherCompany: func(t *testing.T, db *sql.DB, wrongCompanyID int64) int {
+			repo := NewFakturoidImportLogRepository(db)
+			list, err := repo.ListByEntityType(context.Background(), wrongCompanyID, "subject")
+			if err != nil {
+				t.Fatalf("FakturoidImportLogRepository.ListByEntityType(other company) error: %v", err)
 			}
 			return len(list)
 		},

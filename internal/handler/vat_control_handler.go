@@ -40,6 +40,12 @@ func (h *VATControlStatementHandler) Routes() chi.Router {
 
 // Create handles POST /api/v1/vat-control-statements.
 func (h *VATControlStatementHandler) Create(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req controlStatementRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -54,7 +60,7 @@ func (h *VATControlStatementHandler) Create(w http.ResponseWriter, r *http.Reque
 		FilingType: req.FilingType,
 	}
 
-	if err := h.svc.Create(r.Context(), cs); err != nil {
+	if err := h.svc.Create(r.Context(), company.ID, cs); err != nil {
 		slog.Error("failed to create control statement", "error", err)
 		mapDomainError(w, err)
 		return
@@ -65,6 +71,12 @@ func (h *VATControlStatementHandler) Create(w http.ResponseWriter, r *http.Reque
 
 // List handles GET /api/v1/vat-control-statements.
 func (h *VATControlStatementHandler) List(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	yearStr := r.URL.Query().Get("year")
 	if yearStr == "" {
 		yearStr = strconv.Itoa(time.Now().Year())
@@ -75,7 +87,7 @@ func (h *VATControlStatementHandler) List(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	statements, err := h.svc.List(r.Context(), year)
+	statements, err := h.svc.List(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list control statements", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list control statements")
@@ -92,20 +104,26 @@ func (h *VATControlStatementHandler) List(w http.ResponseWriter, r *http.Request
 
 // GetByID handles GET /api/v1/vat-control-statements/{id}.
 func (h *VATControlStatementHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	cs, err := h.svc.GetByID(r.Context(), id)
+	cs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get control statement", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	lines, err := h.svc.GetLines(r.Context(), id)
+	lines, err := h.svc.GetLines(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get control statement lines", "error", err, "id", id)
 		respondError(w, http.StatusInternalServerError, "failed to get control statement lines")
@@ -117,13 +135,19 @@ func (h *VATControlStatementHandler) GetByID(w http.ResponseWriter, r *http.Requ
 
 // Delete handles DELETE /api/v1/vat-control-statements/{id}.
 func (h *VATControlStatementHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), id); err != nil {
+	if err := h.svc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete control statement", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -134,26 +158,32 @@ func (h *VATControlStatementHandler) Delete(w http.ResponseWriter, r *http.Reque
 
 // Recalculate handles POST /api/v1/vat-control-statements/{id}/recalculate.
 func (h *VATControlStatementHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	if err := h.svc.Recalculate(r.Context(), id); err != nil {
+	if err := h.svc.Recalculate(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to recalculate control statement", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	cs, err := h.svc.GetByID(r.Context(), id)
+	cs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get control statement after recalculate", "error", err, "id", id)
 		respondError(w, http.StatusInternalServerError, "recalculation succeeded but failed to fetch result")
 		return
 	}
 
-	lines, err := h.svc.GetLines(r.Context(), id)
+	lines, err := h.svc.GetLines(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get lines after recalculate", "error", err, "id", id)
 		respondError(w, http.StatusInternalServerError, "recalculation succeeded but failed to fetch lines")
@@ -165,6 +195,12 @@ func (h *VATControlStatementHandler) Recalculate(w http.ResponseWriter, r *http.
 
 // GenerateXML handles POST /api/v1/vat-control-statements/{id}/generate-xml.
 func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
@@ -174,7 +210,7 @@ func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.
 	// Get DIC from settings.
 	dic := ""
 	if h.settingsSvc != nil {
-		settings, err := h.settingsSvc.GetAll(r.Context())
+		settings, err := h.settingsSvc.GetAll(r.Context(), company.ID)
 		if err == nil {
 			dic = settings["dic"]
 		}
@@ -184,7 +220,7 @@ func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.
 		return
 	}
 
-	xmlData, err := h.svc.GenerateXML(r.Context(), id, dic)
+	xmlData, err := h.svc.GenerateXML(r.Context(), company.ID, id, dic)
 	if err != nil {
 		slog.Error("failed to generate XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -199,13 +235,19 @@ func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.
 
 // DownloadXML handles GET /api/v1/vat-control-statements/{id}/xml.
 func (h *VATControlStatementHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	cs, err := h.svc.GetByID(r.Context(), id)
+	cs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get control statement for XML download", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -227,19 +269,25 @@ func (h *VATControlStatementHandler) DownloadXML(w http.ResponseWriter, r *http.
 
 // MarkFiled handles POST /api/v1/vat-control-statements/{id}/mark-filed.
 func (h *VATControlStatementHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	if err := h.svc.MarkFiled(r.Context(), id); err != nil {
+	if err := h.svc.MarkFiled(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to mark control statement as filed", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	cs, err := h.svc.GetByID(r.Context(), id)
+	cs, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get control statement after mark filed", "error", err, "id", id)
 		respondError(w, http.StatusInternalServerError, "mark filed succeeded but failed to fetch result")

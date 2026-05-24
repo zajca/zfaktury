@@ -69,8 +69,8 @@ func scanSecurityTransaction(s scanner) (*domain.SecurityTransaction, error) {
 	return t, nil
 }
 
-// Create inserts a new security transaction into the database.
-func (r *SecurityTransactionRepository) Create(ctx context.Context, tx *domain.SecurityTransaction) error {
+// Create inserts a new security transaction into the database scoped to the given company.
+func (r *SecurityTransactionRepository) Create(ctx context.Context, companyID int64, tx *domain.SecurityTransaction) error {
 	now := time.Now()
 	tx.CreatedAt = now
 	tx.UpdatedAt = now
@@ -81,9 +81,9 @@ func (r *SecurityTransactionRepository) Create(ctx context.Context, tx *domain.S
 	}
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO security_transactions (year, document_id, asset_type, asset_name, isin, transaction_type, transaction_date, quantity, unit_price, total_amount, fees, currency_code, exchange_rate, cost_basis, computed_gain, time_test_exempt, exempt_amount, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		tx.Year, documentID, tx.AssetType, tx.AssetName, tx.ISIN,
+		INSERT INTO security_transactions (company_id, year, document_id, asset_type, asset_name, isin, transaction_type, transaction_date, quantity, unit_price, total_amount, fees, currency_code, exchange_rate, cost_basis, computed_gain, time_test_exempt, exempt_amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, tx.Year, documentID, tx.AssetType, tx.AssetName, tx.ISIN,
 		tx.TransactionType, tx.TransactionDate.Format("2006-01-02"),
 		tx.Quantity, tx.UnitPrice, tx.TotalAmount, tx.Fees,
 		tx.CurrencyCode, tx.ExchangeRate,
@@ -102,8 +102,8 @@ func (r *SecurityTransactionRepository) Create(ctx context.Context, tx *domain.S
 	return nil
 }
 
-// Update modifies an existing security transaction.
-func (r *SecurityTransactionRepository) Update(ctx context.Context, tx *domain.SecurityTransaction) error {
+// Update modifies an existing security transaction within the given company.
+func (r *SecurityTransactionRepository) Update(ctx context.Context, companyID int64, tx *domain.SecurityTransaction) error {
 	tx.UpdatedAt = time.Now()
 
 	var documentID *int64
@@ -119,13 +119,13 @@ func (r *SecurityTransactionRepository) Update(ctx context.Context, tx *domain.S
 			currency_code = ?, exchange_rate = ?,
 			cost_basis = ?, computed_gain = ?, time_test_exempt = ?, exempt_amount = ?,
 			updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		tx.Year, documentID, tx.AssetType, tx.AssetName, tx.ISIN,
 		tx.TransactionType, tx.TransactionDate.Format("2006-01-02"),
 		tx.Quantity, tx.UnitPrice, tx.TotalAmount, tx.Fees,
 		tx.CurrencyCode, tx.ExchangeRate,
 		tx.CostBasis, tx.ComputedGain, boolToInt(tx.TimeTestExempt), tx.ExemptAmount,
-		tx.UpdatedAt.Format(time.RFC3339), tx.ID,
+		tx.UpdatedAt.Format(time.RFC3339), tx.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating security_transaction %d: %w", tx.ID, err)
@@ -140,9 +140,9 @@ func (r *SecurityTransactionRepository) Update(ctx context.Context, tx *domain.S
 	return nil
 }
 
-// Delete removes a security transaction by ID.
-func (r *SecurityTransactionRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM security_transactions WHERE id = ?`, id)
+// Delete removes a security transaction by ID within the given company.
+func (r *SecurityTransactionRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM security_transactions WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting security_transaction %d: %w", id, err)
 	}
@@ -157,9 +157,9 @@ func (r *SecurityTransactionRepository) Delete(ctx context.Context, id int64) er
 	return nil
 }
 
-// GetByID retrieves a security transaction by its ID.
-func (r *SecurityTransactionRepository) GetByID(ctx context.Context, id int64) (*domain.SecurityTransaction, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+securityTransactionColumns+` FROM security_transactions WHERE id = ?`, id)
+// GetByID retrieves a security transaction by its ID within the given company.
+func (r *SecurityTransactionRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.SecurityTransaction, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+securityTransactionColumns+` FROM security_transactions WHERE id = ? AND company_id = ?`, id, companyID)
 	t, err := scanSecurityTransaction(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -170,11 +170,11 @@ func (r *SecurityTransactionRepository) GetByID(ctx context.Context, id int64) (
 	return t, nil
 }
 
-// ListByYear retrieves all security transactions for a given year, ordered by transaction_date.
-func (r *SecurityTransactionRepository) ListByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error) {
+// ListByYear retrieves all security transactions for a given year within the given company, ordered by transaction_date.
+func (r *SecurityTransactionRepository) ListByYear(ctx context.Context, companyID int64, year int) ([]domain.SecurityTransaction, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE year = ? ORDER BY transaction_date ASC, id ASC`,
-		year,
+		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE company_id = ? AND year = ? ORDER BY transaction_date ASC, id ASC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing security_transactions for year %d: %w", year, err)
@@ -195,11 +195,11 @@ func (r *SecurityTransactionRepository) ListByYear(ctx context.Context, year int
 	return result, nil
 }
 
-// ListByDocumentID retrieves all security transactions for a given document ID.
-func (r *SecurityTransactionRepository) ListByDocumentID(ctx context.Context, documentID int64) ([]domain.SecurityTransaction, error) {
+// ListByDocumentID retrieves all security transactions for a given document ID within the given company.
+func (r *SecurityTransactionRepository) ListByDocumentID(ctx context.Context, companyID, documentID int64) ([]domain.SecurityTransaction, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE document_id = ? ORDER BY transaction_date ASC, id ASC`,
-		documentID,
+		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE company_id = ? AND document_id = ? ORDER BY transaction_date ASC, id ASC`,
+		companyID, documentID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing security_transactions for document %d: %w", documentID, err)
@@ -220,11 +220,11 @@ func (r *SecurityTransactionRepository) ListByDocumentID(ctx context.Context, do
 	return result, nil
 }
 
-// ListBuysForFIFO retrieves all buy transactions for a given asset, ordered by date for FIFO matching.
-func (r *SecurityTransactionRepository) ListBuysForFIFO(ctx context.Context, assetName, assetType string) ([]domain.SecurityTransaction, error) {
+// ListBuysForFIFO retrieves all buy transactions for a given asset within the given company, ordered by date for FIFO matching.
+func (r *SecurityTransactionRepository) ListBuysForFIFO(ctx context.Context, companyID int64, assetName, assetType string) ([]domain.SecurityTransaction, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE asset_name = ? AND asset_type = ? AND transaction_type = 'buy' ORDER BY transaction_date ASC, id ASC`,
-		assetName, assetType,
+		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE company_id = ? AND asset_name = ? AND asset_type = ? AND transaction_type = 'buy' ORDER BY transaction_date ASC, id ASC`,
+		companyID, assetName, assetType,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing buy transactions for FIFO (%s/%s): %w", assetName, assetType, err)
@@ -245,11 +245,11 @@ func (r *SecurityTransactionRepository) ListBuysForFIFO(ctx context.Context, ass
 	return result, nil
 }
 
-// ListSellsByYear retrieves all sell transactions for a given year, ordered by date.
-func (r *SecurityTransactionRepository) ListSellsByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error) {
+// ListSellsByYear retrieves all sell transactions for a given year within the given company, ordered by date.
+func (r *SecurityTransactionRepository) ListSellsByYear(ctx context.Context, companyID int64, year int) ([]domain.SecurityTransaction, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE year = ? AND transaction_type = 'sell' ORDER BY transaction_date ASC`,
-		year,
+		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE company_id = ? AND year = ? AND transaction_type = 'sell' ORDER BY transaction_date ASC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing sell transactions for year %d: %w", year, err)
@@ -270,13 +270,13 @@ func (r *SecurityTransactionRepository) ListSellsByYear(ctx context.Context, yea
 	return result, nil
 }
 
-// UpdateFIFOResults updates the FIFO calculation results for a security transaction.
-func (r *SecurityTransactionRepository) UpdateFIFOResults(ctx context.Context, id int64, costBasis, computedGain, exemptAmount domain.Amount, timeTestExempt bool) error {
+// UpdateFIFOResults updates the FIFO calculation results for a security transaction within the given company.
+func (r *SecurityTransactionRepository) UpdateFIFOResults(ctx context.Context, companyID, id int64, costBasis, computedGain, exemptAmount domain.Amount, timeTestExempt bool) error {
 	now := time.Now()
 
 	result, err := r.db.ExecContext(ctx, `
-		UPDATE security_transactions SET cost_basis = ?, computed_gain = ?, exempt_amount = ?, time_test_exempt = ?, updated_at = ? WHERE id = ?`,
-		costBasis, computedGain, exemptAmount, boolToInt(timeTestExempt), now.Format(time.RFC3339), id,
+		UPDATE security_transactions SET cost_basis = ?, computed_gain = ?, exempt_amount = ?, time_test_exempt = ?, updated_at = ? WHERE id = ? AND company_id = ?`,
+		costBasis, computedGain, exemptAmount, boolToInt(timeTestExempt), now.Format(time.RFC3339), id, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating FIFO results for security_transaction %d: %w", id, err)
@@ -292,9 +292,9 @@ func (r *SecurityTransactionRepository) UpdateFIFOResults(ctx context.Context, i
 	return nil
 }
 
-// DeleteByDocumentID removes all security transactions for a given document ID.
-func (r *SecurityTransactionRepository) DeleteByDocumentID(ctx context.Context, documentID int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM security_transactions WHERE document_id = ?`, documentID)
+// DeleteByDocumentID removes all security transactions for a given document ID within the given company.
+func (r *SecurityTransactionRepository) DeleteByDocumentID(ctx context.Context, companyID, documentID int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM security_transactions WHERE company_id = ? AND document_id = ?`, companyID, documentID)
 	if err != nil {
 		return fmt.Errorf("deleting security_transactions for document %d: %w", documentID, err)
 	}

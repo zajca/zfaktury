@@ -61,7 +61,7 @@ type mockSettingsReader struct {
 	settings map[string]string
 }
 
-func (m *mockSettingsReader) Get(_ context.Context, key string) (string, error) {
+func (m *mockSettingsReader) Get(_ context.Context, _ int64, key string) (string, error) {
 	if v, ok := m.settings[key]; ok {
 		return v, nil
 	}

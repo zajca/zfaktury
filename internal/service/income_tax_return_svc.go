@@ -12,11 +12,6 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
-// incomeTaxReturnFallbackCompanyID is a transitional shim — income tax return
-// service is not yet company-scoped (T22 will thread companyID through it).
-// Remove when this service gains an explicit companyID.
-const incomeTaxReturnFallbackCompanyID int64 = 1 // remove in T22
-
 // IncomeTaxReturnService provides business logic for income tax return management.
 type IncomeTaxReturnService struct {
 	repo                repository.IncomeTaxReturnRepo
@@ -58,8 +53,8 @@ func (s *IncomeTaxReturnService) SetInvestmentService(investmentSvc *InvestmentI
 	s.investmentSvc = investmentSvc
 }
 
-// Create validates and persists a new income tax return.
-func (s *IncomeTaxReturnService) Create(ctx context.Context, itr *domain.IncomeTaxReturn) error {
+// Create validates and persists a new income tax return within the given company.
+func (s *IncomeTaxReturnService) Create(ctx context.Context, companyID int64, itr *domain.IncomeTaxReturn) error {
 	if itr.Year < 2000 || itr.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
 	}
@@ -75,7 +70,7 @@ func (s *IncomeTaxReturnService) Create(ctx context.Context, itr *domain.IncomeT
 
 	// Check for existing regular filing for this year.
 	if itr.FilingType == domain.FilingTypeRegular {
-		existing, err := s.repo.GetByYear(ctx, itr.Year, itr.FilingType)
+		existing, err := s.repo.GetByYear(ctx, companyID, itr.Year, itr.FilingType)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return fmt.Errorf("checking existing income_tax_return: %w", err)
 		}
@@ -88,7 +83,7 @@ func (s *IncomeTaxReturnService) Create(ctx context.Context, itr *domain.IncomeT
 		itr.Status = domain.FilingStatusDraft
 	}
 
-	if err := s.repo.Create(ctx, itr); err != nil {
+	if err := s.repo.Create(ctx, companyID, itr); err != nil {
 		return fmt.Errorf("creating income_tax_return: %w", err)
 	}
 	if s.audit != nil {
@@ -97,37 +92,37 @@ func (s *IncomeTaxReturnService) Create(ctx context.Context, itr *domain.IncomeT
 	return nil
 }
 
-// GetByID retrieves an income tax return by its ID.
-func (s *IncomeTaxReturnService) GetByID(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
+// GetByID retrieves an income tax return by its ID within the given company.
+func (s *IncomeTaxReturnService) GetByID(ctx context.Context, companyID, id int64) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
-	itr, err := s.repo.GetByID(ctx, id)
+	itr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching income_tax_return: %w", err)
 	}
 	return itr, nil
 }
 
-// List retrieves all income tax returns for a given year.
-func (s *IncomeTaxReturnService) List(ctx context.Context, year int) ([]domain.IncomeTaxReturn, error) {
+// List retrieves all income tax returns for a given year within the given company.
+func (s *IncomeTaxReturnService) List(ctx context.Context, companyID int64, year int) ([]domain.IncomeTaxReturn, error) {
 	if year == 0 {
 		year = time.Now().Year()
 	}
-	returns, err := s.repo.List(ctx, year)
+	returns, err := s.repo.List(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("listing income_tax_returns: %w", err)
 	}
 	return returns, nil
 }
 
-// Delete removes an income tax return by ID. Filed returns cannot be deleted.
-func (s *IncomeTaxReturnService) Delete(ctx context.Context, id int64) error {
+// Delete removes an income tax return by ID within the given company. Filed returns cannot be deleted.
+func (s *IncomeTaxReturnService) Delete(ctx context.Context, companyID, id int64) error {
 	if id == 0 {
 		return fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	itr, err := s.repo.GetByID(ctx, id)
+	itr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("fetching income_tax_return for delete: %w", err)
 	}
@@ -135,7 +130,7 @@ func (s *IncomeTaxReturnService) Delete(ctx context.Context, id int64) error {
 		return domain.ErrFilingAlreadyFiled
 	}
 
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("deleting income_tax_return: %w", err)
 	}
 	if s.audit != nil {
@@ -144,13 +139,13 @@ func (s *IncomeTaxReturnService) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// Recalculate recalculates the income tax return from linked invoices and expenses.
-func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
+// Recalculate recalculates the income tax return from linked invoices and expenses within the given company.
+func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, companyID, id int64) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	itr, err := s.repo.GetByID(ctx, id)
+	itr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching income_tax_return for recalculation: %w", err)
 	}
@@ -159,7 +154,7 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	}
 
 	// Step 1: Calculate annual base from invoices and expenses.
-	base, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, incomeTaxReturnFallbackCompanyID, itr.Year)
+	base, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, companyID, itr.Year)
 	if err != nil {
 		return nil, fmt.Errorf("calculating annual base for income_tax_return: %w", err)
 	}
@@ -169,7 +164,7 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 
 	// Step 2: Read flat rate percent from tax year settings.
 	flatRatePercent := 0
-	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, itr.Year)
+	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, companyID, itr.Year)
 	if err == nil {
 		flatRatePercent = tys.FlatRatePercent
 	}
@@ -183,7 +178,7 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 
 	// Step 4b: §8 capital income and §10 other income (investments).
 	if s.investmentSvc != nil {
-		summary, sumErr := s.investmentSvc.GetYearSummary(ctx, itr.Year)
+		summary, sumErr := s.investmentSvc.GetYearSummary(ctx, companyID, itr.Year)
 		if sumErr != nil {
 			return nil, fmt.Errorf("computing investment income for income_tax_return: %w", sumErr)
 		}
@@ -200,11 +195,11 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	var spouseCredit, disabilityCredit, studentCredit, childBenefit, totalDeductions domain.Amount
 	if s.taxCreditsSvc != nil {
 		var credErr error
-		spouseCredit, disabilityCredit, studentCredit, credErr = s.taxCreditsSvc.ComputeCredits(ctx, itr.Year)
+		spouseCredit, disabilityCredit, studentCredit, credErr = s.taxCreditsSvc.ComputeCredits(ctx, companyID, itr.Year)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing credits for income_tax_return: %w", credErr)
 		}
-		childBenefit, credErr = s.taxCreditsSvc.ComputeChildBenefit(ctx, itr.Year)
+		childBenefit, credErr = s.taxCreditsSvc.ComputeChildBenefit(ctx, companyID, itr.Year)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing child benefit for income_tax_return: %w", credErr)
 		}
@@ -213,14 +208,14 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		if rawBase < 0 {
 			rawBase = 0
 		}
-		totalDeductions, credErr = s.taxCreditsSvc.ComputeDeductions(ctx, itr.Year, rawBase)
+		totalDeductions, credErr = s.taxCreditsSvc.ComputeDeductions(ctx, companyID, itr.Year, rawBase)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing deductions for income_tax_return: %w", credErr)
 		}
 	}
 
 	// Prepayments from tax prepayments table.
-	taxTotal, _, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, itr.Year)
+	taxTotal, _, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, companyID, itr.Year)
 	if sumErr != nil {
 		return nil, fmt.Errorf("summing tax prepayments: %w", sumErr)
 	}
@@ -262,15 +257,15 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	itr.TaxDue = taxResult.TaxDue
 
 	// Step 11: Persist updated values.
-	if err := s.repo.Update(ctx, itr); err != nil {
+	if err := s.repo.Update(ctx, companyID, itr); err != nil {
 		return nil, fmt.Errorf("updating income_tax_return after recalculation: %w", err)
 	}
 
 	// Step 12: Link invoices and expenses.
-	if err := s.repo.LinkInvoices(ctx, itr.ID, base.InvoiceIDs); err != nil {
+	if err := s.repo.LinkInvoices(ctx, companyID, itr.ID, base.InvoiceIDs); err != nil {
 		return nil, fmt.Errorf("linking invoices to income_tax_return: %w", err)
 	}
-	if err := s.repo.LinkExpenses(ctx, itr.ID, base.ExpenseIDs); err != nil {
+	if err := s.repo.LinkExpenses(ctx, companyID, itr.ID, base.ExpenseIDs); err != nil {
 		return nil, fmt.Errorf("linking expenses to income_tax_return: %w", err)
 	}
 
@@ -280,13 +275,13 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	return itr, nil
 }
 
-// GenerateXML generates the DPFO XML for an income tax return.
-func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
+// GenerateXML generates the DPFO XML for an income tax return within the given company.
+func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, companyID, id int64) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	itr, err := s.repo.GetByID(ctx, id)
+	itr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching income_tax_return for XML generation: %w", err)
 	}
@@ -298,7 +293,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		"taxpayer_birth_number", "dic", "taxpayer_street",
 		"taxpayer_house_number", "taxpayer_city", "taxpayer_postal_code",
 	} {
-		val, err := s.settingsRepo.Get(ctx, key)
+		val, err := s.settingsRepo.Get(ctx, companyID, key)
 		if err == nil {
 			settings[key] = val
 		}
@@ -310,7 +305,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 	}
 
 	itr.XMLData = xmlData
-	if err := s.repo.Update(ctx, itr); err != nil {
+	if err := s.repo.Update(ctx, companyID, itr); err != nil {
 		return nil, fmt.Errorf("saving income_tax_return XML: %w", err)
 	}
 
@@ -320,25 +315,25 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 	return itr, nil
 }
 
-// GetXMLData retrieves the stored XML data for an income tax return.
-func (s *IncomeTaxReturnService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+// GetXMLData retrieves the stored XML data for an income tax return within the given company.
+func (s *IncomeTaxReturnService) GetXMLData(ctx context.Context, companyID, id int64) ([]byte, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
-	itr, err := s.repo.GetByID(ctx, id)
+	itr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching income_tax_return for XML data: %w", err)
 	}
 	return itr.XMLData, nil
 }
 
-// MarkFiled marks an income tax return as filed and records the timestamp.
-func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
+// MarkFiled marks an income tax return as filed within the given company and records the timestamp.
+func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, companyID, id int64) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	itr, err := s.repo.GetByID(ctx, id)
+	itr, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching income_tax_return for marking as filed: %w", err)
 	}
@@ -350,7 +345,7 @@ func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, id int64) (*doma
 	itr.Status = domain.FilingStatusFiled
 	itr.FiledAt = &now
 
-	if err := s.repo.Update(ctx, itr); err != nil {
+	if err := s.repo.Update(ctx, companyID, itr); err != nil {
 		return nil, fmt.Errorf("marking income_tax_return as filed: %w", err)
 	}
 	if s.audit != nil {

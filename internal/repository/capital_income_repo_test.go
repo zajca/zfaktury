@@ -38,7 +38,7 @@ func seedCapitalIncomeEntry(t *testing.T, repo *CapitalIncomeRepository, entry *
 	}
 
 	ctx := context.Background()
-	if err := repo.Create(ctx, entry); err != nil {
+	if err := repo.Create(ctx, 1, entry); err != nil {
 		t.Fatalf("seedCapitalIncomeEntry: %v", err)
 	}
 	return entry
@@ -62,7 +62,7 @@ func TestCapitalIncomeRepository_Create(t *testing.T) {
 		NetAmount:          domain.NewAmount(425, 0),
 	}
 
-	if err := repo.Create(ctx, entry); err != nil {
+	if err := repo.Create(ctx, 1, entry); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
@@ -94,11 +94,11 @@ func TestCapitalIncomeRepository_Create_WithDocumentID(t *testing.T) {
 		CountryCode: "CZ",
 	}
 
-	if err := repo.Create(ctx, entry); err != nil {
+	if err := repo.Create(ctx, 1, entry); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, entry.ID)
+	got, err := repo.GetByID(ctx, 1, entry.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestCapitalIncomeRepository_GetByID(t *testing.T) {
 		NetAmount:   domain.NewAmount(255, 0),
 	})
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestCapitalIncomeRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewCapitalIncomeRepository(db)
 	ctx := context.Background()
 
-	_, err := repo.GetByID(ctx, 99999)
+	_, err := repo.GetByID(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent entry")
 	}
@@ -160,7 +160,7 @@ func TestCapitalIncomeRepository_ListByYear(t *testing.T) {
 	seedCapitalIncomeEntry(t, repo, &domain.CapitalIncomeEntry{Year: 2025, IncomeDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)})
 	seedCapitalIncomeEntry(t, repo, &domain.CapitalIncomeEntry{Year: 2024, IncomeDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)})
 
-	entries, err := repo.ListByYear(ctx, 2025)
+	entries, err := repo.ListByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestCapitalIncomeRepository_ListByYear_Empty(t *testing.T) {
 	repo := NewCapitalIncomeRepository(db)
 	ctx := context.Background()
 
-	entries, err := repo.ListByYear(ctx, 2099)
+	entries, err := repo.ListByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("ListByYear() error: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestCapitalIncomeRepository_ListByDocumentID(t *testing.T) {
 	seedCapitalIncomeEntry(t, repo, &domain.CapitalIncomeEntry{DocumentID: &docID})
 	seedCapitalIncomeEntry(t, repo, nil) // no document_id
 
-	entries, err := repo.ListByDocumentID(ctx, docID)
+	entries, err := repo.ListByDocumentID(ctx, 1, docID)
 	if err != nil {
 		t.Fatalf("ListByDocumentID() error: %v", err)
 	}
@@ -242,7 +242,7 @@ func TestCapitalIncomeRepository_SumByYear(t *testing.T) {
 		NeedsDeclaring: false,
 	})
 
-	grossTotal, taxTotal, netTotal, err := repo.SumByYear(ctx, 2025)
+	grossTotal, taxTotal, netTotal, err := repo.SumByYear(ctx, 1, 2025)
 	if err != nil {
 		t.Fatalf("SumByYear() error: %v", err)
 	}
@@ -268,7 +268,7 @@ func TestCapitalIncomeRepository_SumByYear_Empty(t *testing.T) {
 	repo := NewCapitalIncomeRepository(db)
 	ctx := context.Background()
 
-	grossTotal, taxTotal, netTotal, err := repo.SumByYear(ctx, 2099)
+	grossTotal, taxTotal, netTotal, err := repo.SumByYear(ctx, 1, 2099)
 	if err != nil {
 		t.Fatalf("SumByYear() error: %v", err)
 	}
@@ -287,11 +287,11 @@ func TestCapitalIncomeRepository_Update(t *testing.T) {
 	seeded.Description = "Updated description"
 	seeded.GrossAmount = domain.NewAmount(2000, 0)
 	seeded.NeedsDeclaring = true
-	if err := repo.Update(ctx, seeded); err != nil {
+	if err := repo.Update(ctx, 1, seeded); err != nil {
 		t.Fatalf("Update() error: %v", err)
 	}
 
-	got, err := repo.GetByID(ctx, seeded.ID)
+	got, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
@@ -318,7 +318,7 @@ func TestCapitalIncomeRepository_Update_NotFound(t *testing.T) {
 		Description: "Ghost",
 		IncomeDate:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
-	err := repo.Update(ctx, entry)
+	err := repo.Update(ctx, 1, entry)
 	if err == nil {
 		t.Error("expected error for non-existent entry")
 	}
@@ -334,11 +334,11 @@ func TestCapitalIncomeRepository_Delete(t *testing.T) {
 
 	seeded := seedCapitalIncomeEntry(t, repo, nil)
 
-	if err := repo.Delete(ctx, seeded.ID); err != nil {
+	if err := repo.Delete(ctx, 1, seeded.ID); err != nil {
 		t.Fatalf("Delete() error: %v", err)
 	}
 
-	_, err := repo.GetByID(ctx, seeded.ID)
+	_, err := repo.GetByID(ctx, 1, seeded.ID)
 	if err == nil {
 		t.Error("expected error when getting deleted entry")
 	}
@@ -349,7 +349,7 @@ func TestCapitalIncomeRepository_Delete_NotFound(t *testing.T) {
 	repo := NewCapitalIncomeRepository(db)
 	ctx := context.Background()
 
-	err := repo.Delete(ctx, 99999)
+	err := repo.Delete(ctx, 1, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent entry")
 	}
@@ -370,11 +370,11 @@ func TestCapitalIncomeRepository_DeleteByDocumentID(t *testing.T) {
 	seedCapitalIncomeEntry(t, repo, &domain.CapitalIncomeEntry{DocumentID: &docID})
 	seedCapitalIncomeEntry(t, repo, &domain.CapitalIncomeEntry{DocumentID: &docID})
 
-	if err := repo.DeleteByDocumentID(ctx, docID); err != nil {
+	if err := repo.DeleteByDocumentID(ctx, 1, docID); err != nil {
 		t.Fatalf("DeleteByDocumentID() error: %v", err)
 	}
 
-	entries, err := repo.ListByDocumentID(ctx, docID)
+	entries, err := repo.ListByDocumentID(ctx, 1, docID)
 	if err != nil {
 		t.Fatalf("ListByDocumentID() error: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestCapitalIncomeRepository_DeleteByDocumentID_NoEntries(t *testing.T) {
 	ctx := context.Background()
 
 	// Should not error even when no entries exist for the document.
-	if err := repo.DeleteByDocumentID(ctx, 99999); err != nil {
+	if err := repo.DeleteByDocumentID(ctx, 1, 99999); err != nil {
 		t.Fatalf("DeleteByDocumentID() should not error for non-existent document, got: %v", err)
 	}
 }

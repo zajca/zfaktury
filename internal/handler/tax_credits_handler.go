@@ -157,6 +157,12 @@ func personalCreditsFromDomain(pc *domain.TaxPersonalCredits) taxPersonalCredits
 
 // GetSummary handles GET /{year}.
 func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
@@ -166,7 +172,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Load spouse (may be nil).
-	spouse, err := h.svc.GetSpouse(ctx, year)
+	spouse, err := h.svc.GetSpouse(ctx, company.ID, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		slog.Error("failed to get spouse credit", "error", err, "year", year)
 		mapDomainError(w, err)
@@ -174,7 +180,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load children.
-	children, err := h.svc.ListChildren(ctx, year)
+	children, err := h.svc.ListChildren(ctx, company.ID, year)
 	if err != nil {
 		slog.Error("failed to list child credits", "error", err, "year", year)
 		mapDomainError(w, err)
@@ -182,7 +188,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load personal credits (may be nil).
-	personal, err := h.svc.GetPersonal(ctx, year)
+	personal, err := h.svc.GetPersonal(ctx, company.ID, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		slog.Error("failed to get personal credits", "error", err, "year", year)
 		mapDomainError(w, err)
@@ -190,7 +196,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compute totals.
-	spouseCredit, disabilityCredit, studentCredit, credErr := h.svc.ComputeCredits(ctx, year)
+	spouseCredit, disabilityCredit, studentCredit, credErr := h.svc.ComputeCredits(ctx, company.ID, year)
 	if credErr != nil {
 		slog.Error("failed to compute credits", "error", credErr, "year", year)
 		mapDomainError(w, credErr)
@@ -198,7 +204,7 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	totalCredits := spouseCredit + disabilityCredit + studentCredit
 
-	totalChildBenefit, err := h.svc.ComputeChildBenefit(ctx, year)
+	totalChildBenefit, err := h.svc.ComputeChildBenefit(ctx, company.ID, year)
 	if err != nil {
 		slog.Error("failed to compute child benefit", "error", err, "year", year)
 		mapDomainError(w, err)
@@ -232,6 +238,12 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 
 // UpsertSpouse handles PUT /{year}/spouse.
 func (h *TaxCreditsHandler) UpsertSpouse(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
@@ -253,7 +265,7 @@ func (h *TaxCreditsHandler) UpsertSpouse(w http.ResponseWriter, r *http.Request)
 		MonthsClaimed:     req.MonthsClaimed,
 	}
 
-	if err := h.svc.UpsertSpouse(r.Context(), sc); err != nil {
+	if err := h.svc.UpsertSpouse(r.Context(), company.ID, sc); err != nil {
 		slog.Error("failed to upsert spouse credit", "error", err, "year", year)
 		mapDomainError(w, err)
 		return
@@ -264,13 +276,19 @@ func (h *TaxCreditsHandler) UpsertSpouse(w http.ResponseWriter, r *http.Request)
 
 // DeleteSpouse handles DELETE /{year}/spouse.
 func (h *TaxCreditsHandler) DeleteSpouse(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	if err := h.svc.DeleteSpouse(r.Context(), year); err != nil {
+	if err := h.svc.DeleteSpouse(r.Context(), company.ID, year); err != nil {
 		slog.Error("failed to delete spouse credit", "error", err, "year", year)
 		mapDomainError(w, err)
 		return
@@ -281,13 +299,19 @@ func (h *TaxCreditsHandler) DeleteSpouse(w http.ResponseWriter, r *http.Request)
 
 // ListChildren handles GET /{year}/children.
 func (h *TaxCreditsHandler) ListChildren(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	children, err := h.svc.ListChildren(r.Context(), year)
+	children, err := h.svc.ListChildren(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list child credits", "error", err, "year", year)
 		mapDomainError(w, err)
@@ -304,6 +328,12 @@ func (h *TaxCreditsHandler) ListChildren(w http.ResponseWriter, r *http.Request)
 
 // CreateChild handles POST /{year}/children.
 func (h *TaxCreditsHandler) CreateChild(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
@@ -325,7 +355,7 @@ func (h *TaxCreditsHandler) CreateChild(w http.ResponseWriter, r *http.Request) 
 		ZTP:           req.ZTP,
 	}
 
-	if err := h.svc.CreateChild(r.Context(), cc); err != nil {
+	if err := h.svc.CreateChild(r.Context(), company.ID, cc); err != nil {
 		slog.Error("failed to create child credit", "error", err, "year", year)
 		mapDomainError(w, err)
 		return
@@ -336,6 +366,12 @@ func (h *TaxCreditsHandler) CreateChild(w http.ResponseWriter, r *http.Request) 
 
 // UpdateChild handles PUT /{year}/children/{id}.
 func (h *TaxCreditsHandler) UpdateChild(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
@@ -364,7 +400,7 @@ func (h *TaxCreditsHandler) UpdateChild(w http.ResponseWriter, r *http.Request) 
 		ZTP:           req.ZTP,
 	}
 
-	if err := h.svc.UpdateChild(r.Context(), cc); err != nil {
+	if err := h.svc.UpdateChild(r.Context(), company.ID, cc); err != nil {
 		slog.Error("failed to update child credit", "error", err, "id", id, "year", year)
 		mapDomainError(w, err)
 		return
@@ -375,13 +411,19 @@ func (h *TaxCreditsHandler) UpdateChild(w http.ResponseWriter, r *http.Request) 
 
 // DeleteChild handles DELETE /{year}/children/{id}.
 func (h *TaxCreditsHandler) DeleteChild(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid child credit ID")
 		return
 	}
 
-	if err := h.svc.DeleteChild(r.Context(), id); err != nil {
+	if err := h.svc.DeleteChild(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete child credit", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -392,6 +434,12 @@ func (h *TaxCreditsHandler) DeleteChild(w http.ResponseWriter, r *http.Request) 
 
 // UpsertPersonal handles PUT /{year}/personal.
 func (h *TaxCreditsHandler) UpsertPersonal(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
@@ -411,7 +459,7 @@ func (h *TaxCreditsHandler) UpsertPersonal(w http.ResponseWriter, r *http.Reques
 		DisabilityLevel: req.DisabilityLevel,
 	}
 
-	if err := h.svc.UpsertPersonal(r.Context(), pc); err != nil {
+	if err := h.svc.UpsertPersonal(r.Context(), company.ID, pc); err != nil {
 		slog.Error("failed to upsert personal credits", "error", err, "year", year)
 		mapDomainError(w, err)
 		return
@@ -422,6 +470,12 @@ func (h *TaxCreditsHandler) UpsertPersonal(w http.ResponseWriter, r *http.Reques
 
 // CopyFromYear handles POST /{year}/copy-from/{sourceYear}.
 func (h *TaxCreditsHandler) CopyFromYear(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	targetYear, err := strconv.Atoi(chi.URLParam(r, "year"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid target year parameter")
@@ -434,7 +488,7 @@ func (h *TaxCreditsHandler) CopyFromYear(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.svc.CopyFromYear(r.Context(), sourceYear, targetYear); err != nil {
+	if err := h.svc.CopyFromYear(r.Context(), company.ID, sourceYear, targetYear); err != nil {
 		slog.Error("failed to copy tax credits", "error", err, "sourceYear", sourceYear, "targetYear", targetYear)
 		mapDomainError(w, err)
 		return

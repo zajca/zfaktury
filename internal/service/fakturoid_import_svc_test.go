@@ -527,7 +527,7 @@ func TestImportAll_ImportsNewSkipsDuplicates(t *testing.T) {
 		contactSvc, invoiceSvc, expenseSvc, nil, nil,
 	)
 
-	result, err := svc.ImportAll(context.Background(), client, false)
+	result, err := svc.ImportAll(context.Background(), 1, client, false)
 	if err != nil {
 		t.Fatalf("ImportAll failed: %v", err)
 	}
@@ -589,13 +589,13 @@ func (m *fakturoidMockClient) DownloadAttachment(_ context.Context, _ string) ([
 
 type fakturoidMockImportRepo struct{}
 
-func (m *fakturoidMockImportRepo) Create(_ context.Context, _ *domain.FakturoidImportLog) error {
+func (m *fakturoidMockImportRepo) Create(_ context.Context, _ int64, _ *domain.FakturoidImportLog) error {
 	return nil
 }
-func (m *fakturoidMockImportRepo) FindByFakturoidID(_ context.Context, _ string, _ int64) (*domain.FakturoidImportLog, error) {
+func (m *fakturoidMockImportRepo) FindByFakturoidID(_ context.Context, _ int64, _ string, _ int64) (*domain.FakturoidImportLog, error) {
 	return nil, nil
 }
-func (m *fakturoidMockImportRepo) ListByEntityType(_ context.Context, _ string) ([]domain.FakturoidImportLog, error) {
+func (m *fakturoidMockImportRepo) ListByEntityType(_ context.Context, _ int64, _ string) ([]domain.FakturoidImportLog, error) {
 	return nil, nil
 }
 
@@ -778,7 +778,7 @@ func TestImportAll_DownloadsAttachments(t *testing.T) {
 		contactSvc, invoiceSvc, expenseSvc, documentSvc, invDocumentSvc,
 	)
 
-	result, err := svc.ImportAll(context.Background(), client, true)
+	result, err := svc.ImportAll(context.Background(), 1, client, true)
 	if err != nil {
 		t.Fatalf("ImportAll with attachments failed: %v", err)
 	}
@@ -832,7 +832,7 @@ func TestImportAll_AttachmentDownloadError(t *testing.T) {
 		contactSvc, invoiceSvc, expenseSvc, nil, invDocumentSvc,
 	)
 
-	result, err := svc.ImportAll(context.Background(), client, true)
+	result, err := svc.ImportAll(context.Background(), 1, client, true)
 	if err != nil {
 		t.Fatalf("ImportAll failed: %v", err)
 	}

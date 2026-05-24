@@ -50,15 +50,15 @@ func scanTaxDeductionDocument(s scanner) (*domain.TaxDeductionDocument, error) {
 	return d, nil
 }
 
-// Create inserts a new tax deduction document into the database.
-func (r *TaxDeductionDocumentRepository) Create(ctx context.Context, doc *domain.TaxDeductionDocument) error {
+// Create inserts a new tax deduction document into the database scoped to the given company.
+func (r *TaxDeductionDocumentRepository) Create(ctx context.Context, companyID int64, doc *domain.TaxDeductionDocument) error {
 	now := time.Now()
 	doc.CreatedAt = now
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO tax_deduction_documents (tax_deduction_id, filename, content_type, storage_path, size, extracted_amount, confidence, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		doc.TaxDeductionID, doc.Filename, doc.ContentType, doc.StoragePath,
+		INSERT INTO tax_deduction_documents (company_id, tax_deduction_id, filename, content_type, storage_path, size, extracted_amount, confidence, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID, doc.TaxDeductionID, doc.Filename, doc.ContentType, doc.StoragePath,
 		doc.Size, doc.ExtractedAmount, doc.Confidence,
 		doc.CreatedAt.Format(time.RFC3339),
 	)
@@ -74,10 +74,10 @@ func (r *TaxDeductionDocumentRepository) Create(ctx context.Context, doc *domain
 	return nil
 }
 
-// GetByID retrieves a single tax deduction document by ID (excluding soft-deleted).
-func (r *TaxDeductionDocumentRepository) GetByID(ctx context.Context, id int64) (*domain.TaxDeductionDocument, error) {
+// GetByID retrieves a single tax deduction document by ID within the given company (excluding soft-deleted).
+func (r *TaxDeductionDocumentRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.TaxDeductionDocument, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT `+taxDeductionDocumentColumns+` FROM tax_deduction_documents WHERE id = ? AND deleted_at IS NULL`, id,
+		`SELECT `+taxDeductionDocumentColumns+` FROM tax_deduction_documents WHERE id = ? AND company_id = ? AND deleted_at IS NULL`, id, companyID,
 	)
 	doc, err := scanTaxDeductionDocument(row)
 	if err != nil {
@@ -89,11 +89,11 @@ func (r *TaxDeductionDocumentRepository) GetByID(ctx context.Context, id int64) 
 	return doc, nil
 }
 
-// ListByDeductionID retrieves all active documents for a given tax deduction.
-func (r *TaxDeductionDocumentRepository) ListByDeductionID(ctx context.Context, deductionID int64) ([]domain.TaxDeductionDocument, error) {
+// ListByDeductionID retrieves all active documents for a given tax deduction within the given company.
+func (r *TaxDeductionDocumentRepository) ListByDeductionID(ctx context.Context, companyID, deductionID int64) ([]domain.TaxDeductionDocument, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+taxDeductionDocumentColumns+` FROM tax_deduction_documents WHERE tax_deduction_id = ? AND deleted_at IS NULL ORDER BY created_at ASC`,
-		deductionID,
+		`SELECT `+taxDeductionDocumentColumns+` FROM tax_deduction_documents WHERE tax_deduction_id = ? AND company_id = ? AND deleted_at IS NULL ORDER BY created_at ASC`,
+		deductionID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing tax_deduction_documents for deduction %d: %w", deductionID, err)
@@ -114,12 +114,12 @@ func (r *TaxDeductionDocumentRepository) ListByDeductionID(ctx context.Context, 
 	return docs, nil
 }
 
-// Delete performs a soft delete on a tax deduction document.
-func (r *TaxDeductionDocumentRepository) Delete(ctx context.Context, id int64) error {
+// Delete performs a soft delete on a tax deduction document within the given company.
+func (r *TaxDeductionDocumentRepository) Delete(ctx context.Context, companyID, id int64) error {
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, `
-		UPDATE tax_deduction_documents SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL`,
-		now.Format(time.RFC3339), id,
+		UPDATE tax_deduction_documents SET deleted_at = ? WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
+		now.Format(time.RFC3339), id, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("soft-deleting tax_deduction_document %d: %w", id, err)
@@ -135,11 +135,11 @@ func (r *TaxDeductionDocumentRepository) Delete(ctx context.Context, id int64) e
 	return nil
 }
 
-// UpdateExtraction updates the extracted amount and confidence for a document.
-func (r *TaxDeductionDocumentRepository) UpdateExtraction(ctx context.Context, id int64, amount domain.Amount, confidence float64) error {
+// UpdateExtraction updates the extracted amount and confidence for a document within the given company.
+func (r *TaxDeductionDocumentRepository) UpdateExtraction(ctx context.Context, companyID, id int64, amount domain.Amount, confidence float64) error {
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE tax_deduction_documents SET extracted_amount = ?, confidence = ? WHERE id = ? AND deleted_at IS NULL`,
-		amount, confidence, id,
+		UPDATE tax_deduction_documents SET extracted_amount = ?, confidence = ? WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
+		amount, confidence, id, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating extraction for tax_deduction_document %d: %w", id, err)

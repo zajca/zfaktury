@@ -37,15 +37,15 @@ func NewTaxDeductionDocumentService(
 	}
 }
 
-// Upload validates, stores, and registers a new proof document for a tax deduction.
+// Upload validates, stores, and registers a new proof document for a tax deduction within the given company.
 // data is read fully to enforce the size limit before writing to disk.
-func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID int64, filename string, contentType string, data io.Reader) (*domain.TaxDeductionDocument, error) {
+func (s *TaxDeductionDocumentService) Upload(ctx context.Context, companyID, deductionID int64, filename string, contentType string, data io.Reader) (*domain.TaxDeductionDocument, error) {
 	if deductionID == 0 {
 		return nil, fmt.Errorf("deduction ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	// Validate the deduction exists.
-	if _, err := s.deductRepo.GetByID(ctx, deductionID); err != nil {
+	// Validate the deduction exists within the same company.
+	if _, err := s.deductRepo.GetByID(ctx, companyID, deductionID); err != nil {
 		return nil, fmt.Errorf("fetching deduction: %w", err)
 	}
 
@@ -108,7 +108,7 @@ func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID in
 		Size:           int64(len(fileBytes)),
 	}
 
-	if err := s.repo.Create(ctx, doc); err != nil {
+	if err := s.repo.Create(ctx, companyID, doc); err != nil {
 		// Clean up file on DB failure.
 		_ = os.Remove(storagePath)
 		return nil, fmt.Errorf("saving document record: %w", err)
@@ -127,42 +127,42 @@ func (s *TaxDeductionDocumentService) Upload(ctx context.Context, deductionID in
 	return doc, nil
 }
 
-// GetByID retrieves a tax deduction document's metadata by its ID.
-func (s *TaxDeductionDocumentService) GetByID(ctx context.Context, id int64) (*domain.TaxDeductionDocument, error) {
+// GetByID retrieves a tax deduction document's metadata by its ID within the given company.
+func (s *TaxDeductionDocumentService) GetByID(ctx context.Context, companyID, id int64) (*domain.TaxDeductionDocument, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
-	doc, err := s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching document: %w", err)
 	}
 	return doc, nil
 }
 
-// ListByDeductionID retrieves all active documents for a tax deduction.
-func (s *TaxDeductionDocumentService) ListByDeductionID(ctx context.Context, deductionID int64) ([]domain.TaxDeductionDocument, error) {
+// ListByDeductionID retrieves all active documents for a tax deduction within the given company.
+func (s *TaxDeductionDocumentService) ListByDeductionID(ctx context.Context, companyID, deductionID int64) ([]domain.TaxDeductionDocument, error) {
 	if deductionID == 0 {
 		return nil, fmt.Errorf("deduction ID is required: %w", domain.ErrInvalidInput)
 	}
-	docs, err := s.repo.ListByDeductionID(ctx, deductionID)
+	docs, err := s.repo.ListByDeductionID(ctx, companyID, deductionID)
 	if err != nil {
 		return nil, fmt.Errorf("listing documents for deduction: %w", err)
 	}
 	return docs, nil
 }
 
-// Delete soft-deletes the document record and removes the file from disk.
-func (s *TaxDeductionDocumentService) Delete(ctx context.Context, id int64) error {
+// Delete soft-deletes the document record and removes the file from disk within the given company.
+func (s *TaxDeductionDocumentService) Delete(ctx context.Context, companyID, id int64) error {
 	if id == 0 {
 		return fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
 
-	doc, err := s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return fmt.Errorf("getting document before delete: %w", err)
 	}
 
-	if err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.repo.Delete(ctx, companyID, id); err != nil {
 		return fmt.Errorf("soft-deleting document record: %w", err)
 	}
 
@@ -178,13 +178,13 @@ func (s *TaxDeductionDocumentService) Delete(ctx context.Context, id int64) erro
 	return nil
 }
 
-// GetFilePath returns the filesystem path and content type for serving a document.
+// GetFilePath returns the filesystem path and content type for serving a document within the given company.
 // It validates that the stored path is within the expected data directory.
-func (s *TaxDeductionDocumentService) GetFilePath(ctx context.Context, id int64) (string, string, error) {
+func (s *TaxDeductionDocumentService) GetFilePath(ctx context.Context, companyID, id int64) (string, string, error) {
 	if id == 0 {
 		return "", "", fmt.Errorf("document ID is required: %w", domain.ErrInvalidInput)
 	}
-	doc, err := s.repo.GetByID(ctx, id)
+	doc, err := s.repo.GetByID(ctx, companyID, id)
 	if err != nil {
 		return "", "", fmt.Errorf("fetching document for file path: %w", err)
 	}

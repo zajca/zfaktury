@@ -35,12 +35,12 @@ func scanImportLog(scanner interface{ Scan(dest ...any) error }) (domain.Fakturo
 	return e, nil
 }
 
-// Create inserts a new import log entry.
-func (r *FakturoidImportLogRepository) Create(ctx context.Context, entry *domain.FakturoidImportLog) error {
+// Create inserts a new import log entry scoped to the given company.
+func (r *FakturoidImportLogRepository) Create(ctx context.Context, companyID int64, entry *domain.FakturoidImportLog) error {
 	result, err := r.db.ExecContext(ctx,
-		`INSERT INTO fakturoid_import_log (fakturoid_entity_type, fakturoid_id, local_entity_type, local_id)
-		 VALUES (?, ?, ?, ?)`,
-		entry.FakturoidEntityType, entry.FakturoidID, entry.LocalEntityType, entry.LocalID,
+		`INSERT INTO fakturoid_import_log (company_id, fakturoid_entity_type, fakturoid_id, local_entity_type, local_id)
+		 VALUES (?, ?, ?, ?, ?)`,
+		companyID, entry.FakturoidEntityType, entry.FakturoidID, entry.LocalEntityType, entry.LocalID,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting import log: %w", err)
@@ -53,12 +53,12 @@ func (r *FakturoidImportLogRepository) Create(ctx context.Context, entry *domain
 	return nil
 }
 
-// FindByFakturoidID looks up an import log entry by Fakturoid entity type and ID.
-func (r *FakturoidImportLogRepository) FindByFakturoidID(ctx context.Context, entityType string, fakturoidID int64) (*domain.FakturoidImportLog, error) {
+// FindByFakturoidID looks up an import log entry by Fakturoid entity type and ID within the given company.
+func (r *FakturoidImportLogRepository) FindByFakturoidID(ctx context.Context, companyID int64, entityType string, fakturoidID int64) (*domain.FakturoidImportLog, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT id, fakturoid_entity_type, fakturoid_id, local_entity_type, local_id, imported_at
-		 FROM fakturoid_import_log WHERE fakturoid_entity_type = ? AND fakturoid_id = ?`,
-		entityType, fakturoidID,
+		 FROM fakturoid_import_log WHERE company_id = ? AND fakturoid_entity_type = ? AND fakturoid_id = ?`,
+		companyID, entityType, fakturoidID,
 	)
 	entry, err := scanImportLog(row)
 	if err != nil {
@@ -70,12 +70,12 @@ func (r *FakturoidImportLogRepository) FindByFakturoidID(ctx context.Context, en
 	return &entry, nil
 }
 
-// ListByEntityType lists all import logs for a given entity type.
-func (r *FakturoidImportLogRepository) ListByEntityType(ctx context.Context, entityType string) ([]domain.FakturoidImportLog, error) {
+// ListByEntityType lists all import logs for a given entity type within the given company.
+func (r *FakturoidImportLogRepository) ListByEntityType(ctx context.Context, companyID int64, entityType string) ([]domain.FakturoidImportLog, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, fakturoid_entity_type, fakturoid_id, local_entity_type, local_id, imported_at
-		 FROM fakturoid_import_log WHERE fakturoid_entity_type = ? ORDER BY id`,
-		entityType,
+		 FROM fakturoid_import_log WHERE company_id = ? AND fakturoid_entity_type = ? ORDER BY id`,
+		companyID, entityType,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing import logs: %w", err)

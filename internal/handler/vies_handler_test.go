@@ -29,6 +29,7 @@ func setupVIESRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	h := NewVIESHandler(viesSvc, settingsSvc)
 
 	r := chi.NewRouter()
+	r.Use(injectTestCompany(1))
 	r.Mount("/api/v1/vies-summaries", h.Routes())
 	return r, db
 }

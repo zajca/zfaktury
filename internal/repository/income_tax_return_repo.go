@@ -72,8 +72,8 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 	return itr, nil
 }
 
-// Create inserts a new income tax return into the database.
-func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.IncomeTaxReturn) error {
+// Create inserts a new income tax return into the database scoped to the given company.
+func (r *IncomeTaxReturnRepository) Create(ctx context.Context, companyID int64, itr *domain.IncomeTaxReturn) error {
 	now := time.Now()
 	itr.CreatedAt = now
 	itr.UpdatedAt = now
@@ -83,7 +83,7 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO income_tax_returns (
-			year, filing_type,
+			company_id, year, filing_type,
 			total_revenue, actual_expenses, flat_rate_percent, flat_rate_amount, used_expenses,
 			tax_base, total_deductions, tax_base_rounded, tax_at_15, tax_at_23, total_tax,
 			credit_basic, credit_spouse, credit_disability, credit_student, total_credits,
@@ -92,7 +92,8 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 			capital_income_gross, capital_income_tax, capital_income_net,
 			other_income_gross, other_income_expenses, other_income_exempt, other_income_net,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		companyID,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
 		itr.TaxBase, itr.TotalDeductions, itr.TaxBaseRounded, itr.TaxAt15, itr.TaxAt23, itr.TotalTax,
@@ -116,8 +117,8 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 	return nil
 }
 
-// Update modifies an existing income tax return.
-func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.IncomeTaxReturn) error {
+// Update modifies an existing income tax return within the given company.
+func (r *IncomeTaxReturnRepository) Update(ctx context.Context, companyID int64, itr *domain.IncomeTaxReturn) error {
 	itr.UpdatedAt = time.Now()
 
 	var filedAt any
@@ -136,7 +137,7 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 			capital_income_gross = ?, capital_income_tax = ?, capital_income_net = ?,
 			other_income_gross = ?, other_income_expenses = ?, other_income_exempt = ?, other_income_net = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
-		WHERE id = ?`,
+		WHERE id = ? AND company_id = ?`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
 		itr.TaxBase, itr.TotalDeductions, itr.TaxBaseRounded, itr.TaxAt15, itr.TaxAt23, itr.TotalTax,
@@ -146,7 +147,7 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 		itr.CapitalIncomeGross, itr.CapitalIncomeTax, itr.CapitalIncomeNet,
 		itr.OtherIncomeGross, itr.OtherIncomeExpenses, itr.OtherIncomeExempt, itr.OtherIncomeNet,
 		itr.XMLData, itr.Status, filedAt,
-		itr.UpdatedAt.Format(time.RFC3339), itr.ID,
+		itr.UpdatedAt.Format(time.RFC3339), itr.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating income_tax_return %d: %w", itr.ID, err)
@@ -154,9 +155,9 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 	return nil
 }
 
-// Delete removes an income tax return by ID.
-func (r *IncomeTaxReturnRepository) Delete(ctx context.Context, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM income_tax_returns WHERE id = ?`, id)
+// Delete removes an income tax return by ID within the given company.
+func (r *IncomeTaxReturnRepository) Delete(ctx context.Context, companyID, id int64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM income_tax_returns WHERE id = ? AND company_id = ?`, id, companyID)
 	if err != nil {
 		return fmt.Errorf("deleting income_tax_return %d: %w", id, err)
 	}
@@ -171,9 +172,9 @@ func (r *IncomeTaxReturnRepository) Delete(ctx context.Context, id int64) error 
 	return nil
 }
 
-// GetByID retrieves an income tax return by its ID.
-func (r *IncomeTaxReturnRepository) GetByID(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT `+incomeTaxReturnColumns+` FROM income_tax_returns WHERE id = ?`, id)
+// GetByID retrieves an income tax return by its ID within the given company.
+func (r *IncomeTaxReturnRepository) GetByID(ctx context.Context, companyID, id int64) (*domain.IncomeTaxReturn, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+incomeTaxReturnColumns+` FROM income_tax_returns WHERE id = ? AND company_id = ?`, id, companyID)
 	itr, err := scanIncomeTaxReturn(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -184,11 +185,11 @@ func (r *IncomeTaxReturnRepository) GetByID(ctx context.Context, id int64) (*dom
 	return itr, nil
 }
 
-// List retrieves all income tax returns for a given year.
-func (r *IncomeTaxReturnRepository) List(ctx context.Context, year int) ([]domain.IncomeTaxReturn, error) {
+// List retrieves all income tax returns for a given year within the given company.
+func (r *IncomeTaxReturnRepository) List(ctx context.Context, companyID int64, year int) ([]domain.IncomeTaxReturn, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+incomeTaxReturnColumns+` FROM income_tax_returns WHERE year = ? ORDER BY created_at ASC`,
-		year,
+		`SELECT `+incomeTaxReturnColumns+` FROM income_tax_returns WHERE company_id = ? AND year = ? ORDER BY created_at ASC`,
+		companyID, year,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing income_tax_returns for year %d: %w", year, err)
@@ -209,11 +210,11 @@ func (r *IncomeTaxReturnRepository) List(ctx context.Context, year int) ([]domai
 	return result, nil
 }
 
-// GetByYear retrieves an income tax return for a specific year and filing type.
-func (r *IncomeTaxReturnRepository) GetByYear(ctx context.Context, year int, filingType string) (*domain.IncomeTaxReturn, error) {
+// GetByYear retrieves an income tax return for a specific year and filing type within the given company.
+func (r *IncomeTaxReturnRepository) GetByYear(ctx context.Context, companyID int64, year int, filingType string) (*domain.IncomeTaxReturn, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT `+incomeTaxReturnColumns+` FROM income_tax_returns WHERE year = ? AND filing_type = ?`,
-		year, filingType,
+		`SELECT `+incomeTaxReturnColumns+` FROM income_tax_returns WHERE company_id = ? AND year = ? AND filing_type = ?`,
+		companyID, year, filingType,
 	)
 	itr, err := scanIncomeTaxReturn(row)
 	if err != nil {
@@ -225,23 +226,23 @@ func (r *IncomeTaxReturnRepository) GetByYear(ctx context.Context, year int, fil
 	return itr, nil
 }
 
-// LinkInvoices associates invoices with an income tax return via the junction table.
-func (r *IncomeTaxReturnRepository) LinkInvoices(ctx context.Context, incomeTaxReturnID int64, invoiceIDs []int64) error {
+// LinkInvoices associates invoices with an income tax return via the junction table within the given company.
+func (r *IncomeTaxReturnRepository) LinkInvoices(ctx context.Context, companyID, incomeTaxReturnID int64, invoiceIDs []int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction for linking invoices: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(ctx, `DELETE FROM income_tax_return_invoices WHERE income_tax_return_id = ?`, incomeTaxReturnID)
+	_, err = tx.ExecContext(ctx, `DELETE FROM income_tax_return_invoices WHERE income_tax_return_id = ? AND company_id = ?`, incomeTaxReturnID, companyID)
 	if err != nil {
 		return fmt.Errorf("clearing existing invoice links for income_tax_return %d: %w", incomeTaxReturnID, err)
 	}
 
 	for _, invID := range invoiceIDs {
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO income_tax_return_invoices (income_tax_return_id, invoice_id) VALUES (?, ?)`,
-			incomeTaxReturnID, invID,
+			`INSERT INTO income_tax_return_invoices (company_id, income_tax_return_id, invoice_id) VALUES (?, ?, ?)`,
+			companyID, incomeTaxReturnID, invID,
 		)
 		if err != nil {
 			return fmt.Errorf("linking invoice %d to income_tax_return %d: %w", invID, incomeTaxReturnID, err)
@@ -254,23 +255,23 @@ func (r *IncomeTaxReturnRepository) LinkInvoices(ctx context.Context, incomeTaxR
 	return nil
 }
 
-// LinkExpenses associates expenses with an income tax return via the junction table.
-func (r *IncomeTaxReturnRepository) LinkExpenses(ctx context.Context, incomeTaxReturnID int64, expenseIDs []int64) error {
+// LinkExpenses associates expenses with an income tax return via the junction table within the given company.
+func (r *IncomeTaxReturnRepository) LinkExpenses(ctx context.Context, companyID, incomeTaxReturnID int64, expenseIDs []int64) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction for linking expenses: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(ctx, `DELETE FROM income_tax_return_expenses WHERE income_tax_return_id = ?`, incomeTaxReturnID)
+	_, err = tx.ExecContext(ctx, `DELETE FROM income_tax_return_expenses WHERE income_tax_return_id = ? AND company_id = ?`, incomeTaxReturnID, companyID)
 	if err != nil {
 		return fmt.Errorf("clearing existing expense links for income_tax_return %d: %w", incomeTaxReturnID, err)
 	}
 
 	for _, expID := range expenseIDs {
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO income_tax_return_expenses (income_tax_return_id, expense_id) VALUES (?, ?)`,
-			incomeTaxReturnID, expID,
+			`INSERT INTO income_tax_return_expenses (company_id, income_tax_return_id, expense_id) VALUES (?, ?, ?)`,
+			companyID, incomeTaxReturnID, expID,
 		)
 		if err != nil {
 			return fmt.Errorf("linking expense %d to income_tax_return %d: %w", expID, incomeTaxReturnID, err)
@@ -283,11 +284,11 @@ func (r *IncomeTaxReturnRepository) LinkExpenses(ctx context.Context, incomeTaxR
 	return nil
 }
 
-// GetLinkedInvoiceIDs returns invoice IDs linked to an income tax return.
-func (r *IncomeTaxReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, incomeTaxReturnID int64) ([]int64, error) {
+// GetLinkedInvoiceIDs returns invoice IDs linked to an income tax return within the given company.
+func (r *IncomeTaxReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, companyID, incomeTaxReturnID int64) ([]int64, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT invoice_id FROM income_tax_return_invoices WHERE income_tax_return_id = ? ORDER BY invoice_id`,
-		incomeTaxReturnID,
+		`SELECT invoice_id FROM income_tax_return_invoices WHERE income_tax_return_id = ? AND company_id = ? ORDER BY invoice_id`,
+		incomeTaxReturnID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("querying linked invoices for income_tax_return %d: %w", incomeTaxReturnID, err)
@@ -308,11 +309,11 @@ func (r *IncomeTaxReturnRepository) GetLinkedInvoiceIDs(ctx context.Context, inc
 	return ids, nil
 }
 
-// GetLinkedExpenseIDs returns expense IDs linked to an income tax return.
-func (r *IncomeTaxReturnRepository) GetLinkedExpenseIDs(ctx context.Context, incomeTaxReturnID int64) ([]int64, error) {
+// GetLinkedExpenseIDs returns expense IDs linked to an income tax return within the given company.
+func (r *IncomeTaxReturnRepository) GetLinkedExpenseIDs(ctx context.Context, companyID, incomeTaxReturnID int64) ([]int64, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT expense_id FROM income_tax_return_expenses WHERE income_tax_return_id = ? ORDER BY expense_id`,
-		incomeTaxReturnID,
+		`SELECT expense_id FROM income_tax_return_expenses WHERE income_tax_return_id = ? AND company_id = ? ORDER BY expense_id`,
+		incomeTaxReturnID, companyID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("querying linked expenses for income_tax_return %d: %w", incomeTaxReturnID, err)

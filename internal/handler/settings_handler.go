@@ -27,9 +27,15 @@ func (h *SettingsHandler) Routes() chi.Router {
 	return r
 }
 
-// GetAll handles GET /api/v1/settings.
+// GetAll handles GET /api/v1/companies/{companyID}/settings.
 func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	settings, err := h.svc.GetAll(r.Context())
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
+	settings, err := h.svc.GetAll(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get settings", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to get settings")
@@ -39,22 +45,28 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, settings)
 }
 
-// Update handles PUT /api/v1/settings.
+// Update handles PUT /api/v1/companies/{companyID}/settings.
 func (h *SettingsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req map[string]string
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if err := h.svc.SetBulk(r.Context(), req); err != nil {
+	if err := h.svc.SetBulk(r.Context(), company.ID, req); err != nil {
 		slog.Error("failed to update settings", "error", err)
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Return all settings after update.
-	settings, err := h.svc.GetAll(r.Context())
+	settings, err := h.svc.GetAll(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get settings after update", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to get settings")

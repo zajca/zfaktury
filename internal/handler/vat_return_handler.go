@@ -39,6 +39,12 @@ func (h *VATReturnHandler) Routes() chi.Router {
 
 // Create handles POST /api/v1/vat-returns.
 func (h *VATReturnHandler) Create(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	var req vatReturnRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -54,7 +60,7 @@ func (h *VATReturnHandler) Create(w http.ResponseWriter, r *http.Request) {
 		FilingType: req.FilingType,
 	}
 
-	if err := h.svc.Create(r.Context(), vr); err != nil {
+	if err := h.svc.Create(r.Context(), company.ID, vr); err != nil {
 		slog.Error("failed to create vat return", "error", err)
 		mapDomainError(w, err)
 		return
@@ -65,6 +71,12 @@ func (h *VATReturnHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /api/v1/vat-returns.
 func (h *VATReturnHandler) List(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	year := 0
 	if v := r.URL.Query().Get("year"); v != "" {
 		parsed, err := strconv.Atoi(v)
@@ -75,7 +87,7 @@ func (h *VATReturnHandler) List(w http.ResponseWriter, r *http.Request) {
 		year = parsed
 	}
 
-	returns, err := h.svc.List(r.Context(), year)
+	returns, err := h.svc.List(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to list vat returns", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to list vat returns")
@@ -92,13 +104,19 @@ func (h *VATReturnHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GetByID handles GET /api/v1/vat-returns/{id}.
 func (h *VATReturnHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid vat return ID")
 		return
 	}
 
-	vr, err := h.svc.GetByID(r.Context(), id)
+	vr, err := h.svc.GetByID(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get vat return", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -110,13 +128,19 @@ func (h *VATReturnHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 // Delete handles DELETE /api/v1/vat-returns/{id}.
 func (h *VATReturnHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid vat return ID")
 		return
 	}
 
-	if err := h.svc.Delete(r.Context(), id); err != nil {
+	if err := h.svc.Delete(r.Context(), company.ID, id); err != nil {
 		slog.Error("failed to delete vat return", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
@@ -127,13 +151,19 @@ func (h *VATReturnHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // Recalculate handles POST /api/v1/vat-returns/{id}/recalculate.
 func (h *VATReturnHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid vat return ID")
 		return
 	}
 
-	vr, err := h.svc.Recalculate(r.Context(), id)
+	vr, err := h.svc.Recalculate(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to recalculate vat return", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -145,13 +175,19 @@ func (h *VATReturnHandler) Recalculate(w http.ResponseWriter, r *http.Request) {
 
 // GenerateXML handles POST /api/v1/vat-returns/{id}/generate-xml.
 func (h *VATReturnHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid vat return ID")
 		return
 	}
 
-	vr, err := h.svc.GenerateXML(r.Context(), id)
+	vr, err := h.svc.GenerateXML(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to generate vat return XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -163,13 +199,19 @@ func (h *VATReturnHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 
 // DownloadXML handles GET /api/v1/vat-returns/{id}/xml.
 func (h *VATReturnHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid vat return ID")
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	xmlData, err := h.svc.GetXMLData(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to get vat return XML", "error", err, "id", id)
 		mapDomainError(w, err)
@@ -191,13 +233,19 @@ func (h *VATReturnHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 
 // MarkFiled handles POST /api/v1/vat-returns/{id}/mark-filed.
 func (h *VATReturnHandler) MarkFiled(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "company context missing")
+		return
+	}
+
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid vat return ID")
 		return
 	}
 
-	vr, err := h.svc.MarkFiled(r.Context(), id)
+	vr, err := h.svc.MarkFiled(r.Context(), company.ID, id)
 	if err != nil {
 		slog.Error("failed to mark vat return as filed", "error", err, "id", id)
 		mapDomainError(w, err)

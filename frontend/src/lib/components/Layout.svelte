@@ -2,6 +2,8 @@
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
+	import CompanyHeader from '$lib/components/CompanyHeader.svelte';
+	import { currentCompany } from '$lib/stores/currentCompany.svelte';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -599,7 +601,21 @@
 				</svg>
 			</button>
 			<h1 class="ml-3 text-sm font-semibold text-primary">ZFaktury</h1>
+			{#if currentCompany.companies.length > 0}
+				<div class="ml-auto">
+					<CompanyHeader />
+				</div>
+			{/if}
 		</header>
+
+		<!-- Top bar (desktop) — only shown when at least one company is available -->
+		{#if currentCompany.companies.length > 0}
+			<header
+				class="hidden lg:flex h-12 items-center justify-end border-b border-border bg-surface px-4"
+			>
+				<CompanyHeader />
+			</header>
+		{/if}
 
 		<!-- Page content -->
 		<main class="flex-1 overflow-y-auto p-5">

@@ -123,8 +123,11 @@ describe('Layout', () => {
 		const contactsLink = screen.getAllByText('Kontakty')[0].closest('a');
 		expect(contactsLink?.getAttribute('href')).toBe('/contacts');
 
-		const firmaLink = screen.getAllByText('Firma')[0].closest('a');
+		const firmaLink = screen.getAllByText('Údaje firmy')[0].closest('a');
 		expect(firmaLink?.getAttribute('href')).toBe('/settings/firma');
+
+		const firmyLink = screen.getAllByText('Firmy')[0].closest('a');
+		expect(firmyLink?.getAttribute('href')).toBe('/companies');
 
 		const emailLink = screen.getAllByText('Email')[0].closest('a');
 		expect(emailLink?.getAttribute('href')).toBe('/settings/email');

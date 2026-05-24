@@ -41,8 +41,11 @@ type App struct {
 type Options struct {
 	ConfigFile string
 	InitConfig bool
-	Port       int // 0 = let the OS pick a free port
-	DevMode    bool
+	// Host overrides the bind interface. Empty means "use the value from
+	// the config file (or its default of 127.0.0.1)".
+	Host    string
+	Port    int // 0 = let the OS pick a free port
+	DevMode bool
 }
 
 // New creates a fully wired application: config, logging, lock, DB, migrations,
@@ -63,6 +66,12 @@ func New(opts Options) (*App, error) {
 		return nil, fmt.Errorf("setting up logging: %w", err)
 	}
 
+	if opts.Host != "" {
+		cfg.Server.Host = opts.Host
+	}
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = "127.0.0.1"
+	}
 	cfg.Server.Port = opts.Port
 	cfg.Server.Dev = opts.DevMode
 
@@ -132,7 +141,7 @@ func (a *App) Config() *config.Config {
 
 // ListenAndServe starts the HTTP server and blocks until ctx is cancelled.
 func (a *App) ListenAndServe(ctx context.Context) error {
-	addr := fmt.Sprintf("127.0.0.1:%d", a.cfg.Server.Port)
+	addr := fmt.Sprintf("%s:%d", a.cfg.Server.Host, a.cfg.Server.Port)
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      a.router,

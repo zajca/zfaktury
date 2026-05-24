@@ -102,8 +102,12 @@ type LogConfig struct {
 
 // ServerConfig holds HTTP server settings.
 type ServerConfig struct {
-	Port int  `toml:"port"`
-	Dev  bool `toml:"dev"`
+	// Host is the interface to bind to. Empty or unset defaults to 127.0.0.1
+	// (desktop/local-only). Set to "0.0.0.0" to expose the server on all
+	// interfaces -- required when running inside a container.
+	Host string `toml:"host"`
+	Port int    `toml:"port"`
+	Dev  bool   `toml:"dev"`
 }
 
 // SMTPConfig holds email sending settings.
@@ -218,6 +222,7 @@ func Load(configPath string) (*Config, error) {
 	cfg := &Config{
 		DataDir: dataDir,
 		Server: ServerConfig{
+			Host: "127.0.0.1",
 			Port: 8080,
 		},
 		Backup: BackupConfig{

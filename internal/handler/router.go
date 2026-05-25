@@ -122,8 +122,14 @@ func NewRouter(
 		// -----------------------------------------------------------------
 
 		// Company CRUD (the global registry of companies themselves).
+		// List + Create are registered at /companies; Get/Update/Delete on a
+		// specific company live INSIDE the per-company Route below, behind
+		// WithCompany, because chi cannot disambiguate /companies/{id} (here)
+		// from /companies/{companyID}/* (subrouter) when both are wildcards
+		// matching /companies/1 exactly.
 		companyHandler := NewCompanyHandler(companySvc)
-		api.Mount("/companies", companyHandler.Routes())
+		api.Get("/companies", companyHandler.List)
+		api.Post("/companies", companyHandler.Create)
 
 		// Audit log is cross-company by design (admin/diagnostic view).
 		auditLogHandler := NewAuditLogHandler(auditSvc)
@@ -147,6 +153,12 @@ func NewRouter(
 		// -----------------------------------------------------------------
 		api.Route("/companies/{companyID}", func(co chi.Router) {
 			co.Use(WithCompany(companySvc))
+
+			// Company resource itself (Get/Update/Delete by ID).
+			// WithCompany already validated the company exists and is not soft-deleted.
+			co.Get("/", companyHandler.Get)
+			co.Put("/", companyHandler.Update)
+			co.Delete("/", companyHandler.Delete)
 
 			co.Mount("/contacts", contactHandler.Routes())
 

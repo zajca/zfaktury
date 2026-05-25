@@ -29,8 +29,14 @@ func respondError(w http.ResponseWriter, status int, message string) {
 }
 
 // parseID extracts an int64 ID from the chi URL parameter "id".
+// Falls back to "companyID" when "id" is empty so the company CRUD handlers
+// work both at /companies/{id} (legacy) and at /companies/{companyID} (the
+// per-company subrouter, where company CRUD now lives behind WithCompany).
 func parseID(r *http.Request) (int64, error) {
 	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		idStr = chi.URLParam(r, "companyID")
+	}
 	return strconv.ParseInt(idStr, 10, 64)
 }
 

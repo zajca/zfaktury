@@ -19,11 +19,14 @@ const (
 )
 
 // Render evaluates pattern against (prefix, year, number) and returns the
-// formatted invoice number. The caller is responsible for having validated
-// the pattern with ValidatePattern before storing it; Render processes all
-// recognised tokens and passes unrecognised tokens through unchanged so that
-// a programming error is visible rather than silent.
+// formatted invoice number. Callers must have validated the pattern with
+// ValidatePattern before storing it; Render on an invalid pattern returns
+// the raw pattern unchanged so a programming error stays visible rather
+// than silently producing a half-rendered string.
 func Render(pattern, prefix string, year, number int) string {
+	if ValidatePattern(pattern) != nil {
+		return pattern
+	}
 	var b strings.Builder
 	b.Grow(len(pattern) + 8)
 	i := 0
@@ -34,19 +37,11 @@ func Render(pattern, prefix string, year, number int) string {
 			continue
 		}
 		end := strings.IndexByte(pattern[i:], '}')
-		if end < 0 {
-			// Unterminated brace — pass through the rest as-is.
-			b.WriteString(pattern[i:])
-			break
-		}
+		// ValidatePattern already rejected unterminated braces, so end >= 0
+		// and the token is one we know how to render.
 		token := pattern[i+1 : i+end]
-		kind, err := classifyToken(token)
-		if err != nil {
-			// Unknown token — pass the whole {token} through unchanged.
-			b.WriteString(pattern[i : i+end+1])
-		} else {
-			writeTokenByKind(&b, kind, token, prefix, year, number)
-		}
+		kind, _ := classifyToken(token)
+		writeTokenByKind(&b, kind, token, prefix, year, number)
 		i += end + 1
 	}
 	return b.String()

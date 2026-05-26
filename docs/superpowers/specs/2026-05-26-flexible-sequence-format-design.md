@@ -121,40 +121,48 @@ importing the service layer (which would create a cycle).
 
 Single page touched: `frontend/src/routes/settings/sequences/+page.svelte`.
 
-Replace the lone "Formát" text input with a small builder:
+Keep the existing layout (Prefix, Rok, Počáteční číslo, Formát, Náhled) and
+make the **Formát** text input the single source of truth for the template.
+The user types the whole pattern -- including any separators -- directly into
+that field, e.g. `{prefix}-{yy}-{number:03d}`. Any text outside `{...}` is a
+literal separator, so dashes, slashes, spaces, or letters all just work.
 
-- **Formát roku** (radio): `YYYY (2026)` / `YY (26)` -- default `YYYY` for
-  existing sequences, `YY` is what the user actually wants for the migration
-  case.
-- **Oddělovač před rokem** (text, 0-3 chars): inserted between `{prefix}` and
-  the year token.
-- **Oddělovač před číslem** (text, 0-3 chars): inserted between the year
-  token and the number token.
-- **Šířka čísla** (number, 1-6): default 4 (backward-compatible default).
+**Live preview.** A `Náhled:` line below the form re-renders on every
+keystroke using the TS port of the renderer, fed by the current `prefix`,
+`year`, and `next_number` form fields. Example: typing
+`{prefix}-{yy}-{number:03d}` with prefix `77`, year 2026, next 13 shows
+`Náhled: 77-26-013`. Invalid templates show `Náhled: --` plus an inline
+validation message ("Neplatná šablona: ...").
 
-Defaults match the migration target: both separators `-`, year `YY`, width
-`3` -- produces `{prefix}-{yy}-{number:03d}` and previews as `77-26-012`. Both
-separators can be left empty independently, so `FV2026-001` (`{prefix}{yyyy}-{number:03d}`)
-and `FV/2026-001` (`{prefix}/{yyyy}-{number:03d}`) are both reachable from the
-builder without dropping into Advanced.
+**Token cheat-sheet below the field** (small muted text, one line):
 
-The builder produces the final pattern (e.g. `{prefix}-{yy}-{number:03d}`)
-and shows it in a small read-only "Šablona" line, plus a live preview of the
-generated invoice number underneath.
+```
+Tokeny: {prefix} {yyyy} {yy} {number} {number:03d} {number:04d}
+        ...vše ostatní je oddělovač.
+```
 
-An "Pokročilé" disclosure reveals the raw `format_pattern` text input. When
-the user edits the raw field, the builder fields become read-only and a
-"Použít stavebnici" link reopens the builder (resetting the raw override).
+`HelpTip topic="prefix-format"` is updated with full examples and the user
+can click it for the long form.
+
+**Token insertion buttons (optional polish, low priority).** Small chip
+buttons next to the field for `{prefix}`, `{yyyy}`, `{yy}`, `{number:03d}`,
+`{number:04d}`. Clicking inserts at the caret. Implemented only if it fits
+into the implementation budget; not load-bearing -- the field is fully usable
+without them.
+
+**Defaults.** The Create form keeps the current default
+`{prefix}{year}{number:04d}` to avoid changing behaviour for users who do
+not customise. The user simply edits the field to
+`{prefix}-{yy}-{number:03d}` when creating their migration sequence.
+
+**Editing existing sequences** still allows full template edits; the inline
+warning "Změna formátu se projeví u nově generovaných čísel; již vystavené
+faktury zůstanou beze změny." appears when the pattern field is dirtied.
 
 A new utility `frontend/src/lib/utils/sequence-format.ts` ports the renderer
-to TypeScript. The page imports it instead of doing inline formatting. Tests
-guarantee parity with the Go implementation through identical fixtures.
-
-Default for the *create* form: both separators `-`, `YY`, width `3` --
-matching the user's migration target. Edits to existing sequences read their
-stored pattern back into the builder if it can be losslessly parsed as
-`{prefix}<sep1>{year-token}<sep2>{number-token}` (with each separator 0-3
-non-`{` characters); otherwise the form opens in Advanced mode automatically.
+to TypeScript. The page imports it instead of doing inline string-padding.
+Tests guarantee parity with the Go implementation through identical
+fixtures.
 
 ### Backward compatibility
 
@@ -190,8 +198,9 @@ Frontend:
 - `frontend/src/lib/utils/sequence-format.test.ts` -- mirror of the Go test
   fixtures.
 - `frontend/src/routes/settings/sequences/page.test.ts` -- new cases:
-  builder writes pattern, advanced toggle overrides, preview reflects builder,
-  validation error from API surfaces in the form.
+  preview reflects the template field on each keystroke, invalid template
+  shows fallback preview and inline error, validation error from the API
+  surfaces in the form.
 
 ## Risks & mitigations
 

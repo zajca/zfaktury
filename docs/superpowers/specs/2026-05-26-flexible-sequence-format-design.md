@@ -126,13 +126,21 @@ Replace the lone "Formát" text input with a small builder:
 - **Formát roku** (radio): `YYYY (2026)` / `YY (26)` -- default `YYYY` for
   existing sequences, `YY` is what the user actually wants for the migration
   case.
-- **Oddělovač** (text, 0-3 chars): default empty for backward compatibility
-  with the current default; `-` is the canonical choice for new sequences.
+- **Oddělovač před rokem** (text, 0-3 chars): inserted between `{prefix}` and
+  the year token.
+- **Oddělovač před číslem** (text, 0-3 chars): inserted between the year
+  token and the number token.
 - **Šířka čísla** (number, 1-6): default 4 (backward-compatible default).
 
-The builder produces a pattern such as `{prefix}-{yy}-{number:03d}` and shows
-the result in a read-only "Pattern" line. A live preview number is rendered
-below.
+Defaults match the migration target: both separators `-`, year `YY`, width
+`3` -- produces `{prefix}-{yy}-{number:03d}` and previews as `77-26-012`. Both
+separators can be left empty independently, so `FV2026-001` (`{prefix}{yyyy}-{number:03d}`)
+and `FV/2026-001` (`{prefix}/{yyyy}-{number:03d}`) are both reachable from the
+builder without dropping into Advanced.
+
+The builder produces the final pattern (e.g. `{prefix}-{yy}-{number:03d}`)
+and shows it in a small read-only "Šablona" line, plus a live preview of the
+generated invoice number underneath.
 
 An "Pokročilé" disclosure reveals the raw `format_pattern` text input. When
 the user edits the raw field, the builder fields become read-only and a
@@ -142,10 +150,11 @@ A new utility `frontend/src/lib/utils/sequence-format.ts` ports the renderer
 to TypeScript. The page imports it instead of doing inline formatting. Tests
 guarantee parity with the Go implementation through identical fixtures.
 
-Default for the *create* form: the builder starts with separator `-`,
-`YY`, width `3` -- matching the user's migration target. Edits to existing
-sequences read their stored pattern back into the builder if it matches the
-builder grammar, otherwise the form opens in advanced mode automatically.
+Default for the *create* form: both separators `-`, `YY`, width `3` --
+matching the user's migration target. Edits to existing sequences read their
+stored pattern back into the builder if it can be losslessly parsed as
+`{prefix}<sep1>{year-token}<sep2>{number-token}` (with each separator 0-3
+non-`{` characters); otherwise the form opens in Advanced mode automatically.
 
 ### Backward compatibility
 

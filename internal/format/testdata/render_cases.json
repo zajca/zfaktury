@@ -1,0 +1,119 @@
+{
+  "render_cases": [
+    {
+      "name": "legacy default",
+      "pattern": "{prefix}{year}{number:04d}",
+      "prefix": "FV",
+      "year": 2026,
+      "number": 1,
+      "want": "FV20260001"
+    },
+    {
+      "name": "legacy default high number",
+      "pattern": "{prefix}{year}{number:04d}",
+      "prefix": "ZF",
+      "year": 2025,
+      "number": 42,
+      "want": "ZF20250042"
+    },
+    {
+      "name": "user migration target 77",
+      "pattern": "{prefix}-{yy}-{number:03d}",
+      "prefix": "77",
+      "year": 2026,
+      "number": 12,
+      "want": "77-26-012"
+    },
+    {
+      "name": "user migration target 42",
+      "pattern": "{prefix}-{yy}-{number:03d}",
+      "prefix": "42",
+      "year": 2026,
+      "number": 5,
+      "want": "42-26-005"
+    },
+    {
+      "name": "yyyy alias",
+      "pattern": "{prefix}-{yyyy}-{number:04d}",
+      "prefix": "FV",
+      "year": 2026,
+      "number": 7,
+      "want": "FV-2026-0007"
+    },
+    {
+      "name": "year alias still works",
+      "pattern": "FV/{year}/{number:03d}",
+      "prefix": "X",
+      "year": 2026,
+      "number": 7,
+      "want": "FV/2026/007"
+    },
+    {
+      "name": "no padding",
+      "pattern": "{prefix}-{number}",
+      "prefix": "INV",
+      "year": 2026,
+      "number": 42,
+      "want": "INV-42"
+    },
+    {
+      "name": "width 1",
+      "pattern": "{number:1d}",
+      "prefix": "X",
+      "year": 2026,
+      "number": 5,
+      "want": "5"
+    },
+    {
+      "name": "width 6",
+      "pattern": "{number:6d}",
+      "prefix": "X",
+      "year": 2026,
+      "number": 1,
+      "want": "000001"
+    },
+    {
+      "name": "overflow does not truncate",
+      "pattern": "{number:03d}",
+      "prefix": "X",
+      "year": 2026,
+      "number": 1000,
+      "want": "1000"
+    },
+    {
+      "name": "yy below 2000 (year=1999)",
+      "pattern": "{yy}-{number:03d}",
+      "prefix": "X",
+      "year": 1999,
+      "number": 1,
+      "want": "99-001"
+    },
+    {
+      "name": "yy zero-padded for year=2005",
+      "pattern": "{yy}-{number:03d}",
+      "prefix": "X",
+      "year": 2005,
+      "number": 1,
+      "want": "05-001"
+    },
+    {
+      "name": "literal slashes and spaces",
+      "pattern": "Faktura {prefix} / {yyyy} / {number:04d}",
+      "prefix": "FV",
+      "year": 2026,
+      "number": 12,
+      "want": "Faktura FV / 2026 / 0012"
+    }
+  ],
+  "validation_errors": [
+    { "name": "empty",                "pattern": "" },
+    { "name": "whitespace only",      "pattern": "   " },
+    { "name": "missing number token", "pattern": "{prefix}-{yy}" },
+    { "name": "two number tokens",    "pattern": "{number:03d}-{number:04d}" },
+    { "name": "width zero",           "pattern": "{number:0d}" },
+    { "name": "width seven",          "pattern": "{number:7d}" },
+    { "name": "unknown token",        "pattern": "{prefix}-{month}-{number:03d}" },
+    { "name": "unterminated brace",   "pattern": "{prefix-{number:03d}" },
+    { "name": "malformed number arg", "pattern": "{number:xx}" }
+  ]
+}

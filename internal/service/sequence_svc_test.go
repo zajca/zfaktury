@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -328,5 +330,75 @@ func TestFormatPreview(t *testing.T) {
 				t.Errorf("FormatPreview() = %q, want %q", got, tt.expect)
 			}
 		})
+	}
+}
+
+func TestSequenceService_Create_InvalidPattern(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	cases := []struct {
+		name    string
+		pattern string
+	}{
+		{"missing number token", "{prefix}-{yy}"},
+		{"two number tokens", "{number:03d}-{number:04d}"},
+		{"width zero", "{number:0d}"},
+		{"width seven", "{number:7d}"},
+		{"unknown token", "{prefix}-{month}-{number:03d}"},
+		{"unterminated brace", "{prefix-{number:03d}"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			seq := &domain.InvoiceSequence{Prefix: "FV", Year: 2026, FormatPattern: tc.pattern}
+			err := svc.Create(ctx, 1, seq)
+			if err == nil {
+				t.Fatalf("Create() with %q returned nil, want error", tc.pattern)
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("error does not wrap ErrInvalidInput: %v", err)
+			}
+		})
+	}
+}
+
+func TestSequenceService_Update_InvalidPattern(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	seq := &domain.InvoiceSequence{Prefix: "FV", Year: 2026, NextNumber: 1}
+	if err := svc.Create(ctx, 1, seq); err != nil {
+		t.Fatalf("seed Create: %v", err)
+	}
+	seq.FormatPattern = "{prefix}-{yy}" // missing number
+	if err := svc.Update(ctx, 1, seq); err == nil {
+		t.Fatal("Update() with invalid pattern returned nil")
+	}
+}
+
+func TestFormatPreview_LegacyParity(t *testing.T) {
+	// Locks: legacy default pattern must render exactly like the old hardcoded
+	// fmt.Sprintf("%s%d%04d", ...).
+	cases := []*domain.InvoiceSequence{
+		{Prefix: "FV", Year: 2026, NextNumber: 1, FormatPattern: "{prefix}{year}{number:04d}"},
+		{Prefix: "ZF", Year: 2025, NextNumber: 42, FormatPattern: "{prefix}{year}{number:04d}"},
+		{Prefix: "DN", Year: 2026, NextNumber: 100, FormatPattern: "{prefix}{year}{number:04d}"},
+	}
+	for _, seq := range cases {
+		want := fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
+		got := FormatPreview(seq)
+		if got != want {
+			t.Errorf("FormatPreview(%+v) = %q, want %q", seq, got, want)
+		}
+	}
+}
+
+func TestFormatPreview_CustomPattern(t *testing.T) {
+	seq := &domain.InvoiceSequence{
+		Prefix: "77", Year: 2026, NextNumber: 12,
+		FormatPattern: "{prefix}-{yy}-{number:03d}",
+	}
+	if got := FormatPreview(seq); got != "77-26-012" {
+		t.Errorf("FormatPreview = %q, want 77-26-012", got)
 	}
 }

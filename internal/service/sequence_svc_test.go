@@ -148,6 +148,34 @@ func TestSequenceService_Delete_NoReferences(t *testing.T) {
 	}
 }
 
+// TestSequenceService_Create_AfterSoftDelete locks the contract that
+// soft-deleting a sequence frees up its (prefix, year) slot for a fresh
+// Create. Migration 026 enforces this via a partial unique index instead of
+// the original table-level UNIQUE constraint, which counted soft-deleted
+// rows and silently blocked re-creation.
+func TestSequenceService_Create_AfterSoftDelete(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	first := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, 1, first); err != nil {
+		t.Fatalf("first Create: %v", err)
+	}
+	if err := svc.Delete(ctx, 1, first.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	// Re-create with the same prefix/year — must succeed and produce a
+	// distinct id from the soft-deleted row.
+	second := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, 1, second); err != nil {
+		t.Fatalf("re-Create after soft delete should succeed: %v", err)
+	}
+	if second.ID == 0 || second.ID == first.ID {
+		t.Errorf("expected a new id different from %d, got %d", first.ID, second.ID)
+	}
+}
+
 func TestSequenceService_Delete_ZeroID(t *testing.T) {
 	svc, _ := newSequenceTestStack(t)
 	ctx := context.Background()

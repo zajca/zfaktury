@@ -112,9 +112,13 @@
 
 	async function confirmDelete() {
 		if (!deleteTargetId) return;
+		const idToDelete = deleteTargetId;
 		showDeleteConfirm = false;
 		try {
-			await sequencesApi.delete(deleteTargetId);
+			await sequencesApi.delete(idToDelete);
+			// Optimistic: drop the row from local state immediately so the UI
+			// updates even if the follow-up reload is delayed or fails.
+			sequences = sequences.filter((s) => s.id !== idToDelete);
 			toastSuccess('Číselná řada smazána');
 			await loadSequences();
 		} catch (e) {

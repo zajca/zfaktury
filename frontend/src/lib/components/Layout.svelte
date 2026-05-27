@@ -44,7 +44,7 @@
 	type NavGroup = { section: string; items: NavItem[] };
 	type NavEntry = NavItem | NavGroup;
 
-	const navEntries: NavEntry[] = [
+	const allNavEntries: NavEntry[] = [
 		{
 			href: '/',
 			label: 'Dashboard',
@@ -172,12 +172,29 @@
 		return 'section' in entry;
 	}
 
+	// In single-company mode hide the Firmy item — there's nothing to switch
+	// between, and editing the one company is reachable via Údaje firmy.
+	const navEntries = $derived.by(() => {
+		if (currentCompany.companies.length > 1) {
+			return allNavEntries;
+		}
+		return allNavEntries.map((entry) => {
+			if (!isGroup(entry)) return entry;
+			return {
+				...entry,
+				items: entry.items.filter((item) => item.href !== '/companies')
+			};
+		});
+	});
+
 	function itemHrefs(item: NavItem): string[] {
 		return [item.href, ...(item.children?.flatMap(itemHrefs) ?? [])];
 	}
 
-	const allNavHrefs: string[] = navEntries.flatMap((entry) =>
-		isGroup(entry) ? entry.items.flatMap(itemHrefs) : itemHrefs(entry)
+	const allNavHrefs = $derived(
+		navEntries.flatMap((entry) =>
+			isGroup(entry) ? entry.items.flatMap(itemHrefs) : itemHrefs(entry)
+		)
 	);
 
 	function isActive(href: string): boolean {

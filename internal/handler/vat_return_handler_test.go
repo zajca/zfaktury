@@ -23,12 +23,13 @@ func setupVATReturnRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	expenseRepo := repository.NewExpenseRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
+	companyRepo := repository.NewCompanyRepository(db)
 
-	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, nil)
+	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, companyRepo, nil)
 	h := NewVATReturnHandler(vatReturnSvc)
 
 	r := chi.NewRouter()
-	r.Use(injectTestCompany(1))
+	r.Use(injectTestCompanyFromDB(t, db, 1))
 	r.Mount("/api/v1/vat-returns", h.Routes())
 	return r, db
 }
@@ -340,7 +341,7 @@ func TestVATReturn_GenerateXML(t *testing.T) {
 
 	// Insert "dic" setting required for XML generation.
 	_, err := db.ExecContext(context.Background(),
-		"INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+		"UPDATE companies SET dic = 'CZ12345678' WHERE id = 1")
 	if err != nil {
 		t.Fatalf("inserting dic setting: %v", err)
 	}
@@ -405,7 +406,7 @@ func TestVATReturn_DownloadXML(t *testing.T) {
 
 	// Insert "dic" setting required for XML generation.
 	_, err := db.ExecContext(context.Background(),
-		"INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+		"UPDATE companies SET dic = 'CZ12345678' WHERE id = 1")
 	if err != nil {
 		t.Fatalf("inserting dic setting: %v", err)
 	}

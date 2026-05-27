@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,6 +25,25 @@ func injectTestCompany(id int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r.WithContext(contextWithCompany(r.Context(), c)))
+		})
+	}
+}
+
+// injectTestCompanyFromDB is like injectTestCompany but loads the full
+// company row from the DB on every request, so seeded identity/address/bank
+// fields are visible to handlers (PDF, ISDOC, QR, VAT XML, etc.). Use this
+// when tests need supplier data threaded through CompanyFromContext.
+func injectTestCompanyFromDB(t *testing.T, db *sql.DB, id int64) func(http.Handler) http.Handler {
+	t.Helper()
+	repo := repository.NewCompanyRepository(db)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c, err := repo.GetByID(r.Context(), id)
+			if err != nil {
+				http.Error(w, "load test company: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(contextWithCompany(r.Context(), &c)))
 		})
 	}
 }

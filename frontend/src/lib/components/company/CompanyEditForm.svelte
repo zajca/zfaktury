@@ -12,9 +12,14 @@
 		// ARES, the edit flow leaves it undefined and the ARES button is hidden.
 		onaresLookup?: () => void | Promise<void>;
 		aresLoading?: boolean;
-		onsubmit: () => void | Promise<void>;
+		// onsubmit is optional — when hideActions is true the parent owns the
+		// surrounding <form> and supplies its own submit handler.
+		onsubmit?: () => void | Promise<void>;
 		cancelHref?: string;
 		saveLabel?: string;
+		// hideActions skips both the FormActions row and the outer <form> tag
+		// so callers can embed this component inside a larger form.
+		hideActions?: boolean;
 	}
 
 	let {
@@ -24,20 +29,15 @@
 		aresLoading = false,
 		onsubmit,
 		cancelHref = '/companies',
-		saveLabel = 'Uložit'
+		saveLabel = 'Uložit',
+		hideActions = false
 	}: Props = $props();
 
 	const inputClass =
 		'mt-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none';
 </script>
 
-<form
-	onsubmit={(e) => {
-		e.preventDefault();
-		onsubmit();
-	}}
-	class="space-y-6"
->
+{#snippet body()}
 	<!-- Identity -->
 	<Card>
 		<h2 class="text-base font-semibold text-primary">Údaje firmy</h2>
@@ -252,5 +252,21 @@
 		</div>
 	</Card>
 
-	<FormActions {saving} {saveLabel} {cancelHref} class="pb-8" />
-</form>
+{/snippet}
+
+{#if hideActions}
+	<div class="space-y-6">
+		{@render body()}
+	</div>
+{:else}
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			onsubmit?.();
+		}}
+		class="space-y-6"
+	>
+		{@render body()}
+		<FormActions {saving} {saveLabel} {cancelHref} class="pb-8" />
+	</form>
+{/if}

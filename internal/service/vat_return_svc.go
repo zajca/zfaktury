@@ -19,6 +19,7 @@ type VATReturnService struct {
 	invoiceRepo  repository.InvoiceRepo
 	expenseRepo  repository.ExpenseRepo
 	settingsRepo repository.SettingsRepo
+	companyRepo  repository.CompanyRepo
 	audit        *AuditService
 }
 
@@ -28,6 +29,7 @@ func NewVATReturnService(
 	invoiceRepo repository.InvoiceRepo,
 	expenseRepo repository.ExpenseRepo,
 	settingsRepo repository.SettingsRepo,
+	companyRepo repository.CompanyRepo,
 	audit *AuditService,
 ) *VATReturnService {
 	return &VATReturnService{
@@ -35,6 +37,7 @@ func NewVATReturnService(
 		invoiceRepo:  invoiceRepo,
 		expenseRepo:  expenseRepo,
 		settingsRepo: settingsRepo,
+		companyRepo:  companyRepo,
 		audit:        audit,
 	}
 }
@@ -297,7 +300,9 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, companyID, id int64)
 	return vr, nil
 }
 
-// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo for the given company.
+// buildTaxpayerInfo combines the company identity (DIC, name, address,
+// contact — sourced from the companies table) with the tax-office codes that
+// still live in the per-company settings KV (UFO, PracUFO, OKEC).
 func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context, companyID int64) (vatxml.TaxpayerInfo, error) {
 	getSetting := func(key string) string {
 		val, err := s.settingsRepo.Get(ctx, companyID, key)
@@ -307,24 +312,28 @@ func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context, companyID int6
 		return val
 	}
 
-	dic := getSetting(SettingDIC)
-	if dic == "" {
-		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
+	company, err := s.companyRepo.GetByID(ctx, companyID)
+	if err != nil {
+		return vatxml.TaxpayerInfo{}, fmt.Errorf("loading company for taxpayer info: %w", err)
+	}
+
+	if company.DIC == "" {
+		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation, configure it under Údaje firmy: %w", domain.ErrMissingSetting)
 	}
 
 	// Strip CZ prefix for DPHDP3 format.
-	dicNum := strings.TrimPrefix(dic, "CZ")
+	dicNum := strings.TrimPrefix(company.DIC, "CZ")
 
 	return vatxml.TaxpayerInfo{
 		DIC:       dicNum,
-		FirstName: getSetting(SettingFirstName),
-		LastName:  getSetting(SettingLastName),
-		Street:    getSetting(SettingStreet),
-		HouseNum:  getSetting(SettingHouseNumber),
-		ZIP:       getSetting(SettingZIP),
-		City:      getSetting(SettingCity),
-		Phone:     getSetting(SettingPhone),
-		Email:     getSetting(SettingEmail),
+		FirstName: company.FirstName,
+		LastName:  company.LastName,
+		Street:    company.Street,
+		HouseNum:  company.HouseNumber,
+		ZIP:       company.ZIP,
+		City:      company.City,
+		Phone:     company.Phone,
+		Email:     company.Email,
 		UFOCode:   getSetting(SettingUFOCode),
 		PracUFO:   getSetting(SettingPracUFO),
 		OKEC:      getSetting(SettingOKEC),

@@ -290,7 +290,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc, auditSvc)
 	recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc, auditSvc)
 
-	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, auditSvc)
+	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, companyRepo, auditSvc)
 	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, auditSvc)
 	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, auditSvc)
 

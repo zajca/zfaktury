@@ -126,10 +126,29 @@ describe('Layout', () => {
 		const firmaLink = screen.getAllByText('Údaje firmy')[0].closest('a');
 		expect(firmaLink?.getAttribute('href')).toBe('/settings/firma');
 
+		const emailLink = screen.getAllByText('Email')[0].closest('a');
+		expect(emailLink?.getAttribute('href')).toBe('/settings/email');
+	});
+
+	it('hides the Firmy nav item when only one company exists', () => {
+		// Default test state has no companies loaded → single-company mode.
+		render(LayoutTestWrapper);
+		expect(screen.queryByText('Firmy')).not.toBeInTheDocument();
+	});
+
+	it('shows the Firmy nav item when multiple companies exist', async () => {
+		const { currentCompany } = await import('$lib/stores/currentCompany.svelte');
+		currentCompany.setCompanies([
+			{ id: 1, name: 'A', legal_name: 'A', ico: '1', dic: null, vat_registered: false } as never,
+			{ id: 2, name: 'B', legal_name: 'B', ico: '2', dic: null, vat_registered: false } as never
+		]);
+
+		render(LayoutTestWrapper);
+
 		const firmyLink = screen.getAllByText('Firmy')[0].closest('a');
 		expect(firmyLink?.getAttribute('href')).toBe('/companies');
 
-		const emailLink = screen.getAllByText('Email')[0].closest('a');
-		expect(emailLink?.getAttribute('href')).toBe('/settings/email');
+		// Reset so we don't leak state into later tests.
+		currentCompany.setCompanies([]);
 	});
 });

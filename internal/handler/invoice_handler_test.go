@@ -956,7 +956,7 @@ func setupInvoiceRouterWithSettings(t *testing.T) (*chi.Mux, *sql.DB, int64) {
 	invoiceHandler := NewInvoiceHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen)
 
 	r := chi.NewRouter()
-	r.Use(injectTestCompany(1))
+	r.Use(injectTestCompanyFromDB(t, db, 1))
 	r.Mount("/api/v1/contacts", contactHandler.Routes())
 	r.Mount("/api/v1/invoices", invoiceHandler.Routes())
 
@@ -967,25 +967,28 @@ func setupInvoiceRouterWithSettings(t *testing.T) (*chi.Mux, *sql.DB, int64) {
 // seedSettings inserts required settings for PDF/ISDOC generation into the database.
 func seedSettings(t *testing.T, db *sql.DB) {
 	t.Helper()
-	settings := map[string]string{
-		"company_name": "Test Company s.r.o.",
-		"ico":          "12345678",
-		"dic":          "CZ12345678",
-		"street":       "Testovaci 123",
-		"city":         "Praha",
-		"zip":          "11000",
-		"email":        "test@example.com",
-		"phone":        "+420123456789",
-		"bank_account": "1234567890",
-		"bank_code":    "0100",
-		"iban":         "CZ6508000000192000145399",
-		"swift":        "KOMBCZPP",
-	}
-	for key, value := range settings {
-		_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))", key, value)
-		if err != nil {
-			t.Fatalf("seeding setting %s: %v", key, err)
-		}
+	// Identity/address/contact/bank lives on the companies row since migration
+	// 025. Update the company seeded by NewTestDB so PDF/email/ISDOC/QR can
+	// resolve supplier info.
+	_, err := db.ExecContext(context.Background(), `
+		UPDATE companies SET
+			name = 'Test Company s.r.o.',
+			legal_name = 'Test Company s.r.o.',
+			ico = '12345678',
+			dic = 'CZ12345678',
+			vat_registered = 1,
+			street = 'Testovaci 123',
+			city = 'Praha',
+			zip = '11000',
+			email = 'test@example.com',
+			phone = '+420123456789',
+			bank_account = '1234567890',
+			bank_code = '0100',
+			iban = 'CZ6508000000192000145399',
+			swift = 'KOMBCZPP'
+		WHERE id = 1`)
+	if err != nil {
+		t.Fatalf("seeding company: %v", err)
 	}
 }
 

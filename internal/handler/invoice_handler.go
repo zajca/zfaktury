@@ -452,12 +452,7 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplier, err := h.loadPDFSupplierInfo(r, company.ID)
-	if err != nil {
-		slog.Error("failed to load supplier settings for PDF", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
-		return
-	}
+	supplier := supplierFromCompany(company)
 
 	pdfSettings, err := h.loadPDFSettings(r, company.ID)
 	if err != nil {
@@ -502,16 +497,12 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Determine IBAN and SWIFT: prefer invoice values, fall back to settings.
+	// Determine IBAN and SWIFT: prefer invoice values, fall back to the
+	// active company record.
 	iban := invoice.IBAN
 	swift := invoice.SWIFT
 	if iban == "" {
-		supplier, err := h.loadPDFSupplierInfo(r, company.ID)
-		if err != nil {
-			slog.Error("failed to load supplier settings for QR", "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
-			return
-		}
+		supplier := supplierFromCompany(company)
 		iban = supplier.IBAN
 		swift = supplier.SWIFT
 	}
@@ -534,28 +525,29 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(qrBytes)
 }
 
-// loadPDFSupplierInfo reads supplier information from application settings for PDF generation.
-func (h *InvoiceHandler) loadPDFSupplierInfo(r *http.Request, companyID int64) (pdf.SupplierInfo, error) {
-	settings, err := h.settingsSvc.GetAll(r.Context(), companyID)
-	if err != nil {
-		return pdf.SupplierInfo{}, fmt.Errorf("loading settings: %w", err)
+// supplierFromCompany builds pdf.SupplierInfo from the active company record.
+// Migration 025 moved these fields from the settings KV table to columns on
+// invoice_sequences' parent companies table, so the company struct loaded by
+// WithCompany middleware is now the single source of truth.
+func supplierFromCompany(c *domain.Company) pdf.SupplierInfo {
+	if c == nil {
+		return pdf.SupplierInfo{}
 	}
-
 	return pdf.SupplierInfo{
-		Name:          settings[service.SettingCompanyName],
-		ICO:           settings[service.SettingICO],
-		DIC:           settings[service.SettingDIC],
-		VATRegistered: settings[service.SettingVATRegistered] == "true",
-		Street:        settings[service.SettingStreet],
-		City:          settings[service.SettingCity],
-		ZIP:           settings[service.SettingZIP],
-		Email:         settings[service.SettingEmail],
-		Phone:         settings[service.SettingPhone],
-		BankAccount:   settings[service.SettingBankAccount],
-		BankCode:      settings[service.SettingBankCode],
-		IBAN:          settings[service.SettingIBAN],
-		SWIFT:         settings[service.SettingSWIFT],
-	}, nil
+		Name:          c.LegalName,
+		ICO:           c.ICO,
+		DIC:           c.DIC,
+		VATRegistered: c.VATRegistered,
+		Street:        c.Street,
+		City:          c.City,
+		ZIP:           c.ZIP,
+		Email:         c.Email,
+		Phone:         c.Phone,
+		BankAccount:   c.BankAccount,
+		BankCode:      c.BankCode,
+		IBAN:          c.IBAN,
+		SWIFT:         c.SWIFT,
+	}
 }
 
 // loadPDFSettings reads PDF template settings from the settings service.
@@ -574,27 +566,26 @@ func (h *InvoiceHandler) loadPDFSettings(r *http.Request, companyID int64) (pdf.
 	}, nil
 }
 
-// loadSupplierInfo reads supplier information from application settings.
-func (h *InvoiceHandler) loadSupplierInfo(r *http.Request, companyID int64) (isdoc.SupplierInfo, error) {
-	settings, err := h.settingsSvc.GetAll(r.Context(), companyID)
-	if err != nil {
-		return isdoc.SupplierInfo{}, fmt.Errorf("loading settings: %w", err)
+// isdocSupplierFromCompany builds isdoc.SupplierInfo from the active company
+// record. Same migration-025 rationale as supplierFromCompany.
+func isdocSupplierFromCompany(c *domain.Company) isdoc.SupplierInfo {
+	if c == nil {
+		return isdoc.SupplierInfo{}
 	}
-
 	return isdoc.SupplierInfo{
-		CompanyName: settings[service.SettingCompanyName],
-		ICO:         settings[service.SettingICO],
-		DIC:         settings[service.SettingDIC],
-		Street:      settings[service.SettingStreet],
-		City:        settings[service.SettingCity],
-		ZIP:         settings[service.SettingZIP],
-		Email:       settings[service.SettingEmail],
-		Phone:       settings[service.SettingPhone],
-		BankAccount: settings[service.SettingBankAccount],
-		BankCode:    settings[service.SettingBankCode],
-		IBAN:        settings[service.SettingIBAN],
-		SWIFT:       settings[service.SettingSWIFT],
-	}, nil
+		CompanyName: c.LegalName,
+		ICO:         c.ICO,
+		DIC:         c.DIC,
+		Street:      c.Street,
+		City:        c.City,
+		ZIP:         c.ZIP,
+		Email:       c.Email,
+		Phone:       c.Phone,
+		BankAccount: c.BankAccount,
+		BankCode:    c.BankCode,
+		IBAN:        c.IBAN,
+		SWIFT:       c.SWIFT,
+	}
 }
 
 // ExportISDOC handles GET /api/v1/companies/{companyID}/invoices/{id}/isdoc.
@@ -618,12 +609,7 @@ func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplier, err := h.loadSupplierInfo(r, company.ID)
-	if err != nil {
-		slog.Error("failed to load supplier info", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
-		return
-	}
+	supplier := isdocSupplierFromCompany(company)
 
 	xmlData, err := h.isdocGen.Generate(r.Context(), invoice, supplier)
 	if err != nil {
@@ -668,12 +654,7 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	supplier, err := h.loadSupplierInfo(r, company.ID)
-	if err != nil {
-		slog.Error("failed to load supplier info", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
-		return
-	}
+	supplier := isdocSupplierFromCompany(company)
 
 	// Buffer the ZIP in memory so partial failures can be reported as errors.
 	var buf bytes.Buffer

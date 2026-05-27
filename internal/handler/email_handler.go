@@ -166,32 +166,10 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load supplier settings.
-	settings, err := h.settingsSvc.GetAll(r.Context(), company.ID)
-	if err != nil {
-		slog.Error("failed to load supplier settings", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
-		return
-	}
-
 	var attachments []email.Attachment
 
 	if attachPDF {
-		supplier := pdf.SupplierInfo{
-			Name:          settings[service.SettingCompanyName],
-			ICO:           settings[service.SettingICO],
-			DIC:           settings[service.SettingDIC],
-			VATRegistered: settings[service.SettingVATRegistered] == "true",
-			Street:        settings[service.SettingStreet],
-			City:          settings[service.SettingCity],
-			ZIP:           settings[service.SettingZIP],
-			Email:         settings[service.SettingEmail],
-			Phone:         settings[service.SettingPhone],
-			BankAccount:   settings[service.SettingBankAccount],
-			BankCode:      settings[service.SettingBankCode],
-			IBAN:          settings[service.SettingIBAN],
-			SWIFT:         settings[service.SettingSWIFT],
-		}
+		supplier := supplierFromCompany(company)
 
 		pdfSvcSettings, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
 		if err != nil {
@@ -223,20 +201,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if attachISDOC {
-		isdocSupplier := isdoc.SupplierInfo{
-			CompanyName: settings[service.SettingCompanyName],
-			ICO:         settings[service.SettingICO],
-			DIC:         settings[service.SettingDIC],
-			Street:      settings[service.SettingStreet],
-			City:        settings[service.SettingCity],
-			ZIP:         settings[service.SettingZIP],
-			Email:       settings[service.SettingEmail],
-			Phone:       settings[service.SettingPhone],
-			BankAccount: settings[service.SettingBankAccount],
-			BankCode:    settings[service.SettingBankCode],
-			IBAN:        settings[service.SettingIBAN],
-			SWIFT:       settings[service.SettingSWIFT],
-		}
+		isdocSupplier := isdocSupplierFromCompany(company)
 
 		isdocBytes, err := h.isdocGen.Generate(r.Context(), invoice, isdocSupplier)
 		if err != nil {

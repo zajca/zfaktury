@@ -1,6 +1,17 @@
 <script lang="ts">
-	import { settingsApi, type Settings } from '$lib/api/client';
-	import { notifyIfSwitchedCompany, onCompanyChange } from '$lib/stores/currentCompany.svelte';
+	import { onMount } from 'svelte';
+	import {
+		companiesApi,
+		settingsApi,
+		type Settings,
+		type NewCompany
+	} from '$lib/api/client';
+	import {
+		currentCompany,
+		notifyIfSwitchedCompany,
+		onCompanyChange
+	} from '$lib/stores/currentCompany.svelte';
+	import CompanyEditForm from '$lib/components/company/CompanyEditForm.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
@@ -9,61 +20,133 @@
 	import FormActions from '$lib/ui/FormActions.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
-	let settings = $state<Settings>({});
+	// Identity / address / contact / bank — persisted on the active companies row.
+	let form = $state<NewCompany>({
+		name: '',
+		legal_name: '',
+		ico: '',
+		dic: '',
+		vat_registered: false,
+		street: '',
+		house_number: '',
+		city: '',
+		zip: '',
+		email: '',
+		phone: '',
+		first_name: '',
+		last_name: '',
+		bank_account: '',
+		bank_code: '',
+		iban: '',
+		swift: ''
+	});
+
+	// Tax-office codes still live in the per-company settings KV.
+	const TAX_CODE_KEYS = [
+		'c_ufo',
+		'c_pracufo',
+		'c_okec',
+		'financni_urad_code',
+		'cssz_code',
+		'health_insurance_code'
+	] as const;
+	let taxCodes = $state<Settings>({});
+
 	let loading = $state(true);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
-	import { onMount } from 'svelte';
 
 	onMount(() => {
-		loadSettings();
+		load();
 	});
 
-	onCompanyChange(() => loadSettings());
+	onCompanyChange(() => load());
 
-	async function loadSettings() {
+	async function load() {
 		loading = true;
 		error = null;
 		try {
-			settings = await settingsApi.getAll();
+			const id = currentCompany.current?.id;
+			if (!id) {
+				error = 'Nejdříve vyberte firmu.';
+				return;
+			}
+			const [company, allSettings] = await Promise.all([
+				companiesApi.getById(id),
+				settingsApi.getAll()
+			]);
+			form = {
+				name: company.name,
+				legal_name: company.legal_name,
+				ico: company.ico,
+				dic: company.dic ?? '',
+				vat_registered: company.vat_registered,
+				street: company.street ?? '',
+				house_number: company.house_number ?? '',
+				city: company.city ?? '',
+				zip: company.zip ?? '',
+				email: company.email ?? '',
+				phone: company.phone ?? '',
+				first_name: company.first_name ?? '',
+				last_name: company.last_name ?? '',
+				bank_account: company.bank_account ?? '',
+				bank_code: company.bank_code ?? '',
+				iban: company.iban ?? '',
+				swift: company.swift ?? '',
+				logo_path: company.logo_path,
+				accent_color: company.accent_color
+			};
+			taxCodes = Object.fromEntries(
+				TAX_CODE_KEYS.map((k) => [k, allSettings[k] ?? ''])
+			);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Nepodařilo se načíst nastavení';
+			error = e instanceof Error ? e.message : 'Nepodařilo se načíst firmu';
 		} finally {
 			loading = false;
 		}
 	}
 
 	async function handleSave() {
+		const id = currentCompany.current?.id;
+		if (!id) return;
 		saving = true;
 		try {
-			const result = await settingsApi.update(settings);
+			await companiesApi.update(id, form);
+			const result = await settingsApi.update(taxCodes);
 			if (notifyIfSwitchedCompany(result.submittedFor, result.respondedFor)) {
 				return;
 			}
-			settings = result.data;
-			toastSuccess('Nastavení firmy uloženo');
+			// Refresh the company list so the switcher picks up any rename.
+			const list = await companiesApi.list();
+			currentCompany.setCompanies(list);
+			toastSuccess('Údaje firmy uloženy');
 		} catch (e) {
-			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit nastavení');
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit údaje firmy');
 		} finally {
 			saving = false;
 		}
 	}
 
-	function field(key: string): string {
-		return settings[key] ?? '';
+	function taxField(key: (typeof TAX_CODE_KEYS)[number]): string {
+		return taxCodes[key] ?? '';
 	}
 
-	function setField(key: string, value: string) {
-		settings[key] = value;
+	function setTaxField(key: (typeof TAX_CODE_KEYS)[number], value: string) {
+		taxCodes[key] = value;
 	}
 </script>
 
 <svelte:head>
-	<title>Firma - Nastavení - ZFaktury</title>
+	<title>Údaje firmy - Nastavení - ZFaktury</title>
 </svelte:head>
 
 <div class="mx-auto max-w-5xl">
-	<PageHeader title="Firma" description="Údaje podnikatele, adresa a bankovní účty" />
+	<PageHeader
+		title="Údaje firmy"
+		description={currentCompany.current
+			? `Identifikační a kontaktní údaje firmy ${currentCompany.current.name}, které se zobrazují na fakturách.`
+			: 'Údaje aktivní firmy.'}
+	/>
 
 	<ErrorAlert {error} class="mt-4" />
 
@@ -77,331 +160,98 @@
 			}}
 			class="mt-6 space-y-6"
 		>
-			<!-- Identity -->
-			<Card>
-				<h2 class="text-base font-semibold text-primary">Údaje podnikatele</h2>
-				<p class="mt-1 text-sm text-tertiary">Tyto údaje se budou zobrazovat na fakturách.</p>
-				<div class="mt-4 space-y-4">
-					<div>
-						<label for="company_name" class="block text-sm font-medium text-secondary"
-							>Název / Jméno *</label
-						>
-						<input
-							id="company_name"
-							type="text"
-							value={field('company_name')}
-							oninput={(e) => setField('company_name', (e.target as HTMLInputElement).value)}
-							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-						/>
-					</div>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="first_name" class="block text-sm font-medium text-secondary">Jméno</label>
-							<input
-								id="first_name"
-								type="text"
-								value={field('first_name')}
-								oninput={(e) => setField('first_name', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="last_name" class="block text-sm font-medium text-secondary"
-								>Příjmení</label
-							>
-							<input
-								id="last_name"
-								type="text"
-								value={field('last_name')}
-								oninput={(e) => setField('last_name', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-					</div>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="ico" class="block text-sm font-medium text-secondary"
-								>IČO <HelpTip topic="ico" /></label
-							>
-							<input
-								id="ico"
-								type="text"
-								value={field('ico')}
-								oninput={(e) => setField('ico', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="dic" class="block text-sm font-medium text-secondary"
-								>DIČ <HelpTip topic="dic" /></label
-							>
-							<input
-								id="dic"
-								type="text"
-								value={field('dic')}
-								oninput={(e) => setField('dic', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-					</div>
-					<div class="flex items-center gap-3">
-						<input
-							id="vat_registered"
-							type="checkbox"
-							checked={field('vat_registered') === 'true'}
-							onchange={(e) =>
-								setField(
-									'vat_registered',
-									(e.target as HTMLInputElement).checked ? 'true' : 'false'
-								)}
-							class="h-4 w-4 rounded border-border accent-accent"
-						/>
-						<label for="vat_registered" class="text-sm font-medium text-secondary"
-							>Plátce DPH <HelpTip topic="platce-dph" /></label
-						>
-					</div>
-				</div>
-			</Card>
+			<!-- Identity / address / contact / bank — persisted to the companies row. -->
+			<CompanyEditForm bind:form {saving} hideActions />
 
-			<!-- Address -->
-			<Card>
-				<h2 class="text-base font-semibold text-primary">Adresa</h2>
-				<div class="mt-4 space-y-4">
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div class="sm:col-span-2">
-							<label for="street" class="block text-sm font-medium text-secondary">Ulice</label>
-							<input
-								id="street"
-								type="text"
-								value={field('street')}
-								oninput={(e) => setField('street', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="house_number" class="block text-sm font-medium text-secondary"
-								>Číslo popisné</label
-							>
-							<input
-								id="house_number"
-								type="text"
-								value={field('house_number')}
-								oninput={(e) => setField('house_number', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-					</div>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="city" class="block text-sm font-medium text-secondary">Město</label>
-							<input
-								id="city"
-								type="text"
-								value={field('city')}
-								oninput={(e) => setField('city', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="zip" class="block text-sm font-medium text-secondary">PSČ</label>
-							<input
-								id="zip"
-								type="text"
-								value={field('zip')}
-								oninput={(e) => setField('zip', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-					</div>
-				</div>
-			</Card>
-
-			<!-- Contact -->
-			<Card>
-				<h2 class="text-base font-semibold text-primary">Kontaktní údaje</h2>
-				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-					<div>
-						<label for="email" class="block text-sm font-medium text-secondary">Email</label>
-						<input
-							id="email"
-							type="email"
-							value={field('email')}
-							oninput={(e) => setField('email', (e.target as HTMLInputElement).value)}
-							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-						/>
-					</div>
-					<div>
-						<label for="phone" class="block text-sm font-medium text-secondary">Telefon</label>
-						<input
-							id="phone"
-							type="text"
-							value={field('phone')}
-							oninput={(e) => setField('phone', (e.target as HTMLInputElement).value)}
-							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-						/>
-					</div>
-				</div>
-			</Card>
-
-			<!-- Bank accounts -->
-			<Card>
-				<h2 class="text-base font-semibold text-primary">Bankovní účty</h2>
-				<p class="mt-1 text-sm text-tertiary">Účet pro příjem plateb na fakturách.</p>
-				<div class="mt-4 space-y-4">
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="bank_account" class="block text-sm font-medium text-secondary"
-								>Číslo účtu</label
-							>
-							<input
-								id="bank_account"
-								type="text"
-								value={field('bank_account')}
-								oninput={(e) => setField('bank_account', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="bank_code" class="block text-sm font-medium text-secondary"
-								>Kód banky</label
-							>
-							<input
-								id="bank_code"
-								type="text"
-								value={field('bank_code')}
-								oninput={(e) => setField('bank_code', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-					</div>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						<div>
-							<label for="iban" class="block text-sm font-medium text-secondary"
-								>IBAN <HelpTip topic="iban" /></label
-							>
-							<input
-								id="iban"
-								type="text"
-								value={field('iban')}
-								oninput={(e) => setField('iban', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="swift" class="block text-sm font-medium text-secondary"
-								>SWIFT/BIC <HelpTip topic="swift-bic" /></label
-							>
-							<input
-								id="swift"
-								type="text"
-								value={field('swift')}
-								oninput={(e) => setField('swift', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-							/>
-						</div>
-					</div>
-				</div>
-			</Card>
-
-			<!-- Kody uradu -->
+			<!-- Tax-office codes — persisted to the per-company settings KV. -->
 			<Card>
 				<h2 class="text-base font-semibold text-primary">Kódy úřadů</h2>
-				<p class="mt-1 text-sm text-tertiary">Kódy pro daňové přiznání a přehledy OSVČ.</p>
-				<div class="mt-4 space-y-4">
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div>
-							<label for="c_ufo" class="block text-sm font-medium text-secondary"
-								>Kód FÚ pro EPO (3-místný)</label
-							>
-							<input
-								id="c_ufo"
-								type="text"
-								value={field('c_ufo')}
-								oninput={(e) => setField('c_ufo', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 464"
-							/>
-						</div>
-						<div>
-							<label for="c_pracufo" class="block text-sm font-medium text-secondary"
-								>Kód pracoviště FÚ (4-místný)</label
-							>
-							<input
-								id="c_pracufo"
-								type="text"
-								value={field('c_pracufo')}
-								oninput={(e) => setField('c_pracufo', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 3305"
-							/>
-						</div>
-						<div>
-							<label for="c_okec" class="block text-sm font-medium text-secondary"
-								>NACE kód činnosti</label
-							>
-							<input
-								id="c_okec"
-								type="text"
-								value={field('c_okec')}
-								oninput={(e) => setField('c_okec', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 582900"
-							/>
-						</div>
+				<p class="mt-1 text-sm text-tertiary">
+					Kódy pro daňové přiznání DPH, ročního přiznání k dani z příjmů a přehledů OSVČ.
+				</p>
+				<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div>
+						<label for="c_ufo" class="block text-sm font-medium text-secondary"
+							>Kód FÚ pro EPO (3-místný)</label
+						>
+						<input
+							id="c_ufo"
+							type="text"
+							value={taxField('c_ufo')}
+							oninput={(e) => setTaxField('c_ufo', e.currentTarget.value)}
+							placeholder="např. 464"
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
 					</div>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<div>
-							<label for="financni_urad_code" class="block text-sm font-medium text-secondary"
-								>Kód finančního úřadu</label
-							>
-							<input
-								id="financni_urad_code"
-								type="text"
-								value={field('financni_urad_code')}
-								oninput={(e) =>
-									setField('financni_urad_code', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 0451"
-							/>
-						</div>
-						<div>
-							<label for="cssz_code" class="block text-sm font-medium text-secondary"
-								>Kód OSSZ</label
-							>
-							<input
-								id="cssz_code"
-								type="text"
-								value={field('cssz_code')}
-								oninput={(e) => setField('cssz_code', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. prehledosvc"
-							/>
-						</div>
-						<div>
-							<label for="health_insurance_code" class="block text-sm font-medium text-secondary"
-								>Kód zdravotní pojišťovny</label
-							>
-							<input
-								id="health_insurance_code"
-								type="text"
-								value={field('health_insurance_code')}
-								oninput={(e) =>
-									setField('health_insurance_code', (e.target as HTMLInputElement).value)}
-								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-								placeholder="např. 111 (VZP)"
-							/>
-						</div>
+					<div>
+						<label for="c_pracufo" class="block text-sm font-medium text-secondary"
+							>Kód pracoviště FÚ (4-místný)</label
+						>
+						<input
+							id="c_pracufo"
+							type="text"
+							value={taxField('c_pracufo')}
+							oninput={(e) => setTaxField('c_pracufo', e.currentTarget.value)}
+							placeholder="např. 3305"
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
 					</div>
-					<div class="mt-2">
-						<a href="/tax/prepayments" class="text-sm text-accent hover:underline">
-							Daňové zálohy a paušální výdaje →
-						</a>
+					<div>
+						<label for="c_okec" class="block text-sm font-medium text-secondary"
+							>NACE kód činnosti</label
+						>
+						<input
+							id="c_okec"
+							type="text"
+							value={taxField('c_okec')}
+							oninput={(e) => setTaxField('c_okec', e.currentTarget.value)}
+							placeholder="např. 582900"
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
+					</div>
+					<div>
+						<label for="financni_urad_code" class="block text-sm font-medium text-secondary"
+							>Kód finančního úřadu</label
+						>
+						<input
+							id="financni_urad_code"
+							type="text"
+							value={taxField('financni_urad_code')}
+							oninput={(e) => setTaxField('financni_urad_code', e.currentTarget.value)}
+							placeholder="např. 0451"
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
+					</div>
+					<div>
+						<label for="cssz_code" class="block text-sm font-medium text-secondary"
+							>Kód OSSZ</label
+						>
+						<input
+							id="cssz_code"
+							type="text"
+							value={taxField('cssz_code')}
+							oninput={(e) => setTaxField('cssz_code', e.currentTarget.value)}
+							placeholder="např. prehledosvc"
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
+					</div>
+					<div>
+						<label for="health_insurance_code" class="block text-sm font-medium text-secondary"
+							>Kód zdravotní pojišťovny</label
+						>
+						<input
+							id="health_insurance_code"
+							type="text"
+							value={taxField('health_insurance_code')}
+							oninput={(e) => setTaxField('health_insurance_code', e.currentTarget.value)}
+							placeholder="např. 111 (VZP)"
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						/>
 					</div>
 				</div>
 			</Card>
 
-			<!-- Save -->
-			<FormActions {saving} saveLabel="Uložit nastavení" class="pb-8" />
+			<FormActions {saving} cancelHref="/settings" saveLabel="Uložit změny" />
 		</form>
 	{/if}
 </div>

@@ -345,29 +345,8 @@ func (h *PDFSettingsHandler) PreviewPDF(w http.ResponseWriter, r *http.Request) 
 		FontSize:        ps.FontSize,
 	}
 
-	// Load supplier info.
-	settings, err := h.settingsSvc.GetAll(r.Context(), company.ID)
-	if err != nil {
-		slog.Error("failed to load supplier settings for preview", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to load supplier settings")
-		return
-	}
-
-	supplier := pdf.SupplierInfo{
-		Name:          settings[service.SettingCompanyName],
-		ICO:           settings[service.SettingICO],
-		DIC:           settings[service.SettingDIC],
-		VATRegistered: settings[service.SettingVATRegistered] == "true",
-		Street:        settings[service.SettingStreet],
-		City:          settings[service.SettingCity],
-		ZIP:           settings[service.SettingZIP],
-		Email:         settings[service.SettingEmail],
-		Phone:         settings[service.SettingPhone],
-		BankAccount:   settings[service.SettingBankAccount],
-		BankCode:      settings[service.SettingBankCode],
-		IBAN:          settings[service.SettingIBAN],
-		SWIFT:         settings[service.SettingSWIFT],
-	}
+	// Supplier info now lives on the companies row, not the settings KV.
+	supplier := supplierFromCompany(company)
 
 	// Try to use the most recent invoice.
 	invoice := h.getPreviewInvoice(r)

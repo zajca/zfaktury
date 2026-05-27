@@ -534,3 +534,27 @@ func TestInvoiceRepository_List_DateFilter(t *testing.T) {
 	}
 	_ = invoices
 }
+
+func TestInvoiceRepository_GetNextNumber_CustomPattern(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	seqID := testutil.SeedInvoiceSequenceWithPattern(t, db, 1, "77", 2026, "{prefix}-{yy}-{number:03d}")
+
+	num1, err := repo.GetNextNumber(ctx, 1, seqID)
+	if err != nil {
+		t.Fatalf("GetNextNumber() error: %v", err)
+	}
+	if num1 != "77-26-001" {
+		t.Errorf("first number = %q, want 77-26-001", num1)
+	}
+
+	num2, err := repo.GetNextNumber(ctx, 1, seqID)
+	if err != nil {
+		t.Fatalf("GetNextNumber() second call error: %v", err)
+	}
+	if num2 != "77-26-002" {
+		t.Errorf("second number = %q, want 77-26-002", num2)
+	}
+}

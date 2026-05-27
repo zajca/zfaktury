@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/format"
 )
 
 // InvoiceRepository handles persistence of Invoice entities.
@@ -548,8 +549,10 @@ func (r *InvoiceRepository) GetRelatedInvoices(ctx context.Context, companyID, i
 	return invoices, nil
 }
 
-// GetNextNumber atomically increments the sequence counter and returns the formatted invoice number,
-// scoped to the given company.
+// GetNextNumber atomically increments the sequence counter and returns the
+// formatted invoice number, scoped to the given company. Rendering goes
+// through internal/format.Render so the format_pattern column is the single
+// source of truth.
 func (r *InvoiceRepository) GetNextNumber(ctx context.Context, companyID, sequenceID int64) (string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -569,9 +572,7 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, companyID, sequen
 		return "", fmt.Errorf("querying invoice sequence %d: %w", sequenceID, err)
 	}
 
-	// NOTE: format_pattern is not yet implemented; using hardcoded format.
-	// This must stay consistent with service.FormatPreview.
-	number := fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
+	number := format.Render(seq.FormatPattern, seq.Prefix, seq.Year, seq.NextNumber)
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE invoice_sequences SET next_number = next_number + 1 WHERE id = ? AND company_id = ?`, sequenceID, companyID)

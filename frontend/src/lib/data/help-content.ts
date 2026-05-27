@@ -247,9 +247,20 @@ const staticTopics: Record<string, HelpTopic> = {
 	'prefix-format': {
 		title: 'Prefix a formát číselné řady',
 		simple:
-			'Prefix je text před číslem faktury (např. "FV" pro fakturu vydanou). Formát určuje, jak bude číslo vypadat -- např. "{prefix}{year}-{number:4}" vytvoří čísla jako FV2024-0001, FV2024-0002 atd.\n\nČíslování se resetuje na začátku každého roku, takže první faktura nového roku bude vždy 0001.',
+			'Prefix je text na začátku čísla faktury (např. "FV" pro fakturu vydanou nebo "77" pro číselnou řadu převzatou z jiného systému). Formát určuje, jak vypadá celé číslo. Dostupné tokeny:\n\n' +
+			'• {prefix} -- vloží prefix\n' +
+			'• {yyyy} -- 4místný rok (např. 2026)\n' +
+			'• {yy} -- 2místný rok (např. 26)\n' +
+			'• {number} -- pořadové číslo bez doplňování nul\n' +
+			'• {number:03d} -- pořadové číslo doplněné nulami na 3 místa (např. 012)\n' +
+			'• {number:04d} -- pořadové číslo na 4 místa (např. 0012)\n\n' +
+			'Vše ostatní (pomlčky, lomítka, mezery) se zapíše doslovně. Příklady:\n\n' +
+			'• {prefix}{year}{number:04d} → FV20260001\n' +
+			'• {prefix}-{yy}-{number:03d} → 77-26-012\n' +
+			'• FV/{yyyy}/{number:04d} → FV/2026/0001\n\n' +
+			'Číslování se resetuje vždy na začátku každého roku, takže první faktura nového roku bude opět 001.',
 		legal:
-			'Formát číselné řady není zákonem předepsán. Zákon č. 235/2004 Sb. v § 29 vyžaduje pouze to, aby pořadové číslo bylo jednoznačné v rámci číselné řady.\n\nDoporučuje se včetně roku (např. 2024-001) pro snazší orientaci a průkaznost při daňové kontrole. Prefix pomáhá rozlišit typ dokladu (faktury vydané, přijaté, dobropisy atd.).'
+			'Formát číselné řady není zákonem předepsán. Zákon č. 235/2004 Sb. v § 29 vyžaduje pouze to, aby pořadové číslo bylo jednoznačné v rámci číselné řady.\n\nDoporučuje se uvádět rok (např. 2024-001 nebo 24-001) pro snazší orientaci a průkaznost při daňové kontrole. Prefix pomáhá rozlišit typ dokladu (faktury vydané, přijaté, dobropisy atd.).'
 	},
 	'prijmy-naklady': {
 		title: 'Příjmy a náklady',

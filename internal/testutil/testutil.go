@@ -294,12 +294,21 @@ func SeedExpense(t *testing.T, db *sql.DB, companyID int64, e *domain.Expense) *
 
 // SeedInvoiceSequence inserts an invoice sequence into the database for the
 // given company. Pass companyID=1 for the default company seeded by NewTestDB.
+// The format pattern defaults to the legacy {prefix}{year}{number:04d} format.
 func SeedInvoiceSequence(t *testing.T, db *sql.DB, companyID int64, prefix string, year int) int64 {
+	t.Helper()
+	return SeedInvoiceSequenceWithPattern(t, db, companyID, prefix, year, "{prefix}{year}{number:04d}")
+}
+
+// SeedInvoiceSequenceWithPattern is like SeedInvoiceSequence but lets the
+// caller pick the format pattern. Use this to cover non-default templates in
+// tests.
+func SeedInvoiceSequenceWithPattern(t *testing.T, db *sql.DB, companyID int64, prefix string, year int, pattern string) int64 {
 	t.Helper()
 
 	result, err := db.ExecContext(context.Background(), `
 		INSERT INTO invoice_sequences (company_id, prefix, next_number, year, format_pattern)
-		VALUES (?, ?, 1, ?, '{prefix}{year}{number:04d}')`, companyID, prefix, year)
+		VALUES (?, ?, 1, ?, ?)`, companyID, prefix, year, pattern)
 	if err != nil {
 		t.Fatalf("seeding invoice sequence: %v", err)
 	}

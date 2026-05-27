@@ -206,3 +206,76 @@ describe('Sequences Settings Page', () => {
 		});
 	});
 });
+
+describe('Pattern field behaviour', () => {
+	it('live preview updates when the pattern field changes', async () => {
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByText('FV')).toBeInTheDocument();
+		});
+
+		// Open the create form.
+		const novaRada = screen.getByRole('button', { name: /Nová řada/i });
+		await fireEvent.click(novaRada);
+
+		// Use element IDs to avoid ambiguity with HelpTip aria-labels.
+		const prefixInput = document.querySelector('#create-prefix') as HTMLInputElement;
+		const yearInput = document.querySelector('#create-year') as HTMLInputElement;
+		const nextInput = document.querySelector('#create-next') as HTMLInputElement;
+		const formatInput = document.querySelector('#create-format') as HTMLInputElement;
+
+		await fireEvent.input(prefixInput, { target: { value: '77' } });
+		await fireEvent.input(yearInput, { target: { value: '2026' } });
+		await fireEvent.input(nextInput, { target: { value: '13' } });
+		await fireEvent.input(formatInput, { target: { value: '{prefix}-{yy}-{number:03d}' } });
+
+		await waitFor(() => {
+			expect(screen.getByText('77-26-013')).toBeInTheDocument();
+		});
+	});
+
+	it('invalid pattern shows an inline error and disables submit', async () => {
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByText('FV')).toBeInTheDocument();
+		});
+
+		const novaRada = screen.getByRole('button', { name: /Nová řada/i });
+		await fireEvent.click(novaRada);
+
+		// Use element ID to avoid ambiguity with HelpTip aria-labels.
+		const formatInput = document.querySelector('#create-format') as HTMLInputElement;
+		await fireEvent.input(formatInput, { target: { value: '{prefix}-{yy}' } });
+
+		await waitFor(() => {
+			expect(screen.getByText(/Neplatná šablona/i)).toBeInTheDocument();
+		});
+
+		const submitBtn = screen.getByRole('button', { name: /Vytvořit/i }) as HTMLButtonElement;
+		expect(submitBtn.disabled).toBe(true);
+	});
+
+	it('editing an existing sequence shows the mid-year change warning', async () => {
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByText('FV')).toBeInTheDocument();
+		});
+
+		const upravitButtons = screen.getAllByRole('button', { name: /Upravit/i });
+		await fireEvent.click(upravitButtons[0]);
+
+		// The edit row exposes a Formát text input pre-filled with the existing pattern.
+		const editFormatInput = screen.getByLabelText('Formát') as HTMLInputElement;
+		expect(editFormatInput.value).toBe('{prefix}{year}{number:04d}');
+
+		await fireEvent.input(editFormatInput, {
+			target: { value: '{prefix}-{yy}-{number:03d}' }
+		});
+
+		await waitFor(() => {
+			expect(
+				screen.getByText(/Změna formátu se projeví u nově generovaných čísel/i)
+			).toBeInTheDocument();
+		});
+	});
+});

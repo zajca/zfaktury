@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/format"
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
@@ -34,6 +35,9 @@ func (s *SequenceService) Create(ctx context.Context, companyID int64, seq *doma
 	}
 	if seq.FormatPattern == "" {
 		seq.FormatPattern = "{prefix}{year}{number:04d}"
+	}
+	if err := format.ValidatePattern(seq.FormatPattern); err != nil {
+		return fmt.Errorf("validating format pattern: %w", err)
 	}
 
 	// Check uniqueness of prefix+year within the company.
@@ -69,6 +73,12 @@ func (s *SequenceService) Update(ctx context.Context, companyID int64, seq *doma
 	}
 	if seq.NextNumber <= 0 {
 		return fmt.Errorf("next number must be positive: %w", domain.ErrInvalidInput)
+	}
+	if seq.FormatPattern == "" {
+		seq.FormatPattern = "{prefix}{year}{number:04d}"
+	}
+	if err := format.ValidatePattern(seq.FormatPattern); err != nil {
+		return fmt.Errorf("validating format pattern: %w", err)
 	}
 
 	// Fetch existing for audit logging.
@@ -184,11 +194,17 @@ func (s *SequenceService) GetOrCreateForYear(ctx context.Context, companyID int6
 	return newSeq, nil
 }
 
-// FormatPreview returns a preview of the next formatted invoice number for a sequence.
-// NOTE: format_pattern is not yet implemented; using hardcoded format.
-// This must stay consistent with InvoiceRepository.GetNextNumber.
+// FormatPreview returns the formatted invoice number the sequence would
+// produce for its current next_number. Backed by internal/format.Render so
+// preview, persistence, and GetNextNumber stay in lockstep. The empty-pattern
+// fallback mirrors Create/Update — every layer normalises empty to the legacy
+// default so renders never see an empty pattern.
 func FormatPreview(seq *domain.InvoiceSequence) string {
-	return fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
+	pattern := seq.FormatPattern
+	if pattern == "" {
+		pattern = "{prefix}{year}{number:04d}"
+	}
+	return format.Render(pattern, seq.Prefix, seq.Year, seq.NextNumber)
 }
 
 // SequenceCompanyChecker reports whether a company has any non-deleted

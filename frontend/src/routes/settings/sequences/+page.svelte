@@ -11,6 +11,7 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
+	import { renderSequence, validateSequencePattern } from '$lib/utils/sequence-format';
 
 	let sequences = $state<InvoiceSequence[]>([]);
 	let loading = $state(true);
@@ -27,6 +28,10 @@
 	// Edit state
 	let editingId = $state<number | null>(null);
 	let editNextNumber = $state(1);
+	let editFormatPattern = $state('{prefix}{year}{number:04d}');
+	let editOriginalPattern = $state('{prefix}{year}{number:04d}');
+	let editPatternError = $derived(validateSequencePattern(editFormatPattern));
+	let editPatternDirty = $derived(editFormatPattern !== editOriginalPattern);
 	let saving = $state(false);
 	let showDeleteConfirm = $state(false);
 	let deleteTargetId = $state<number | null>(null);
@@ -74,6 +79,8 @@
 	function startEdit(seq: InvoiceSequence) {
 		editingId = seq.id;
 		editNextNumber = seq.next_number;
+		editFormatPattern = seq.format_pattern;
+		editOriginalPattern = seq.format_pattern;
 	}
 
 	function cancelEdit() {
@@ -87,7 +94,7 @@
 				prefix: seq.prefix,
 				year: seq.year,
 				next_number: editNextNumber,
-				format_pattern: seq.format_pattern
+				format_pattern: editFormatPattern
 			});
 			editingId = null;
 			await loadSequences();
@@ -117,8 +124,11 @@
 		}
 	}
 
+	let createPatternError = $derived(validateSequencePattern(createFormatPattern));
 	let createPreview = $derived(
-		`${createPrefix}${createYear}${String(createNextNumber).padStart(4, '0')}`
+		createPatternError === null
+			? renderSequence(createFormatPattern, createPrefix, createYear, createNextNumber)
+			: '--'
 	);
 </script>
 
@@ -209,6 +219,14 @@
 								bind:value={createFormatPattern}
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							/>
+							<p class="mt-1 text-xs text-muted">
+								Tokeny: <code>{'{prefix}'}</code> <code>{'{yyyy}'}</code> <code>{'{yy}'}</code>
+								<code>{'{number}'}</code> <code>{'{number:03d}'}</code> <code>{'{number:04d}'}</code>
+								-- vše ostatní je oddělovač.
+							</p>
+							{#if createPatternError !== null}
+								<p class="mt-1 text-xs text-danger" role="alert">Neplatná šablona: {createPatternError}</p>
+							{/if}
 						</div>
 					</div>
 					<div class="flex items-center gap-4">
@@ -227,7 +245,7 @@
 							<Button
 								type="submit"
 								variant="primary"
-								disabled={creating || !createPrefix || !createYear}
+								disabled={creating || !createPrefix || !createYear || createPatternError !== null}
 							>
 								{creating ? 'Vytváří se...' : 'Vytvořit'}
 							</Button>
@@ -264,16 +282,33 @@
 							<td class="px-4 py-2.5 font-mono text-sm text-secondary">{seq.year}</td>
 							<td class="px-4 py-2.5">
 								{#if editingId === seq.id}
-									<div class="flex items-center gap-2">
-										<input
-											type="number"
-											bind:value={editNextNumber}
-											min="1"
-											class="w-24 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
-										/>
-										<span class="text-xs text-warning"
-											>Pozor: Změna čísla může způsobit duplicity!</span
-										>
+									<div class="flex flex-col gap-2">
+										<div class="flex items-center gap-2">
+											<input
+												type="number"
+												bind:value={editNextNumber}
+												min="1"
+												class="w-24 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+											/>
+											<span class="text-xs text-warning"
+												>Pozor: Změna čísla může způsobit duplicity!</span
+											>
+										</div>
+										<div>
+											<input
+												type="text"
+												bind:value={editFormatPattern}
+												class="w-64 rounded-lg border border-border bg-surface px-2 py-1 font-mono text-xs text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+												aria-label="Formát"
+											/>
+											{#if editPatternError !== null}
+												<p class="mt-1 text-xs text-danger" role="alert">Neplatná šablona: {editPatternError}</p>
+											{:else if editPatternDirty}
+												<p class="mt-1 text-xs text-warning">
+													Změna formátu se projeví u nově generovaných čísel; již vystavené faktury zůstanou beze změny.
+												</p>
+											{/if}
+										</div>
 									</div>
 								{:else}
 									<span class="text-secondary">{seq.next_number}</span>
@@ -288,7 +323,7 @@
 											variant="primary"
 											size="sm"
 											onclick={() => handleUpdate(seq)}
-											disabled={saving}
+											disabled={saving || editPatternError !== null}
 										>
 											{saving ? 'Ukládám...' : 'Uložit'}
 										</Button>

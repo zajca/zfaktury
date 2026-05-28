@@ -33,48 +33,49 @@ func NewDashboardService(repo repository.DashboardRepo) *DashboardService {
 	return &DashboardService{repo: repo}
 }
 
-// GetDashboard fetches all dashboard data for the current month and year.
-func (s *DashboardService) GetDashboard(ctx context.Context) (*DashboardData, error) {
+// GetDashboard fetches all dashboard data for the current month and year
+// within the given company.
+func (s *DashboardService) GetDashboard(ctx context.Context, companyID int64) (*DashboardData, error) {
 	now := time.Now()
 	year := now.Year()
 	month := int(now.Month())
 
-	revenue, err := s.repo.RevenueCurrentMonth(ctx, year, month)
+	revenue, err := s.repo.RevenueCurrentMonth(ctx, companyID, year, month)
 	if err != nil {
 		return nil, fmt.Errorf("fetching revenue: %w", err)
 	}
 
-	expenses, err := s.repo.ExpensesCurrentMonth(ctx, year, month)
+	expenses, err := s.repo.ExpensesCurrentMonth(ctx, companyID, year, month)
 	if err != nil {
 		return nil, fmt.Errorf("fetching expenses: %w", err)
 	}
 
-	unpaidCount, unpaidTotal, err := s.repo.UnpaidInvoices(ctx)
+	unpaidCount, unpaidTotal, err := s.repo.UnpaidInvoices(ctx, companyID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching unpaid invoices: %w", err)
 	}
 
-	overdueCount, overdueTotal, err := s.repo.OverdueInvoices(ctx)
+	overdueCount, overdueTotal, err := s.repo.OverdueInvoices(ctx, companyID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching overdue invoices: %w", err)
 	}
 
-	monthlyRevenue, err := s.repo.MonthlyRevenue(ctx, year)
+	monthlyRevenue, err := s.repo.MonthlyRevenue(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching monthly revenue: %w", err)
 	}
 
-	monthlyExpenses, err := s.repo.MonthlyExpenses(ctx, year)
+	monthlyExpenses, err := s.repo.MonthlyExpenses(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching monthly expenses: %w", err)
 	}
 
-	recentInvoices, err := s.repo.RecentInvoices(ctx, 5)
+	recentInvoices, err := s.repo.RecentInvoices(ctx, companyID, 5)
 	if err != nil {
 		return nil, fmt.Errorf("fetching recent invoices: %w", err)
 	}
 
-	recentExpenses, err := s.repo.RecentExpenses(ctx, 5)
+	recentExpenses, err := s.repo.RecentExpenses(ctx, companyID, 5)
 	if err != nil {
 		return nil, fmt.Errorf("fetching recent expenses: %w", err)
 	}

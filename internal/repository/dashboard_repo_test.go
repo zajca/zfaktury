@@ -15,7 +15,7 @@ func TestDashboardRepo_RevenueCurrentMonth_Empty(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	rev, err := repo.RevenueCurrentMonth(ctx, now.Year(), int(now.Month()))
+	rev, err := repo.RevenueCurrentMonth(ctx, 1, now.Year(), int(now.Month()))
 	if err != nil {
 		t.Fatalf("RevenueCurrentMonth() error: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestDashboardRepo_RevenueCurrentMonth_WithData(t *testing.T) {
 
 	expectedTotal := inv1.TotalAmount + inv2.TotalAmount
 
-	rev, err := repo.RevenueCurrentMonth(ctx, now.Year(), int(now.Month()))
+	rev, err := repo.RevenueCurrentMonth(ctx, 1, now.Year(), int(now.Month()))
 	if err != nil {
 		t.Fatalf("RevenueCurrentMonth() error: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestDashboardRepo_ExpensesCurrentMonth_Empty(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
-	total, err := repo.ExpensesCurrentMonth(ctx, now.Year(), int(now.Month()))
+	total, err := repo.ExpensesCurrentMonth(ctx, 1, now.Year(), int(now.Month()))
 	if err != nil {
 		t.Fatalf("ExpensesCurrentMonth() error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestDashboardRepo_UnpaidInvoices_Empty(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	count, total, err := repo.UnpaidInvoices(ctx)
+	count, total, err := repo.UnpaidInvoices(ctx, 1)
 	if err != nil {
 		t.Fatalf("UnpaidInvoices() error: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestDashboardRepo_UnpaidInvoices_WithData(t *testing.T) {
 		t.Fatalf("updating status: %v", err)
 	}
 
-	count, total, err := repo.UnpaidInvoices(ctx)
+	count, total, err := repo.UnpaidInvoices(ctx, 1)
 	if err != nil {
 		t.Fatalf("UnpaidInvoices() error: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestDashboardRepo_OverdueInvoices_Empty(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	count, total, err := repo.OverdueInvoices(ctx)
+	count, total, err := repo.OverdueInvoices(ctx, 1)
 	if err != nil {
 		t.Fatalf("OverdueInvoices() error: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestDashboardRepo_MonthlyRevenue_Empty(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.MonthlyRevenue(ctx, time.Now().Year())
+	result, err := repo.MonthlyRevenue(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("MonthlyRevenue() error: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestDashboardRepo_MonthlyRevenue_WithData(t *testing.T) {
 		t.Fatalf("updating delivery_date: %v", err)
 	}
 
-	result, err := repo.MonthlyRevenue(ctx, now.Year())
+	result, err := repo.MonthlyRevenue(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("MonthlyRevenue() error: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestDashboardRepo_RecentInvoices_Empty(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.RecentInvoices(ctx, 5)
+	result, err := repo.RecentInvoices(ctx, 1, 5)
 	if err != nil {
 		t.Fatalf("RecentInvoices() error: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestDashboardRepo_RecentInvoices_Limit(t *testing.T) {
 	}
 
 	// Request only 3.
-	result, err := repo.RecentInvoices(ctx, 3)
+	result, err := repo.RecentInvoices(ctx, 1, 3)
 	if err != nil {
 		t.Fatalf("RecentInvoices() error: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestDashboardRepo_MonthlyExpenses_Empty(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.MonthlyExpenses(ctx, time.Now().Year())
+	result, err := repo.MonthlyExpenses(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("MonthlyExpenses() error: %v", err)
 	}
@@ -286,7 +286,7 @@ func TestDashboardRepo_MonthlyExpenses_WithData(t *testing.T) {
 		Category:    "hosting",
 	})
 
-	result, err := repo.MonthlyExpenses(ctx, now.Year())
+	result, err := repo.MonthlyExpenses(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("MonthlyExpenses() error: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestDashboardRepo_RecentExpenses_WithData(t *testing.T) {
 		})
 	}
 
-	result, err := repo.RecentExpenses(ctx, 2)
+	result, err := repo.RecentExpenses(ctx, 1, 2)
 	if err != nil {
 		t.Fatalf("RecentExpenses() error: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestDashboardRepo_RecentExpenses_Empty(t *testing.T) {
 	repo := NewDashboardRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.RecentExpenses(ctx, 5)
+	result, err := repo.RecentExpenses(ctx, 1, 5)
 	if err != nil {
 		t.Fatalf("RecentExpenses() error: %v", err)
 	}

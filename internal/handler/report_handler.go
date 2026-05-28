@@ -80,13 +80,18 @@ func parseReportYear(r *http.Request) (int, error) {
 
 // Revenue handles GET requests for revenue reports.
 func (h *ReportHandler) Revenue(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "no company in context")
+		return
+	}
 	year, err := parseReportYear(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	report, err := h.svc.RevenueReport(r.Context(), year)
+	report, err := h.svc.RevenueReport(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to fetch revenue report", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to fetch revenue report")
@@ -113,13 +118,18 @@ func (h *ReportHandler) Revenue(w http.ResponseWriter, r *http.Request) {
 
 // Expenses handles GET requests for expense reports.
 func (h *ReportHandler) Expenses(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "no company in context")
+		return
+	}
 	year, err := parseReportYear(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	report, err := h.svc.ExpenseReport(r.Context(), year)
+	report, err := h.svc.ExpenseReport(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to fetch expense report", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to fetch expense report")
@@ -151,13 +161,18 @@ func (h *ReportHandler) Expenses(w http.ResponseWriter, r *http.Request) {
 
 // TopCustomers handles GET requests for top customers report.
 func (h *ReportHandler) TopCustomers(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "no company in context")
+		return
+	}
 	year, err := parseReportYear(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	customers, err := h.svc.TopCustomers(r.Context(), year)
+	customers, err := h.svc.TopCustomers(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to fetch top customers", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to fetch top customers")
@@ -179,13 +194,18 @@ func (h *ReportHandler) TopCustomers(w http.ResponseWriter, r *http.Request) {
 
 // ProfitLoss handles GET requests for profit/loss reports.
 func (h *ReportHandler) ProfitLoss(w http.ResponseWriter, r *http.Request) {
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "no company in context")
+		return
+	}
 	year, err := parseReportYear(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid year parameter")
 		return
 	}
 
-	report, err := h.svc.ProfitLoss(r.Context(), year)
+	report, err := h.svc.ProfitLoss(r.Context(), company.ID, year)
 	if err != nil {
 		slog.Error("failed to fetch profit/loss report", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to fetch profit/loss report")

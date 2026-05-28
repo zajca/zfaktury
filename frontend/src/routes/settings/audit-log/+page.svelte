@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { auditLogApi, type AuditLogEntry } from '$lib/api/client';
+	import { onCompanyChange } from '$lib/stores/currentCompany.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
@@ -168,6 +169,11 @@
 	onMount(() => {
 		loadData();
 		mounted = true;
+	});
+
+	onCompanyChange(() => {
+		offset = 0;
+		loadData();
 	});
 
 	$effect(() => {

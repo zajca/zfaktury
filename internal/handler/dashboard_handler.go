@@ -55,9 +55,15 @@ func NewDashboardHandler(svc *service.DashboardService) *DashboardHandler {
 	return &DashboardHandler{svc: svc}
 }
 
-// GetDashboard returns aggregated dashboard data.
+// GetDashboard returns aggregated dashboard data for the active company.
 func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
-	data, err := h.svc.GetDashboard(r.Context())
+	company, err := CompanyFromContext(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "no company in context")
+		return
+	}
+
+	data, err := h.svc.GetDashboard(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to get dashboard data", "error", err)
 		respondError(w, http.StatusInternalServerError, "Failed to load dashboard data")

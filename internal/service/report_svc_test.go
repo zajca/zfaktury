@@ -16,7 +16,7 @@ func TestReportService_RevenueReport_Empty(t *testing.T) {
 	svc := NewReportService(repo)
 	ctx := context.Background()
 
-	report, err := svc.RevenueReport(ctx, time.Now().Year())
+	report, err := svc.RevenueReport(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("RevenueReport() error: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestReportService_RevenueReport_WithData(t *testing.T) {
 	}
 	inv2 := testutil.SeedInvoice(t, db, 1, contact.ID, items2)
 
-	report, err := svc.RevenueReport(ctx, year)
+	report, err := svc.RevenueReport(ctx, 1, year)
 	if err != nil {
 		t.Fatalf("RevenueReport() error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestReportService_ExpenseReport_Empty(t *testing.T) {
 	svc := NewReportService(repo)
 	ctx := context.Background()
 
-	report, err := svc.ExpenseReport(ctx, time.Now().Year())
+	report, err := svc.ExpenseReport(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("ExpenseReport() error: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestReportService_TopCustomers_Empty(t *testing.T) {
 	svc := NewReportService(repo)
 	ctx := context.Background()
 
-	customers, err := svc.TopCustomers(ctx, time.Now().Year())
+	customers, err := svc.TopCustomers(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("TopCustomers() error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestReportService_ProfitLoss_Empty(t *testing.T) {
 	svc := NewReportService(repo)
 	ctx := context.Background()
 
-	report, err := svc.ProfitLoss(ctx, time.Now().Year())
+	report, err := svc.ProfitLoss(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("ProfitLoss() error: %v", err)
 	}

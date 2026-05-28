@@ -16,7 +16,7 @@ func TestDashboardService_GetDashboard_Empty(t *testing.T) {
 	svc := NewDashboardService(repo)
 	ctx := context.Background()
 
-	data, err := svc.GetDashboard(ctx)
+	data, err := svc.GetDashboard(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetDashboard() error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestDashboardService_GetDashboard_WithData(t *testing.T) {
 		CurrencyCode: domain.CurrencyCZK,
 	})
 
-	data, err := svc.GetDashboard(ctx)
+	data, err := svc.GetDashboard(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetDashboard() error: %v", err)
 	}

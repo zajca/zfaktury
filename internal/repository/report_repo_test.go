@@ -14,7 +14,7 @@ func TestReportRepo_MonthlyRevenue_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.MonthlyRevenue(ctx, time.Now().Year())
+	result, err := repo.MonthlyRevenue(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("MonthlyRevenue() error: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestReportRepo_MonthlyRevenue_WithData(t *testing.T) {
 		t.Fatalf("updating delivery_date: %v", err)
 	}
 
-	result, err := repo.MonthlyRevenue(ctx, now.Year())
+	result, err := repo.MonthlyRevenue(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("MonthlyRevenue() error: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestReportRepo_QuarterlyRevenue_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.QuarterlyRevenue(ctx, time.Now().Year())
+	result, err := repo.QuarterlyRevenue(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("QuarterlyRevenue() error: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestReportRepo_YearlyRevenue_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	total, err := repo.YearlyRevenue(ctx, time.Now().Year())
+	total, err := repo.YearlyRevenue(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("YearlyRevenue() error: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestReportRepo_MonthlyExpenses_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.MonthlyExpenses(ctx, time.Now().Year())
+	result, err := repo.MonthlyExpenses(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("MonthlyExpenses() error: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestReportRepo_QuarterlyExpenses_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.QuarterlyExpenses(ctx, time.Now().Year())
+	result, err := repo.QuarterlyExpenses(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("QuarterlyExpenses() error: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestReportRepo_CategoryExpenses_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.CategoryExpenses(ctx, time.Now().Year())
+	result, err := repo.CategoryExpenses(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("CategoryExpenses() error: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestReportRepo_CategoryExpenses_WithData(t *testing.T) {
 		IssueDate:   now,
 	})
 
-	result, err := repo.CategoryExpenses(ctx, now.Year())
+	result, err := repo.CategoryExpenses(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("CategoryExpenses() error: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestReportRepo_TopCustomers_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	result, err := repo.TopCustomers(ctx, time.Now().Year(), 10)
+	result, err := repo.TopCustomers(ctx, 1, time.Now().Year(), 10)
 	if err != nil {
 		t.Fatalf("TopCustomers() error: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestReportRepo_TopCustomers_WithData(t *testing.T) {
 		{Description: "Small project", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
 	})
 
-	result, err := repo.TopCustomers(ctx, now.Year(), 10)
+	result, err := repo.TopCustomers(ctx, 1, now.Year(), 10)
 	if err != nil {
 		t.Fatalf("TopCustomers() error: %v", err)
 	}
@@ -278,7 +278,7 @@ func TestReportRepo_QuarterlyRevenue_WithData(t *testing.T) {
 		{Description: "Q service", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
 	})
 
-	result, err := repo.QuarterlyRevenue(ctx, now.Year())
+	result, err := repo.QuarterlyRevenue(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("QuarterlyRevenue() error: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestReportRepo_MonthlyExpenses_WithData(t *testing.T) {
 		Category:    "software",
 	})
 
-	result, err := repo.MonthlyExpenses(ctx, now.Year())
+	result, err := repo.MonthlyExpenses(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("MonthlyExpenses() error: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestReportRepo_QuarterlyExpenses_WithData(t *testing.T) {
 		Category:    "rent",
 	})
 
-	result, err := repo.QuarterlyExpenses(ctx, now.Year())
+	result, err := repo.QuarterlyExpenses(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("QuarterlyExpenses() error: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestReportRepo_ProfitLossMonthly_WithData(t *testing.T) {
 		Category:    "hosting",
 	})
 
-	revenue, expenses, err := repo.ProfitLossMonthly(ctx, now.Year())
+	revenue, expenses, err := repo.ProfitLossMonthly(ctx, 1, now.Year())
 	if err != nil {
 		t.Fatalf("ProfitLossMonthly() error: %v", err)
 	}
@@ -366,7 +366,7 @@ func TestReportRepo_ProfitLossMonthly_Empty(t *testing.T) {
 	repo := NewReportRepository(db)
 	ctx := context.Background()
 
-	revenue, expenses, err := repo.ProfitLossMonthly(ctx, time.Now().Year())
+	revenue, expenses, err := repo.ProfitLossMonthly(ctx, 1, time.Now().Year())
 	if err != nil {
 		t.Fatalf("ProfitLossMonthly() error: %v", err)
 	}

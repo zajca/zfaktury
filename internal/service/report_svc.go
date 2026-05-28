@@ -31,7 +31,8 @@ type ProfitLossReport struct {
 	MonthlyExpenses []repository.MonthlyAmount
 }
 
-// ReportService provides business logic for report generation.
+// ReportService provides business logic for report generation. All methods
+// are scoped to a single company via the companyID parameter.
 type ReportService struct {
 	repo repository.ReportRepo
 }
@@ -41,19 +42,19 @@ func NewReportService(repo repository.ReportRepo) *ReportService {
 	return &ReportService{repo: repo}
 }
 
-// RevenueReport returns aggregated revenue data for the given year.
-func (s *ReportService) RevenueReport(ctx context.Context, year int) (*RevenueReport, error) {
-	monthly, err := s.repo.MonthlyRevenue(ctx, year)
+// RevenueReport returns aggregated revenue data for the given year within the given company.
+func (s *ReportService) RevenueReport(ctx context.Context, companyID int64, year int) (*RevenueReport, error) {
+	monthly, err := s.repo.MonthlyRevenue(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching revenue report: %w", err)
 	}
 
-	quarterly, err := s.repo.QuarterlyRevenue(ctx, year)
+	quarterly, err := s.repo.QuarterlyRevenue(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching revenue report: %w", err)
 	}
 
-	total, err := s.repo.YearlyRevenue(ctx, year)
+	total, err := s.repo.YearlyRevenue(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching revenue report: %w", err)
 	}
@@ -66,19 +67,19 @@ func (s *ReportService) RevenueReport(ctx context.Context, year int) (*RevenueRe
 	}, nil
 }
 
-// ExpenseReport returns aggregated expense data for the given year.
-func (s *ReportService) ExpenseReport(ctx context.Context, year int) (*ExpenseReport, error) {
-	monthly, err := s.repo.MonthlyExpenses(ctx, year)
+// ExpenseReport returns aggregated expense data for the given year within the given company.
+func (s *ReportService) ExpenseReport(ctx context.Context, companyID int64, year int) (*ExpenseReport, error) {
+	monthly, err := s.repo.MonthlyExpenses(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching expense report: %w", err)
 	}
 
-	quarterly, err := s.repo.QuarterlyExpenses(ctx, year)
+	quarterly, err := s.repo.QuarterlyExpenses(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching expense report: %w", err)
 	}
 
-	categories, err := s.repo.CategoryExpenses(ctx, year)
+	categories, err := s.repo.CategoryExpenses(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching expense report: %w", err)
 	}
@@ -91,18 +92,18 @@ func (s *ReportService) ExpenseReport(ctx context.Context, year int) (*ExpenseRe
 	}, nil
 }
 
-// TopCustomers returns top customers by revenue for the given year.
-func (s *ReportService) TopCustomers(ctx context.Context, year int) ([]repository.CustomerRevenue, error) {
-	customers, err := s.repo.TopCustomers(ctx, year, 10)
+// TopCustomers returns top customers by revenue for the given year within the given company.
+func (s *ReportService) TopCustomers(ctx context.Context, companyID int64, year int) ([]repository.CustomerRevenue, error) {
+	customers, err := s.repo.TopCustomers(ctx, companyID, year, 10)
 	if err != nil {
 		return nil, fmt.Errorf("fetching top customers: %w", err)
 	}
 	return customers, nil
 }
 
-// ProfitLoss returns monthly profit/loss data for the given year.
-func (s *ReportService) ProfitLoss(ctx context.Context, year int) (*ProfitLossReport, error) {
-	revenue, expenses, err := s.repo.ProfitLossMonthly(ctx, year)
+// ProfitLoss returns monthly profit/loss data for the given year within the given company.
+func (s *ReportService) ProfitLoss(ctx context.Context, companyID int64, year int) (*ProfitLossReport, error) {
+	revenue, expenses, err := s.repo.ProfitLossMonthly(ctx, companyID, year)
 	if err != nil {
 		return nil, fmt.Errorf("fetching profit/loss report: %w", err)
 	}

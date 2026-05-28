@@ -30,6 +30,8 @@ type RecentExpense struct {
 }
 
 // DashboardRepository provides read-only aggregate queries for the dashboard.
+// All methods are scoped to a single company since migration 025 — see the
+// router's WithCompany middleware for how companyID flows in.
 type DashboardRepository struct {
 	db *sql.DB
 }
@@ -40,16 +42,17 @@ func NewDashboardRepository(db *sql.DB) *DashboardRepository {
 }
 
 // RevenueCurrentMonth returns the total revenue (sum of total_amount) for regular invoices
-// delivered in the given year and month.
-func (r *DashboardRepository) RevenueCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error) {
+// delivered in the given year and month within the given company.
+func (r *DashboardRepository) RevenueCurrentMonth(ctx context.Context, companyID int64, year int, month int) (domain.Amount, error) {
 	ym := fmt.Sprintf("%04d-%02d", year, month)
 	var total int64
 	err := r.db.QueryRowContext(ctx,
 		`SELECT COALESCE(SUM(total_amount), 0)
 		 FROM invoices
-		 WHERE strftime('%Y-%m', delivery_date) = ?
+		 WHERE company_id = ?
+		   AND strftime('%Y-%m', delivery_date) = ?
 		   AND type = 'regular'
-		   AND deleted_at IS NULL`, ym).Scan(&total)
+		   AND deleted_at IS NULL`, companyID, ym).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("querying revenue for %s: %w", ym, err)
 	}
@@ -57,15 +60,16 @@ func (r *DashboardRepository) RevenueCurrentMonth(ctx context.Context, year int,
 }
 
 // ExpensesCurrentMonth returns the total expenses (sum of amount) for expenses
-// issued in the given year and month.
-func (r *DashboardRepository) ExpensesCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error) {
+// issued in the given year and month within the given company.
+func (r *DashboardRepository) ExpensesCurrentMonth(ctx context.Context, companyID int64, year int, month int) (domain.Amount, error) {
 	ym := fmt.Sprintf("%04d-%02d", year, month)
 	var total int64
 	err := r.db.QueryRowContext(ctx,
 		`SELECT COALESCE(SUM(amount), 0)
 		 FROM expenses
-		 WHERE strftime('%Y-%m', issue_date) = ?
-		   AND deleted_at IS NULL`, ym).Scan(&total)
+		 WHERE company_id = ?
+		   AND strftime('%Y-%m', issue_date) = ?
+		   AND deleted_at IS NULL`, companyID, ym).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("querying expenses for %s: %w", ym, err)
 	}
@@ -73,29 +77,31 @@ func (r *DashboardRepository) ExpensesCurrentMonth(ctx context.Context, year int
 }
 
 // UnpaidInvoices returns the count and total amount of unpaid invoices
-// (draft, sent, or overdue status, excluding credit notes).
-func (r *DashboardRepository) UnpaidInvoices(ctx context.Context) (count int, total domain.Amount, err error) {
+// (draft, sent, or overdue status, excluding credit notes) within the given company.
+func (r *DashboardRepository) UnpaidInvoices(ctx context.Context, companyID int64) (count int, total domain.Amount, err error) {
 	var totalVal int64
 	err = r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*), COALESCE(SUM(total_amount), 0)
 		 FROM invoices
-		 WHERE status IN ('draft', 'sent', 'overdue')
+		 WHERE company_id = ?
+		   AND status IN ('draft', 'sent', 'overdue')
 		   AND type != 'credit_note'
-		   AND deleted_at IS NULL`).Scan(&count, &totalVal)
+		   AND deleted_at IS NULL`, companyID).Scan(&count, &totalVal)
 	if err != nil {
 		return 0, 0, fmt.Errorf("querying unpaid invoices: %w", err)
 	}
 	return count, domain.Amount(totalVal), nil
 }
 
-// OverdueInvoices returns the count and total amount of overdue invoices.
-func (r *DashboardRepository) OverdueInvoices(ctx context.Context) (count int, total domain.Amount, err error) {
+// OverdueInvoices returns the count and total amount of overdue invoices within the given company.
+func (r *DashboardRepository) OverdueInvoices(ctx context.Context, companyID int64) (count int, total domain.Amount, err error) {
 	var totalVal int64
 	err = r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*), COALESCE(SUM(total_amount), 0)
 		 FROM invoices
-		 WHERE status = 'overdue'
-		   AND deleted_at IS NULL`).Scan(&count, &totalVal)
+		 WHERE company_id = ?
+		   AND status = 'overdue'
+		   AND deleted_at IS NULL`, companyID).Scan(&count, &totalVal)
 	if err != nil {
 		return 0, 0, fmt.Errorf("querying overdue invoices: %w", err)
 	}
@@ -103,16 +109,17 @@ func (r *DashboardRepository) OverdueInvoices(ctx context.Context) (count int, t
 }
 
 // MonthlyRevenue returns the monthly revenue breakdown for regular invoices
-// delivered in the given year.
-func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, year int) ([]MonthlyAmount, error) {
+// delivered in the given year within the given company.
+func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, companyID int64, year int) ([]MonthlyAmount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT strftime('%m', delivery_date) AS month, SUM(total_amount)
 		 FROM invoices
-		 WHERE strftime('%Y', delivery_date) = ?
+		 WHERE company_id = ?
+		   AND strftime('%Y', delivery_date) = ?
 		   AND type = 'regular'
 		   AND deleted_at IS NULL
-		 GROUP BY month`, yearStr)
+		 GROUP BY month`, companyID, yearStr)
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly revenue for %d: %w", year, err)
 	}
@@ -138,15 +145,16 @@ func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, year int) ([]M
 }
 
 // MonthlyExpenses returns the monthly expenses breakdown for expenses
-// issued in the given year.
-func (r *DashboardRepository) MonthlyExpenses(ctx context.Context, year int) ([]MonthlyAmount, error) {
+// issued in the given year within the given company.
+func (r *DashboardRepository) MonthlyExpenses(ctx context.Context, companyID int64, year int) ([]MonthlyAmount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT strftime('%m', issue_date) AS month, SUM(amount)
 		 FROM expenses
-		 WHERE strftime('%Y', issue_date) = ?
+		 WHERE company_id = ?
+		   AND strftime('%Y', issue_date) = ?
 		   AND deleted_at IS NULL
-		 GROUP BY month`, yearStr)
+		 GROUP BY month`, companyID, yearStr)
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly expenses for %d: %w", year, err)
 	}
@@ -171,14 +179,15 @@ func (r *DashboardRepository) MonthlyExpenses(ctx context.Context, year int) ([]
 	return result, nil
 }
 
-// RecentInvoices returns the most recently created invoices (not soft-deleted).
-func (r *DashboardRepository) RecentInvoices(ctx context.Context, limit int) ([]RecentInvoice, error) {
+// RecentInvoices returns the most recently created invoices (not soft-deleted) within the given company.
+func (r *DashboardRepository) RecentInvoices(ctx context.Context, companyID int64, limit int) ([]RecentInvoice, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, invoice_number, customer_id, total_amount, status, issue_date
 		 FROM invoices
-		 WHERE deleted_at IS NULL
+		 WHERE company_id = ?
+		   AND deleted_at IS NULL
 		 ORDER BY created_at DESC
-		 LIMIT ?`, limit)
+		 LIMIT ?`, companyID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("querying recent invoices: %w", err)
 	}
@@ -204,14 +213,15 @@ func (r *DashboardRepository) RecentInvoices(ctx context.Context, limit int) ([]
 	return result, nil
 }
 
-// RecentExpenses returns the most recently created expenses (not soft-deleted).
-func (r *DashboardRepository) RecentExpenses(ctx context.Context, limit int) ([]RecentExpense, error) {
+// RecentExpenses returns the most recently created expenses (not soft-deleted) within the given company.
+func (r *DashboardRepository) RecentExpenses(ctx context.Context, companyID int64, limit int) ([]RecentExpense, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, description, category, amount, issue_date
 		 FROM expenses
-		 WHERE deleted_at IS NULL
+		 WHERE company_id = ?
+		   AND deleted_at IS NULL
 		 ORDER BY created_at DESC
-		 LIMIT ?`, limit)
+		 LIMIT ?`, companyID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("querying recent expenses: %w", err)
 	}

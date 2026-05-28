@@ -2069,6 +2069,11 @@ export const auditLogApi = {
 		if (params?.to) query.set('to', params.to);
 		if (params?.limit) query.set('limit', String(params.limit));
 		if (params?.offset) query.set('offset', String(params.offset));
+		// Scope to active company. The audit-log endpoint is intentionally
+		// cross-company at the API level (admin view), but the settings page
+		// should only show entries from the currently active company.
+		const id = currentCompany.current?.id;
+		if (id) query.set('company_id', String(id));
 		const qs = query.toString();
 		return get<AuditLogListResponse>(`/audit-log${qs ? `?${qs}` : ''}`);
 	}

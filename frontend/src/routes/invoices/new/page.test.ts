@@ -26,13 +26,31 @@ const sampleContacts = {
 	offset: 0
 };
 
+const sampleSequences = [
+	{
+		id: 10,
+		prefix: 'FV',
+		year: 2026,
+		next_number: 1,
+		format_pattern: '{prefix}{year}{number:04d}',
+		preview: 'FV20260001'
+	}
+];
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-03-10T12:00:00Z'));
 	mockFetch.mockReset();
 	clearAllToasts();
-	// Default: contacts load (contactsApi.list calls fetch with /api/v1/contacts)
-	mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
+	// Default mocks: contacts list returns the sample, sequences list returns
+	// one FV sequence so the picker has something to render. Tests that need a
+	// specific shape can override via mockImplementation/mockResolvedValueOnce.
+	mockFetch.mockImplementation((url: string) => {
+		if (typeof url === 'string' && url.includes('/invoice-sequences')) {
+			return Promise.resolve(jsonResponse(sampleSequences));
+		}
+		return Promise.resolve(jsonResponse(sampleContacts));
+	});
 });
 
 afterEach(() => {
@@ -303,6 +321,95 @@ describe('Invoice Create', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText('Ukládám...')).toBeInTheDocument();
+		});
+	});
+
+	it('shows a warning when no sequence exists for the company', async () => {
+		mockFetch.mockReset();
+		mockFetch.mockImplementation((url: string) => {
+			if (typeof url === 'string' && url.includes('/invoice-sequences')) {
+				return Promise.resolve(jsonResponse([]));
+			}
+			return Promise.resolve(jsonResponse(sampleContacts));
+		});
+
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByText(/Žádná číselná řada není vytvořená/)).toBeInTheDocument();
+		});
+		const link = screen.getByText(/Vytvořit první řadu/).closest('a');
+		expect(link?.getAttribute('href')).toBe('/settings/sequences');
+	});
+
+	it('submits invoice with sequence_id from the picker', async () => {
+		const fvSeq = {
+			id: 10,
+			prefix: 'FV',
+			year: 2026,
+			next_number: 1,
+			format_pattern: '{prefix}{year}{number:04d}',
+			preview: 'FV20260001'
+		};
+		const customSeq = {
+			id: 11,
+			prefix: '77',
+			year: 26,
+			next_number: 13,
+			format_pattern: '{prefix}-{yy}-{number:03d}',
+			preview: '77-26-013'
+		};
+		mockFetch.mockReset();
+		mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+			if (typeof url === 'string' && url.includes('/invoice-sequences')) {
+				return Promise.resolve(jsonResponse([fvSeq, customSeq]));
+			}
+			if (typeof url === 'string' && url.includes('/contacts')) {
+				return Promise.resolve(jsonResponse(sampleContacts));
+			}
+			if (typeof url === 'string' && url.includes('/invoices') && init?.method === 'POST') {
+				return Promise.resolve(jsonResponse({ id: 99 }));
+			}
+			return Promise.resolve(jsonResponse({}));
+		});
+
+		render(Page);
+		await waitFor(() => {
+			const sel = document.querySelector('#sequence') as HTMLSelectElement;
+			expect(sel).toBeInTheDocument();
+		});
+
+		// Default pick should be FV (regular invoice, year 2026, FV prefix match).
+		const sel = document.querySelector('#sequence') as HTMLSelectElement;
+		expect(Number(sel.value)).toBe(10);
+
+		// Switch to the 77 sequence and submit.
+		await fireEvent.change(sel, { target: { value: '11' } });
+		await vi.advanceTimersByTimeAsync(10);
+
+		const customer = document.querySelector('#customer') as HTMLSelectElement;
+		await fireEvent.change(customer, { target: { value: '1' } });
+
+		const descInput = document.querySelector('[name="description-0"]') as HTMLInputElement;
+		if (descInput) {
+			await fireEvent.input(descInput, { target: { value: 'X' } });
+		}
+
+		const form = document.querySelector('form')!;
+		await fireEvent.submit(form);
+
+		await waitFor(() => {
+			const post = mockFetch.mock.calls.find(
+				(call: unknown[]) => {
+					const u = call[0] as string;
+					const init = call[1] as RequestInit | undefined;
+					if (typeof u !== 'string' || !u.includes('/invoices') || init?.method !== 'POST') {
+						return false;
+					}
+					const body = JSON.parse(init?.body as string);
+					return body.sequence_id === 11;
+				}
+			);
+			expect(post).toBeDefined();
 		});
 	});
 });

@@ -195,6 +195,13 @@ describe('Sequences Settings Page', () => {
 			);
 			expect(deleteCall).toBeDefined();
 		});
+
+		// The deleted row's prefix "FV" must disappear from the table without a
+		// browser refresh. The other sequence "ZF" stays.
+		await waitFor(() => {
+			expect(screen.queryByText('FV')).not.toBeInTheDocument();
+			expect(screen.getByText('ZF')).toBeInTheDocument();
+		});
 	});
 
 	it('error state on load failure', async () => {

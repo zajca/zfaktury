@@ -102,9 +102,13 @@
 
 	async function confirmDelete() {
 		if (!deleteTargetId) return;
+		const idToDelete = deleteTargetId;
 		showDeleteConfirm = false;
 		try {
-			await sequencesApi.delete(deleteTargetId);
+			await sequencesApi.delete(idToDelete);
+			// Optimistic: drop the row from local state immediately so the UI
+			// updates even if the follow-up reload is delayed or fails.
+			sequences = sequences.filter((s) => s.id !== idToDelete);
 			toastSuccess('Číselná řada smazána');
 			await loadSequences();
 		} catch (e) {
@@ -179,10 +183,13 @@
 								id="create-year"
 								type="number"
 								bind:value={createYear}
-								min="2020"
-								max="2099"
+								min="1"
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							/>
+							<p class="mt-1 text-xs text-muted">
+								Plný (2026) i 2místný (26) rok funguje &mdash; token <code>{'{yy}'}</code> bere
+								poslední 2 číslice.
+							</p>
 						</div>
 						<div>
 							<label for="create-next" class="block text-sm font-medium text-secondary"

@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { contactsApi, invoicesApi, type Contact, type InvoiceItem } from '$lib/api/client';
+	import {
+		contactsApi,
+		invoicesApi,
+		sequencesApi,
+		type Contact,
+		type InvoiceItem,
+		type InvoiceSequence
+	} from '$lib/api/client';
 	import { toHalere } from '$lib/utils/money';
 	import { toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
@@ -34,11 +41,13 @@
 	}
 
 	let contacts = $state<Contact[]>([]);
+	let sequences = $state<InvoiceSequence[]>([]);
 	let saving = $state(false);
 	let invoiceType = $state<'regular' | 'proforma'>('regular');
 
 	let form = $state({
 		customer_id: 0,
+		sequence_id: 0,
 		issue_date: toISODate(new Date()),
 		due_date: toISODate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
 		delivery_date: toISODate(new Date()),
@@ -48,6 +57,52 @@
 		payment_method: 'bank_transfer',
 		notes: '',
 		internal_notes: ''
+	});
+
+	// Match invoice type to the conventional prefix used by the legacy
+	// auto-assignment: regular -> FV, proforma -> ZF, credit_note -> DN. Used as
+	// a hint for the default sequence pick — never enforced.
+	const typeToPrefixHint: Record<string, string> = {
+		regular: 'FV',
+		proforma: 'ZF',
+		credit_note: 'DN'
+	};
+
+	function pickDefaultSequence(): number {
+		if (sequences.length === 0) return 0;
+		const year = Number(form.issue_date.slice(0, 4));
+		const yearShort = year % 100;
+		const prefixHint = typeToPrefixHint[invoiceType];
+
+		// 1. Same year (full or short YY) + matching prefix hint.
+		const exact = sequences.find(
+			(s) =>
+				(s.year === year || s.year === yearShort) && s.prefix.toUpperCase() === prefixHint
+		);
+		if (exact) return exact.id;
+		// 2. Same year, any prefix.
+		const sameYear = sequences.find((s) => s.year === year || s.year === yearShort);
+		if (sameYear) return sameYear.id;
+		// 3. Otherwise pick whichever (first) — user can change.
+		return sequences[0].id;
+	}
+
+	// Re-derive the default when the year changes or the type flips, but only
+	// if the user hasn't manually overridden it. We track manual override by
+	// keeping the previous auto pick and comparing.
+	let lastAutoPick = $state(0);
+	$effect(() => {
+		// Re-run when issue_date, invoiceType, or sequences change.
+		void form.issue_date;
+		void invoiceType;
+		void sequences;
+		if (form.sequence_id !== 0 && form.sequence_id !== lastAutoPick) {
+			// User has manually selected — leave it alone.
+			return;
+		}
+		const next = pickDefaultSequence();
+		form.sequence_id = next;
+		lastAutoPick = next;
 	});
 
 	let items = $state<FormItem[]>([
@@ -61,6 +116,7 @@
 
 	onMount(() => {
 		loadContacts();
+		loadSequences();
 	});
 
 	async function loadContacts() {
@@ -72,9 +128,22 @@
 		}
 	}
 
+	async function loadSequences() {
+		try {
+			const result = await sequencesApi.list();
+			sequences = Array.isArray(result) ? result : [];
+		} catch {
+			sequences = [];
+		}
+	}
+
 	async function handleSubmit() {
 		if (!form.customer_id) {
 			toastError('Vyberte zákazníka');
+			return;
+		}
+		if (sequences.length > 0 && !form.sequence_id) {
+			toastError('Vyberte číselnou řadu');
 			return;
 		}
 
@@ -148,6 +217,35 @@
 					<input type="radio" bind:group={invoiceType} value="proforma" class="accent-accent" />
 					<span class="text-sm text-primary">Zálohová faktura</span>
 				</label>
+			</div>
+
+			<div class="mt-6">
+				<label for="sequence" class="block text-sm font-medium text-secondary">
+					Číselná řada <HelpTip topic="ciselne-rady" />
+				</label>
+				{#if sequences.length === 0}
+					<p
+						class="mt-1 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-warning"
+						role="alert"
+					>
+						Žádná číselná řada není vytvořená pro tuto firmu. <a
+							href="/settings/sequences"
+							class="font-medium underline">Vytvořit první řadu</a
+						> před uložením faktury.
+					</p>
+				{:else}
+					<select
+						id="sequence"
+						bind:value={form.sequence_id}
+						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+					>
+						{#each sequences as seq (seq.id)}
+							<option value={seq.id}
+								>{seq.prefix} / {seq.year} &mdash; další: {seq.preview}</option
+							>
+						{/each}
+					</select>
+				{/if}
 			</div>
 		</Card>
 

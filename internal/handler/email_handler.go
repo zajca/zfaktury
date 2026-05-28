@@ -9,6 +9,7 @@ import (
 	"net/mail"
 	"strings"
 
+	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
@@ -229,6 +230,15 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to send invoice email", "error", err, "id", id, "to", req.To)
 		respondError(w, http.StatusInternalServerError, "failed to send email")
 		return
+	}
+
+	// Advance draft invoices to "sent" once the email actually goes out.
+	// Non-draft invoices (sent, paid, overdue, cancelled) keep their status —
+	// users may legitimately re-email a sent or paid invoice.
+	if invoice.Status == domain.InvoiceStatusDraft {
+		if err := h.invoiceSvc.MarkAsSent(r.Context(), company.ID, invoice.ID); err != nil {
+			slog.Warn("email sent but failed to mark invoice as sent", "error", err, "id", id)
+		}
 	}
 
 	slog.Info("invoice email sent", "id", id, "to", req.To)

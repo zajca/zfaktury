@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/zajca/zfaktury/internal/companyctx"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
@@ -27,6 +28,9 @@ func (s *AuditService) Log(ctx context.Context, entityType string, entityID int6
 		EntityType: entityType,
 		EntityID:   entityID,
 		Action:     action,
+	}
+	if id, ok := companyctx.CompanyIDFromContext(ctx); ok {
+		entry.CompanyID = &id
 	}
 
 	if oldValues != nil {

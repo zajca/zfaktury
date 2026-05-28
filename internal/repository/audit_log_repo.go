@@ -19,14 +19,19 @@ func NewAuditLogRepository(db *sql.DB) *AuditLogRepository {
 	return &AuditLogRepository{db: db}
 }
 
-// Create inserts a new audit log entry into the database.
+// Create inserts a new audit log entry into the database. CompanyID is
+// written as NULL when nil so system-level entries can stay cross-company.
 func (r *AuditLogRepository) Create(ctx context.Context, entry *domain.AuditLogEntry) error {
 	now := time.Now()
 	entry.CreatedAt = now
+	var companyID any
+	if entry.CompanyID != nil {
+		companyID = *entry.CompanyID
+	}
 	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO audit_log (entity_type, entity_id, action, old_values, new_values, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		entry.EntityType, entry.EntityID, entry.Action, entry.OldValues, entry.NewValues,
+		INSERT INTO audit_log (company_id, entity_type, entity_id, action, old_values, new_values, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		companyID, entry.EntityType, entry.EntityID, entry.Action, entry.OldValues, entry.NewValues,
 		entry.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -43,7 +48,7 @@ func (r *AuditLogRepository) Create(ctx context.Context, entry *domain.AuditLogE
 // ListByEntity returns all audit log entries for a given entity, ordered by created_at DESC.
 func (r *AuditLogRepository) ListByEntity(ctx context.Context, entityType string, entityID int64) ([]domain.AuditLogEntry, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, entity_type, entity_id, action, old_values, new_values, created_at
+		SELECT id, company_id, entity_type, entity_id, action, old_values, new_values, created_at
 		FROM audit_log
 		WHERE entity_type = ? AND entity_id = ?
 		ORDER BY id DESC`,
@@ -118,7 +123,7 @@ func (r *AuditLogRepository) List(ctx context.Context, filter domain.AuditLogFil
 		offset = 0
 	}
 
-	query := "SELECT id, entity_type, entity_id, action, old_values, new_values, created_at FROM audit_log WHERE 1=1" + where + " ORDER BY id DESC LIMIT ? OFFSET ?"
+	query := "SELECT id, company_id, entity_type, entity_id, action, old_values, new_values, created_at FROM audit_log WHERE 1=1" + where + " ORDER BY id DESC LIMIT ? OFFSET ?"
 	queryArgs := make([]any, len(args), len(args)+2)
 	copy(queryArgs, args)
 	queryArgs = append(queryArgs, limit, offset)
@@ -146,16 +151,21 @@ func (r *AuditLogRepository) List(ctx context.Context, filter domain.AuditLogFil
 // scanAuditLogRow extracts an AuditLogEntry from a row scanner.
 func scanAuditLogRow(scanner interface{ Scan(dest ...any) error }) (domain.AuditLogEntry, error) {
 	var entry domain.AuditLogEntry
+	var companyID sql.NullInt64
 	var oldValues, newValues sql.NullString
 	var createdAtStr string
 
 	if err := scanner.Scan(
-		&entry.ID, &entry.EntityType, &entry.EntityID, &entry.Action,
+		&entry.ID, &companyID, &entry.EntityType, &entry.EntityID, &entry.Action,
 		&oldValues, &newValues, &createdAtStr,
 	); err != nil {
 		return domain.AuditLogEntry{}, fmt.Errorf("scanning audit log row: %w", err)
 	}
 
+	if companyID.Valid {
+		v := companyID.Int64
+		entry.CompanyID = &v
+	}
 	if oldValues.Valid {
 		entry.OldValues = oldValues.String
 	}

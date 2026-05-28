@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/zajca/zfaktury/internal/companyctx"
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
@@ -38,7 +39,9 @@ func WithCompany(svc CompanyResolver) func(http.Handler) http.Handler {
 				return
 			}
 			w.Header().Set("X-Company-Id", strconv.FormatInt(c.ID, 10))
-			next.ServeHTTP(w, r.WithContext(contextWithCompany(r.Context(), &c)))
+			ctx := contextWithCompany(r.Context(), &c)
+			ctx = companyctx.WithCompanyID(ctx, c.ID)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

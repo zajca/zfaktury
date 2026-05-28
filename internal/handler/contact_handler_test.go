@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zajca/zfaktury/internal/companyctx"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/service"
@@ -24,7 +25,9 @@ func injectTestCompany(id int64) func(http.Handler) http.Handler {
 	c := &domain.Company{ID: id, Name: "Test Co"}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(contextWithCompany(r.Context(), c)))
+			ctx := contextWithCompany(r.Context(), c)
+			ctx = companyctx.WithCompanyID(ctx, id)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
@@ -43,7 +46,9 @@ func injectTestCompanyFromDB(t *testing.T, db *sql.DB, id int64) func(http.Handl
 				http.Error(w, "load test company: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
-			next.ServeHTTP(w, r.WithContext(contextWithCompany(r.Context(), &c)))
+			ctx := contextWithCompany(r.Context(), &c)
+			ctx = companyctx.WithCompanyID(ctx, id)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

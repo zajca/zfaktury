@@ -3,8 +3,14 @@ package domain
 import "time"
 
 // AuditLogEntry represents a single audit trail record for entity changes.
+//
+// CompanyID is populated from the request context when the entry is recorded
+// under a per-company route. System-level actions that have no active company
+// leave this nil so the per-company filter on the audit-log page can ignore
+// them.
 type AuditLogEntry struct {
 	ID         int64
+	CompanyID  *int64
 	EntityType string
 	EntityID   int64
 	Action     string

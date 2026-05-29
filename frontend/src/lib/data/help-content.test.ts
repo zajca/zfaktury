@@ -131,8 +131,9 @@ describe('help-content', () => {
 			progressive_threshold: 1935552,
 			flat_rate_caps: { '80': 1600000, '60': 1200000, '40': 800000, '30': 600000 },
 			deduction_cap_mortgage: 150000,
-			deduction_cap_pension: 24000,
-			deduction_cap_life_insurance: 24000,
+			deduction_cap_pension: 0,
+			deduction_cap_life_insurance: 0,
+			deduction_cap_savings_combined: 48000,
 			deduction_cap_union: 3000,
 			time_test_years: 3,
 			security_exemption_limit: 100000

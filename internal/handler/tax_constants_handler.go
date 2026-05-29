@@ -29,6 +29,7 @@ type taxConstantsResponse struct {
 	DeductionCapMortgage      int64            `json:"deduction_cap_mortgage"`
 	DeductionCapPension       int64            `json:"deduction_cap_pension"`
 	DeductionCapLifeInsurance int64            `json:"deduction_cap_life_insurance"`
+	DeductionCapSavings       int64            `json:"deduction_cap_savings_combined"`
 	DeductionCapUnion         int64            `json:"deduction_cap_union"`
 	TimeTestYears             int              `json:"time_test_years"`
 	SecurityExemptionLimit    int64            `json:"security_exemption_limit"`
@@ -63,6 +64,7 @@ func taxConstantsFromService(year int, c calc.TaxYearConstants) taxConstantsResp
 		DeductionCapMortgage:      toCZK(c.DeductionCapMortgage),
 		DeductionCapPension:       toCZK(c.DeductionCapPension),
 		DeductionCapLifeInsurance: toCZK(c.DeductionCapLifeInsurance),
+		DeductionCapSavings:       toCZK(c.DeductionCapSavingsCombined),
 		DeductionCapUnion:         toCZK(c.DeductionCapUnionDues),
 		TimeTestYears:             c.TimeTestYears,
 		SecurityExemptionLimit:    toCZK(c.SecurityExemptionLimit),

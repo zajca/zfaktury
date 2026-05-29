@@ -374,6 +374,10 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 		domain.DeductionUnionDues:     constants.DeductionCapUnionDues,
 		domain.DeductionDonation:      taxBase.Multiply(0.15),
 	}
+	if constants.DeductionCapSavingsCombined > 0 {
+		categoryCaps[domain.DeductionLifeInsurance] = constants.DeductionCapSavingsCombined
+		categoryCaps[domain.DeductionPension] = constants.DeductionCapSavingsCombined
+	}
 
 	for i := range deductions {
 		ded := &deductions[i]

@@ -1228,6 +1228,7 @@ export interface TaxConstants {
 	deduction_cap_mortgage: number;
 	deduction_cap_pension: number;
 	deduction_cap_life_insurance: number;
+	deduction_cap_savings_combined: number;
 	deduction_cap_union: number;
 	time_test_years: number;
 	security_exemption_limit: number;

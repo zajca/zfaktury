@@ -79,6 +79,7 @@ const taxConstants = {
 	deduction_cap_mortgage: 0,
 	deduction_cap_pension: 0,
 	deduction_cap_life_insurance: 0,
+	deduction_cap_savings_combined: 48000,
 	deduction_cap_union: 0,
 	time_test_years: 3,
 	security_exemption_limit: 10000000

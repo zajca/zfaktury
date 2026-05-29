@@ -31,10 +31,11 @@ func TestToCZK(t *testing.T) {
 
 func TestTaxConstantsFromService(t *testing.T) {
 	c := calc.TaxYearConstants{
-		BasicCredit:   3083400,
-		SpouseCredit:  2477000,
-		FlatRateCaps:  map[int]domain.Amount{60: 200000000},
-		TimeTestYears: 3,
+		BasicCredit:                 3083400,
+		SpouseCredit:                2477000,
+		FlatRateCaps:                map[int]domain.Amount{60: 200000000},
+		DeductionCapSavingsCombined: 4800000,
+		TimeTestYears:               3,
 	}
 	resp := taxConstantsFromService(2025, c)
 	if resp.Year != 2025 {
@@ -48,6 +49,9 @@ func TestTaxConstantsFromService(t *testing.T) {
 	}
 	if resp.TimeTestYears != 3 {
 		t.Errorf("TimeTestYears = %d, want 3", resp.TimeTestYears)
+	}
+	if resp.DeductionCapSavings != 48000 {
+		t.Errorf("DeductionCapSavings = %d, want 48000", resp.DeductionCapSavings)
 	}
 }
 

@@ -399,6 +399,18 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 	if result.CreditBasic != constants.BasicCredit {
 		t.Errorf("CreditBasic = %d, want %d", result.CreditBasic, constants.BasicCredit)
 	}
+	if result.TaxRuleSetID != "cz-dpfo-2025.v1" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v1", result.TaxRuleSetID)
+	}
+	if result.TaxRuleSetStatus != "final" {
+		t.Errorf("TaxRuleSetStatus = %q, want final", result.TaxRuleSetStatus)
+	}
+	if len(result.TaxRuleSetHash) != 64 {
+		t.Errorf("TaxRuleSetHash length = %d, want 64", len(result.TaxRuleSetHash))
+	}
+	if result.CalculatedAt == nil {
+		t.Error("CalculatedAt should be set after Recalculate")
+	}
 }
 
 func TestIncomeTaxReturnService_Recalculate_ActualExpenses(t *testing.T) {
@@ -475,6 +487,33 @@ func TestIncomeTaxReturnService_Recalculate_ActualExpenses(t *testing.T) {
 	expectedTaxBase := domain.NewAmount(200000, 0) - domain.NewAmount(50000, 0)
 	if result.TaxBase != expectedTaxBase {
 		t.Errorf("TaxBase = %d, want %d", result.TaxBase, expectedTaxBase)
+	}
+}
+
+func TestIncomeTaxReturnService_Recalculate_ProvisionalRuleSetWarning(t *testing.T) {
+	svc, _ := setupIncomeTaxSvc(t)
+	ctx := context.Background()
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2026,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if result.TaxRuleSetID != "cz-dpfo-2026.v0-provisional" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v0-provisional", result.TaxRuleSetID)
+	}
+	if result.TaxRuleSetStatus != "provisional" {
+		t.Errorf("TaxRuleSetStatus = %q, want provisional", result.TaxRuleSetStatus)
+	}
+	if !containsString(result.Warnings, domain.WarningTaxRuleSetProvisional) {
+		t.Errorf("Warnings = %v, want %q", result.Warnings, domain.WarningTaxRuleSetProvisional)
 	}
 }
 
@@ -986,4 +1025,13 @@ func TestIncomeTaxReturnService_Recalculate_WithPrepayments(t *testing.T) {
 	if result.Prepayments != expectedPrepayments {
 		t.Errorf("Prepayments = %d, want %d", result.Prepayments, expectedPrepayments)
 	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, v := range values {
+		if v == want {
+			return true
+		}
+	}
+	return false
 }

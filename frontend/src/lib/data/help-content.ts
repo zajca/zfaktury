@@ -665,10 +665,10 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 		'dan-15-23': {
 			title: 'Sazba daně 15 % a 23 %',
 			simple: tc
-				? `Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z části základu daně nad ${fmtCZK(tc.progressive_threshold)}\n\nPráh ${fmtCZK(tc.progressive_threshold)} odpovídá 48násobku průměrné mzdy pro rok ${tc.year}. Většina OSVČ se vejde do 15% pásma.`
-				: 'Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do zákonem stanoveného prahu\n- 23 % z části základu daně nad tento práh\n\nPráh odpovídá 48násobku průměrné mzdy a mění se každý rok. Většina OSVČ se vejde do 15% pásma.',
+				? `Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z části základu daně nad ${fmtCZK(tc.progressive_threshold)}\n\nPráh ${fmtCZK(tc.progressive_threshold)} odpovídá 36násobku průměrné mzdy pro rok ${tc.year}. Většina OSVČ se vejde do 15% pásma.`
+				: 'Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do zákonem stanoveného prahu\n- 23 % z části základu daně nad tento práh\n\nPráh odpovídá 36násobku průměrné mzdy a mění se každý rok. Většina OSVČ se vejde do 15% pásma.',
 			legal:
-				'Sazby daně z příjmů fyzických osob upravuje § 16 zákona č. 586/1992 Sb. Základní sazba 15 % a solidární sazba 23 % z části základu daně přesahující 48násobek průměrné mzdy (§ 16 odst. 2). Průměrná mzda se stanoví dle § 21g.'
+				'Sazby daně z příjmů fyzických osob upravuje § 16 zákona č. 586/1992 Sb. Základní sazba 15 % a sazba 23 % se použije na část základu daně přesahující 36násobek průměrné mzdy. Průměrná mzda se stanoví dle § 21g.'
 		},
 
 		'sleva-na-poplatnika': {

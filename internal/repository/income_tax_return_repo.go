@@ -71,12 +71,13 @@ const incomeTaxReturnColumns = `id, year, filing_type,
 	section6_gross_income, section6_income_without_advance, section6_foreign_tax, section6_tax_base,
 	section6_advance_withheld, section6_withholding_credited, section6_monthly_bonus_paid,
 	section6_certs_advance, section6_certs_withholding, section6_certs_bonus,
-	xml_data, warnings, status, filed_at, created_at, updated_at`
+	xml_data, warnings, tax_ruleset_id, tax_ruleset_status, tax_ruleset_hash, calculated_at,
+	status, filed_at, created_at, updated_at`
 
 // scanIncomeTaxReturn scans an IncomeTaxReturn from a row.
 func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 	itr := &domain.IncomeTaxReturn{}
-	var filedAtStr sql.NullString
+	var filedAtStr, calculatedAtStr sql.NullString
 	var createdAtStr, updatedAtStr string
 	var xmlData []byte
 	var warningsStr string
@@ -94,7 +95,8 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 		&itr.Section6GrossIncome, &itr.Section6IncomeWithoutAdvance, &itr.Section6ForeignTax, &itr.Section6TaxBase,
 		&itr.Section6AdvanceWithheld, &itr.Section6WithholdingCredited, &itr.Section6MonthlyBonusPaid,
 		&itr.Section6CertsAdvance, &itr.Section6CertsWithholding, &itr.Section6CertsBonus,
-		&xmlData, &warningsStr, &itr.Status, &filedAtStr,
+		&xmlData, &warningsStr, &itr.TaxRuleSetID, &itr.TaxRuleSetStatus, &itr.TaxRuleSetHash, &calculatedAtStr,
+		&itr.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
@@ -115,6 +117,10 @@ func scanIncomeTaxReturn(s scanner) (*domain.IncomeTaxReturn, error) {
 	itr.FiledAt, err = parseDatePtr(time.RFC3339, filedAtStr)
 	if err != nil {
 		return nil, fmt.Errorf("scanning income_tax_return filed_at: %w", err)
+	}
+	itr.CalculatedAt, err = parseDatePtr(time.RFC3339, calculatedAtStr)
+	if err != nil {
+		return nil, fmt.Errorf("scanning income_tax_return calculated_at: %w", err)
 	}
 
 	return itr, nil
@@ -143,8 +149,9 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 			section6_gross_income, section6_income_without_advance, section6_foreign_tax, section6_tax_base,
 			section6_advance_withheld, section6_withholding_credited, section6_monthly_bonus_paid,
 			section6_certs_advance, section6_certs_withholding, section6_certs_bonus,
-			xml_data, warnings, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			xml_data, warnings, tax_ruleset_id, tax_ruleset_status, tax_ruleset_hash, calculated_at,
+			status, filed_at, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
 		itr.TaxBase, itr.TotalDeductions, itr.TaxBaseRounded, itr.TaxAt15, itr.TaxAt23, itr.TotalTax,
@@ -157,7 +164,8 @@ func (r *IncomeTaxReturnRepository) Create(ctx context.Context, itr *domain.Inco
 		itr.Section6GrossIncome, itr.Section6IncomeWithoutAdvance, itr.Section6ForeignTax, itr.Section6TaxBase,
 		itr.Section6AdvanceWithheld, itr.Section6WithholdingCredited, itr.Section6MonthlyBonusPaid,
 		itr.Section6CertsAdvance, itr.Section6CertsWithholding, itr.Section6CertsBonus,
-		nil, joinWarnings(itr.Warnings), itr.Status, nil,
+		nil, joinWarnings(itr.Warnings), itr.TaxRuleSetID, itr.TaxRuleSetStatus, itr.TaxRuleSetHash, formatTimePtr(time.RFC3339, itr.CalculatedAt),
+		itr.Status, nil,
 		itr.CreatedAt.Format(time.RFC3339), itr.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -180,6 +188,10 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 	if itr.FiledAt != nil {
 		filedAt = itr.FiledAt.Format(time.RFC3339)
 	}
+	var calculatedAt any
+	if itr.CalculatedAt != nil {
+		calculatedAt = itr.CalculatedAt.Format(time.RFC3339)
+	}
 
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE income_tax_returns SET
@@ -195,7 +207,8 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 			section6_gross_income = ?, section6_income_without_advance = ?, section6_foreign_tax = ?, section6_tax_base = ?,
 			section6_advance_withheld = ?, section6_withholding_credited = ?, section6_monthly_bonus_paid = ?,
 			section6_certs_advance = ?, section6_certs_withholding = ?, section6_certs_bonus = ?,
-			xml_data = ?, warnings = ?, status = ?, filed_at = ?, updated_at = ?
+			xml_data = ?, warnings = ?, tax_ruleset_id = ?, tax_ruleset_status = ?, tax_ruleset_hash = ?, calculated_at = ?,
+			status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		itr.Year, itr.FilingType,
 		itr.TotalRevenue, itr.ActualExpenses, itr.FlatRatePercent, itr.FlatRateAmount, itr.UsedExpenses,
@@ -209,7 +222,8 @@ func (r *IncomeTaxReturnRepository) Update(ctx context.Context, itr *domain.Inco
 		itr.Section6GrossIncome, itr.Section6IncomeWithoutAdvance, itr.Section6ForeignTax, itr.Section6TaxBase,
 		itr.Section6AdvanceWithheld, itr.Section6WithholdingCredited, itr.Section6MonthlyBonusPaid,
 		itr.Section6CertsAdvance, itr.Section6CertsWithholding, itr.Section6CertsBonus,
-		itr.XMLData, joinWarnings(itr.Warnings), itr.Status, filedAt,
+		itr.XMLData, joinWarnings(itr.Warnings), itr.TaxRuleSetID, itr.TaxRuleSetStatus, itr.TaxRuleSetHash, calculatedAt,
+		itr.Status, filedAt,
 		itr.UpdatedAt.Format(time.RFC3339), itr.ID,
 	)
 	if err != nil {

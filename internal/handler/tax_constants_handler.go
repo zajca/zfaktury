@@ -1,17 +1,22 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 // taxConstantsResponse is the JSON response for tax year constants.
 // All monetary amounts are in CZK (halere / 100).
 type taxConstantsResponse struct {
+	RuleSetID     string `json:"rule_set_id"`
+	RuleSetStatus string `json:"rule_set_status"`
+	RuleSetHash   string `json:"rule_set_hash"`
+
 	Year                      int              `json:"year"`
 	BasicCredit               int64            `json:"basic_credit"`
 	SpouseCredit              int64            `json:"spouse_credit"`
@@ -40,14 +45,22 @@ func toCZK(a domain.Amount) int64 {
 	return int64(a) / 100
 }
 
-func taxConstantsFromService(year int, c calc.TaxYearConstants) taxConstantsResponse {
+func taxConstantsFromRuleSet(rules taxrules.RuleSet) (taxConstantsResponse, error) {
+	c := rules.Constants
 	flatRateCaps := make(map[string]int64, len(c.FlatRateCaps))
 	for pct, cap := range c.FlatRateCaps {
 		flatRateCaps[strconv.Itoa(pct)] = toCZK(cap)
 	}
+	hash, err := rules.Fingerprint()
+	if err != nil {
+		return taxConstantsResponse{}, fmt.Errorf("fingerprinting tax rule set: %w", err)
+	}
 
 	return taxConstantsResponse{
-		Year:                      year,
+		RuleSetID:                 rules.ID,
+		RuleSetStatus:             string(rules.Status),
+		RuleSetHash:               hash,
+		Year:                      rules.Year,
 		BasicCredit:               toCZK(c.BasicCredit),
 		SpouseCredit:              toCZK(c.SpouseCredit),
 		SpouseIncomeLimit:         toCZK(c.SpouseIncomeLimit),
@@ -68,7 +81,7 @@ func taxConstantsFromService(year int, c calc.TaxYearConstants) taxConstantsResp
 		DeductionCapUnion:         toCZK(c.DeductionCapUnionDues),
 		TimeTestYears:             c.TimeTestYears,
 		SecurityExemptionLimit:    toCZK(c.SecurityExemptionLimit),
-	}
+	}, nil
 }
 
 // handleGetTaxConstants returns tax constants for a given year.
@@ -80,11 +93,16 @@ func handleGetTaxConstants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	constants, err := calc.GetTaxConstants(year)
+	rules, err := taxrules.GetRuleSet(year)
 	if err != nil {
 		respondError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	respondJSON(w, http.StatusOK, taxConstantsFromService(year, constants))
+	resp, err := taxConstantsFromRuleSet(rules)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
 }

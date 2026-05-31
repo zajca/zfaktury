@@ -116,6 +116,9 @@ describe('help-content', () => {
 
 	describe('getHelpTopics with TaxConstants', () => {
 		const mockConstants: TaxConstants = {
+			rule_set_id: 'cz-dpfo-2024.v1',
+			rule_set_status: 'final',
+			rule_set_hash: 'abc123',
 			year: 2024,
 			basic_credit: 30840,
 			spouse_credit: 24840,
@@ -157,7 +160,7 @@ describe('help-content', () => {
 			expect(topics['sleva-na-poplatnika'].simple).not.toContain('2024');
 			expect(topics['sleva-na-poplatnika'].simple).toContain('zdaňovacím období');
 			expect(topics['zvyhodneni-na-deti'].simple).not.toContain('15 204');
-			expect(topics['dan-15-23'].simple).toContain('48násobku');
+			expect(topics['dan-15-23'].simple).toContain('36násobku');
 		});
 
 		it('returns same topics with and without constants', () => {

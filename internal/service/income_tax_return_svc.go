@@ -10,6 +10,7 @@ import (
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 // IncomeTaxReturnService provides business logic for income tax return management.
@@ -178,11 +179,12 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	}
 	itr.FlatRatePercent = flatRatePercent
 
-	// Step 3: Get tax constants for the year.
-	constants, err := calc.GetTaxConstants(itr.Year)
+	// Step 3: Get the canonical tax rule set for the year.
+	rules, err := taxrules.GetRuleSet(itr.Year)
 	if err != nil {
-		return nil, fmt.Errorf("getting tax constants for income_tax_return: %w", err)
+		return nil, fmt.Errorf("getting tax rule set for income_tax_return: %w", err)
 	}
+	constants := rules.Constants
 
 	// Step 4b: §8 capital income and §10 other income (investments).
 	if s.investmentSvc != nil {
@@ -245,11 +247,11 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	var spouseCredit, disabilityCredit, studentCredit, childBenefit, totalDeductions domain.Amount
 	if s.taxCreditsSvc != nil {
 		var credErr error
-		spouseCredit, disabilityCredit, studentCredit, credErr = s.taxCreditsSvc.ComputeCredits(ctx, itr.Year)
+		spouseCredit, disabilityCredit, studentCredit, credErr = s.taxCreditsSvc.ComputeCreditsWithConstants(ctx, itr.Year, constants)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing credits for income_tax_return: %w", credErr)
 		}
-		childBenefit, credErr = s.taxCreditsSvc.ComputeChildBenefit(ctx, itr.Year)
+		childBenefit, credErr = s.taxCreditsSvc.ComputeChildBenefitWithConstants(ctx, itr.Year, constants)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing child benefit for income_tax_return: %w", credErr)
 		}
@@ -264,7 +266,7 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		if rawBase < 0 {
 			rawBase = 0
 		}
-		totalDeductions, credErr = s.taxCreditsSvc.ComputeDeductions(ctx, itr.Year, rawBase)
+		totalDeductions, credErr = s.taxCreditsSvc.ComputeDeductionsWithConstants(ctx, itr.Year, rawBase, constants)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing deductions for income_tax_return: %w", credErr)
 		}
@@ -336,6 +338,9 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	if consolidatedBase > constants.ProgressiveThreshold {
 		itr.Warnings = append(itr.Warnings, domain.WarningProgressiveRateReview)
 	}
+	if rules.Status == taxrules.RuleStatusProvisional {
+		itr.Warnings = append(itr.Warnings, domain.WarningTaxRuleSetProvisional)
+	}
 
 	// Map result back to entity.
 	itr.FlatRateAmount = taxResult.FlatRateAmount
@@ -356,6 +361,15 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	itr.TaxAfterBenefit = taxResult.TaxAfterBenefit
 	itr.Prepayments = taxTotal
 	itr.TaxDue = taxResult.TaxDue
+	ruleSetHash, err := rules.Fingerprint()
+	if err != nil {
+		return nil, fmt.Errorf("fingerprinting tax rule set for income_tax_return: %w", err)
+	}
+	itr.TaxRuleSetID = rules.ID
+	itr.TaxRuleSetStatus = string(rules.Status)
+	itr.TaxRuleSetHash = ruleSetHash
+	now := time.Now()
+	itr.CalculatedAt = &now
 
 	// Step 11: Persist updated values.
 	if err := s.repo.Update(ctx, itr); err != nil {

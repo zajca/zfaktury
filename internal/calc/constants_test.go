@@ -76,12 +76,16 @@ func TestGetTaxConstants_2025Values(t *testing.T) {
 
 func TestGetTaxConstants_2026Values(t *testing.T) {
 	c, _ := GetTaxConstants(2026)
-	// 2026: placeholder hodnoty -- aktualizovat až vyjde nařízení vlády.
-	if c.SocialMinMonthly == 0 {
-		t.Errorf("2026 SocialMinMonthly should be set (placeholder OK)")
+	if c.ProgressiveThreshold != domain.NewAmount(1_762_812, 0) {
+		t.Errorf("2026 ProgressiveThreshold = %d, want %d", c.ProgressiveThreshold, domain.NewAmount(1_762_812, 0))
 	}
-	if c.HealthMinMonthly == 0 {
-		t.Errorf("2026 HealthMinMonthly should be set (placeholder OK)")
+	// SP HV 2026: 40 % × 48 967 = 19 586,80 → 19 587 Kč.
+	if c.SocialMinMonthly != domain.NewAmount(19_587, 0) {
+		t.Errorf("2026 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(19_587, 0))
+	}
+	// ZP 2026: 50 % × 48 967 = 24 483,50 → 24 484 Kč.
+	if c.HealthMinMonthly != domain.NewAmount(24_484, 0) {
+		t.Errorf("2026 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(24_484, 0))
 	}
 	if c.StudentCredit != 0 {
 		t.Errorf("2026 StudentCredit = %d, want 0 (zrušena od 2024)", c.StudentCredit)

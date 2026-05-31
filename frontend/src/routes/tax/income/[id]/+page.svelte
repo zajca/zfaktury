@@ -48,6 +48,10 @@
 		withholding_partial_include: {
 			title: 'Částečné zahrnutí srážkové daně',
 			helpTopicId: 'srazkova-do-dap'
+		},
+		tax_ruleset_provisional: {
+			title: 'Přiznání používá předběžná daňová pravidla',
+			helpTopicId: 'rocni-dane'
 		}
 	};
 
@@ -191,6 +195,14 @@
 					</span>
 				</div>
 			</div>
+			{#if data.tax_ruleset_id}
+				<p class="mt-1 text-xs text-tertiary">
+					Pravidla: {data.tax_ruleset_id} ({data.tax_ruleset_status || 'neznámý stav'})
+					{#if data.calculated_at}
+						- přepočteno {new Date(data.calculated_at).toLocaleString('cs-CZ')}
+					{/if}
+				</p>
+			{/if}
 			<div class="mt-3 flex flex-wrap gap-2">
 				<Button
 					variant="secondary"

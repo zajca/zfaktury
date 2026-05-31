@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/testutil"
@@ -109,6 +110,68 @@ func TestIncomeTaxReturnRepository_Update(t *testing.T) {
 	}
 	if got.TaxBase != domain.NewAmount(800000, 0) {
 		t.Errorf("TaxBase = %d, want %d", got.TaxBase, domain.NewAmount(800000, 0))
+	}
+}
+
+func TestIncomeTaxReturnRepository_RuleSetAudit_Persists(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewIncomeTaxReturnRepository(db)
+	ctx := context.Background()
+	calculatedAt := time.Date(2026, time.May, 31, 10, 30, 0, 0, time.UTC)
+
+	itr := &domain.IncomeTaxReturn{
+		Year:             2025,
+		FilingType:       domain.FilingTypeRegular,
+		TaxRuleSetID:     "cz-dpfo-2025.v1",
+		TaxRuleSetStatus: "final",
+		TaxRuleSetHash:   "abc123",
+		CalculatedAt:     &calculatedAt,
+	}
+	if err := repo.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.TaxRuleSetID != "cz-dpfo-2025.v1" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v1", got.TaxRuleSetID)
+	}
+	if got.TaxRuleSetStatus != "final" {
+		t.Errorf("TaxRuleSetStatus = %q, want final", got.TaxRuleSetStatus)
+	}
+	if got.TaxRuleSetHash != "abc123" {
+		t.Errorf("TaxRuleSetHash = %q, want abc123", got.TaxRuleSetHash)
+	}
+	if got.CalculatedAt == nil || !got.CalculatedAt.Equal(calculatedAt) {
+		t.Errorf("CalculatedAt = %v, want %v", got.CalculatedAt, calculatedAt)
+	}
+
+	updatedAt := calculatedAt.Add(time.Hour)
+	got.TaxRuleSetID = "cz-dpfo-2025.v2"
+	got.TaxRuleSetStatus = "provisional"
+	got.TaxRuleSetHash = "def456"
+	got.CalculatedAt = &updatedAt
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	reloaded, err := repo.GetByID(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after update error: %v", err)
+	}
+	if reloaded.TaxRuleSetID != "cz-dpfo-2025.v2" {
+		t.Errorf("after update TaxRuleSetID = %q, want cz-dpfo-2025.v2", reloaded.TaxRuleSetID)
+	}
+	if reloaded.TaxRuleSetStatus != "provisional" {
+		t.Errorf("after update TaxRuleSetStatus = %q, want provisional", reloaded.TaxRuleSetStatus)
+	}
+	if reloaded.TaxRuleSetHash != "def456" {
+		t.Errorf("after update TaxRuleSetHash = %q, want def456", reloaded.TaxRuleSetHash)
+	}
+	if reloaded.CalculatedAt == nil || !reloaded.CalculatedAt.Equal(updatedAt) {
+		t.Errorf("after update CalculatedAt = %v, want %v", reloaded.CalculatedAt, updatedAt)
 	}
 }
 

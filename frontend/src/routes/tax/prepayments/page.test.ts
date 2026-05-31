@@ -40,6 +40,9 @@ function makeTaxYearSettings(
 }
 
 const fakeTaxConstants = {
+	rule_set_id: 'cz-dpfo-2025.v1',
+	rule_set_status: 'final',
+	rule_set_hash: 'abc123',
 	year: 2025,
 	basic_credit: 30840,
 	spouse_credit: 24840,
@@ -55,8 +58,9 @@ const fakeTaxConstants = {
 	progressive_threshold: 1935552,
 	flat_rate_caps: {},
 	deduction_cap_mortgage: 150000,
-	deduction_cap_pension: 24000,
-	deduction_cap_life_insurance: 24000,
+	deduction_cap_pension: 0,
+	deduction_cap_life_insurance: 0,
+	deduction_cap_savings_combined: 48000,
 	deduction_cap_union: 3000,
 	time_test_years: 3,
 	security_exemption_limit: 100000

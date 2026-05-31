@@ -45,6 +45,15 @@
 		onDeleteDocument: (docId: number) => void;
 		onUploadWithOCR: () => void;
 	} = $props();
+
+	let isPensionDeduction = $derived(deductionCategory === 'pension');
+	let isSavingsDeduction = $derived(
+		deductionCategory === 'pension' || deductionCategory === 'life_insurance'
+	);
+	let savingsCap = $derived(
+		taxConstants?.deduction_cap_savings_combined ||
+			(taxConstants?.deduction_cap_pension ?? 0) + (taxConstants?.deduction_cap_life_insurance ?? 0)
+	);
 </script>
 
 <Card>
@@ -158,7 +167,7 @@
 							deductionCategory = (e.currentTarget as HTMLSelectElement).value;
 						}}
 					>
-						{#each Object.entries(categoryLabels) as [key, label]}
+						{#each Object.entries(categoryLabels) as [key, label] (key)}
 							<option value={key}>{label}</option>
 						{/each}
 					</Select>
@@ -174,7 +183,9 @@
 					/>
 				</div>
 				<div>
-					<span class="text-xs text-tertiary">Částka (CZK)</span>
+					<span class="text-xs text-tertiary">
+						{isPensionDeduction ? 'Daňově uznatelná částka z potvrzení (CZK)' : 'Částka (CZK)'}
+					</span>
 					<Input
 						type="number"
 						value={deductionAmount}
@@ -185,6 +196,18 @@
 					/>
 				</div>
 			</div>
+			{#if isPensionDeduction}
+				<div class="mt-3 rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-sm text-warning">
+					Zadejte částku pro daňový odpočet z potvrzení penzijní společnosti, ne celkově
+					zaplacený příspěvek. U platby 1 700 Kč v prosinci 2024 je uznatelná částka 0 Kč.
+					Od 1. 7. 2024 se běžně uplatňuje jen část měsíčního příspěvku nad 1 700 Kč.
+				</div>
+			{:else if isSavingsDeduction && savingsCap > 0}
+				<div class="mt-3 rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-tertiary">
+					Tato kategorie sdílí roční limit {formatCZK(savingsCap * 100)} s ostatními
+					daňově podporovanými produkty spoření na stáří a dlouhodobé péče.
+				</div>
+			{/if}
 			<div class="mt-3 flex gap-2">
 				<Button variant="primary" size="sm" onclick={onSave} disabled={saving}>Uložit</Button>
 				<Button variant="ghost" size="sm" onclick={onReset}>Zrušit</Button>

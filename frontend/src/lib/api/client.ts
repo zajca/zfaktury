@@ -1070,6 +1070,10 @@ export interface IncomeTaxReturn {
 	// Backend-emitted advisory warning codes (e.g. "progressive_rate_review").
 	// Empty array or absent field = no warnings.
 	warnings?: string[];
+	tax_ruleset_id: string;
+	tax_ruleset_status: string;
+	tax_ruleset_hash: string;
+	calculated_at?: string | null;
 	has_xml: boolean;
 	status: string;
 	filed_at: string | null;
@@ -1211,6 +1215,9 @@ export const healthInsuranceApi = {
 // --- Tax Constants Types ---
 
 export interface TaxConstants {
+	rule_set_id: string;
+	rule_set_status: string;
+	rule_set_hash: string;
 	year: number;
 	basic_credit: number;
 	spouse_credit: number;
@@ -1228,6 +1235,7 @@ export interface TaxConstants {
 	deduction_cap_mortgage: number;
 	deduction_cap_pension: number;
 	deduction_cap_life_insurance: number;
+	deduction_cap_savings_combined: number;
 	deduction_cap_union: number;
 	time_test_years: number;
 	security_exemption_limit: number;

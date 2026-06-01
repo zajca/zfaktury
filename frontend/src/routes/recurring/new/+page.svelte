@@ -42,7 +42,9 @@
 		constant_symbol: '',
 		notes: '',
 		is_active: true,
-		auto_send: false,
+		// Default new recurring invoices to auto-send (blank recipient = the
+		// customer's own email); uncheck to keep an invoice as a manual draft.
+		auto_send: true,
 		auto_send_recipient: ''
 	});
 

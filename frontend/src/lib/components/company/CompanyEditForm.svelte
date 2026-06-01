@@ -77,13 +77,7 @@
 					<label for="company_name" class="block text-sm font-medium text-secondary">
 						Název *
 					</label>
-					<input
-						id="company_name"
-						type="text"
-						bind:value={form.name}
-						required
-						class={inputClass}
-					/>
+					<input id="company_name" type="text" bind:value={form.name} required class={inputClass} />
 				</div>
 				<div>
 					<label for="company_legal_name" class="block text-sm font-medium text-secondary">
@@ -154,12 +148,7 @@
 					<label for="company_street" class="block text-sm font-medium text-secondary">
 						Ulice
 					</label>
-					<input
-						id="company_street"
-						type="text"
-						bind:value={form.street}
-						class={inputClass}
-					/>
+					<input id="company_street" type="text" bind:value={form.street} class={inputClass} />
 				</div>
 				<div>
 					<label for="company_house_number" class="block text-sm font-medium text-secondary">
@@ -192,12 +181,7 @@
 		<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div>
 				<label for="company_email" class="block text-sm font-medium text-secondary">Email</label>
-				<input
-					id="company_email"
-					type="email"
-					bind:value={form.email}
-					class={inputClass}
-				/>
+				<input id="company_email" type="email" bind:value={form.email} class={inputClass} />
 			</div>
 			<div>
 				<label for="company_phone" class="block text-sm font-medium text-secondary">Telefon</label>
@@ -251,7 +235,6 @@
 			</div>
 		</div>
 	</Card>
-
 {/snippet}
 
 {#if hideActions}

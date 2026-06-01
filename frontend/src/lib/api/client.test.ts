@@ -115,9 +115,7 @@ describe('contactsApi', () => {
 	});
 
 	it('create surfaces X-Company-Id mismatch via respondedFor', async () => {
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({ id: 9 }, 200, { 'X-Company-Id': '7' })
-		);
+		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 9 }, 200, { 'X-Company-Id': '7' }));
 
 		const result = await contactsApi.create({ name: 'X' });
 		expect(result.submittedFor).toBe(TEST_COMPANY.id);

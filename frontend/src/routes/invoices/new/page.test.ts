@@ -398,17 +398,15 @@ describe('Invoice Create', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			const post = mockFetch.mock.calls.find(
-				(call: unknown[]) => {
-					const u = call[0] as string;
-					const init = call[1] as RequestInit | undefined;
-					if (typeof u !== 'string' || !u.includes('/invoices') || init?.method !== 'POST') {
-						return false;
-					}
-					const body = JSON.parse(init?.body as string);
-					return body.sequence_id === 11;
+			const post = mockFetch.mock.calls.find((call: unknown[]) => {
+				const u = call[0] as string;
+				const init = call[1] as RequestInit | undefined;
+				if (typeof u !== 'string' || !u.includes('/invoices') || init?.method !== 'POST') {
+					return false;
 				}
-			);
+				const body = JSON.parse(init?.body as string);
+				return body.sequence_id === 11;
+			});
 			expect(post).toBeDefined();
 		});
 	});

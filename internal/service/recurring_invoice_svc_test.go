@@ -223,10 +223,12 @@ func TestRecurringInvoiceService_ProcessDue_DeactivatesAfterLastCycle(t *testing
 	ctx := context.Background()
 	customerID := createCustomer()
 
-	// End date is before next cycle would be.
-	endDate := time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC)
+	// Due today, with an end date before the next monthly cycle. Dates are
+	// relative to now so the test does not break as the wall clock advances.
+	today := time.Now().Truncate(24 * time.Hour)
+	endDate := today.AddDate(0, 0, 10)
 	ri := makeTestRecurringInvoice(customerID)
-	ri.NextIssueDate = time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	ri.NextIssueDate = today
 	ri.EndDate = &endDate
 	if err := svc.Create(ctx, 1, ri); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -244,7 +246,8 @@ func TestRecurringInvoiceService_ProcessDue_DeactivatesAfterLastCycle(t *testing
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
-	// Next issue date (April 10) > end date (March 20), should be deactivated.
+	// Next issue date (today + 1 month) > end date (today + 10 days), so the
+	// recurring invoice should be deactivated after this final cycle.
 	if updated.IsActive {
 		t.Error("expected IsActive to be false after last cycle")
 	}

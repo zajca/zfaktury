@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		companiesApi,
-		settingsApi,
-		type Settings,
-		type NewCompany
-	} from '$lib/api/client';
+	import { companiesApi, settingsApi, type Settings, type NewCompany } from '$lib/api/client';
 	import {
 		currentCompany,
 		notifyIfSwitchedCompany,
@@ -96,9 +91,7 @@
 				logo_path: company.logo_path,
 				accent_color: company.accent_color
 			};
-			taxCodes = Object.fromEntries(
-				TAX_CODE_KEYS.map((k) => [k, allSettings[k] ?? ''])
-			);
+			taxCodes = Object.fromEntries(TAX_CODE_KEYS.map((k) => [k, allSettings[k] ?? '']));
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst firmu';
 		} finally {
@@ -223,9 +216,7 @@
 						/>
 					</div>
 					<div>
-						<label for="cssz_code" class="block text-sm font-medium text-secondary"
-							>Kód OSSZ</label
-						>
+						<label for="cssz_code" class="block text-sm font-medium text-secondary">Kód OSSZ</label>
 						<input
 							id="cssz_code"
 							type="text"

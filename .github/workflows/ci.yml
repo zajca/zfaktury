@@ -20,7 +20,8 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
+          # Pinned to avoid CI breaking when a newer linter version adds rules.
+          version: v2.12.2
           args: --build-tags server
 
       - name: Test

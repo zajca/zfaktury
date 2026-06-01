@@ -274,7 +274,8 @@ describe('Expense Tax Review', () => {
 
 		await waitFor(() => {
 			const reviewCall = mockFetch.mock.calls.find(
-				(call: any[]) => typeof call[0] === 'string' && call[0].includes('/api/v1/companies/1/expenses/review')
+				(call: any[]) =>
+					typeof call[0] === 'string' && call[0].includes('/api/v1/companies/1/expenses/review')
 			);
 			expect(reviewCall).toBeDefined();
 			if (reviewCall) {
@@ -339,7 +340,8 @@ describe('Expense Tax Review', () => {
 
 		await waitFor(() => {
 			const reviewCall = mockFetch.mock.calls.find(
-				(c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/v1/companies/1/expenses/review')
+				(c: any[]) =>
+					typeof c[0] === 'string' && c[0].includes('/api/v1/companies/1/expenses/review')
 			);
 			expect(reviewCall).toBeDefined();
 		});
@@ -364,7 +366,8 @@ describe('Expense Tax Review', () => {
 
 		await waitFor(() => {
 			const unreviewCall = mockFetch.mock.calls.find(
-				(c: any[]) => typeof c[0] === 'string' && c[0].includes('/api/v1/companies/1/expenses/unreview')
+				(c: any[]) =>
+					typeof c[0] === 'string' && c[0].includes('/api/v1/companies/1/expenses/unreview')
 			);
 			expect(unreviewCall).toBeDefined();
 		});

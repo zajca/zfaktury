@@ -54,9 +54,7 @@
 {#if !booted}
 	<div role="status" class="flex h-screen items-center justify-center bg-base">
 		<span class="sr-only">Načítání…</span>
-		<div
-			class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"
-		></div>
+		<div class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
 	</div>
 {:else}
 	<Layout>

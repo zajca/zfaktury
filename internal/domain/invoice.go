@@ -67,6 +67,12 @@ type Invoice struct {
 	RelatedInvoiceID *int64
 	RelationType     string // "", "settlement", "credit_note"
 
+	// RecurringInvoiceID links a generated invoice back to its recurring
+	// template (0 when created manually). Set at creation; the auto-send sweep
+	// queries it directly rather than via the shared scan, so it is not
+	// populated on ordinary invoice reads.
+	RecurringInvoiceID int64
+
 	// Event timestamps
 	SentAt *time.Time
 	PaidAt *time.Time

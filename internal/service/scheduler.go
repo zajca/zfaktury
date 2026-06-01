@@ -73,10 +73,10 @@ func (s *RecurringScheduler) runOnce(ctx context.Context) {
 		return
 	}
 
-	total := 0
+	total, totalSent := 0, 0
 	for i := range companies {
 		co := companies[i]
-		count, err := s.recurring.ProcessDue(ctx, co.ID, true)
+		count, err := s.recurring.ProcessDue(ctx, co.ID)
 		if err != nil {
 			slog.Error("recurring scheduler: failed to process company", "error", err, "company_id", co.ID)
 			continue
@@ -85,6 +85,19 @@ func (s *RecurringScheduler) runOnce(ctx context.Context) {
 			slog.Info("recurring scheduler: generated invoices", "company_id", co.ID, "count", count)
 		}
 		total += count
+
+		// Email the unsent drafts of auto-send templates (this run's and any
+		// earlier failures). Independent of generation so a generate error for
+		// one company doesn't block sending for it or others.
+		sent, err := s.recurring.SweepAutoSend(ctx, co.ID)
+		if err != nil {
+			slog.Error("recurring scheduler: auto-send sweep failed", "error", err, "company_id", co.ID)
+			continue
+		}
+		if sent > 0 {
+			slog.Info("recurring scheduler: auto-sent invoices", "company_id", co.ID, "count", sent)
+		}
+		totalSent += sent
 	}
-	slog.Info("recurring scheduler run complete", "companies", len(companies), "generated", total)
+	slog.Info("recurring scheduler run complete", "companies", len(companies), "generated", total, "auto_sent", totalSent)
 }

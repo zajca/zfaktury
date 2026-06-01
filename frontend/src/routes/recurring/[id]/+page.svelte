@@ -428,9 +428,7 @@
 					</div>
 					{#if form.auto_send}
 						<div>
-							<label
-								for="edit-auto-send-recipient"
-								class="block text-sm font-medium text-secondary"
+							<label for="edit-auto-send-recipient" class="block text-sm font-medium text-secondary"
 								>Přepsat příjemce (volitelné)</label
 							>
 							<input

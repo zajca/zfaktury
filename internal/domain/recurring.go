@@ -61,13 +61,39 @@ func (r *RecurringInvoice) NextDate() time.Time {
 	switch r.Frequency {
 	case FrequencyWeekly:
 		return r.NextIssueDate.AddDate(0, 0, 7)
-	case FrequencyMonthly:
-		return r.NextIssueDate.AddDate(0, 1, 0)
 	case FrequencyQuarterly:
-		return r.NextIssueDate.AddDate(0, 3, 0)
+		return addMonthsEOM(r.NextIssueDate, 3)
 	case FrequencyYearly:
-		return r.NextIssueDate.AddDate(1, 0, 0)
+		return addMonthsEOM(r.NextIssueDate, 12)
+	case FrequencyMonthly:
+		return addMonthsEOM(r.NextIssueDate, 1)
 	default:
-		return r.NextIssueDate.AddDate(0, 1, 0)
+		return addMonthsEOM(r.NextIssueDate, 1)
 	}
+}
+
+// daysInMonth returns the number of days in the given year/month.
+func daysInMonth(y int, m time.Month) int {
+	// Day 0 of the next month is the last day of month m.
+	return time.Date(y, m+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
+// addMonthsEOM adds n months to t. If t is the last day of its month, the result
+// is the last day of the target month (so end-of-month schedules stay at
+// month-end). Otherwise the day is preserved, clamped to the target month's
+// length so a month is never skipped (e.g. 31 May + 1 month -> 30 June, not 1 July).
+func addMonthsEOM(t time.Time, n int) time.Time {
+	y, m, d := t.Date()
+	lastOfSource := daysInMonth(y, m)
+	// time.Date normalizes an overflowing month into the correct year/month.
+	target := time.Date(y, m+time.Month(n), 1,
+		t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+	lastOfTarget := daysInMonth(target.Year(), target.Month())
+
+	day := d
+	if d >= lastOfSource || d > lastOfTarget {
+		day = lastOfTarget
+	}
+	return time.Date(target.Year(), target.Month(), day,
+		t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
 }

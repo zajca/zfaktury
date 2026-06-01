@@ -177,7 +177,7 @@ describe('New recurring invoice page', () => {
 		expect(screen.getByLabelText('Automaticky poslat fakturu e-mailem')).toBeInTheDocument();
 	});
 
-	it('toggling auto-send reveals recipient input', async () => {
+	it('auto-send is on by default and unchecking hides the recipient input', async () => {
 		mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
 
 		render(Page);
@@ -186,13 +186,13 @@ describe('New recurring invoice page', () => {
 			expect(screen.getByLabelText('Automaticky poslat fakturu e-mailem')).toBeInTheDocument();
 		});
 
-		// Recipient input hidden initially
-		expect(screen.queryByLabelText('Přepsat příjemce (volitelné)')).not.toBeInTheDocument();
+		// Default: auto-send on, so the recipient override input is visible.
+		expect(screen.getByLabelText('Přepsat příjemce (volitelné)')).toBeInTheDocument();
 
+		// Unchecking hides it.
 		await fireEvent.click(screen.getByLabelText('Automaticky poslat fakturu e-mailem'));
-
 		await waitFor(() => {
-			expect(screen.getByLabelText('Přepsat příjemce (volitelné)')).toBeInTheDocument();
+			expect(screen.queryByLabelText('Přepsat příjemce (volitelné)')).not.toBeInTheDocument();
 		});
 	});
 
@@ -214,13 +214,8 @@ describe('New recurring invoice page', () => {
 		const descInput = document.querySelector('#desc-0') as HTMLInputElement;
 		await fireEvent.input(descInput, { target: { value: 'Some service' } });
 
-		// Enable auto-send and set recipient
-		await fireEvent.click(screen.getByLabelText('Automaticky poslat fakturu e-mailem'));
-
-		await waitFor(() => {
-			expect(screen.getByLabelText('Přepsat příjemce (volitelné)')).toBeInTheDocument();
-		});
-
+		// Auto-send is on by default; just set a recipient override.
+		expect(screen.getByLabelText('Přepsat příjemce (volitelné)')).toBeInTheDocument();
 		const recipientInput = document.querySelector('#auto-send-recipient') as HTMLInputElement;
 		await fireEvent.input(recipientInput, { target: { value: 'billing@example.com' } });
 

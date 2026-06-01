@@ -57,3 +57,6 @@ web/frontend/build/favicon.png
 # Claude
 docs/AGENT-REPORTS
 .claude/worktrees/
+
+# Claude Code transient scheduler lock
+.claude/scheduled_tasks.lock

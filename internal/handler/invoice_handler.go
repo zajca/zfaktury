@@ -530,24 +530,7 @@ func (h *InvoiceHandler) QRPayment(w http.ResponseWriter, r *http.Request) {
 // invoice_sequences' parent companies table, so the company struct loaded by
 // WithCompany middleware is now the single source of truth.
 func supplierFromCompany(c *domain.Company) pdf.SupplierInfo {
-	if c == nil {
-		return pdf.SupplierInfo{}
-	}
-	return pdf.SupplierInfo{
-		Name:          c.LegalName,
-		ICO:           c.ICO,
-		DIC:           c.DIC,
-		VATRegistered: c.VATRegistered,
-		Street:        c.Street,
-		City:          c.City,
-		ZIP:           c.ZIP,
-		Email:         c.Email,
-		Phone:         c.Phone,
-		BankAccount:   c.BankAccount,
-		BankCode:      c.BankCode,
-		IBAN:          c.IBAN,
-		SWIFT:         c.SWIFT,
-	}
+	return pdf.SupplierFromCompany(c)
 }
 
 // loadPDFSettings reads PDF template settings from the settings service.
@@ -569,23 +552,7 @@ func (h *InvoiceHandler) loadPDFSettings(r *http.Request, companyID int64) (pdf.
 // isdocSupplierFromCompany builds isdoc.SupplierInfo from the active company
 // record. Same migration-025 rationale as supplierFromCompany.
 func isdocSupplierFromCompany(c *domain.Company) isdoc.SupplierInfo {
-	if c == nil {
-		return isdoc.SupplierInfo{}
-	}
-	return isdoc.SupplierInfo{
-		CompanyName: c.LegalName,
-		ICO:         c.ICO,
-		DIC:         c.DIC,
-		Street:      c.Street,
-		City:        c.City,
-		ZIP:         c.ZIP,
-		Email:       c.Email,
-		Phone:       c.Phone,
-		BankAccount: c.BankAccount,
-		BankCode:    c.BankCode,
-		IBAN:        c.IBAN,
-		SWIFT:       c.SWIFT,
-	}
+	return isdoc.SupplierFromCompany(c)
 }
 
 // ExportISDOC handles GET /api/v1/companies/{companyID}/invoices/{id}/isdoc.

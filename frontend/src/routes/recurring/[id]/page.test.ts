@@ -30,6 +30,8 @@ const sampleRecurringInvoice = {
 	frequency: 'monthly',
 	next_issue_date: '2026-04-01',
 	is_active: true,
+	auto_send: false,
+	auto_send_recipient: '',
 	items: [
 		{
 			id: 1,
@@ -153,6 +155,57 @@ describe('Recurring invoice detail page', () => {
 		});
 
 		expect(screen.getByText('Uložit změny')).toBeInTheDocument();
+	});
+
+	it('shows auto-send status as disabled when off', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleRecurringInvoice));
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleContacts));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Automatické odesílání')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText('Vypnuto')).toBeInTheDocument();
+	});
+
+	it('shows auto-send status as enabled with recipient', async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				...sampleRecurringInvoice,
+				auto_send: true,
+				auto_send_recipient: 'billing@example.com'
+			})
+		);
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleContacts));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Povoleno')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText('billing@example.com')).toBeInTheDocument();
+	});
+
+	it('shows customer email fallback when auto-send enabled without recipient', async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				...sampleRecurringInvoice,
+				auto_send: true,
+				auto_send_recipient: ''
+			})
+		);
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleContacts));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Povoleno')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText('e-mail zákazníka')).toBeInTheDocument();
 	});
 
 	it('error state on load failure', async () => {

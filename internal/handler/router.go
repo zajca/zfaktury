@@ -12,7 +12,6 @@ import (
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
 	"github.com/zajca/zfaktury/internal/service/cnb"
-	"github.com/zajca/zfaktury/internal/service/email"
 )
 
 // RouterConfig holds configuration for the HTTP router.
@@ -43,6 +42,7 @@ func NewRouter(
 	companySvc *service.CompanyService,
 	contactSvc *service.ContactService,
 	invoiceSvc *service.InvoiceService,
+	invoiceEmailSvc *service.InvoiceEmailService,
 	expenseSvc *service.ExpenseService,
 	settingsSvc *service.SettingsService,
 	sequenceSvc *service.SequenceService,
@@ -75,7 +75,6 @@ func NewRouter(
 	dashboardSvc *service.DashboardService,
 	reportSvc *service.ReportService,
 	taxCalendarSvc *service.TaxCalendarService,
-	emailSender *email.EmailSender,
 	auditSvc *service.AuditService,
 	backupSvc *service.BackupService,
 	cfg RouterConfig,
@@ -203,12 +202,12 @@ func NewRouter(
 
 				// Send invoice via email (always registered, checks SMTP at
 				// runtime).
-				emailHandler := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender)
+				emailHandler := NewEmailHandler(invoiceSvc, invoiceEmailSvc)
 				inv.Post("/{id}/send-email", emailHandler.SendEmail)
 			})
 
 			// Email defaults (frontend pre-population).
-			co.Get("/email/defaults", NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, emailSender).GetDefaults)
+			co.Get("/email/defaults", NewEmailHandler(invoiceSvc, invoiceEmailSvc).GetDefaults)
 
 			// Use Route (not Mount) for /expenses so the import sub-route is
 			// not swallowed by Mount's wildcard. Document routes also live

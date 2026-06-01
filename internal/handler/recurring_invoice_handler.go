@@ -24,22 +24,24 @@ type recurringInvoiceItemRequest struct {
 }
 
 type recurringInvoiceRequest struct {
-	Name           string                        `json:"name"`
-	CustomerID     int64                         `json:"customer_id"`
-	Frequency      string                        `json:"frequency"`
-	NextIssueDate  string                        `json:"next_issue_date"`
-	EndDate        *string                       `json:"end_date"`
-	CurrencyCode   string                        `json:"currency_code"`
-	ExchangeRate   int64                         `json:"exchange_rate"`
-	PaymentMethod  string                        `json:"payment_method"`
-	BankAccount    string                        `json:"bank_account"`
-	BankCode       string                        `json:"bank_code"`
-	IBAN           string                        `json:"iban"`
-	SWIFT          string                        `json:"swift"`
-	ConstantSymbol string                        `json:"constant_symbol"`
-	Notes          string                        `json:"notes"`
-	IsActive       bool                          `json:"is_active"`
-	Items          []recurringInvoiceItemRequest `json:"items"`
+	Name              string                        `json:"name"`
+	CustomerID        int64                         `json:"customer_id"`
+	Frequency         string                        `json:"frequency"`
+	NextIssueDate     string                        `json:"next_issue_date"`
+	EndDate           *string                       `json:"end_date"`
+	CurrencyCode      string                        `json:"currency_code"`
+	ExchangeRate      int64                         `json:"exchange_rate"`
+	PaymentMethod     string                        `json:"payment_method"`
+	BankAccount       string                        `json:"bank_account"`
+	BankCode          string                        `json:"bank_code"`
+	IBAN              string                        `json:"iban"`
+	SWIFT             string                        `json:"swift"`
+	ConstantSymbol    string                        `json:"constant_symbol"`
+	Notes             string                        `json:"notes"`
+	IsActive          bool                          `json:"is_active"`
+	AutoSend          bool                          `json:"auto_send"`
+	AutoSendRecipient string                        `json:"auto_send_recipient"`
+	Items             []recurringInvoiceItemRequest `json:"items"`
 }
 
 func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
@@ -48,19 +50,21 @@ func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
 	}
 
 	ri := &domain.RecurringInvoice{
-		Name:           r.Name,
-		CustomerID:     r.CustomerID,
-		Frequency:      r.Frequency,
-		CurrencyCode:   r.CurrencyCode,
-		ExchangeRate:   domain.Amount(r.ExchangeRate),
-		PaymentMethod:  r.PaymentMethod,
-		BankAccount:    r.BankAccount,
-		BankCode:       r.BankCode,
-		IBAN:           r.IBAN,
-		SWIFT:          r.SWIFT,
-		ConstantSymbol: r.ConstantSymbol,
-		Notes:          r.Notes,
-		IsActive:       r.IsActive,
+		Name:              r.Name,
+		CustomerID:        r.CustomerID,
+		Frequency:         r.Frequency,
+		CurrencyCode:      r.CurrencyCode,
+		ExchangeRate:      domain.Amount(r.ExchangeRate),
+		PaymentMethod:     r.PaymentMethod,
+		BankAccount:       r.BankAccount,
+		BankCode:          r.BankCode,
+		IBAN:              r.IBAN,
+		SWIFT:             r.SWIFT,
+		ConstantSymbol:    r.ConstantSymbol,
+		Notes:             r.Notes,
+		IsActive:          r.IsActive,
+		AutoSend:          r.AutoSend,
+		AutoSendRecipient: r.AutoSendRecipient,
 	}
 
 	nextIssueDate, err := time.Parse("2006-01-02", r.NextIssueDate)
@@ -103,47 +107,51 @@ type recurringInvoiceItemResponse struct {
 }
 
 type recurringInvoiceResponse struct {
-	ID             int64                          `json:"id"`
-	Name           string                         `json:"name"`
-	CustomerID     int64                          `json:"customer_id"`
-	Customer       *contactResponse               `json:"customer,omitempty"`
-	Frequency      string                         `json:"frequency"`
-	NextIssueDate  string                         `json:"next_issue_date"`
-	EndDate        *string                        `json:"end_date,omitempty"`
-	CurrencyCode   string                         `json:"currency_code"`
-	ExchangeRate   int64                          `json:"exchange_rate"`
-	PaymentMethod  string                         `json:"payment_method"`
-	BankAccount    string                         `json:"bank_account"`
-	BankCode       string                         `json:"bank_code"`
-	IBAN           string                         `json:"iban"`
-	SWIFT          string                         `json:"swift"`
-	ConstantSymbol string                         `json:"constant_symbol"`
-	Notes          string                         `json:"notes"`
-	IsActive       bool                           `json:"is_active"`
-	Items          []recurringInvoiceItemResponse `json:"items"`
-	CreatedAt      string                         `json:"created_at"`
-	UpdatedAt      string                         `json:"updated_at"`
+	ID                int64                          `json:"id"`
+	Name              string                         `json:"name"`
+	CustomerID        int64                          `json:"customer_id"`
+	Customer          *contactResponse               `json:"customer,omitempty"`
+	Frequency         string                         `json:"frequency"`
+	NextIssueDate     string                         `json:"next_issue_date"`
+	EndDate           *string                        `json:"end_date,omitempty"`
+	CurrencyCode      string                         `json:"currency_code"`
+	ExchangeRate      int64                          `json:"exchange_rate"`
+	PaymentMethod     string                         `json:"payment_method"`
+	BankAccount       string                         `json:"bank_account"`
+	BankCode          string                         `json:"bank_code"`
+	IBAN              string                         `json:"iban"`
+	SWIFT             string                         `json:"swift"`
+	ConstantSymbol    string                         `json:"constant_symbol"`
+	Notes             string                         `json:"notes"`
+	IsActive          bool                           `json:"is_active"`
+	AutoSend          bool                           `json:"auto_send"`
+	AutoSendRecipient string                         `json:"auto_send_recipient"`
+	Items             []recurringInvoiceItemResponse `json:"items"`
+	CreatedAt         string                         `json:"created_at"`
+	UpdatedAt         string                         `json:"updated_at"`
 }
 
 func recurringInvoiceFromDomain(ri *domain.RecurringInvoice) recurringInvoiceResponse {
 	resp := recurringInvoiceResponse{
-		ID:             ri.ID,
-		Name:           ri.Name,
-		CustomerID:     ri.CustomerID,
-		Frequency:      ri.Frequency,
-		NextIssueDate:  ri.NextIssueDate.Format("2006-01-02"),
-		CurrencyCode:   ri.CurrencyCode,
-		ExchangeRate:   int64(ri.ExchangeRate),
-		PaymentMethod:  ri.PaymentMethod,
-		BankAccount:    ri.BankAccount,
-		BankCode:       ri.BankCode,
-		IBAN:           ri.IBAN,
-		SWIFT:          ri.SWIFT,
-		ConstantSymbol: ri.ConstantSymbol,
-		Notes:          ri.Notes,
-		IsActive:       ri.IsActive,
-		CreatedAt:      ri.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      ri.UpdatedAt.Format(time.RFC3339),
+		ID:                ri.ID,
+		Name:              ri.Name,
+		CustomerID:        ri.CustomerID,
+		Frequency:         ri.Frequency,
+		NextIssueDate:     ri.NextIssueDate.Format("2006-01-02"),
+		CurrencyCode:      ri.CurrencyCode,
+		ExchangeRate:      int64(ri.ExchangeRate),
+		PaymentMethod:     ri.PaymentMethod,
+		BankAccount:       ri.BankAccount,
+		BankCode:          ri.BankCode,
+		IBAN:              ri.IBAN,
+		SWIFT:             ri.SWIFT,
+		ConstantSymbol:    ri.ConstantSymbol,
+		Notes:             ri.Notes,
+		IsActive:          ri.IsActive,
+		AutoSend:          ri.AutoSend,
+		AutoSendRecipient: ri.AutoSendRecipient,
+		CreatedAt:         ri.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:         ri.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if ri.EndDate != nil {
@@ -375,7 +383,9 @@ func (h *RecurringInvoiceHandler) ProcessDue(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	count, err := h.svc.ProcessDue(r.Context(), company.ID)
+	// Manual "process due" button does not auto-send; only the daily scheduler
+	// emails generated invoices. Generated invoices stay as drafts for review.
+	count, err := h.svc.ProcessDue(r.Context(), company.ID, false)
 	if err != nil {
 		slog.Error("failed to process due recurring invoices", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to process due recurring invoices")

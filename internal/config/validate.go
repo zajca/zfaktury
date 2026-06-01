@@ -17,6 +17,9 @@ func (c *Config) Validate() error {
 	if c.OCR.Provider != "" && c.OCR.APIKey == "" {
 		errs = append(errs, "ocr.api_key is required when ocr.provider is set")
 	}
+	if c.Scheduler.Hour < 0 || c.Scheduler.Hour > 23 {
+		errs = append(errs, fmt.Sprintf("scheduler.hour must be 0-23, got %d", c.Scheduler.Hour))
+	}
 	if len(errs) > 0 {
 		return fmt.Errorf("config validation failed:\n  - %s", strings.Join(errs, "\n  - "))
 	}

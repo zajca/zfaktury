@@ -51,18 +51,30 @@ const configTemplate = `# ZFaktury configuration
 # api_key = ""
 # model = ""
 # base_url = ""
+
+# [scheduler]
+# enabled = false               # Generate due recurring invoices automatically once a day
+# hour = 7                      # Local-time hour (0-23) of the daily run
 `
 
 // Config holds the application configuration loaded from config.toml.
 type Config struct {
-	DataDir  string         `toml:"data_dir"`
-	Database DatabaseConfig `toml:"database"`
-	Log      LogConfig      `toml:"log"`
-	Server   ServerConfig   `toml:"server"`
-	Backup   BackupConfig   `toml:"backup"`
-	SMTP     SMTPConfig     `toml:"smtp"`
-	FIO      FIOConfig      `toml:"fio"`
-	OCR      OCRConfig      `toml:"ocr"`
+	DataDir   string          `toml:"data_dir"`
+	Database  DatabaseConfig  `toml:"database"`
+	Log       LogConfig       `toml:"log"`
+	Server    ServerConfig    `toml:"server"`
+	Backup    BackupConfig    `toml:"backup"`
+	SMTP      SMTPConfig      `toml:"smtp"`
+	FIO       FIOConfig       `toml:"fio"`
+	OCR       OCRConfig       `toml:"ocr"`
+	Scheduler SchedulerConfig `toml:"scheduler"`
+}
+
+// SchedulerConfig controls the background scheduler that generates due recurring
+// invoices (and auto-emails the ones whose template opts in) once a day.
+type SchedulerConfig struct {
+	Enabled bool `toml:"enabled"` // master switch; default false
+	Hour    int  `toml:"hour"`    // local-time hour (0-23) of the daily run; default 7
 }
 
 // DatabaseConfig holds database settings.
@@ -229,6 +241,9 @@ func Load(configPath string) (*Config, error) {
 			S3: S3Config{
 				UseSSL: true,
 			},
+		},
+		Scheduler: SchedulerConfig{
+			Hour: 7,
 		},
 	}
 

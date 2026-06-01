@@ -29,10 +29,15 @@ type RecurringInvoice struct {
 	ConstantSymbol string
 	Notes          string
 	IsActive       bool
-	Items          []RecurringInvoiceItem
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      *time.Time
+	// AutoSend, when true, makes the daily scheduler email each generated
+	// invoice automatically. AutoSendRecipient overrides the destination; when
+	// blank the customer's contact email is used.
+	AutoSend          bool
+	AutoSendRecipient string
+	Items             []RecurringInvoiceItem
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         *time.Time
 }
 
 // RecurringInvoiceItem represents a line item on a recurring invoice template.

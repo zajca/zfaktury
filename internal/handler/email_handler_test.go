@@ -26,6 +26,7 @@ func setupEmailRouter(t *testing.T) *chi.Mux {
 	contactRepo := repository.NewContactRepository(db)
 	sequenceRepo := repository.NewSequenceRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
+	companyRepo := repository.NewCompanyRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
 	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
@@ -36,7 +37,8 @@ func setupEmailRouter(t *testing.T) *chi.Mux {
 	sender := email.NewEmailSender(config.SMTPConfig{})
 
 	isdocGen := isdoc.NewISDOCGenerator()
-	h := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, sender)
+	emailSvc := service.NewInvoiceEmailService(invoiceSvc, settingsSvc, companyRepo, pdfGen, isdocGen, sender)
+	h := NewEmailHandler(invoiceSvc, emailSvc)
 
 	r := chi.NewRouter()
 	r.Use(injectTestCompany(1))
@@ -112,6 +114,7 @@ func setupEmailConfiguredRouter(t *testing.T) (*chi.Mux, int64) {
 	contactRepo := repository.NewContactRepository(db)
 	sequenceRepo := repository.NewSequenceRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
+	companyRepo := repository.NewCompanyRepository(db)
 
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
 	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
@@ -128,7 +131,8 @@ func setupEmailConfiguredRouter(t *testing.T) (*chi.Mux, int64) {
 	})
 
 	isdocGen := isdoc.NewISDOCGenerator()
-	h := NewEmailHandler(invoiceSvc, settingsSvc, pdfGen, isdocGen, sender)
+	emailSvc := service.NewInvoiceEmailService(invoiceSvc, settingsSvc, companyRepo, pdfGen, isdocGen, sender)
+	h := NewEmailHandler(invoiceSvc, emailSvc)
 
 	contactHandler := NewContactHandler(contactSvc)
 	invoiceHandler := NewInvoiceHandler(invoiceSvc, nil, nil, nil)

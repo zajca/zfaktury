@@ -91,7 +91,7 @@ func runSeed() error {
 	sequenceSvc := service.NewSequenceService(sequenceRepo, auditSvc)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, auditSvc)
 	expenseSvc := service.NewExpenseService(expenseRepo, auditSvc)
-	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc, auditSvc)
+	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc, nil, auditSvc)
 	recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc, auditSvc)
 	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, companyRepo, nil)
 	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, nil)

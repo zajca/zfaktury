@@ -2,43 +2,27 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
-	"html"
 	"log/slog"
 	"net/http"
 	"net/mail"
-	"strings"
 
-	"github.com/zajca/zfaktury/internal/domain"
-	"github.com/zajca/zfaktury/internal/isdoc"
-	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
-	"github.com/zajca/zfaktury/internal/service/email"
 )
 
-// EmailHandler handles sending invoices via email.
+// EmailHandler handles sending invoices via email. The PDF/ISDOC generation,
+// SMTP send, and draft-to-sent transition live in service.InvoiceEmailService,
+// which the recurring auto-send path reuses; this handler keeps only the HTTP
+// concerns (validation, status codes).
 type EmailHandler struct {
-	invoiceSvc  *service.InvoiceService
-	settingsSvc *service.SettingsService
-	pdfGen      *pdf.InvoicePDFGenerator
-	isdocGen    *isdoc.ISDOCGenerator
-	sender      *email.EmailSender
+	invoiceSvc *service.InvoiceService
+	emailSvc   *service.InvoiceEmailService
 }
 
 // NewEmailHandler creates a new EmailHandler.
-func NewEmailHandler(
-	invoiceSvc *service.InvoiceService,
-	settingsSvc *service.SettingsService,
-	pdfGen *pdf.InvoicePDFGenerator,
-	isdocGen *isdoc.ISDOCGenerator,
-	sender *email.EmailSender,
-) *EmailHandler {
+func NewEmailHandler(invoiceSvc *service.InvoiceService, emailSvc *service.InvoiceEmailService) *EmailHandler {
 	return &EmailHandler{
-		invoiceSvc:  invoiceSvc,
-		settingsSvc: settingsSvc,
-		pdfGen:      pdfGen,
-		isdocGen:    isdocGen,
-		sender:      sender,
+		invoiceSvc: invoiceSvc,
+		emailSvc:   emailSvc,
 	}
 }
 
@@ -69,41 +53,18 @@ func (h *EmailHandler) GetDefaults(w http.ResponseWriter, r *http.Request) {
 
 	invoiceNumber := r.URL.Query().Get("invoice_number")
 
-	settings, err := h.settingsSvc.GetAll(r.Context(), company.ID)
+	defaults, err := h.emailSvc.Defaults(r.Context(), company.ID, invoiceNumber)
 	if err != nil {
 		slog.Error("failed to load settings for email defaults", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to load settings")
 		return
 	}
 
-	attachPDF := true
-	if v, ok := settings[service.SettingEmailAttachPDF]; ok {
-		attachPDF = v == "true"
-	}
-
-	attachISDOC := false
-	if v, ok := settings[service.SettingEmailAttachISDOC]; ok {
-		attachISDOC = v == "true"
-	}
-
-	subjectTpl := settings[service.SettingEmailSubjectTpl]
-	if subjectTpl == "" {
-		subjectTpl = "Faktura {invoice_number}"
-	}
-
-	bodyTpl := settings[service.SettingEmailBodyTpl]
-	if bodyTpl == "" {
-		bodyTpl = "Dobrý den,\n\nv příloze zasíláme fakturu {invoice_number}.\n\nS pozdravem"
-	}
-
-	subject := strings.ReplaceAll(subjectTpl, "{invoice_number}", invoiceNumber)
-	body := strings.ReplaceAll(bodyTpl, "{invoice_number}", invoiceNumber)
-
 	respondJSON(w, http.StatusOK, emailDefaultsResponse{
-		AttachPDF:   attachPDF,
-		AttachISDOC: attachISDOC,
-		Subject:     subject,
-		Body:        body,
+		AttachPDF:   defaults.AttachPDF,
+		AttachISDOC: defaults.AttachISDOC,
+		Subject:     defaults.Subject,
+		Body:        defaults.Body,
 	})
 }
 
@@ -121,7 +82,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.sender == nil || !h.sender.IsConfigured() {
+	if !h.emailSvc.IsConfigured() {
 		respondError(w, http.StatusUnprocessableEntity, "SMTP is not configured. Configure [smtp] section in config.toml")
 		return
 	}
@@ -167,78 +128,18 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var attachments []email.Attachment
-
-	if attachPDF {
-		supplier := supplierFromCompany(company)
-
-		pdfSvcSettings, err := h.settingsSvc.GetPDFSettings(r.Context(), company.ID)
-		if err != nil {
-			slog.Error("failed to load PDF settings for email", "error", err)
-			respondError(w, http.StatusInternalServerError, "failed to load PDF settings")
-			return
-		}
-		pdfSettings := pdf.PDFSettings{
-			LogoPath:        pdfSvcSettings.LogoPath,
-			AccentColor:     pdfSvcSettings.AccentColor,
-			FooterText:      pdfSvcSettings.FooterText,
-			ShowQR:          pdfSvcSettings.ShowQR,
-			ShowBankDetails: pdfSvcSettings.ShowBankDetails,
-			FontSize:        pdfSvcSettings.FontSize,
-		}
-
-		pdfBytes, err := h.pdfGen.Generate(r.Context(), invoice, supplier, pdfSettings)
-		if err != nil {
-			slog.Error("failed to generate PDF for email", "error", err, "id", id)
-			respondError(w, http.StatusInternalServerError, "failed to generate PDF")
-			return
-		}
-
-		attachments = append(attachments, email.Attachment{
-			Filename:    fmt.Sprintf("faktura_%s.pdf", invoice.InvoiceNumber),
-			ContentType: "application/pdf",
-			Data:        pdfBytes,
-		})
-	}
-
-	if attachISDOC {
-		isdocSupplier := isdocSupplierFromCompany(company)
-
-		isdocBytes, err := h.isdocGen.Generate(r.Context(), invoice, isdocSupplier)
-		if err != nil {
-			slog.Error("failed to generate ISDOC for email", "error", err, "id", id)
-			respondError(w, http.StatusInternalServerError, "failed to generate ISDOC")
-			return
-		}
-
-		attachments = append(attachments, email.Attachment{
-			Filename:    fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber),
-			ContentType: "application/xml",
-			Data:        isdocBytes,
-		})
-	}
-
-	msg := email.EmailMessage{
-		To:          []string{req.To},
+	opts := service.EmailOptions{
+		To:          req.To,
 		Subject:     req.Subject,
-		BodyText:    req.Body,
-		BodyHTML:    "<p>" + strings.ReplaceAll(html.EscapeString(req.Body), "\n", "<br>") + "</p>",
-		Attachments: attachments,
+		Body:        req.Body,
+		AttachPDF:   attachPDF,
+		AttachISDOC: attachISDOC,
 	}
 
-	if err := h.sender.Send(r.Context(), msg); err != nil {
+	if err := h.emailSvc.Send(r.Context(), company, invoice, opts); err != nil {
 		slog.Error("failed to send invoice email", "error", err, "id", id, "to", req.To)
 		respondError(w, http.StatusInternalServerError, "failed to send email")
 		return
-	}
-
-	// Advance draft invoices to "sent" once the email actually goes out.
-	// Non-draft invoices (sent, paid, overdue, cancelled) keep their status —
-	// users may legitimately re-email a sent or paid invoice.
-	if invoice.Status == domain.InvoiceStatusDraft {
-		if err := h.invoiceSvc.MarkAsSent(r.Context(), company.ID, invoice.ID); err != nil {
-			slog.Warn("email sent but failed to mark invoice as sent", "error", err, "id", id)
-		}
 	}
 
 	slog.Info("invoice email sent", "id", id, "to", req.To)

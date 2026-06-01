@@ -3,26 +3,54 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"net/mail"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
+// invoiceEmailer is the subset of InvoiceEmailService the recurring auto-send
+// path needs. It is an interface so tests can substitute a fake.
+type invoiceEmailer interface {
+	Defaults(ctx context.Context, companyID int64, invoiceNumber string) (EmailDefaults, error)
+	SendByID(ctx context.Context, companyID, invoiceID int64, opts EmailOptions) error
+}
+
 // RecurringInvoiceService provides business logic for recurring invoice management.
 type RecurringInvoiceService struct {
 	repo     repository.RecurringInvoiceRepo
 	invoices *InvoiceService
+	emailer  invoiceEmailer
 	audit    *AuditService
 }
 
-// NewRecurringInvoiceService creates a new RecurringInvoiceService.
-func NewRecurringInvoiceService(repo repository.RecurringInvoiceRepo, invoices *InvoiceService, audit *AuditService) *RecurringInvoiceService {
+// NewRecurringInvoiceService creates a new RecurringInvoiceService. The emailer
+// may be nil (e.g. in tests); when nil, auto-send is skipped.
+func NewRecurringInvoiceService(repo repository.RecurringInvoiceRepo, invoices *InvoiceService, emailer invoiceEmailer, audit *AuditService) *RecurringInvoiceService {
 	return &RecurringInvoiceService{
 		repo:     repo,
 		invoices: invoices,
+		emailer:  emailer,
 		audit:    audit,
 	}
+}
+
+// autoSendTimeout bounds a single auto-send email so a hung SMTP server can't
+// stall the rest of a scheduler run.
+const autoSendTimeout = 30 * time.Second
+
+// validateAutoSend ensures a configured recipient override (when present) is a
+// valid email address. A blank override is allowed -- the customer's contact
+// email is used at send time.
+func validateAutoSend(ri *domain.RecurringInvoice) error {
+	if ri.AutoSend && ri.AutoSendRecipient != "" {
+		if _, err := mail.ParseAddress(ri.AutoSendRecipient); err != nil {
+			return fmt.Errorf("invalid auto-send recipient email %q: %w", ri.AutoSendRecipient, domain.ErrInvalidInput)
+		}
+	}
+	return nil
 }
 
 // Create validates and persists a new recurring invoice under the given company.
@@ -38,6 +66,9 @@ func (s *RecurringInvoiceService) Create(ctx context.Context, companyID int64, r
 	}
 	if ri.NextIssueDate.IsZero() {
 		return fmt.Errorf("next issue date is required: %w", domain.ErrInvalidInput)
+	}
+	if err := validateAutoSend(ri); err != nil {
+		return err
 	}
 
 	// Set defaults.
@@ -70,6 +101,9 @@ func (s *RecurringInvoiceService) Update(ctx context.Context, companyID int64, r
 	}
 	if len(ri.Items) == 0 {
 		return fmt.Errorf("at least one line item is required: %w", domain.ErrNoItems)
+	}
+	if err := validateAutoSend(ri); err != nil {
+		return err
 	}
 
 	// Fetch existing for audit trail.
@@ -129,13 +163,19 @@ func (s *RecurringInvoiceService) GenerateInvoice(ctx context.Context, companyID
 		return nil, fmt.Errorf("fetching recurring invoice for generation: %w", err)
 	}
 
-	return s.createInvoiceFromTemplate(ctx, companyID, ri, ri.NextIssueDate)
+	// Manual single-generate never auto-sends: the user gets a draft to review.
+	return s.createInvoiceFromTemplate(ctx, companyID, ri, ri.NextIssueDate, false)
 }
 
 // ProcessDue finds all due recurring invoices, creates draft invoices, advances
 // the next_issue_date, and deactivates recurring invoices that are past their end_date,
 // scoped to the given company. Returns the count of generated invoices.
-func (s *RecurringInvoiceService) ProcessDue(ctx context.Context, companyID int64) (int, error) {
+//
+// When autoSend is true (the daily scheduler), invoices whose template has
+// AutoSend enabled are emailed after generation; auto-send failures are logged
+// but never abort processing (the draft remains for manual sending). Callers on
+// the manual "process due" button pass false.
+func (s *RecurringInvoiceService) ProcessDue(ctx context.Context, companyID int64, autoSend bool) (int, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 	dueList, err := s.repo.ListDue(ctx, companyID, today)
 	if err != nil {
@@ -157,8 +197,8 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context, companyID int6
 			continue
 		}
 
-		// Generate the invoice.
-		_, err := s.createInvoiceFromTemplate(ctx, companyID, ri, ri.NextIssueDate)
+		// Generate the invoice (and auto-send it when requested).
+		_, err := s.createInvoiceFromTemplate(ctx, companyID, ri, ri.NextIssueDate, autoSend)
 		if err != nil {
 			return count, fmt.Errorf("generating invoice from recurring %d: %w", ri.ID, err)
 		}
@@ -181,8 +221,10 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context, companyID int6
 }
 
 // createInvoiceFromTemplate builds a domain.Invoice from a RecurringInvoice template
-// and persists it within the given company.
-func (s *RecurringInvoiceService) createInvoiceFromTemplate(ctx context.Context, companyID int64, ri *domain.RecurringInvoice, issueDate time.Time) (*domain.Invoice, error) {
+// and persists it within the given company. When autoSend is true and the
+// template opts into auto-send, the generated invoice is emailed on a best-effort
+// basis (failures are logged, not returned, so the draft is preserved).
+func (s *RecurringInvoiceService) createInvoiceFromTemplate(ctx context.Context, companyID int64, ri *domain.RecurringInvoice, issueDate time.Time, autoSend bool) (*domain.Invoice, error) {
 	invoice := &domain.Invoice{
 		Type:           domain.InvoiceTypeRegular,
 		Status:         domain.InvoiceStatusDraft,
@@ -217,5 +259,53 @@ func (s *RecurringInvoiceService) createInvoiceFromTemplate(ctx context.Context,
 		return nil, fmt.Errorf("creating invoice from template: %w", err)
 	}
 
+	if autoSend && ri.AutoSend {
+		s.autoSendInvoice(ctx, companyID, ri, invoice)
+	}
+
 	return invoice, nil
+}
+
+// autoSendInvoice emails a freshly generated invoice for templates that opt into
+// auto-send. It is best-effort: any problem (no emailer, SMTP unconfigured,
+// missing/invalid recipient, send failure) is logged and the invoice is left as
+// a draft for manual sending. It never returns an error so generation and the
+// next-issue-date advance always complete.
+func (s *RecurringInvoiceService) autoSendInvoice(ctx context.Context, companyID int64, ri *domain.RecurringInvoice, invoice *domain.Invoice) {
+	if s.emailer == nil {
+		slog.Warn("recurring auto-send skipped: no email sender wired", "recurring_id", ri.ID, "invoice_id", invoice.ID)
+		return
+	}
+
+	recipient := ri.AutoSendRecipient
+	if recipient == "" && ri.Customer != nil {
+		recipient = ri.Customer.Email
+	}
+	if recipient == "" {
+		slog.Warn("recurring auto-send skipped: no recipient email", "recurring_id", ri.ID, "invoice_id", invoice.ID, "invoice_number", invoice.InvoiceNumber)
+		return
+	}
+
+	defaults, err := s.emailer.Defaults(ctx, companyID, invoice.InvoiceNumber)
+	if err != nil {
+		slog.Warn("recurring auto-send skipped: failed to resolve email defaults", "error", err, "recurring_id", ri.ID, "invoice_id", invoice.ID)
+		return
+	}
+
+	opts := EmailOptions{
+		To:          recipient,
+		Subject:     defaults.Subject,
+		Body:        defaults.Body,
+		AttachPDF:   defaults.AttachPDF,
+		AttachISDOC: defaults.AttachISDOC,
+	}
+	// Bound the send so a hung SMTP server can't stall the rest of the
+	// scheduler run. Recipient is not logged (it is customer PII).
+	sendCtx, cancel := context.WithTimeout(ctx, autoSendTimeout)
+	defer cancel()
+	if err := s.emailer.SendByID(sendCtx, companyID, invoice.ID, opts); err != nil {
+		slog.Warn("recurring auto-send failed; invoice left as draft", "error", err, "recurring_id", ri.ID, "invoice_id", invoice.ID, "invoice_number", invoice.InvoiceNumber)
+		return
+	}
+	slog.Info("recurring invoice auto-sent", "recurring_id", ri.ID, "invoice_id", invoice.ID, "invoice_number", invoice.InvoiceNumber)
 }

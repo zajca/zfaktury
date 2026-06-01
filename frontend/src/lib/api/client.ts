@@ -242,6 +242,7 @@ export interface RecurringInvoice {
 	name: string;
 	customer_id: number;
 	customer?: Contact;
+	sequence_id: number;
 	frequency: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 	next_issue_date: string;
 	end_date?: string;

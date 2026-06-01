@@ -5,8 +5,10 @@
 	import {
 		recurringInvoicesApi,
 		contactsApi,
+		sequencesApi,
 		type RecurringInvoice,
-		type Contact
+		type Contact,
+		type InvoiceSequence
 	} from '$lib/api/client';
 	import { notifyIfSwitchedCompany, onCompanyChange } from '$lib/stores/currentCompany.svelte';
 	import { formatDate } from '$lib/utils/date';
@@ -26,6 +28,7 @@
 
 	let id = $derived(Number(page.params.id));
 	let contacts = $state<Contact[]>([]);
+	let sequences = $state<InvoiceSequence[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
 	let generating = $state(false);
@@ -37,6 +40,7 @@
 	let form = $state({
 		name: '',
 		customer_id: 0,
+		sequence_id: 0,
 		frequency: 'monthly',
 		next_issue_date: '',
 		end_date: '',
@@ -60,6 +64,7 @@
 		form = {
 			name: recurringInvoice.name,
 			customer_id: recurringInvoice.customer_id,
+			sequence_id: recurringInvoice.sequence_id ?? 0,
 			frequency: recurringInvoice.frequency,
 			next_issue_date: recurringInvoice.next_issue_date,
 			end_date: recurringInvoice.end_date ?? '',
@@ -167,11 +172,24 @@
 		}
 	}
 
+	async function loadSequences() {
+		try {
+			const result = await sequencesApi.list();
+			sequences = Array.isArray(result) ? result : [];
+		} catch {
+			sequences = [];
+		}
+	}
+
 	onMount(() => {
 		loadData();
+		loadSequences();
 	});
 
-	onCompanyChange(() => loadData());
+	onCompanyChange(() => {
+		loadData();
+		loadSequences();
+	});
 </script>
 
 <svelte:head>
@@ -222,6 +240,17 @@
 						<dt class="text-sm font-medium text-tertiary">Frekvence</dt>
 						<dd class="mt-1 text-sm text-primary">
 							{frequencyLabels[recurringInvoice.frequency] ?? recurringInvoice.frequency}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-sm font-medium text-tertiary">Číselná řada</dt>
+						<dd class="mt-1 text-sm text-primary">
+							{#if recurringInvoice.sequence_id}
+								{@const seq = sequences.find((s) => s.id === recurringInvoice?.sequence_id)}
+								{seq ? `${seq.prefix} / ${seq.year}` : `#${recurringInvoice.sequence_id}`}
+							{:else}
+								Automaticky (FV)
+							{/if}
 						</dd>
 					</div>
 					<div>
@@ -350,6 +379,34 @@
 								>
 							{/each}
 						</select>
+					</div>
+					<div>
+						<label for="edit-sequence" class="block text-sm font-medium text-secondary"
+							>Číselná řada</label
+						>
+						{#if sequences.length === 0}
+							<p
+								class="mt-1 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-warning"
+								role="alert"
+							>
+								Žádná číselná řada není vytvořená. <a
+									href="/settings/sequences"
+									class="font-medium underline">Vytvořit řadu</a
+								>.
+							</p>
+						{:else}
+							<select
+								id="edit-sequence"
+								bind:value={form.sequence_id}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+							>
+								{#each sequences as seq (seq.id)}
+									<option value={seq.id}
+										>{seq.prefix} / {seq.year} &mdash; další: {seq.preview}</option
+									>
+								{/each}
+							</select>
+						{/if}
 					</div>
 					<div class="flex items-center gap-2">
 						<input

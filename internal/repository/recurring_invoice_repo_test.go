@@ -61,10 +61,12 @@ func TestRecurringInvoiceRepository_AutoSendRoundTrip(t *testing.T) {
 	repo := NewRecurringInvoiceRepository(db)
 	ctx := context.Background()
 
+	seqID := testutil.SeedInvoiceSequence(t, db, 1, "RT", 2026)
 	ri := makeRecurringInvoice(customer.ID)
 	ri.NextIssueDate = time.Now().Truncate(24 * time.Hour)
 	ri.AutoSend = true
 	ri.AutoSendRecipient = "billing@example.com"
+	ri.SequenceID = seqID
 	if err := repo.Create(ctx, 1, ri); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -76,6 +78,9 @@ func TestRecurringInvoiceRepository_AutoSendRoundTrip(t *testing.T) {
 	}
 	if !got.AutoSend || got.AutoSendRecipient != "billing@example.com" {
 		t.Errorf("GetByID auto-send = (%v, %q), want (true, billing@example.com)", got.AutoSend, got.AutoSendRecipient)
+	}
+	if got.SequenceID != seqID {
+		t.Errorf("GetByID SequenceID = %d, want %d", got.SequenceID, seqID)
 	}
 
 	// List round-trip.
@@ -94,6 +99,9 @@ func TestRecurringInvoiceRepository_AutoSendRoundTrip(t *testing.T) {
 	}
 	if len(due) != 1 {
 		t.Fatalf("ListDue len = %d, want 1", len(due))
+	}
+	if due[0].SequenceID != seqID {
+		t.Errorf("ListDue SequenceID = %d, want %d", due[0].SequenceID, seqID)
 	}
 	if !due[0].AutoSend || due[0].AutoSendRecipient != "billing@example.com" {
 		t.Errorf("ListDue auto-send not round-tripped: %+v", due[0])

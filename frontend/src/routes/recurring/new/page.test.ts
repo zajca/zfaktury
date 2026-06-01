@@ -240,4 +240,49 @@ describe('New recurring invoice page', () => {
 			expect(body.auto_send_recipient).toBe('billing@example.com');
 		});
 	});
+
+	it('renders the sequence picker and includes sequence_id in the payload', async () => {
+		const sampleSequences = [
+			{ id: 7, prefix: '77', next_number: 14, year: 26, format_pattern: '', preview: '77-26-014' }
+		];
+		// Fresh Response per call: parallel contacts + sequences fetches each
+		// need their own readable body.
+		mockFetch.mockImplementation((url: string) =>
+			Promise.resolve(
+				jsonResponse(url.includes('/invoice-sequences') ? sampleSequences : sampleContacts)
+			)
+		);
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Test Corp (12345678)')).toBeInTheDocument();
+		});
+
+		// The sequence <select> is present and auto-picks the first option.
+		await waitFor(() => {
+			expect(document.querySelector('#sequence')).toBeTruthy();
+		});
+
+		const nameInput = document.querySelector('#name') as HTMLInputElement;
+		await fireEvent.input(nameInput, { target: { value: 'Test template' } });
+		const customerSelect = document.querySelector('#customer') as HTMLSelectElement;
+		await fireEvent.change(customerSelect, { target: { value: '1' } });
+		const descInput = document.querySelector('#desc-0') as HTMLInputElement;
+		await fireEvent.input(descInput, { target: { value: 'Some service' } });
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1, name: 'Test template' }));
+		await fireEvent.click(screen.getByText('Uložit'));
+
+		await waitFor(() => {
+			const postCall = mockFetch.mock.calls.find(
+				(call) =>
+					(call[0] as string).includes('/api/v1/companies/1/recurring-invoices') &&
+					call[1]?.method === 'POST'
+			);
+			expect(postCall).toBeTruthy();
+			const body = JSON.parse(postCall![1]!.body as string);
+			expect(body).toHaveProperty('sequence_id');
+		});
+	});
 });

@@ -47,10 +47,40 @@ func TestRecurringInvoice_NextDate(t *testing.T) {
 			want:      date(2026, time.February, 15),
 		},
 		{
-			name:      "end of month rollover Jan 31 monthly",
+			name:      "May 31 monthly does not skip June",
+			frequency: FrequencyMonthly,
+			start:     date(2026, time.May, 31),
+			want:      date(2026, time.June, 30), // clamped to month-end, June not skipped
+		},
+		{
+			name:      "end-of-month preserved June 30 monthly",
+			frequency: FrequencyMonthly,
+			start:     date(2026, time.June, 30),
+			want:      date(2026, time.July, 31), // last day of June -> last day of July
+		},
+		{
+			name:      "Jan 31 monthly clamps to Feb 28",
 			frequency: FrequencyMonthly,
 			start:     date(2026, time.January, 31),
-			want:      date(2026, time.March, 3), // Go normalizes Feb 31 -> Mar 3
+			want:      date(2026, time.February, 28), // 2026 not a leap year
+		},
+		{
+			name:      "end-of-month preserved Feb 28 monthly",
+			frequency: FrequencyMonthly,
+			start:     date(2026, time.February, 28),
+			want:      date(2026, time.March, 31), // last day of Feb -> last day of Mar
+		},
+		{
+			name:      "Jan 31 quarterly clamps to Apr 30",
+			frequency: FrequencyQuarterly,
+			start:     date(2026, time.January, 31),
+			want:      date(2026, time.April, 30),
+		},
+		{
+			name:      "leap day yearly clamps to Feb 28",
+			frequency: FrequencyYearly,
+			start:     date(2024, time.February, 29),
+			want:      date(2025, time.February, 28),
 		},
 	}
 
@@ -106,10 +136,40 @@ func TestRecurringExpense_NextDate(t *testing.T) {
 			want:      date(2026, time.February, 15),
 		},
 		{
-			name:      "end of month rollover Jan 31 monthly",
+			name:      "May 31 monthly does not skip June",
+			frequency: "monthly",
+			start:     date(2026, time.May, 31),
+			want:      date(2026, time.June, 30), // clamped to month-end, June not skipped
+		},
+		{
+			name:      "end-of-month preserved June 30 monthly",
+			frequency: "monthly",
+			start:     date(2026, time.June, 30),
+			want:      date(2026, time.July, 31), // last day of June -> last day of July
+		},
+		{
+			name:      "Jan 31 monthly clamps to Feb 28",
 			frequency: "monthly",
 			start:     date(2026, time.January, 31),
-			want:      date(2026, time.March, 3), // Go normalizes Feb 31 -> Mar 3
+			want:      date(2026, time.February, 28), // 2026 not a leap year
+		},
+		{
+			name:      "end-of-month preserved Feb 28 monthly",
+			frequency: "monthly",
+			start:     date(2026, time.February, 28),
+			want:      date(2026, time.March, 31), // last day of Feb -> last day of Mar
+		},
+		{
+			name:      "Jan 31 quarterly clamps to Apr 30",
+			frequency: "quarterly",
+			start:     date(2026, time.January, 31),
+			want:      date(2026, time.April, 30),
+		},
+		{
+			name:      "leap day yearly clamps to Feb 28",
+			frequency: "yearly",
+			start:     date(2024, time.February, 29),
+			want:      date(2025, time.February, 28),
 		},
 	}
 

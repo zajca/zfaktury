@@ -111,6 +111,16 @@ type RecurringInvoiceRepo interface {
 	List(ctx context.Context, companyID int64) ([]domain.RecurringInvoice, error)
 	ListDue(ctx context.Context, companyID int64, date time.Time) ([]domain.RecurringInvoice, error)
 	Deactivate(ctx context.Context, companyID, id int64) error
+	// ListUnsentAutoSendDrafts returns draft invoices generated from auto-send
+	// templates that have not been emailed yet, with the resolved recipient.
+	ListUnsentAutoSendDrafts(ctx context.Context, companyID int64) ([]AutoSendDraft, error)
+}
+
+// AutoSendDraft is one unsent invoice the auto-send sweep should email.
+type AutoSendDraft struct {
+	InvoiceID     int64
+	InvoiceNumber string
+	Recipient     string // template override, else the customer's contact email
 }
 
 // RecurringExpenseRepo defines the persistence interface for recurring expenses.

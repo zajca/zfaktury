@@ -156,7 +156,7 @@ func TestRecurringInvoiceService_ProcessDue(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1, false)
+	count, err := svc.ProcessDue(ctx, 1)
 	if err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestRecurringInvoiceService_ProcessDue_PastEndDate(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1, false)
+	count, err := svc.ProcessDue(ctx, 1)
 	if err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestRecurringInvoiceService_ProcessDue_DeactivatesAfterLastCycle(t *testing
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1, false)
+	count, err := svc.ProcessDue(ctx, 1)
 	if err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}

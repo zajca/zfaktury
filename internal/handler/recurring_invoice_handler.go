@@ -387,9 +387,9 @@ func (h *RecurringInvoiceHandler) ProcessDue(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Manual "process due" button does not auto-send; only the daily scheduler
-	// emails generated invoices. Generated invoices stay as drafts for review.
-	count, err := h.svc.ProcessDue(r.Context(), company.ID, false)
+	// Manual "process due" button only generates drafts; emailing is handled by
+	// the daily scheduler's auto-send sweep, not here.
+	count, err := h.svc.ProcessDue(r.Context(), company.ID)
 	if err != nil {
 		slog.Error("failed to process due recurring invoices", "error", err)
 		respondError(w, http.StatusInternalServerError, "failed to process due recurring invoices")

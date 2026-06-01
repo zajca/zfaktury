@@ -147,6 +147,11 @@ func (r *InvoiceRepository) Create(ctx context.Context, companyID int64, inv *do
 		relatedInvoiceID = *inv.RelatedInvoiceID
 	}
 
+	var recurringInvoiceID any
+	if inv.RecurringInvoiceID > 0 {
+		recurringInvoiceID = inv.RecurringInvoiceID
+	}
+
 	var sentAt any
 	if inv.SentAt != nil {
 		sentAt = inv.SentAt.Format(time.RFC3339)
@@ -165,9 +170,9 @@ func (r *InvoiceRepository) Create(ctx context.Context, companyID int64, inv *do
 			payment_method, bank_account, bank_code, iban, swift,
 			subtotal_amount, vat_amount, total_amount, paid_amount,
 			notes, internal_notes, sent_at, paid_at,
-			related_invoice_id, relation_type,
+			related_invoice_id, relation_type, recurring_invoice_id,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		companyID,
 		seqID, inv.InvoiceNumber, inv.Type, inv.Status,
 		inv.IssueDate.Format("2006-01-02"), inv.DueDate.Format("2006-01-02"), inv.DeliveryDate.Format("2006-01-02"), inv.VariableSymbol, inv.ConstantSymbol,
@@ -175,7 +180,7 @@ func (r *InvoiceRepository) Create(ctx context.Context, companyID int64, inv *do
 		inv.PaymentMethod, inv.BankAccount, inv.BankCode, inv.IBAN, inv.SWIFT,
 		inv.SubtotalAmount, inv.VATAmount, inv.TotalAmount, inv.PaidAmount,
 		inv.Notes, inv.InternalNotes, sentAt, paidAt,
-		relatedInvoiceID, inv.RelationType,
+		relatedInvoiceID, inv.RelationType, recurringInvoiceID,
 		inv.CreatedAt.Format(time.RFC3339), inv.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {

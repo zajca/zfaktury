@@ -520,3 +520,41 @@ func (r *RecurringInvoiceRepository) Deactivate(ctx context.Context, companyID, 
 	}
 	return nil
 }
+
+// ListUnsentAutoSendDrafts returns draft invoices generated from an auto-send
+// recurring template that have not been emailed yet, along with the resolved
+// recipient (the template's override, or the customer's contact email). The
+// auto-send sweep emails these and marks them sent; failures stay drafts and
+// are retried on the next run.
+func (r *RecurringInvoiceRepository) ListUnsentAutoSendDrafts(ctx context.Context, companyID int64) ([]AutoSendDraft, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT i.id, i.invoice_number,
+			CASE WHEN r.auto_send_recipient <> '' THEN r.auto_send_recipient
+			     ELSE COALESCE(c.email, '') END AS recipient
+		FROM invoices i
+		JOIN recurring_invoices r ON r.id = i.recurring_invoice_id
+		LEFT JOIN contacts c ON c.id = r.customer_id
+		WHERE i.company_id = ?
+			AND i.status = 'draft'
+			AND i.deleted_at IS NULL
+			AND r.auto_send = 1
+			AND r.deleted_at IS NULL
+		ORDER BY i.id ASC`, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("listing unsent auto-send drafts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []AutoSendDraft
+	for rows.Next() {
+		var d AutoSendDraft
+		if err := rows.Scan(&d.InvoiceID, &d.InvoiceNumber, &d.Recipient); err != nil {
+			return nil, fmt.Errorf("scanning auto-send draft row: %w", err)
+		}
+		out = append(out, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating auto-send draft rows: %w", err)
+	}
+	return out, nil
+}

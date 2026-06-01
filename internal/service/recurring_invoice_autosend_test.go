@@ -65,7 +65,7 @@ func dueAutoSendTemplate(customerID int64) *domain.RecurringInvoice {
 	return ri
 }
 
-func TestProcessDue_AutoSend_FiresWithCustomerEmail(t *testing.T) {
+func TestSweepAutoSend_SendsWithCustomerEmail(t *testing.T) {
 	fake := &fakeEmailer{defaults: EmailDefaults{AttachPDF: true, Subject: "Faktura", Body: "body"}}
 	svc, _, customerID := newAutoSendStack(t, fake)
 	ctx := context.Background()
@@ -75,12 +75,21 @@ func TestProcessDue_AutoSend_FiresWithCustomerEmail(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1, true)
-	if err != nil {
+	// Generation creates a draft but does NOT send.
+	if _, err := svc.ProcessDue(ctx, 1); err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
-	if count != 1 {
-		t.Fatalf("count = %d, want 1", count)
+	if len(fake.sent) != 0 {
+		t.Fatalf("ProcessDue must not send; got %d sends", len(fake.sent))
+	}
+
+	// The sweep emails the unsent draft.
+	sent, err := svc.SweepAutoSend(ctx, 1)
+	if err != nil {
+		t.Fatalf("SweepAutoSend() error: %v", err)
+	}
+	if sent != 1 {
+		t.Fatalf("sent = %d, want 1", sent)
 	}
 	if len(fake.sent) != 1 {
 		t.Fatalf("len(sent) = %d, want 1", len(fake.sent))
@@ -96,7 +105,7 @@ func TestProcessDue_AutoSend_FiresWithCustomerEmail(t *testing.T) {
 	}
 }
 
-func TestProcessDue_AutoSend_UsesRecipientOverride(t *testing.T) {
+func TestSweepAutoSend_UsesRecipientOverride(t *testing.T) {
 	fake := &fakeEmailer{defaults: EmailDefaults{AttachPDF: true}}
 	svc, _, customerID := newAutoSendStack(t, fake)
 	ctx := context.Background()
@@ -107,15 +116,18 @@ func TestProcessDue_AutoSend_UsesRecipientOverride(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if _, err := svc.ProcessDue(ctx, 1, true); err != nil {
+	if _, err := svc.ProcessDue(ctx, 1); err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
+	}
+	if _, err := svc.SweepAutoSend(ctx, 1); err != nil {
+		t.Fatalf("SweepAutoSend() error: %v", err)
 	}
 	if len(fake.sent) != 1 || fake.sent[0].opts.To != "override@example.com" {
 		t.Fatalf("expected one send to override@example.com, got %+v", fake.sent)
 	}
 }
 
-func TestProcessDue_NoAutoSend_WhenSchedulerFlagFalse(t *testing.T) {
+func TestProcessDue_DoesNotSend(t *testing.T) {
 	fake := &fakeEmailer{}
 	svc, _, customerID := newAutoSendStack(t, fake)
 	ctx := context.Background()
@@ -125,16 +137,16 @@ func TestProcessDue_NoAutoSend_WhenSchedulerFlagFalse(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	// Manual "process due" button passes autoSend=false.
-	if _, err := svc.ProcessDue(ctx, 1, false); err != nil {
+	// Generation (incl. the manual "process due" button) never emails.
+	if _, err := svc.ProcessDue(ctx, 1); err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
 	if len(fake.sent) != 0 {
-		t.Errorf("expected no sends when scheduler flag is false, got %d", len(fake.sent))
+		t.Errorf("ProcessDue must not send, got %d", len(fake.sent))
 	}
 }
 
-func TestProcessDue_NoAutoSend_WhenTemplateOptedOut(t *testing.T) {
+func TestSweepAutoSend_SkipsTemplatesOptedOut(t *testing.T) {
 	fake := &fakeEmailer{}
 	svc, _, customerID := newAutoSendStack(t, fake)
 	ctx := context.Background()
@@ -145,11 +157,15 @@ func TestProcessDue_NoAutoSend_WhenTemplateOptedOut(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if _, err := svc.ProcessDue(ctx, 1, true); err != nil {
+	if _, err := svc.ProcessDue(ctx, 1); err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
-	if len(fake.sent) != 0 {
-		t.Errorf("expected no sends when template auto_send is off, got %d", len(fake.sent))
+	sent, err := svc.SweepAutoSend(ctx, 1)
+	if err != nil {
+		t.Fatalf("SweepAutoSend() error: %v", err)
+	}
+	if sent != 0 || len(fake.sent) != 0 {
+		t.Errorf("expected no sends when template auto_send is off, got sent=%d calls=%d", sent, len(fake.sent))
 	}
 }
 
@@ -171,7 +187,7 @@ func TestGenerateInvoice_NeverAutoSends(t *testing.T) {
 	}
 }
 
-func TestProcessDue_AutoSendFailure_StillGeneratesAndAdvances(t *testing.T) {
+func TestSweepAutoSend_FailureLeavesDraftForRetry(t *testing.T) {
 	fake := &fakeEmailer{sendErr: errors.New("smtp down")}
 	svc, invoiceSvc, customerID := newAutoSendStack(t, fake)
 	ctx := context.Background()
@@ -182,15 +198,27 @@ func TestProcessDue_AutoSendFailure_StillGeneratesAndAdvances(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1, true)
+	count, err := svc.ProcessDue(ctx, 1)
 	if err != nil {
-		t.Fatalf("ProcessDue() must not fail when auto-send fails: %v", err)
+		t.Fatalf("ProcessDue() error: %v", err)
 	}
 	if count != 1 {
 		t.Fatalf("count = %d, want 1", count)
 	}
 
-	// Invoice was still generated.
+	// Sweep attempts to send but the (fake) send fails; it must not error out.
+	sent, err := svc.SweepAutoSend(ctx, 1)
+	if err != nil {
+		t.Fatalf("SweepAutoSend() must not fail when a send fails: %v", err)
+	}
+	if sent != 0 {
+		t.Errorf("sent = %d, want 0 (send failed)", sent)
+	}
+	if len(fake.sent) != 1 {
+		t.Errorf("expected one send attempt, got %d", len(fake.sent))
+	}
+
+	// Invoice was still generated and remains a draft (so the next sweep retries).
 	invoices, total, err := invoiceSvc.List(ctx, 1, domain.InvoiceFilter{})
 	if err != nil {
 		t.Fatalf("List() error: %v", err)
@@ -198,12 +226,11 @@ func TestProcessDue_AutoSendFailure_StillGeneratesAndAdvances(t *testing.T) {
 	if total != 1 {
 		t.Fatalf("total invoices = %d, want 1", total)
 	}
-	// It stays a draft because the (fake) send failed before MarkAsSent.
 	if invoices[0].Status != domain.InvoiceStatusDraft {
 		t.Errorf("status = %q, want draft after failed auto-send", invoices[0].Status)
 	}
 
-	// Next issue date still advanced.
+	// Next issue date still advanced (generation is independent of sending).
 	updated, err := svc.GetByID(ctx, 1, ri.ID)
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
@@ -256,7 +283,7 @@ func TestProcessDue_UsesTemplateSequence(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	if _, err := recurringSvc.ProcessDue(ctx, 1, false); err != nil {
+	if _, err := recurringSvc.ProcessDue(ctx, 1); err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
 

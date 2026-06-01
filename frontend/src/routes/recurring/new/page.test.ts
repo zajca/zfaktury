@@ -164,4 +164,80 @@ describe('New recurring invoice page', () => {
 			expect(postCall).toBeTruthy();
 		});
 	});
+
+	it('renders auto-send checkbox', async () => {
+		mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Automatické odesílání')).toBeInTheDocument();
+		});
+
+		expect(screen.getByLabelText('Automaticky poslat fakturu e-mailem')).toBeInTheDocument();
+	});
+
+	it('toggling auto-send reveals recipient input', async () => {
+		mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Automaticky poslat fakturu e-mailem')).toBeInTheDocument();
+		});
+
+		// Recipient input hidden initially
+		expect(screen.queryByLabelText('Přepsat příjemce (volitelné)')).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByLabelText('Automaticky poslat fakturu e-mailem'));
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Přepsat příjemce (volitelné)')).toBeInTheDocument();
+		});
+	});
+
+	it('submit includes auto_send fields in payload', async () => {
+		mockFetch.mockResolvedValue(jsonResponse(sampleContacts));
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Test Corp (12345678)')).toBeInTheDocument();
+		});
+
+		const nameInput = document.querySelector('#name') as HTMLInputElement;
+		await fireEvent.input(nameInput, { target: { value: 'Test template' } });
+
+		const customerSelect = document.querySelector('#customer') as HTMLSelectElement;
+		await fireEvent.change(customerSelect, { target: { value: '1' } });
+
+		const descInput = document.querySelector('#desc-0') as HTMLInputElement;
+		await fireEvent.input(descInput, { target: { value: 'Some service' } });
+
+		// Enable auto-send and set recipient
+		await fireEvent.click(screen.getByLabelText('Automaticky poslat fakturu e-mailem'));
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Přepsat příjemce (volitelné)')).toBeInTheDocument();
+		});
+
+		const recipientInput = document.querySelector('#auto-send-recipient') as HTMLInputElement;
+		await fireEvent.input(recipientInput, { target: { value: 'billing@example.com' } });
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1, name: 'Test template' }));
+
+		await fireEvent.click(screen.getByText('Uložit'));
+
+		await waitFor(() => {
+			const postCall = mockFetch.mock.calls.find(
+				(call) =>
+					(call[0] as string).includes('/api/v1/companies/1/recurring-invoices') &&
+					call[1]?.method === 'POST'
+			);
+			expect(postCall).toBeTruthy();
+			const body = JSON.parse(postCall![1]!.body as string);
+			expect(body.auto_send).toBe(true);
+			expect(body.auto_send_recipient).toBe('billing@example.com');
+		});
+	});
 });

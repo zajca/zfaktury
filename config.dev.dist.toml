@@ -12,3 +12,7 @@
 host = "localhost"
 port = 1025
 from = "dev@zfaktury.local"
+
+# [scheduler]
+# enabled = false               # Generate due recurring invoices automatically once a day
+# hour = 7                      # Local-time hour (0-23) of the daily run

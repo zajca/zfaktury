@@ -30,11 +30,12 @@ import (
 
 // App holds the wired application components.
 type App struct {
-	cfg     *config.Config
-	db      *sql.DB
-	lock    *flock.Lock
-	logFile *os.File
-	router  *chi.Mux
+	cfg       *config.Config
+	db        *sql.DB
+	lock      *flock.Lock
+	logFile   *os.File
+	router    *chi.Mux
+	scheduler *service.RecurringScheduler
 }
 
 // Options configures how the application is initialized.
@@ -110,7 +111,7 @@ func New(opts Options) (*App, error) {
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
 
-	router := wireRouter(cfg, db)
+	router, scheduler := wireRouter(cfg, db)
 
 	// Mount frontend handler.
 	if cfg.Server.Dev {
@@ -121,11 +122,12 @@ func New(opts Options) (*App, error) {
 	}
 
 	return &App{
-		cfg:     cfg,
-		db:      db,
-		lock:    lock,
-		logFile: logFile,
-		router:  router,
+		cfg:       cfg,
+		db:        db,
+		lock:      lock,
+		logFile:   logFile,
+		router:    router,
+		scheduler: scheduler,
 	}, nil
 }
 
@@ -157,6 +159,12 @@ func (a *App) ListenAndServe(ctx context.Context) error {
 			os.Exit(1)
 		}
 	}()
+
+	// Start the recurring-invoice scheduler (if enabled). It shares the server
+	// context, so it stops on shutdown.
+	if a.scheduler != nil {
+		go a.scheduler.Run(ctx)
+	}
 
 	<-ctx.Done()
 	slog.Info("shutting down server")
@@ -222,8 +230,9 @@ func (a *App) Close() error {
 	return nil
 }
 
-// wireRouter creates repositories, services, and the HTTP router.
-func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
+// wireRouter creates repositories, services, the HTTP router, and (when enabled)
+// the recurring-invoice scheduler. The scheduler is nil when disabled in config.
+func wireRouter(cfg *config.Config, db *sql.DB) (*chi.Mux, *service.RecurringScheduler) {
 	// Wire repositories.
 	contactRepo := repository.NewContactRepository(db)
 	invoiceRepo := repository.NewInvoiceRepository(db)
@@ -287,7 +296,8 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	settingsSvc := service.NewSettingsService(settingsRepo, auditSvc)
 	categorySvc := service.NewCategoryService(categoryRepo, auditSvc)
 	documentSvc := service.NewDocumentService(documentRepo, cfg.DataDir, auditSvc)
-	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc, auditSvc)
+	invoiceEmailSvc := service.NewInvoiceEmailService(invoiceSvc, settingsSvc, companyRepo, pdfGen, isdocGen, emailSender)
+	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringInvoiceRepo, invoiceSvc, invoiceEmailSvc, auditSvc)
 	recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc, auditSvc)
 
 	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, companyRepo, auditSvc)
@@ -379,8 +389,16 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(companySvc, contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
+	router := handler.NewRouter(companySvc, contactSvc, invoiceSvc, invoiceEmailSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, auditSvc, backupSvc, handler.RouterConfig{
 		DevMode: cfg.Server.Dev,
 		DataDir: cfg.DataDir,
 	})
+
+	var scheduler *service.RecurringScheduler
+	if cfg.Scheduler.Enabled {
+		scheduler = service.NewRecurringScheduler(companyRepo, recurringInvoiceSvc, cfg.Scheduler.Hour)
+		slog.Info("recurring invoice scheduler enabled", "hour", cfg.Scheduler.Hour)
+	}
+
+	return router, scheduler
 }

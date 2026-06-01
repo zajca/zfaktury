@@ -25,6 +25,29 @@ type SupplierInfo struct {
 	SWIFT       string
 }
 
+// SupplierFromCompany builds SupplierInfo from a company record. Shared by the
+// HTTP send-email handler and the recurring auto-send path to avoid duplicating
+// the field mapping.
+func SupplierFromCompany(c *domain.Company) SupplierInfo {
+	if c == nil {
+		return SupplierInfo{}
+	}
+	return SupplierInfo{
+		CompanyName: c.LegalName,
+		ICO:         c.ICO,
+		DIC:         c.DIC,
+		Street:      c.Street,
+		City:        c.City,
+		ZIP:         c.ZIP,
+		Email:       c.Email,
+		Phone:       c.Phone,
+		BankAccount: c.BankAccount,
+		BankCode:    c.BankCode,
+		IBAN:        c.IBAN,
+		SWIFT:       c.SWIFT,
+	}
+}
+
 // ISDOCGenerator generates ISDOC 6.0.2 XML documents from invoices.
 type ISDOCGenerator struct{}
 

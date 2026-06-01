@@ -44,14 +44,14 @@ func (r *RecurringInvoiceRepository) Create(ctx context.Context, companyID int64
 			name, customer_id, frequency, next_issue_date, end_date,
 			currency_code, exchange_rate, payment_method,
 			bank_account, bank_code, iban, swift,
-			constant_symbol, notes, is_active,
+			constant_symbol, notes, is_active, auto_send, auto_send_recipient,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		companyID,
 		ri.Name, ri.CustomerID, ri.Frequency, ri.NextIssueDate.Format("2006-01-02"), endDate,
 		ri.CurrencyCode, ri.ExchangeRate, ri.PaymentMethod,
 		ri.BankAccount, ri.BankCode, ri.IBAN, ri.SWIFT,
-		ri.ConstantSymbol, ri.Notes, ri.IsActive,
+		ri.ConstantSymbol, ri.Notes, ri.IsActive, ri.AutoSend, ri.AutoSendRecipient,
 		ri.CreatedAt.Format(time.RFC3339), ri.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -109,22 +109,29 @@ func (r *RecurringInvoiceRepository) Update(ctx context.Context, companyID int64
 		endDate = ri.EndDate.Format("2006-01-02")
 	}
 
-	_, err = tx.ExecContext(ctx, `
+	result, err := tx.ExecContext(ctx, `
 		UPDATE recurring_invoices SET
 			name = ?, customer_id = ?, frequency = ?, next_issue_date = ?, end_date = ?,
 			currency_code = ?, exchange_rate = ?, payment_method = ?,
 			bank_account = ?, bank_code = ?, iban = ?, swift = ?,
-			constant_symbol = ?, notes = ?, is_active = ?,
+			constant_symbol = ?, notes = ?, is_active = ?, auto_send = ?, auto_send_recipient = ?,
 			updated_at = ?
 		WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
 		ri.Name, ri.CustomerID, ri.Frequency, ri.NextIssueDate.Format("2006-01-02"), endDate,
 		ri.CurrencyCode, ri.ExchangeRate, ri.PaymentMethod,
 		ri.BankAccount, ri.BankCode, ri.IBAN, ri.SWIFT,
-		ri.ConstantSymbol, ri.Notes, ri.IsActive,
+		ri.ConstantSymbol, ri.Notes, ri.IsActive, ri.AutoSend, ri.AutoSendRecipient,
 		ri.UpdatedAt.Format(time.RFC3339), ri.ID, companyID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating recurring invoice %d: %w", ri.ID, err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected for recurring invoice %d update: %w", ri.ID, err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("recurring invoice %d not found or already deleted: %w", ri.ID, domain.ErrNotFound)
 	}
 
 	// Delete existing items and re-insert.
@@ -203,7 +210,7 @@ func (r *RecurringInvoiceRepository) GetByID(ctx context.Context, companyID, id 
 			ri.id, ri.name, ri.customer_id, ri.frequency, ri.next_issue_date, ri.end_date,
 			ri.currency_code, ri.exchange_rate, ri.payment_method,
 			ri.bank_account, ri.bank_code, ri.iban, ri.swift,
-			ri.constant_symbol, ri.notes, ri.is_active,
+			ri.constant_symbol, ri.notes, ri.is_active, ri.auto_send, ri.auto_send_recipient,
 			ri.created_at, ri.updated_at, ri.deleted_at,
 			c.id, c.type, c.name, c.ico, c.dic,
 			c.street, c.city, c.zip, c.country,
@@ -215,7 +222,7 @@ func (r *RecurringInvoiceRepository) GetByID(ctx context.Context, companyID, id 
 		&ri.ID, &ri.Name, &ri.CustomerID, &ri.Frequency, &nextIssueDateStr, &endDateStr,
 		&ri.CurrencyCode, &ri.ExchangeRate, &ri.PaymentMethod,
 		&ri.BankAccount, &ri.BankCode, &ri.IBAN, &ri.SWIFT,
-		&ri.ConstantSymbol, &ri.Notes, &ri.IsActive,
+		&ri.ConstantSymbol, &ri.Notes, &ri.IsActive, &ri.AutoSend, &ri.AutoSendRecipient,
 		&createdAtStr, &updatedAtStr, &deletedAtStr,
 		&custID, &custType, &custName, &custICO, &custDIC,
 		&custStreet, &custCity, &custZIP, &custCountry,
@@ -303,7 +310,7 @@ func (r *RecurringInvoiceRepository) List(ctx context.Context, companyID int64) 
 			ri.id, ri.name, ri.customer_id, ri.frequency, ri.next_issue_date, ri.end_date,
 			ri.currency_code, ri.exchange_rate, ri.payment_method,
 			ri.bank_account, ri.bank_code, ri.iban, ri.swift,
-			ri.constant_symbol, ri.notes, ri.is_active,
+			ri.constant_symbol, ri.notes, ri.is_active, ri.auto_send, ri.auto_send_recipient,
 			ri.created_at, ri.updated_at, ri.deleted_at,
 			COALESCE(c.name, '') AS customer_name
 		FROM recurring_invoices ri
@@ -329,7 +336,7 @@ func (r *RecurringInvoiceRepository) List(ctx context.Context, companyID int64) 
 			&ri.ID, &ri.Name, &ri.CustomerID, &ri.Frequency, &nextIssueDateStr, &endDateStr,
 			&ri.CurrencyCode, &ri.ExchangeRate, &ri.PaymentMethod,
 			&ri.BankAccount, &ri.BankCode, &ri.IBAN, &ri.SWIFT,
-			&ri.ConstantSymbol, &ri.Notes, &ri.IsActive,
+			&ri.ConstantSymbol, &ri.Notes, &ri.IsActive, &ri.AutoSend, &ri.AutoSendRecipient,
 			&createdAtStr, &updatedAtStr, &deletedAtStr,
 			&customerName,
 		); err != nil {
@@ -375,9 +382,11 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, companyID int6
 			ri.id, ri.name, ri.customer_id, ri.frequency, ri.next_issue_date, ri.end_date,
 			ri.currency_code, ri.exchange_rate, ri.payment_method,
 			ri.bank_account, ri.bank_code, ri.iban, ri.swift,
-			ri.constant_symbol, ri.notes, ri.is_active,
-			ri.created_at, ri.updated_at, ri.deleted_at
+			ri.constant_symbol, ri.notes, ri.is_active, ri.auto_send, ri.auto_send_recipient,
+			ri.created_at, ri.updated_at, ri.deleted_at,
+			COALESCE(c.email, '') AS customer_email
 		FROM recurring_invoices ri
+		LEFT JOIN contacts c ON c.id = ri.customer_id
 		WHERE ri.company_id = ?
 			AND ri.deleted_at IS NULL
 			AND ri.is_active = 1
@@ -396,13 +405,15 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, companyID int6
 		var createdAtStr string
 		var updatedAtStr string
 		var deletedAtStr sql.NullString
+		var customerEmail string
 
 		if err := rows.Scan(
 			&ri.ID, &ri.Name, &ri.CustomerID, &ri.Frequency, &nextIssueDateStr, &endDateStr,
 			&ri.CurrencyCode, &ri.ExchangeRate, &ri.PaymentMethod,
 			&ri.BankAccount, &ri.BankCode, &ri.IBAN, &ri.SWIFT,
-			&ri.ConstantSymbol, &ri.Notes, &ri.IsActive,
+			&ri.ConstantSymbol, &ri.Notes, &ri.IsActive, &ri.AutoSend, &ri.AutoSendRecipient,
 			&createdAtStr, &updatedAtStr, &deletedAtStr,
+			&customerEmail,
 		); err != nil {
 			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
 		}
@@ -426,6 +437,11 @@ func (r *RecurringInvoiceRepository) ListDue(ctx context.Context, companyID int6
 		ri.DeletedAt, err = parseDatePtr(time.RFC3339, deletedAtStr)
 		if err != nil {
 			return nil, fmt.Errorf("scanning due recurring invoice row: %w", err)
+		}
+		// Carry the customer's email so the auto-send path can fall back to it
+		// when no explicit recipient override is configured.
+		if customerEmail != "" {
+			ri.Customer = &domain.Contact{ID: ri.CustomerID, Email: customerEmail}
 		}
 
 		result = append(result, ri)

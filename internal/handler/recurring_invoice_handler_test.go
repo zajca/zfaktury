@@ -25,7 +25,7 @@ func setupRecurringInvoiceRouter(t *testing.T) (*chi.Mux, int64) {
 	contactSvc := service.NewContactService(contactRepo, nil, nil)
 	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil)
+	recurringInvoiceSvc := service.NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil, nil)
 
 	contactHandler := NewContactHandler(contactSvc)
 	h := NewRecurringInvoiceHandler(recurringInvoiceSvc)
@@ -121,6 +121,75 @@ func TestRecurringInvoiceHandler_Create(t *testing.T) {
 	}
 	if len(resp.Items) != 1 {
 		t.Errorf("len(Items) = %d, want 1", len(resp.Items))
+	}
+}
+
+func TestRecurringInvoiceHandler_Create_AutoSendRoundTrip(t *testing.T) {
+	r, _ := setupRecurringInvoiceRouter(t)
+	customerID := createTestCustomer(t, r)
+
+	body := fmt.Sprintf(`{
+		"name": "Auto monthly",
+		"customer_id": %d,
+		"frequency": "monthly",
+		"next_issue_date": "2026-04-01",
+		"currency_code": "CZK",
+		"payment_method": "bank_transfer",
+		"is_active": true,
+		"auto_send": true,
+		"auto_send_recipient": "billing@example.com",
+		"items": [{"description": "Hosting", "quantity": 100, "unit": "ks", "unit_price": 50000, "vat_rate_percent": 21, "sort_order": 0}]
+	}`, customerID)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/recurring-invoices", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want %d, body = %s", w.Code, http.StatusCreated, w.Body.String())
+	}
+	var resp recurringInvoiceResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if !resp.AutoSend || resp.AutoSendRecipient != "billing@example.com" {
+		t.Errorf("auto-send = (%v, %q), want (true, billing@example.com)", resp.AutoSend, resp.AutoSendRecipient)
+	}
+
+	// Round-trip via GetByID.
+	getReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/recurring-invoices/%d", resp.ID), nil)
+	getW := httptest.NewRecorder()
+	r.ServeHTTP(getW, getReq)
+	var got recurringInvoiceResponse
+	json.NewDecoder(getW.Body).Decode(&got)
+	if !got.AutoSend || got.AutoSendRecipient != "billing@example.com" {
+		t.Errorf("GetByID auto-send = (%v, %q), want (true, billing@example.com)", got.AutoSend, got.AutoSendRecipient)
+	}
+}
+
+func TestRecurringInvoiceHandler_Create_AutoSendInvalidRecipient(t *testing.T) {
+	r, _ := setupRecurringInvoiceRouter(t)
+	customerID := createTestCustomer(t, r)
+
+	body := fmt.Sprintf(`{
+		"name": "Auto monthly",
+		"customer_id": %d,
+		"frequency": "monthly",
+		"next_issue_date": "2026-04-01",
+		"currency_code": "CZK",
+		"payment_method": "bank_transfer",
+		"is_active": true,
+		"auto_send": true,
+		"auto_send_recipient": "not-an-email",
+		"items": [{"description": "Hosting", "quantity": 100, "unit": "ks", "unit_price": 50000, "vat_rate_percent": 21, "sort_order": 0}]
+	}`, customerID)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/recurring-invoices", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
 	}
 }
 

@@ -20,7 +20,7 @@ func newRecurringInvoiceTestStack(t *testing.T) (*RecurringInvoiceService, *Invo
 	contactSvc := NewContactService(contactRepo, nil, nil)
 	sequenceSvc := NewSequenceService(sequenceRepo, nil)
 	invoiceSvc := NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
-	recurringSvc := NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil)
+	recurringSvc := NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil, nil)
 
 	// Seed a default invoice sequence.
 	testutil.SeedInvoiceSequence(t, db, 1, "FV", 2026)
@@ -156,7 +156,7 @@ func TestRecurringInvoiceService_ProcessDue(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1)
+	count, err := svc.ProcessDue(ctx, 1, false)
 	if err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestRecurringInvoiceService_ProcessDue_PastEndDate(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1)
+	count, err := svc.ProcessDue(ctx, 1, false)
 	if err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestRecurringInvoiceService_ProcessDue_DeactivatesAfterLastCycle(t *testing
 	customerID := createCustomer()
 
 	// Due today, with an end date before the next monthly cycle. Dates are
-	// relative to now so the test does not break as the wall clock advances.
+	// relative to now so the test is independent of the wall clock.
 	today := time.Now().Truncate(24 * time.Hour)
 	endDate := today.AddDate(0, 0, 10)
 	ri := makeTestRecurringInvoice(customerID)
@@ -234,7 +234,7 @@ func TestRecurringInvoiceService_ProcessDue_DeactivatesAfterLastCycle(t *testing
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	count, err := svc.ProcessDue(ctx, 1)
+	count, err := svc.ProcessDue(ctx, 1, false)
 	if err != nil {
 		t.Fatalf("ProcessDue() error: %v", err)
 	}

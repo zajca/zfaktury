@@ -40,6 +40,30 @@ func TestValidate_InvalidPort(t *testing.T) {
 	}
 }
 
+func TestValidate_SchedulerHourValid(t *testing.T) {
+	for _, hour := range []int{0, 7, 23} {
+		cfg := validConfig()
+		cfg.Scheduler.Hour = hour
+		if err := cfg.Validate(); err != nil {
+			t.Fatalf("expected hour %d to be valid, got: %v", hour, err)
+		}
+	}
+}
+
+func TestValidate_SchedulerHourInvalid(t *testing.T) {
+	for _, hour := range []int{-1, 24, 99} {
+		cfg := validConfig()
+		cfg.Scheduler.Hour = hour
+		err := cfg.Validate()
+		if err == nil {
+			t.Fatalf("expected error for hour %d, got nil", hour)
+		}
+		if !strings.Contains(err.Error(), "scheduler.hour must be 0-23") {
+			t.Fatalf("unexpected error message: %v", err)
+		}
+	}
+}
+
 func TestValidate_SMTPHostWithoutPort(t *testing.T) {
 	cfg := validConfig()
 	cfg.SMTP.Host = "smtp.example.com"

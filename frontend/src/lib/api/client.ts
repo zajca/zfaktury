@@ -255,6 +255,8 @@ export interface RecurringInvoice {
 	constant_symbol: string;
 	notes: string;
 	is_active: boolean;
+	auto_send: boolean;
+	auto_send_recipient?: string;
 	items: RecurringInvoiceItem[];
 	created_at: string;
 	updated_at: string;

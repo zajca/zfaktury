@@ -48,7 +48,9 @@
 		swift: '',
 		constant_symbol: '',
 		notes: '',
-		is_active: true
+		is_active: true,
+		auto_send: false,
+		auto_send_recipient: ''
 	});
 
 	let items = $state<FormItem[]>([]);
@@ -69,7 +71,9 @@
 			swift: recurringInvoice.swift,
 			constant_symbol: recurringInvoice.constant_symbol,
 			notes: recurringInvoice.notes,
-			is_active: recurringInvoice.is_active
+			is_active: recurringInvoice.is_active,
+			auto_send: recurringInvoice.auto_send,
+			auto_send_recipient: recurringInvoice.auto_send_recipient ?? ''
 		};
 		items = (recurringInvoice.items ?? []).map((item) => ({
 			description: item.description,
@@ -128,6 +132,8 @@
 				...form,
 				end_date: form.end_date || null,
 				exchange_rate: 0,
+				// Don't send a stale recipient when auto-send is off.
+				auto_send_recipient: form.auto_send ? form.auto_send_recipient : '',
 				items: requestItems
 			};
 
@@ -237,6 +243,21 @@
 						<dd class="mt-1 text-sm text-primary">
 							{paymentMethodLabels[recurringInvoice.payment_method] ??
 								recurringInvoice.payment_method}
+						</dd>
+					</div>
+					<div>
+						<dt class="text-sm font-medium text-tertiary">Automatické odesílání</dt>
+						<dd class="mt-1">
+							{#if recurringInvoice.auto_send}
+								<Badge variant="success">Povoleno</Badge>
+								<span class="ml-2 text-sm text-primary">
+									{recurringInvoice.auto_send_recipient
+										? recurringInvoice.auto_send_recipient
+										: 'e-mail zákazníka'}
+								</span>
+							{:else}
+								<Badge variant="muted">Vypnuto</Badge>
+							{/if}
 						</dd>
 					</div>
 				</dl>
@@ -387,6 +408,42 @@
 							{/each}
 						</select>
 					</div>
+				</div>
+			</Card>
+
+			<!-- Auto-send -->
+			<Card>
+				<h2 class="text-base font-semibold text-primary">Automatické odesílání</h2>
+				<div class="mt-4 space-y-4">
+					<div class="flex items-center gap-2">
+						<input
+							id="edit-auto-send"
+							type="checkbox"
+							bind:checked={form.auto_send}
+							class="rounded border-border"
+						/>
+						<label for="edit-auto-send" class="text-sm font-medium text-secondary"
+							>Automaticky poslat fakturu e-mailem</label
+						>
+					</div>
+					{#if form.auto_send}
+						<div>
+							<label
+								for="edit-auto-send-recipient"
+								class="block text-sm font-medium text-secondary"
+								>Přepsat příjemce (volitelné)</label
+							>
+							<input
+								id="edit-auto-send-recipient"
+								type="email"
+								bind:value={form.auto_send_recipient}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+							/>
+							<p class="mt-1 text-xs text-tertiary">
+								Pokud necháte prázdné, použije se e-mail zákazníka.
+							</p>
+						</div>
+					{/if}
 				</div>
 			</Card>
 

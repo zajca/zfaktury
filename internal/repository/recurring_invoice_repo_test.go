@@ -55,6 +55,68 @@ func TestRecurringInvoiceRepository_Create(t *testing.T) {
 	}
 }
 
+func TestRecurringInvoiceRepository_AutoSendRoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer", Email: "cust@example.com"})
+	repo := NewRecurringInvoiceRepository(db)
+	ctx := context.Background()
+
+	ri := makeRecurringInvoice(customer.ID)
+	ri.NextIssueDate = time.Now().Truncate(24 * time.Hour)
+	ri.AutoSend = true
+	ri.AutoSendRecipient = "billing@example.com"
+	if err := repo.Create(ctx, 1, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// GetByID round-trip.
+	got, err := repo.GetByID(ctx, 1, ri.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if !got.AutoSend || got.AutoSendRecipient != "billing@example.com" {
+		t.Errorf("GetByID auto-send = (%v, %q), want (true, billing@example.com)", got.AutoSend, got.AutoSendRecipient)
+	}
+
+	// List round-trip.
+	list, err := repo.List(ctx, 1)
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(list) != 1 || !list[0].AutoSend || list[0].AutoSendRecipient != "billing@example.com" {
+		t.Errorf("List auto-send not round-tripped: %+v", list)
+	}
+
+	// ListDue carries the customer email for recipient fallback.
+	due, err := repo.ListDue(ctx, 1, time.Now())
+	if err != nil {
+		t.Fatalf("ListDue() error: %v", err)
+	}
+	if len(due) != 1 {
+		t.Fatalf("ListDue len = %d, want 1", len(due))
+	}
+	if !due[0].AutoSend || due[0].AutoSendRecipient != "billing@example.com" {
+		t.Errorf("ListDue auto-send not round-tripped: %+v", due[0])
+	}
+	if due[0].Customer == nil || due[0].Customer.Email != "cust@example.com" {
+		t.Errorf("ListDue should carry customer email, got %+v", due[0].Customer)
+	}
+
+	// Update toggles the fields.
+	got.AutoSend = false
+	got.AutoSendRecipient = ""
+	if err := repo.Update(ctx, 1, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+	after, err := repo.GetByID(ctx, 1, ri.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after update error: %v", err)
+	}
+	if after.AutoSend || after.AutoSendRecipient != "" {
+		t.Errorf("after update auto-send = (%v, %q), want (false, \"\")", after.AutoSend, after.AutoSendRecipient)
+	}
+}
+
 func TestRecurringInvoiceRepository_GetByID(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	customer := testutil.SeedContact(t, db, 1, &domain.Contact{Name: "Test Customer"})

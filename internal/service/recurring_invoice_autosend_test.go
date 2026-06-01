@@ -229,6 +229,52 @@ func TestCreate_AutoSend_InvalidRecipientRejected(t *testing.T) {
 	}
 }
 
+func TestProcessDue_UsesTemplateSequence(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	ctx := context.Background()
+	contactRepo := repository.NewContactRepository(db)
+	invoiceRepo := repository.NewInvoiceRepository(db)
+	sequenceRepo := repository.NewSequenceRepository(db)
+	recurringRepo := repository.NewRecurringInvoiceRepository(db)
+	contactSvc := NewContactService(contactRepo, nil, nil)
+	sequenceSvc := NewSequenceService(sequenceRepo, nil)
+	invoiceSvc := NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
+	recurringSvc := NewRecurringInvoiceService(recurringRepo, invoiceSvc, nil, nil)
+
+	// A custom sequence the template points at (distinct from the default "FV"
+	// auto-assignment) -- proves generation honours the template's sequence.
+	seqID := testutil.SeedInvoiceSequenceWithPattern(t, db, 1, "REC", 2026, "{prefix}-{number:03d}")
+
+	c := &domain.Contact{Name: "Cust", Type: domain.ContactTypeCompany}
+	if err := contactSvc.Create(ctx, 1, c); err != nil {
+		t.Fatalf("creating customer: %v", err)
+	}
+	ri := makeTestRecurringInvoice(c.ID)
+	ri.NextIssueDate = time.Now().Truncate(24 * time.Hour)
+	ri.SequenceID = seqID
+	if err := recurringSvc.Create(ctx, 1, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if _, err := recurringSvc.ProcessDue(ctx, 1, false); err != nil {
+		t.Fatalf("ProcessDue() error: %v", err)
+	}
+
+	invoices, _, err := invoiceSvc.List(ctx, 1, domain.InvoiceFilter{})
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(invoices) != 1 {
+		t.Fatalf("expected 1 generated invoice, got %d", len(invoices))
+	}
+	if invoices[0].SequenceID != seqID {
+		t.Errorf("generated invoice SequenceID = %d, want %d", invoices[0].SequenceID, seqID)
+	}
+	if got := invoices[0].InvoiceNumber; got != "REC-001" {
+		t.Errorf("invoice number = %q, want the template's sequence (REC-001)", got)
+	}
+}
+
 func TestCreate_AutoSend_BlankRecipientAllowed(t *testing.T) {
 	fake := &fakeEmailer{}
 	svc, _, customerID := newAutoSendStack(t, fake)

@@ -4,8 +4,10 @@
 	import {
 		contactsApi,
 		recurringInvoicesApi,
+		sequencesApi,
 		type Contact,
-		type RecurringInvoice
+		type RecurringInvoice,
+		type InvoiceSequence
 	} from '$lib/api/client';
 	import { onCompanyChange } from '$lib/stores/currentCompany.svelte';
 	import { toISODate } from '$lib/utils/date';
@@ -21,11 +23,13 @@
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let contacts = $state<Contact[]>([]);
+	let sequences = $state<InvoiceSequence[]>([]);
 	let saving = $state(false);
 
 	let form = $state({
 		name: '',
 		customer_id: 0,
+		sequence_id: 0,
 		frequency: 'monthly',
 		next_issue_date: toISODate(new Date()),
 		end_date: '',
@@ -48,9 +52,27 @@
 
 	onMount(() => {
 		loadContacts();
+		loadSequences();
 	});
 
-	onCompanyChange(() => loadContacts());
+	onCompanyChange(() => {
+		loadContacts();
+		loadSequences();
+	});
+
+	async function loadSequences() {
+		try {
+			const result = await sequencesApi.list();
+			sequences = Array.isArray(result) ? result : [];
+			// Default to the first sequence so generated invoices use the
+			// company's own numbering instead of the auto "FV" fallback.
+			if (sequences.length > 0 && !form.sequence_id) {
+				form.sequence_id = sequences[0].id;
+			}
+		} catch {
+			sequences = [];
+		}
+	}
 
 	async function loadContacts() {
 		try {
@@ -151,6 +173,34 @@
 							>
 						{/each}
 					</select>
+				</div>
+				<div>
+					<label for="sequence" class="block text-sm font-medium text-secondary">
+						Číselná řada <HelpTip topic="ciselne-rady" />
+					</label>
+					{#if sequences.length === 0}
+						<p
+							class="mt-1 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-warning"
+							role="alert"
+						>
+							Žádná číselná řada není vytvořená pro tuto firmu. <a
+								href="/settings/sequences"
+								class="font-medium underline">Vytvořit první řadu</a
+							> před uložením.
+						</p>
+					{:else}
+						<select
+							id="sequence"
+							bind:value={form.sequence_id}
+							class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+						>
+							{#each sequences as seq (seq.id)}
+								<option value={seq.id}
+									>{seq.prefix} / {seq.year} &mdash; další: {seq.preview}</option
+								>
+							{/each}
+						</select>
+					{/if}
 				</div>
 			</div>
 		</Card>

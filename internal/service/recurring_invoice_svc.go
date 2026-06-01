@@ -226,8 +226,12 @@ func (s *RecurringInvoiceService) ProcessDue(ctx context.Context, companyID int6
 // basis (failures are logged, not returned, so the draft is preserved).
 func (s *RecurringInvoiceService) createInvoiceFromTemplate(ctx context.Context, companyID int64, ri *domain.RecurringInvoice, issueDate time.Time, autoSend bool) (*domain.Invoice, error) {
 	invoice := &domain.Invoice{
-		Type:           domain.InvoiceTypeRegular,
-		Status:         domain.InvoiceStatusDraft,
+		Type:   domain.InvoiceTypeRegular,
+		Status: domain.InvoiceStatusDraft,
+		// SequenceID 0 falls back to the company's auto-assigned FV sequence
+		// inside InvoiceService.Create; a non-zero value uses the template's
+		// chosen sequence (e.g. the company's "77" series).
+		SequenceID:     ri.SequenceID,
 		CustomerID:     ri.CustomerID,
 		IssueDate:      issueDate,
 		DueDate:        issueDate.AddDate(0, 0, 14),

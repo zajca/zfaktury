@@ -26,6 +26,7 @@ type recurringInvoiceItemRequest struct {
 type recurringInvoiceRequest struct {
 	Name              string                        `json:"name"`
 	CustomerID        int64                         `json:"customer_id"`
+	SequenceID        int64                         `json:"sequence_id"`
 	Frequency         string                        `json:"frequency"`
 	NextIssueDate     string                        `json:"next_issue_date"`
 	EndDate           *string                       `json:"end_date"`
@@ -52,6 +53,7 @@ func (r *recurringInvoiceRequest) toDomain() (*domain.RecurringInvoice, error) {
 	ri := &domain.RecurringInvoice{
 		Name:              r.Name,
 		CustomerID:        r.CustomerID,
+		SequenceID:        r.SequenceID,
 		Frequency:         r.Frequency,
 		CurrencyCode:      r.CurrencyCode,
 		ExchangeRate:      domain.Amount(r.ExchangeRate),
@@ -111,6 +113,7 @@ type recurringInvoiceResponse struct {
 	Name              string                         `json:"name"`
 	CustomerID        int64                          `json:"customer_id"`
 	Customer          *contactResponse               `json:"customer,omitempty"`
+	SequenceID        int64                          `json:"sequence_id"`
 	Frequency         string                         `json:"frequency"`
 	NextIssueDate     string                         `json:"next_issue_date"`
 	EndDate           *string                        `json:"end_date,omitempty"`
@@ -136,6 +139,7 @@ func recurringInvoiceFromDomain(ri *domain.RecurringInvoice) recurringInvoiceRes
 		ID:                ri.ID,
 		Name:              ri.Name,
 		CustomerID:        ri.CustomerID,
+		SequenceID:        ri.SequenceID,
 		Frequency:         ri.Frequency,
 		NextIssueDate:     ri.NextIssueDate.Format("2006-01-02"),
 		CurrencyCode:      ri.CurrencyCode,

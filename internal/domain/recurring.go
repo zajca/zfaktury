@@ -12,10 +12,14 @@ const (
 
 // RecurringInvoice represents a template for automatically generated invoices.
 type RecurringInvoice struct {
-	ID             int64
-	Name           string
-	CustomerID     int64
-	Customer       *Contact
+	ID         int64
+	Name       string
+	CustomerID int64
+	Customer   *Contact
+	// SequenceID selects which invoice-number sequence generated invoices use.
+	// Zero means "auto-assign" (the company's FV sequence), preserving the
+	// pre-sequence-picker behaviour.
+	SequenceID     int64
 	Frequency      string // monthly, quarterly, yearly, weekly
 	NextIssueDate  time.Time
 	EndDate        *time.Time

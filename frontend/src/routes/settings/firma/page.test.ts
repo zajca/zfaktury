@@ -88,8 +88,7 @@ describe('Settings Firma Page', () => {
 		render(Page);
 		await waitFor(() => {
 			const companyCall = mockFetch.mock.calls.find(
-				(call: unknown[]) =>
-					typeof call[0] === 'string' && call[0].endsWith('/api/v1/companies/1')
+				(call: unknown[]) => typeof call[0] === 'string' && call[0].endsWith('/api/v1/companies/1')
 			);
 			const settingsCall = mockFetch.mock.calls.find(
 				(call: unknown[]) =>
@@ -147,28 +146,20 @@ describe('Settings Firma Page', () => {
 		await fireEvent.submit(form);
 
 		await waitFor(() => {
-			const companyPut = mockFetch.mock.calls.find(
-				(call: unknown[]) => {
-					const u = call[0] as string;
-					const init = call[1] as RequestInit | undefined;
-					return (
-						typeof u === 'string' &&
-						u.endsWith('/api/v1/companies/1') &&
-						init?.method === 'PUT'
-					);
-				}
-			);
-			const settingsPut = mockFetch.mock.calls.find(
-				(call: unknown[]) => {
-					const u = call[0] as string;
-					const init = call[1] as RequestInit | undefined;
-					return (
-						typeof u === 'string' &&
-						u.endsWith('/api/v1/companies/1/settings') &&
-						init?.method === 'PUT'
-					);
-				}
-			);
+			const companyPut = mockFetch.mock.calls.find((call: unknown[]) => {
+				const u = call[0] as string;
+				const init = call[1] as RequestInit | undefined;
+				return typeof u === 'string' && u.endsWith('/api/v1/companies/1') && init?.method === 'PUT';
+			});
+			const settingsPut = mockFetch.mock.calls.find((call: unknown[]) => {
+				const u = call[0] as string;
+				const init = call[1] as RequestInit | undefined;
+				return (
+					typeof u === 'string' &&
+					u.endsWith('/api/v1/companies/1/settings') &&
+					init?.method === 'PUT'
+				);
+			});
 			expect(companyPut).toBeDefined();
 			expect(settingsPut).toBeDefined();
 		});

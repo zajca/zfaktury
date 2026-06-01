@@ -77,8 +77,7 @@
 
 		// 1. Same year (full or short YY) + matching prefix hint.
 		const exact = sequences.find(
-			(s) =>
-				(s.year === year || s.year === yearShort) && s.prefix.toUpperCase() === prefixHint
+			(s) => (s.year === year || s.year === yearShort) && s.prefix.toUpperCase() === prefixHint
 		);
 		if (exact) return exact.id;
 		// 2. Same year, any prefix.
@@ -250,9 +249,7 @@
 						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					>
 						{#each sequences as seq (seq.id)}
-							<option value={seq.id}
-								>{seq.prefix} / {seq.year} &mdash; další: {seq.preview}</option
-							>
+							<option value={seq.id}>{seq.prefix} / {seq.year} &mdash; další: {seq.preview}</option>
 						{/each}
 					</select>
 				{/if}

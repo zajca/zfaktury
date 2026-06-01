@@ -54,17 +54,12 @@ export const currentCompany = {
 // Returns true when the response came back for a different company than the
 // one currently active (the user switched mid-flight). When true, a warning
 // toast is shown and the caller should skip its post-success navigation.
-export function notifyIfSwitchedCompany(
-	submittedFor: number,
-	respondedFor?: number
-): boolean {
+export function notifyIfSwitchedCompany(submittedFor: number, respondedFor?: number): boolean {
 	const activeId = currentCompany.current?.id;
 	if (submittedFor === activeId) return false;
 	const submittedName = currentCompany.nameOf(submittedFor);
 	const activeName = currentCompany.nameOf(activeId);
-	toastWarning(
-		`Uloženo do firmy ${submittedName} — mezitím jste přepnuli na ${activeName}.`
-	);
+	toastWarning(`Uloženo do firmy ${submittedName} — mezitím jste přepnuli na ${activeName}.`);
 	return true;
 }
 

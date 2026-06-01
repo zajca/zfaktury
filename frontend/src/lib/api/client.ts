@@ -485,7 +485,11 @@ async function writePC<T>(
 	const respondedForHeader = response.headers.get('X-Company-Id');
 	const respondedFor = respondedForHeader ? Number(respondedForHeader) : submittedFor;
 	const data = response.status === 204 ? (undefined as T) : await response.json();
-	return { data, submittedFor, respondedFor: Number.isFinite(respondedFor) ? respondedFor : submittedFor };
+	return {
+		data,
+		submittedFor,
+		respondedFor: Number.isFinite(respondedFor) ? respondedFor : submittedFor
+	};
 }
 
 export function postPC<T>(path: string, body?: unknown): Promise<WriteResult<T>> {
@@ -537,7 +541,7 @@ export const companiesApi = {
 			await del<void>(`/companies/${id}`);
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 409) {
-				throw new Error(err.message || 'cannot delete: in use or last company');
+				throw new Error(err.message || 'cannot delete: in use or last company', { cause: err });
 			}
 			throw err;
 		}

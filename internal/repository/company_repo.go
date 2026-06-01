@@ -127,7 +127,7 @@ func (r *CompanyRepository) List(ctx context.Context) ([]domain.Company, error) 
 	if err != nil {
 		return nil, fmt.Errorf("listing companies: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []domain.Company
 	for rows.Next() {

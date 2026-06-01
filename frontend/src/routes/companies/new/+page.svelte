@@ -2,12 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import {
-		companiesApi,
-		contactsApi,
-		NoCompanyError,
-		type NewCompany
-	} from '$lib/api/client';
+	import { companiesApi, contactsApi, NoCompanyError, type NewCompany } from '$lib/api/client';
 	import { currentCompany } from '$lib/stores/currentCompany.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 	import CompanyEditForm from '$lib/components/company/CompanyEditForm.svelte';
@@ -64,9 +59,7 @@
 			// per-company ARES URL refuses to build. Surface a gentle hint
 			// rather than the raw "no active company" error.
 			if (e instanceof NoCompanyError) {
-				toastError(
-					'ARES vyhledávání bude dostupné po vytvoření první firmy. Vyplňte údaje ručně.'
-				);
+				toastError('ARES vyhledávání bude dostupné po vytvoření první firmy. Vyplňte údaje ručně.');
 			} else {
 				toastError(e instanceof Error ? e.message : 'Nepodařilo se vyhledat v ARES');
 			}

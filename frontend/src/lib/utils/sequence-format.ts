@@ -15,7 +15,12 @@ const MAX_NUMBER_WIDTH = 6;
  * unchanged so a programming error stays visible rather than silently
  * producing a half-rendered string. Mirrors the Go Render behaviour.
  */
-export function renderSequence(pattern: string, prefix: string, year: number, number: number): string {
+export function renderSequence(
+	pattern: string,
+	prefix: string,
+	year: number,
+	number: number
+): string {
 	if (validateSequencePattern(pattern) !== null) {
 		return pattern;
 	}
@@ -109,7 +114,10 @@ function parseNumberWidth(spec: string): { width: number; error: string | null }
 	}
 	const width = parseInt(digits, 10);
 	if (width < MIN_NUMBER_WIDTH || width > MAX_NUMBER_WIDTH) {
-		return { width: 0, error: `number width ${width} must be in ${MIN_NUMBER_WIDTH}..${MAX_NUMBER_WIDTH}` };
+		return {
+			width: 0,
+			error: `number width ${width} must be in ${MIN_NUMBER_WIDTH}..${MAX_NUMBER_WIDTH}`
+		};
 	}
 	return { width, error: null };
 }

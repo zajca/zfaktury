@@ -49,11 +49,7 @@
 	</button>
 
 	{#if open}
-		<div
-			role="presentation"
-			class="fixed inset-0 z-40"
-			onclick={close}
-		></div>
+		<div role="presentation" class="fixed inset-0 z-40" onclick={close}></div>
 		<ul
 			class="absolute right-0 z-50 mt-1 w-64 rounded-md border border-border bg-surface py-1 shadow-lg"
 			role="listbox"

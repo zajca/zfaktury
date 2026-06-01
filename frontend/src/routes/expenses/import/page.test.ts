@@ -211,7 +211,8 @@ describe('Expenses import page', () => {
 		// Should call update endpoint
 		await waitFor(() => {
 			const updateCall = mockFetch.mock.calls.find(
-				(call: unknown[]) => typeof call[0] === 'string' && call[0].includes('/api/v1/companies/1/expenses/42')
+				(call: unknown[]) =>
+					typeof call[0] === 'string' && call[0].includes('/api/v1/companies/1/expenses/42')
 			);
 			expect(updateCall).toBeDefined();
 		});

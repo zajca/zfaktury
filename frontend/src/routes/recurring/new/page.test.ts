@@ -158,7 +158,8 @@ describe('New recurring invoice page', () => {
 		await waitFor(() => {
 			const postCall = mockFetch.mock.calls.find(
 				(call) =>
-					(call[0] as string).includes('/api/v1/companies/1/recurring-invoices') && call[1]?.method === 'POST'
+					(call[0] as string).includes('/api/v1/companies/1/recurring-invoices') &&
+					call[1]?.method === 'POST'
 			);
 			expect(postCall).toBeTruthy();
 		});

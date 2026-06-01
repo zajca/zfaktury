@@ -9,7 +9,6 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
-
 // TaxChildCreditRepository handles persistence of TaxChildCredit entities.
 type TaxChildCreditRepository struct {
 	db *sql.DB
@@ -154,4 +153,3 @@ func (r *TaxChildCreditRepository) ListByYear(ctx context.Context, companyID int
 	}
 	return result, nil
 }
-

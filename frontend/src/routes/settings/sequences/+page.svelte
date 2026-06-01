@@ -200,8 +200,8 @@
 								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 							/>
 							<p class="mt-1 text-xs text-muted">
-								Plný (2026) i 2místný (26) rok funguje &mdash; token <code>{'{yy}'}</code> bere
-								poslední 2 číslice.
+								Plný (2026) i 2místný (26) rok funguje &mdash; token <code>{'{yy}'}</code> bere poslední
+								2 číslice.
 							</p>
 						</div>
 						<div>
@@ -228,11 +228,14 @@
 							/>
 							<p class="mt-1 text-xs text-muted">
 								Tokeny: <code>{'{prefix}'}</code> <code>{'{yyyy}'}</code> <code>{'{yy}'}</code>
-								<code>{'{number}'}</code> <code>{'{number:03d}'}</code> <code>{'{number:04d}'}</code>
+								<code>{'{number}'}</code> <code>{'{number:03d}'}</code>
+								<code>{'{number:04d}'}</code>
 								-- vše ostatní je oddělovač.
 							</p>
 							{#if createPatternError !== null}
-								<p class="mt-1 text-xs text-danger" role="alert">Neplatná šablona: {createPatternError}</p>
+								<p class="mt-1 text-xs text-danger" role="alert">
+									Neplatná šablona: {createPatternError}
+								</p>
 							{/if}
 						</div>
 					</div>
@@ -309,10 +312,13 @@
 												aria-label="Formát"
 											/>
 											{#if editPatternError !== null}
-												<p class="mt-1 text-xs text-danger" role="alert">Neplatná šablona: {editPatternError}</p>
+												<p class="mt-1 text-xs text-danger" role="alert">
+													Neplatná šablona: {editPatternError}
+												</p>
 											{:else if editPatternDirty}
 												<p class="mt-1 text-xs text-warning">
-													Změna formátu se projeví u nově generovaných čísel; již vystavené faktury zůstanou beze změny.
+													Změna formátu se projeví u nově generovaných čísel; již vystavené faktury
+													zůstanou beze změny.
 												</p>
 											{/if}
 										</div>

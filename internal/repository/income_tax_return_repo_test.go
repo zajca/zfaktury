@@ -164,7 +164,7 @@ func TestIncomeTaxReturnRepository_RuleSetAudit_Persists(t *testing.T) {
 	itr := &domain.IncomeTaxReturn{
 		Year:             2025,
 		FilingType:       domain.FilingTypeRegular,
-		TaxRuleSetID:     "cz-dpfo-2025.v1",
+		TaxRuleSetID:     "cz-dpfo-2025.v2",
 		TaxRuleSetStatus: "final",
 		TaxRuleSetHash:   "abc123",
 		CalculatedAt:     &calculatedAt,
@@ -177,8 +177,8 @@ func TestIncomeTaxReturnRepository_RuleSetAudit_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID() error: %v", err)
 	}
-	if got.TaxRuleSetID != "cz-dpfo-2025.v1" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v1", got.TaxRuleSetID)
+	if got.TaxRuleSetID != "cz-dpfo-2025.v2" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v2", got.TaxRuleSetID)
 	}
 	if got.TaxRuleSetStatus != "final" {
 		t.Errorf("TaxRuleSetStatus = %q, want final", got.TaxRuleSetStatus)
@@ -191,7 +191,7 @@ func TestIncomeTaxReturnRepository_RuleSetAudit_Persists(t *testing.T) {
 	}
 
 	updatedAt := calculatedAt.Add(time.Hour)
-	got.TaxRuleSetID = "cz-dpfo-2025.v2"
+	got.TaxRuleSetID = "cz-dpfo-2025.v3"
 	got.TaxRuleSetStatus = "provisional"
 	got.TaxRuleSetHash = "def456"
 	got.CalculatedAt = &updatedAt
@@ -203,8 +203,8 @@ func TestIncomeTaxReturnRepository_RuleSetAudit_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID() after update error: %v", err)
 	}
-	if reloaded.TaxRuleSetID != "cz-dpfo-2025.v2" {
-		t.Errorf("after update TaxRuleSetID = %q, want cz-dpfo-2025.v2", reloaded.TaxRuleSetID)
+	if reloaded.TaxRuleSetID != "cz-dpfo-2025.v3" {
+		t.Errorf("after update TaxRuleSetID = %q, want cz-dpfo-2025.v3", reloaded.TaxRuleSetID)
 	}
 	if reloaded.TaxRuleSetStatus != "provisional" {
 		t.Errorf("after update TaxRuleSetStatus = %q, want provisional", reloaded.TaxRuleSetStatus)

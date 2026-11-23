@@ -40,7 +40,7 @@ function makeTaxYearSettings(
 }
 
 const fakeTaxConstants = {
-	rule_set_id: 'cz-dpfo-2025.v1',
+	rule_set_id: 'cz-dpfo-2025.v2',
 	rule_set_status: 'final',
 	rule_set_hash: 'abc123',
 	year: 2025,

@@ -9,7 +9,7 @@ import (
 
 var ruleSets = map[int]RuleSet{
 	2024: {
-		ID:     "cz-dpfo-2024.v1",
+		ID:     "cz-dpfo-2024.v2",
 		Year:   2024,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -53,7 +53,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2025: {
-		ID:     "cz-dpfo-2025.v1",
+		ID:     "cz-dpfo-2025.v2",
 		Year:   2025,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -97,7 +97,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2026: {
-		ID:     "cz-dpfo-2026.v0-provisional",
+		ID:     "cz-dpfo-2026.v1-provisional",
 		Year:   2026,
 		Status: RuleStatusProvisional,
 		Sources: []LegalSource{

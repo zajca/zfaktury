@@ -552,11 +552,11 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 	var seq domain.InvoiceSequence
 	err = tx.QueryRowContext(ctx, `
 		SELECT id, prefix, next_number, year, format_pattern
-		FROM invoice_sequences WHERE id = ?`, sequenceID,
+		FROM invoice_sequences WHERE id = ? AND deleted_at IS NULL`, sequenceID,
 	).Scan(&seq.ID, &seq.Prefix, &seq.NextNumber, &seq.Year, &seq.FormatPattern)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", fmt.Errorf("invoice sequence %d not found: %w", sequenceID, err)
+			return "", fmt.Errorf("invoice sequence %d not found: %w", sequenceID, domain.ErrNotFound)
 		}
 		return "", fmt.Errorf("querying invoice sequence %d: %w", sequenceID, err)
 	}
@@ -566,7 +566,7 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 	number := fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
 
 	_, err = tx.ExecContext(ctx, `
-		UPDATE invoice_sequences SET next_number = next_number + 1 WHERE id = ?`, sequenceID)
+		UPDATE invoice_sequences SET next_number = next_number + 1 WHERE id = ? AND deleted_at IS NULL`, sequenceID)
 	if err != nil {
 		return "", fmt.Errorf("incrementing sequence %d: %w", sequenceID, err)
 	}

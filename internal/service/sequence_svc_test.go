@@ -353,6 +353,43 @@ func TestSequenceService_Update_ToDeletedPrefixYear_SkipsNumbersOfDeletedInvoice
 	}
 }
 
+func TestInvoiceService_Create_WithDeletedSequenceID_FailsAndKeepsLiveCounter(t *testing.T) {
+	ctx := context.Background()
+	st := newDeletedInvoiceStack(t)
+
+	seqs, err := st.sequenceSvc.List(ctx)
+	if err != nil {
+		t.Fatalf("listing sequences: %v", err)
+	}
+	if len(seqs) != 0 {
+		t.Fatalf("expected no live sequences, got %d", len(seqs))
+	}
+
+	// The deleted sequence has the lowest id; recreate FV/2026 as a live one.
+	const deletedID = 1
+	live := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := st.sequenceSvc.Create(ctx, live); err != nil {
+		t.Fatalf("recreating sequence: %v", err)
+	}
+	if live.ID == deletedID {
+		t.Fatalf("live sequence reused deleted id %d", deletedID)
+	}
+	wantNext := live.NextNumber
+
+	err = st.invoiceSvc.Create(ctx, st.newInvoice(deletedID))
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("Create() error = %v, want domain.ErrInvalidInput", err)
+	}
+
+	got, err := st.sequenceSvc.GetByID(ctx, live.ID)
+	if err != nil {
+		t.Fatalf("fetching live sequence: %v", err)
+	}
+	if got.NextNumber != wantNext {
+		t.Errorf("live NextNumber = %d, want %d (untouched)", got.NextNumber, wantNext)
+	}
+}
+
 func TestSequenceService_Delete_ZeroID(t *testing.T) {
 	svc, _ := newSequenceTestStack(t)
 	ctx := context.Background()

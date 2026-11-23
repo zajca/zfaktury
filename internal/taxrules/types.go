@@ -228,9 +228,12 @@ type PensionDeductionRules struct {
 	MonthlyThreshold Schedule[domain.Amount] `json:"monthly_threshold"`
 }
 
-// Fingerprint returns a deterministic hash of the rule-set data. It is stored
-// with calculated tax returns so old calculations can be reproduced and audited.
+// Fingerprint returns a deterministic hash of the rule-set data that affects
+// calculations. It is stored with calculated tax returns so old calculations
+// can be reproduced and audited. Sources are citation metadata and are not
+// hashed, so fixing a title or URL does not change the fingerprint.
 func (r RuleSet) Fingerprint() (string, error) {
+	r.Sources = nil
 	b, err := json.Marshal(r)
 	if err != nil {
 		return "", fmt.Errorf("marshal tax rule set %s: %w", r.ID, err)

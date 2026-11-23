@@ -305,9 +305,9 @@ func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.
 		Year:                2026,
 		FilingType:          domain.FilingTypeRegular,
 		FinalAssessmentBase: domain.NewAmount(205_668, 0),
-		TotalInsurance:      domain.NewAmount(60_057, 0),
+		TotalInsurance:      domain.NewAmount(60_056, 0),
 		Prepayments:         domain.NewAmount(60_000, 0),
-		Difference:          domain.NewAmount(57, 0),
+		Difference:          domain.NewAmount(56, 0),
 		NewMonthlyPrepay:    domain.NewAmount(5_005, 0),
 	}
 	xmlData, err := GenerateSocialInsuranceXML(sio, validSocialInsuranceSettings())

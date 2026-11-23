@@ -31,7 +31,6 @@ var ruleSets = map[int]RuleSet{
 			ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
 			ChildBenefitZTP:      domain.NewAmount(0, 0),
 			SocialMinMonthly:     domain.NewAmount(13_191, 0),
-			SocialMinAdvanceBase: wholeYearSchedule(2024, domain.NewAmount(13_191, 0)),
 			SocialRate:           292,
 			HealthMinMonthly:     domain.NewAmount(21_983, 50),
 			HealthRate:           135,
@@ -83,7 +82,6 @@ var ruleSets = map[int]RuleSet{
 			ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
 			ChildBenefitZTP:      domain.NewAmount(0, 0),
 			SocialMinMonthly:     domain.NewAmount(16_295, 0),
-			SocialMinAdvanceBase: wholeYearSchedule(2025, domain.NewAmount(16_295, 0)),
 			SocialRate:           292,
 			HealthMinMonthly:     domain.NewAmount(23_278, 50),
 			HealthRate:           135,
@@ -157,10 +155,6 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
 
 			SecurityExemptionLimitAssetTypes: []string{domain.AssetTypeCrypto},
-			SocialMinAdvanceBase: Schedule[domain.Amount]{
-				{From: NewDate(2026, time.January, 1), To: NewDate(2026, time.June, 30), Value: domain.NewAmount(19_587, 0)},
-				{From: NewDate(2026, time.July, 1), To: NewDate(2026, time.December, 31), Value: domain.NewAmount(17_139, 0)},
-			},
 		},
 		Deductions: DeductionRules{
 			Pension: PensionDeductionRules{
@@ -213,7 +207,6 @@ func cloneRuleSet(rs RuleSet) RuleSet {
 	rs.Sources = append([]LegalSource(nil), rs.Sources...)
 	rs.Constants.FlatRateCaps = cloneAmountMap(rs.Constants.FlatRateCaps)
 	rs.Constants.SecurityExemptionLimitAssetTypes = append([]string(nil), rs.Constants.SecurityExemptionLimitAssetTypes...)
-	rs.Constants.SocialMinAdvanceBase = append(Schedule[domain.Amount](nil), rs.Constants.SocialMinAdvanceBase...)
 	rs.Deductions.Pension.MonthlyThreshold = append(Schedule[domain.Amount](nil), rs.Deductions.Pension.MonthlyThreshold...)
 	return rs
 }
@@ -227,10 +220,6 @@ func cloneAmountMap(in map[int]domain.Amount) map[int]domain.Amount {
 		out[k] = v
 	}
 	return out
-}
-
-func wholeYearSchedule(year int, value domain.Amount) Schedule[domain.Amount] {
-	return Schedule[domain.Amount]{{From: yearStart(year), To: yearEnd(year), Value: value}}
 }
 
 func dpfodp7Forms() FormRules {

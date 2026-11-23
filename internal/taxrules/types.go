@@ -179,17 +179,6 @@ type TaxYearConstants struct {
 	// SecurityExemptionLimitAssetTypes lists the asset types whose time-test
 	// income counts toward SecurityExemptionLimit; empty means all asset types.
 	SecurityExemptionLimitAssetTypes []string
-
-	// SocialMinAdvanceBase is the minimum monthly assessment base used for
-	// monthly advances; it can change mid-year while the annual overview uses
-	// SocialMinMonthly for all twelve months.
-	SocialMinAdvanceBase Schedule[domain.Amount]
-}
-
-// SocialMinAdvanceBaseAt returns the minimum monthly assessment base for
-// social insurance advances effective on date.
-func (c TaxYearConstants) SocialMinAdvanceBaseAt(date Date) (domain.Amount, error) {
-	return c.SocialMinAdvanceBase.ValueAt(date)
 }
 
 // RuleSet is the authoritative set of rules for one tax year and tax domain.
@@ -274,9 +263,6 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if err := r.Deductions.Pension.MonthlyThreshold.ValidateCoverage(yearStart(r.Year), yearEnd(r.Year)); err != nil {
 		errs = append(errs, fmt.Errorf("%s pension monthly threshold: %w", r.ID, err))
-	}
-	if err := r.Constants.SocialMinAdvanceBase.ValidateCoverage(yearStart(r.Year), yearEnd(r.Year)); err != nil {
-		errs = append(errs, fmt.Errorf("%s social minimum advance base: %w", r.ID, err))
 	}
 	if r.Forms.IncomeTaxXML.FormCode == "" {
 		errs = append(errs, fmt.Errorf("%s income-tax XML form code is empty: %w", r.ID, domain.ErrInvalidInput))

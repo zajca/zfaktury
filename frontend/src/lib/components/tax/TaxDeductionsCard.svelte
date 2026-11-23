@@ -101,9 +101,8 @@
 						{#if ded.max_amount > 0}
 							{#if ded.category === 'pension' || ded.category === 'life_insurance'}
 								<span class="text-tertiary"
-									>Společný limit penzijního a životního pojištění: {formatCZK(
-										ded.max_amount
-									)}</span
+									>Společný limit (penzijní produkty, životní pojištění, DIP, pojištění dlouhodobé
+									péče): {formatCZK(ded.max_amount)}</span
 								>
 							{:else}
 								<span class="text-tertiary">Max: {formatCZK(ded.max_amount)}</span>

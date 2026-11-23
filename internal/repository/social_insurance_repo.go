@@ -28,11 +28,11 @@ const socialInsuranceColumns = `id, year, filing_type, activity_months,
 	xml_data, status, filed_at, created_at, updated_at`
 
 // activityMonthsFromDB converts the stored activity_months integer into a mask.
-// Values that cannot be a January-December mask are rejected, so a corrupted
-// row fails loudly instead of silently changing the calculation.
+// Values that cannot be a January-December mask are reported as a plain error,
+// because they signal a corrupted row rather than invalid client input.
 func activityMonthsFromDB(value int64) (domain.ActivityMonths, error) {
 	if value < 1 || value > int64(domain.FullYearActivityMonths) {
-		return 0, fmt.Errorf("scanning activity_months %d: %w", value, domain.ErrInvalidInput)
+		return 0, fmt.Errorf("activity_months %d out of range 1..4095", value)
 	}
 	return domain.ActivityMonths(value), nil
 }

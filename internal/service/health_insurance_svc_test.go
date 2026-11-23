@@ -500,6 +500,37 @@ func TestHealthInsuranceService_SetActivityMonths(t *testing.T) {
 	}
 }
 
+func TestHealthInsuranceService_SetActivityMonths_RecalculateFails(t *testing.T) {
+	svc, db := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+	}
+	if err := svc.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// A year without tax constants makes the recalculation fail.
+	if _, err := db.ExecContext(ctx, `UPDATE health_insurance_overviews SET year = 2019 WHERE id = ?`, hi.ID); err != nil {
+		t.Fatalf("setting unsupported year: %v", err)
+	}
+
+	if _, err := svc.SetActivityMonths(ctx, hi.ID, domain.ActivityMonths(4032)); err == nil {
+		t.Fatal("SetActivityMonths() error = nil, want a recalculation error")
+	}
+
+	stored, err := svc.GetByID(ctx, hi.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if stored.ActivityMonths != domain.FullYearActivityMonths {
+		t.Errorf("stored ActivityMonths = %d, want %d after a failed recalculation", stored.ActivityMonths, domain.FullYearActivityMonths)
+	}
+}
+
 func TestHealthInsuranceService_SetActivityMonths_Filed(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()

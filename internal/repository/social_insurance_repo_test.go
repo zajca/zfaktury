@@ -250,10 +250,10 @@ func TestActivityMonthsFromDB(t *testing.T) {
 			got, err := activityMonthsFromDB(tt.value)
 			if tt.wantErr {
 				if err == nil {
-					t.Fatal("activityMonthsFromDB() error = nil, want ErrInvalidInput")
+					t.Fatal("activityMonthsFromDB() error = nil, want an out-of-range error")
 				}
-				if !errors.Is(err, domain.ErrInvalidInput) {
-					t.Errorf("activityMonthsFromDB() error = %v, want ErrInvalidInput", err)
+				if errors.Is(err, domain.ErrInvalidInput) {
+					t.Errorf("activityMonthsFromDB() error = %v, want a plain error instead of ErrInvalidInput", err)
 				}
 				return
 			}

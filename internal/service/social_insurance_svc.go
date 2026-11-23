@@ -149,14 +149,31 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	if sio.Status == domain.FilingStatusFiled {
 		return nil, domain.ErrFilingAlreadyFiled
 	}
+	if err := s.applyRecalculatedAmounts(ctx, sio); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(ctx, sio); err != nil {
+		return nil, fmt.Errorf("updating social_insurance_overview after recalculation: %w", err)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
+	}
+	return sio, nil
+}
+
+// applyRecalculatedAmounts fills the calculated amounts of the overview in memory
+// from its activity months, without persisting anything.
+func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
 	if err := sio.ActivityMonths.Validate(); err != nil {
-		return nil, fmt.Errorf("validating stored activity months of social_insurance_overview %d: %w", sio.ID, err)
+		return fmt.Errorf("validating stored activity months of social_insurance_overview %d: %w", sio.ID, err)
 	}
 
 	// Calculate annual base from invoices and expenses.
 	annualBase, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, sio.Year)
 	if err != nil {
-		return nil, fmt.Errorf("calculating annual base for social insurance: %w", err)
+		return fmt.Errorf("calculating annual base for social insurance: %w", err)
 	}
 
 	// Get flat_rate_percent from tax year settings.
@@ -169,7 +186,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	// Get tax constants for the year.
 	constants, err := calc.GetTaxConstants(sio.Year)
 	if err != nil {
-		return nil, fmt.Errorf("getting tax constants for social insurance: %w", err)
+		return fmt.Errorf("getting tax constants for social insurance: %w", err)
 	}
 
 	// Resolve used expenses (flat-rate or actual).
@@ -181,7 +198,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	// Read prepayments from tax prepayments table.
 	_, socialTotal, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, sio.Year)
 	if sumErr != nil {
-		return nil, fmt.Errorf("summing social prepayments: %w", sumErr)
+		return fmt.Errorf("summing social prepayments: %w", sumErr)
 	}
 
 	// Pure calculation.
@@ -196,7 +213,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		ActivityMonths:         sio.ActivityMonths.Count(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("calculating social insurance: %w", err)
+		return fmt.Errorf("calculating social insurance: %w", err)
 	}
 
 	sio.TaxBase = insResult.TaxBase
@@ -209,19 +226,12 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	sio.Difference = insResult.Difference
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
 
-	// Persist updated values.
-	if err := s.repo.Update(ctx, sio); err != nil {
-		return nil, fmt.Errorf("updating social_insurance_overview after recalculation: %w", err)
-	}
-
-	if s.audit != nil {
-		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
-	}
-	return sio, nil
+	return nil
 }
 
 // SetActivityMonths stores the months of activity and recalculates the
-// overview so the stored amounts match the months.
+// overview so the stored amounts match the months. The overview is written
+// once, only after the recalculation succeeds.
 func (s *SocialInsuranceService) SetActivityMonths(ctx context.Context, id int64, months domain.ActivityMonths) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
@@ -239,11 +249,18 @@ func (s *SocialInsuranceService) SetActivityMonths(ctx context.Context, id int64
 	}
 
 	sio.ActivityMonths = months
-	if err := s.repo.Update(ctx, sio); err != nil {
-		return nil, fmt.Errorf("updating social_insurance_overview activity months: %w", err)
+	if err := s.applyRecalculatedAmounts(ctx, sio); err != nil {
+		return nil, err
 	}
 
-	return s.Recalculate(ctx, id)
+	if err := s.repo.Update(ctx, sio); err != nil {
+		return nil, fmt.Errorf("updating social_insurance_overview after changing activity months: %w", err)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
+	}
+	return sio, nil
 }
 
 // GenerateXML generates the CSSZ XML for a social insurance overview.

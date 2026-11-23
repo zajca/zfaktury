@@ -79,9 +79,10 @@ func TestGetTaxConstants_2026Values(t *testing.T) {
 	if c.ProgressiveThreshold != domain.NewAmount(1_762_812, 0) {
 		t.Errorf("2026 ProgressiveThreshold = %d, want %d", c.ProgressiveThreshold, domain.NewAmount(1_762_812, 0))
 	}
-	// SP HV 2026: 40 % × 48 967 = 19 586,80 → 19 587 Kč.
-	if c.SocialMinMonthly != domain.NewAmount(19_587, 0) {
-		t.Errorf("2026 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(19_587, 0))
+	// Annual overview minimum: 35 % × 48 967 = 17 138,45 → 17 139 Kč for all
+	// twelve months (CSSZ recalculates January-June).
+	if c.SocialMinMonthly != domain.NewAmount(17_139, 0) {
+		t.Errorf("2026 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(17_139, 0))
 	}
 	// ZP 2026: 50 % × 48 967 = 24 483,50 → 24 484 Kč.
 	if c.HealthMinMonthly != domain.NewAmount(24_484, 0) {

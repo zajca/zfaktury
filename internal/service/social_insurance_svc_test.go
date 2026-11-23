@@ -355,6 +355,30 @@ func TestSocialInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 	}
 }
 
+// CSSZ recalculates January-June 2026 as if the lower minimum applied from
+// January, so the annual overview minimum is 12 x 17 139 CZK.
+func TestSocialInsuranceService_Recalculate_MinAssessmentBase2026(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2026, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	want := domain.NewAmount(205_668, 0)
+	if result.MinAssessmentBase != want {
+		t.Errorf("MinAssessmentBase = %d, want %d", result.MinAssessmentBase, want)
+	}
+	if result.FinalAssessmentBase != want {
+		t.Errorf("FinalAssessmentBase = %d, want %d", result.FinalAssessmentBase, want)
+	}
+}
+
 func TestSocialInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 	svc, _ := setupSocialInsuranceSvc(t)
 	ctx := context.Background()

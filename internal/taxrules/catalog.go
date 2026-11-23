@@ -31,6 +31,7 @@ var ruleSets = map[int]RuleSet{
 			ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
 			ChildBenefitZTP:      domain.NewAmount(0, 0),
 			SocialMinMonthly:     domain.NewAmount(13_191, 0),
+			SocialMinAdvanceBase: wholeYearSchedule(2024, domain.NewAmount(13_191, 0)),
 			SocialRate:           292,
 			HealthMinMonthly:     domain.NewAmount(21_984, 0),
 			HealthRate:           135,
@@ -82,6 +83,7 @@ var ruleSets = map[int]RuleSet{
 			ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
 			ChildBenefitZTP:      domain.NewAmount(0, 0),
 			SocialMinMonthly:     domain.NewAmount(16_295, 0),
+			SocialMinAdvanceBase: wholeYearSchedule(2025, domain.NewAmount(16_295, 0)),
 			SocialRate:           292,
 			HealthMinMonthly:     domain.NewAmount(23_279, 0),
 			HealthRate:           135,
@@ -118,7 +120,7 @@ var ruleSets = map[int]RuleSet{
 		Sources: []LegalSource{
 			{Title: "Zákon č. 586/1992 Sb., § 15, § 16, § 35ba, § 35c"},
 			{Title: "Finanční správa: obecné informace pro zaměstnance a zaměstnavatele", URL: "https://financnisprava.gov.cz/cs/dane/dane/dan-z-prijmu/zamestnanci-zamestnavatele/obecne-informace", Note: "36násobek průměrné mzdy pro rok 2026"},
-			{Title: "ČSSZ: zálohy na pojistné na důchodové pojištění", URL: "https://www.cssz.cz/web/cz/zalohy-na-pojistne-na-duchodove-pojisteni", Note: "minimální měsíční vyměřovací základ OSVČ pro hlavní SVČ v roce 2026"},
+			{Title: "ČSSZ: změna pojistného na důchodové pojištění OSVČ od 1. 7. 2026", URL: "https://www.cssz.gov.cz/-/informace-pro-osvc-o-zmene-pojistneho-na-duchodove-pojisteni-od-1-7-2026", Note: "zálohy: základ 19 587 Kč (leden-červen), 17 139 Kč (od července); Přehled za 2026 přepočítá leden-červen, jako by změna platila od ledna, tedy minimum 17 139 Kč za všech 12 měsíců"},
 			{Title: "VZP: OSVČ - minimální výše záloh", URL: "https://www.vzp.cz/platci/informace/osvc/osvc-minimalni-vyse-zaloh", Note: "minimální měsíční vyměřovací základ OSVČ pro zdravotní pojištění v roce 2026"},
 		},
 		Constants: TaxYearConstants{
@@ -133,7 +135,7 @@ var ruleSets = map[int]RuleSet{
 			ChildBenefit2:        domain.NewAmount(22_320, 0),
 			ChildBenefit3Plus:    domain.NewAmount(27_840, 0),
 			ChildBenefitZTP:      domain.NewAmount(0, 0),
-			SocialMinMonthly:     domain.NewAmount(19_587, 0),
+			SocialMinMonthly:     domain.NewAmount(17_139, 0),
 			SocialRate:           292,
 			HealthMinMonthly:     domain.NewAmount(24_484, 0),
 			HealthRate:           135,
@@ -152,6 +154,10 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
 			MaxChildBonus:               domain.NewAmount(60_300, 0),
+			SocialMinAdvanceBase: Schedule[domain.Amount]{
+				{From: NewDate(2026, time.January, 1), To: NewDate(2026, time.June, 30), Value: domain.NewAmount(19_587, 0)},
+				{From: NewDate(2026, time.July, 1), To: NewDate(2026, time.December, 31), Value: domain.NewAmount(17_139, 0)},
+			},
 		},
 		Deductions: DeductionRules{
 			Pension: PensionDeductionRules{
@@ -191,6 +197,7 @@ func SupportedYears() []int {
 func cloneRuleSet(rs RuleSet) RuleSet {
 	rs.Sources = append([]LegalSource(nil), rs.Sources...)
 	rs.Constants.FlatRateCaps = cloneAmountMap(rs.Constants.FlatRateCaps)
+	rs.Constants.SocialMinAdvanceBase = append(Schedule[domain.Amount](nil), rs.Constants.SocialMinAdvanceBase...)
 	rs.Deductions.Pension.MonthlyThreshold = append(Schedule[domain.Amount](nil), rs.Deductions.Pension.MonthlyThreshold...)
 	return rs
 }
@@ -204,6 +211,10 @@ func cloneAmountMap(in map[int]domain.Amount) map[int]domain.Amount {
 		out[k] = v
 	}
 	return out
+}
+
+func wholeYearSchedule(year int, value domain.Amount) Schedule[domain.Amount] {
+	return Schedule[domain.Amount]{{From: yearStart(year), To: yearEnd(year), Value: value}}
 }
 
 func dpfodp7Forms() FormRules {

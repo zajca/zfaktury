@@ -161,7 +161,7 @@ type TaxYearConstants struct {
 	ChildBenefit2          domain.Amount         // 2. dite
 	ChildBenefit3Plus      domain.Amount         // 3+ dite
 	ChildBenefitZTP        domain.Amount         // ZTP prirazka (double)
-	SocialMinMonthly       domain.Amount         // min mesicni vym. zaklad CSSZ
+	SocialMinMonthly       domain.Amount         // min mesicni vym. zaklad CSSZ pro rocni Prehled (platny pro vsechny mesice roku)
 	SocialRate             int                   // permille*10, e.g. 292 = 29.2%
 	HealthMinMonthly       domain.Amount         // min mesicni vym. zaklad ZP
 	HealthRate             int                   // permille*10, e.g. 135 = 13.5%
@@ -176,6 +176,17 @@ type TaxYearConstants struct {
 	DeductionCapSavingsCombined domain.Amount
 	DeductionCapUnionDues       domain.Amount
 	MaxChildBonus               domain.Amount
+
+	// SocialMinAdvanceBase is the minimum monthly assessment base used for
+	// monthly advances; it can change mid-year while the annual overview uses
+	// SocialMinMonthly for all twelve months.
+	SocialMinAdvanceBase Schedule[domain.Amount]
+}
+
+// SocialMinAdvanceBaseAt returns the minimum monthly assessment base for
+// social insurance advances effective on date.
+func (c TaxYearConstants) SocialMinAdvanceBaseAt(date Date) (domain.Amount, error) {
+	return c.SocialMinAdvanceBase.ValueAt(date)
 }
 
 // RuleSet is the authoritative set of rules for one tax year and tax domain.
@@ -257,6 +268,9 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if err := r.Deductions.Pension.MonthlyThreshold.ValidateCoverage(yearStart(r.Year), yearEnd(r.Year)); err != nil {
 		errs = append(errs, fmt.Errorf("%s pension monthly threshold: %w", r.ID, err))
+	}
+	if err := r.Constants.SocialMinAdvanceBase.ValidateCoverage(yearStart(r.Year), yearEnd(r.Year)); err != nil {
+		errs = append(errs, fmt.Errorf("%s social minimum advance base: %w", r.ID, err))
 	}
 	if r.Forms.IncomeTaxXML.FormCode == "" {
 		errs = append(errs, fmt.Errorf("%s income-tax XML form code is empty: %w", r.ID, domain.ErrInvalidInput))

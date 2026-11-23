@@ -116,6 +116,13 @@
 				return 'Přehled je už podaný, měsíce nelze změnit.';
 			}
 			if (e.status === 400) {
+				// The API answers an empty selection in English, a year without
+				// rules in Czech; show the server wording unless it is the
+				// generic fallback ApiError builds when no message came.
+				const message = e.message.startsWith('API Error ') ? '' : e.message;
+				if (message && !message.includes('at least one activity month')) {
+					return message;
+				}
 				return 'Vyberte alespoň jeden měsíc činnosti.';
 			}
 		}

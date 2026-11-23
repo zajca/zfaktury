@@ -139,6 +139,47 @@ describe('health insurance overview detail page', () => {
 		});
 	});
 
+	it('shows the server message for a 400 from the months edit', async () => {
+		mockApi({
+			updateStatus: 400,
+			updateBody: { error: 'Pro rok 2019 zatím nejsou daňová pravidla.' }
+		});
+
+		await renderPage();
+		await openEditor();
+		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
+
+		await waitFor(() => {
+			expect(
+				toasts.some((t) => t.message === 'Pro rok 2019 zatím nejsou daňová pravidla.')
+			).toBe(true);
+		});
+	});
+
+	it('falls back to the Czech hint when the server message is missing', async () => {
+		mockApi({ updateStatus: 400, updateBody: {} });
+
+		await renderPage();
+		await openEditor();
+		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message === 'Vyberte alespoň jeden měsíc činnosti.')).toBe(true);
+		});
+	});
+
+	it('shows the generic Czech text for an unexpected error', async () => {
+		mockApi({ updateStatus: 500, updateBody: { error: 'internal' } });
+
+		await renderPage();
+		await openEditor();
+		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message === 'Nepodařilo se uložit měsíce činnosti')).toBe(true);
+		});
+	});
+
 	it('hides the edit control for a filed overview', async () => {
 		mockApi({ overview: makeOverview({ status: 'filed', filed_at: '2026-02-01T00:00:00Z' }) });
 

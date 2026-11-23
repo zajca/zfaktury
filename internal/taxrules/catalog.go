@@ -9,7 +9,7 @@ import (
 
 var ruleSets = map[int]RuleSet{
 	2024: {
-		ID:     "cz-dpfo-2024.v2",
+		ID:     "cz-dpfo-2024.v3",
 		Year:   2024,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -17,6 +17,7 @@ var ruleSets = map[int]RuleSet{
 			{Title: "Nařízení vlády č. 286/2023 Sb.", Note: "průměrná mzda pro rok 2024"},
 			{Title: "Finanční správa: DPFO 2024 dotazy a odpovědi", URL: "https://financnisprava.gov.cz/cs/dane/dane/dan-z-prijmu/dotazy-a-odpovedi/dan-z-prijmu-fyzickych-osob/aktualne-k-dani-z-prijmu-fyzickych-osob-2024"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 110 416 Kč (48násobek průměrné mzdy)"},
+			{Title: "ČSSZ: výše minimálních vyměřovacích základů OSVČ", URL: "https://www.cssz.gov.cz/web/cz/vyse-minimalnich-vymerovacich-zakladu-osvc", Note: "minimální roční vyměřovací základ 2024 (hlavní činnost): 158 292 Kč, tj. 13 191 Kč měsíčně"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -33,8 +34,11 @@ var ruleSets = map[int]RuleSet{
 			SocialMinMonthly:     domain.NewAmount(13_191, 0),
 			SocialRate:           292,
 			SocialMaxAnnualBase:  domain.NewAmount(2_110_416, 0),
-			HealthMinMonthly:     domain.NewAmount(21_983, 50),
-			HealthRate:           135,
+			SocialMinAdvanceBases: []MonthlyBasePeriod{
+				{FromMonth: 1, Base: domain.NewAmount(13_191, 0)},
+			},
+			HealthMinMonthly: domain.NewAmount(21_983, 50),
+			HealthRate:       135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
 				60: domain.NewAmount(1_200_000, 0),
@@ -53,7 +57,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2025: {
-		ID:     "cz-dpfo-2025.v2",
+		ID:     "cz-dpfo-2025.v3",
 		Year:   2025,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -61,6 +65,7 @@ var ruleSets = map[int]RuleSet{
 			{Title: "Nařízení vlády č. 282/2024 Sb.", Note: "průměrná mzda pro rok 2025"},
 			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od ledna 2025 limit 40 mil. Kč na úhrn příjmů ve zdaňovacím období, příjmy nad limit se zdaňují poměrně"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 234 736 Kč (48násobek průměrné mzdy)"},
+			{Title: "ČSSZ: zálohy na pojistné na důchodové pojištění", URL: "https://www.cssz.gov.cz/zalohy-na-pojistne-na-duchodove-pojisteni", Note: "minimální záloha 2025: 4 759 Kč (základ 16 295 Kč)"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_676_052, 0),
@@ -77,8 +82,11 @@ var ruleSets = map[int]RuleSet{
 			SocialMinMonthly:     domain.NewAmount(16_295, 0),
 			SocialRate:           292,
 			SocialMaxAnnualBase:  domain.NewAmount(2_234_736, 0),
-			HealthMinMonthly:     domain.NewAmount(23_278, 50),
-			HealthRate:           135,
+			SocialMinAdvanceBases: []MonthlyBasePeriod{
+				{FromMonth: 1, Base: domain.NewAmount(16_295, 0)},
+			},
+			HealthMinMonthly: domain.NewAmount(23_278, 50),
+			HealthRate:       135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
 				60: domain.NewAmount(1_200_000, 0),
@@ -97,7 +105,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2026: {
-		ID:     "cz-dpfo-2026.v1-provisional",
+		ID:     "cz-dpfo-2026.v2-provisional",
 		Year:   2026,
 		Status: RuleStatusProvisional,
 		Sources: []LegalSource{
@@ -125,8 +133,12 @@ var ruleSets = map[int]RuleSet{
 			SocialMinMonthly:     domain.NewAmount(17_139, 0),
 			SocialRate:           292,
 			SocialMaxAnnualBase:  domain.NewAmount(2_350_416, 0),
-			HealthMinMonthly:     domain.NewAmount(24_483, 50),
-			HealthRate:           135,
+			SocialMinAdvanceBases: []MonthlyBasePeriod{
+				{FromMonth: 1, Base: domain.NewAmount(19_587, 0)},
+				{FromMonth: 7, Base: domain.NewAmount(17_139, 0)},
+			},
+			HealthMinMonthly: domain.NewAmount(24_483, 50),
+			HealthRate:       135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
 				60: domain.NewAmount(1_200_000, 0),
@@ -187,6 +199,7 @@ func cloneRuleSet(rs RuleSet) RuleSet {
 	rs.Sources = append([]LegalSource(nil), rs.Sources...)
 	rs.Constants.FlatRateCaps = cloneAmountMap(rs.Constants.FlatRateCaps)
 	rs.Constants.SecurityExemptionLimitAssetTypes = append([]string(nil), rs.Constants.SecurityExemptionLimitAssetTypes...)
+	rs.Constants.SocialMinAdvanceBases = append([]MonthlyBasePeriod(nil), rs.Constants.SocialMinAdvanceBases...)
 	return rs
 }
 

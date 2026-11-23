@@ -142,3 +142,31 @@ func TestGetTaxConstants_FlatRateCaps(t *testing.T) {
 		}
 	}
 }
+
+func TestMinimumSocialAdvanceFromCatalog(t *testing.T) {
+	tests := []struct {
+		year  int
+		month int
+		want  domain.Amount
+	}{
+		{year: 2024, month: 1, want: domain.NewAmount(3_852, 0)},
+		{year: 2025, month: 1, want: domain.NewAmount(4_759, 0)},
+		{year: 2026, month: 1, want: domain.NewAmount(5_720, 0)},
+		{year: 2026, month: 7, want: domain.NewAmount(5_005, 0)},
+	}
+
+	for _, tt := range tests {
+		c, err := GetTaxConstants(tt.year)
+		if err != nil {
+			t.Fatalf("GetTaxConstants(%d) error: %v", tt.year, err)
+		}
+		base, err := c.SocialMinAdvanceBaseFor(tt.month)
+		if err != nil {
+			t.Fatalf("SocialMinAdvanceBaseFor(%d, %d) error: %v", tt.year, tt.month, err)
+		}
+		got := domain.Amount(ceilToWholeCZK(int64(base) * int64(c.SocialRate) / 1000))
+		if got != tt.want {
+			t.Errorf("minimum advance %d/%d = %d, want %d", tt.year, tt.month, got, tt.want)
+		}
+	}
+}

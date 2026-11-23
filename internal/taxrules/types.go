@@ -25,6 +25,13 @@ type LegalSource struct {
 	Note  string `json:"note,omitempty"`
 }
 
+// MonthlyBasePeriod is a minimum monthly assessment base that applies from
+// FromMonth (1-12) until the next period of the same year starts.
+type MonthlyBasePeriod struct {
+	FromMonth int
+	Base      domain.Amount
+}
+
 // TaxYearConstants holds tax computation constants for a specific year.
 type TaxYearConstants struct {
 	ProgressiveThreshold   domain.Amount         // prah pro 23% sazbu (in halere)
@@ -41,6 +48,7 @@ type TaxYearConstants struct {
 	SocialMinMonthly       domain.Amount         // min mesicni vym. zaklad CSSZ pro rocni Prehled (platny pro vsechny mesice roku)
 	SocialRate             int                   // permille*10, e.g. 292 = 29.2%
 	SocialMaxAnnualBase    domain.Amount         // max rocni vym. zaklad CSSZ (48nasobek prumerne mzdy)
+	SocialMinAdvanceBases  []MonthlyBasePeriod   // min mesicni vym. zaklad CSSZ pro zalohy placene v tomto roce, po obdobich
 	HealthMinMonthly       domain.Amount         // min mesicni vym. zaklad ZP
 	HealthRate             int                   // permille*10, e.g. 135 = 13.5%
 	FlatRateCaps           map[int]domain.Amount // percent -> max halere amount
@@ -96,6 +104,49 @@ func (r RuleSet) Fingerprint() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// SocialMinAdvanceBaseFor returns the minimum monthly base for a social
+// insurance advance paid in the given month of the rule-set year.
+func (c TaxYearConstants) SocialMinAdvanceBaseFor(month int) (domain.Amount, error) {
+	if month < 1 || month > 12 {
+		return 0, fmt.Errorf("advance month %d out of range 1-12: %w", month, domain.ErrInvalidInput)
+	}
+	var base domain.Amount
+	for _, period := range c.SocialMinAdvanceBases {
+		if period.FromMonth > month {
+			break
+		}
+		base = period.Base
+	}
+	if base == 0 {
+		return 0, fmt.Errorf("no minimum advance base for month %d: %w", month, domain.ErrInvalidInput)
+	}
+	return base, nil
+}
+
+// validateSocialMinAdvanceBases checks that the periods start in January, are
+// strictly increasing and carry a positive base.
+func validateSocialMinAdvanceBases(id string, periods []MonthlyBasePeriod) error {
+	if len(periods) == 0 {
+		return fmt.Errorf("%s social minimum advance bases are empty: %w", id, domain.ErrInvalidInput)
+	}
+	var errs []error
+	if periods[0].FromMonth != 1 {
+		errs = append(errs, fmt.Errorf("%s social minimum advance bases must start in month 1, got %d: %w", id, periods[0].FromMonth, domain.ErrInvalidInput))
+	}
+	for i, period := range periods {
+		if period.FromMonth < 1 || period.FromMonth > 12 {
+			errs = append(errs, fmt.Errorf("%s social minimum advance base month %d out of range 1-12: %w", id, period.FromMonth, domain.ErrInvalidInput))
+		}
+		if period.Base <= 0 {
+			errs = append(errs, fmt.Errorf("%s social minimum advance base from month %d must be positive: %w", id, period.FromMonth, domain.ErrInvalidInput))
+		}
+		if i > 0 && period.FromMonth <= periods[i-1].FromMonth {
+			errs = append(errs, fmt.Errorf("%s social minimum advance base months must increase, got %d after %d: %w", id, period.FromMonth, periods[i-1].FromMonth, domain.ErrInvalidInput))
+		}
+	}
+	return errors.Join(errs...)
+}
+
 // ValidateRuleSet checks structural invariants that would make a rule set
 // unsafe for calculation if broken.
 func ValidateRuleSet(r RuleSet) error {
@@ -126,6 +177,9 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if len(r.Constants.FlatRateCaps) == 0 {
 		errs = append(errs, fmt.Errorf("%s flat-rate caps are empty: %w", r.ID, domain.ErrInvalidInput))
+	}
+	if err := validateSocialMinAdvanceBases(r.ID, r.Constants.SocialMinAdvanceBases); err != nil {
+		errs = append(errs, err)
 	}
 	if r.Forms.IncomeTaxXML.FormCode == "" {
 		errs = append(errs, fmt.Errorf("%s income-tax XML form code is empty: %w", r.ID, domain.ErrInvalidInput))

@@ -666,3 +666,66 @@ func TestSocialInsuranceService_SetActivityMonths_InvalidInput(t *testing.T) {
 		t.Errorf("SetActivityMonths(id 0) error = %v, want ErrInvalidInput", err)
 	}
 }
+
+// The advance is bounded by the minimum and maximum of the year it is paid in,
+// so a 2024 overview uses the 2025 bounds (minimum 16 295 CZK monthly).
+func TestRecalculate_2024UsesPaymentYearBounds(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2024, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// The 2024 overview year gives a 13 191 CZK monthly base, which would be
+	// 3 852 CZK unbounded; the 2025 payment-year minimum (16 295 CZK) lifts the
+	// advance to 4 759 CZK.
+	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
+	}
+}
+
+// The 2026 minimum is split into two periods, so the start month of the new
+// advance is still open and the 2025 overview keeps the unbounded advance.
+func TestRecalculate_2025KeepsUnboundedAdvance_TwoMinimumPeriods(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d (2025 base 16 295 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	}
+}
+
+// There is no rule set for 2027 yet, so the 2026 overview keeps the unbounded
+// advance instead of failing.
+func TestRecalculate_2026KeepsUnboundedAdvance_NoNextYearRules(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2026, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if want := domain.NewAmount(5_005, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d (2026 base 17 139 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	}
+}

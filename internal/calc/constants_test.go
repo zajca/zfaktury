@@ -170,3 +170,38 @@ func TestMinimumSocialAdvanceFromCatalog(t *testing.T) {
 		}
 	}
 }
+
+func TestSocialAdvanceBoundsFromRules(t *testing.T) {
+	rules2025, err := GetTaxConstants(2025)
+	if err != nil {
+		t.Fatalf("GetTaxConstants(2025) error: %v", err)
+	}
+	bounds, ok := SocialAdvanceBoundsFromRules(rules2025)
+	if !ok {
+		t.Fatal("SocialAdvanceBoundsFromRules(2025) ok = false, want true")
+	}
+	if want := domain.NewAmount(16_295, 0); bounds.MinMonthly != want {
+		t.Errorf("MinMonthly = %d, want %d", bounds.MinMonthly, want)
+	}
+	if want := domain.NewAmount(186_228, 0); bounds.MaxMonthly != want {
+		t.Errorf("MaxMonthly = %d, want %d", bounds.MaxMonthly, want)
+	}
+
+	rules2026, err := GetTaxConstants(2026)
+	if err != nil {
+		t.Fatalf("GetTaxConstants(2026) error: %v", err)
+	}
+	if _, ok := SocialAdvanceBoundsFromRules(rules2026); ok {
+		t.Error("SocialAdvanceBoundsFromRules(2026) ok = true, want false for two minimum periods")
+	}
+
+	for _, year := range []int{2024, 2025, 2026} {
+		c, err := GetTaxConstants(year)
+		if err != nil {
+			t.Fatalf("GetTaxConstants(%d) error: %v", year, err)
+		}
+		if int64(c.SocialMaxAnnualBase)%12 != 0 {
+			t.Errorf("SocialMaxAnnualBase(%d) = %d is not divisible by 12", year, c.SocialMaxAnnualBase)
+		}
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 // SocialInsuranceService provides business logic for social insurance overview management.
@@ -163,6 +164,25 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	return sio, nil
 }
 
+// advanceBounds returns the bounds of the monthly advance base for advances
+// paid after the overview year, or nil when the following year has no rule set
+// yet or its minimum is split into periods.
+func (s *SocialInsuranceService) advanceBounds(year int) (*calc.AdvanceBaseBounds, error) {
+	constants, err := calc.GetTaxConstants(year + 1)
+	if err != nil {
+		var noRules *taxrules.NoRuleSetError
+		if errors.As(err, &noRules) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("getting tax constants for advances paid after %d: %w", year, err)
+	}
+	bounds, ok := calc.SocialAdvanceBoundsFromRules(constants)
+	if !ok {
+		return nil, nil
+	}
+	return bounds, nil
+}
+
 // applyRecalculatedAmounts fills the calculated amounts of the overview in memory
 // from its activity months, without persisting anything.
 func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
@@ -202,6 +222,10 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	}
 
 	// Pure calculation.
+	bounds, err := s.advanceBounds(sio.Year)
+	if err != nil {
+		return err
+	}
 	insResult, err := calc.CalculateInsurance(calc.InsuranceInput{
 		Revenue:                annualBase.Revenue,
 		UsedExpenses:           usedExpenses,
@@ -211,6 +235,7 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 		RatePermille:           constants.SocialRate,
 		Prepayments:            socialTotal,
 		ActivityMonths:         sio.ActivityMonths.Count(),
+		AdvanceBounds:          bounds,
 	})
 	if err != nil {
 		return fmt.Errorf("calculating social insurance: %w", err)
@@ -313,7 +338,13 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		settings["flat_rate_expenses"] = "true"
 	}
 
-	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings)
+	bounds, err := s.advanceBounds(sio.Year)
+	if err != nil {
+		return nil, err
+	}
+
+	advanceBase := calc.SocialAdvanceMonthlyBase(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), bounds)
+	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings, advanceBase)
 	if err != nil {
 		return nil, fmt.Errorf("generating social_insurance_overview XML: %w", err)
 	}

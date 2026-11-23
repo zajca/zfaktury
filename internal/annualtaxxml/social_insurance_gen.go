@@ -12,11 +12,15 @@ import (
 
 var csszDepCodePattern = regexp.MustCompile(`^\d{3}$`)
 
-// GenerateSocialInsuranceXML produces CSSZ OSVC overview XML from a SocialInsuranceOverview
-// and application settings containing taxpayer information.
-func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings map[string]string) ([]byte, error) {
+// GenerateSocialInsuranceXML produces CSSZ OSVC overview XML from a SocialInsuranceOverview,
+// application settings containing taxpayer information and the monthly advance
+// base for ř. 35 (bounded by the payment-year minimum and maximum by the caller).
+func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings map[string]string, advanceMonthlyBase domain.Amount) ([]byte, error) {
 	if sio == nil {
 		return nil, fmt.Errorf("social insurance overview is nil: %w", domain.ErrInvalidInput)
+	}
+	if advanceMonthlyBase < 0 {
+		return nil, fmt.Errorf("social insurance overview monthly advance base %d is negative: %w", advanceMonthlyBase, domain.ErrInvalidInput)
 	}
 	if err := validateSocialInsuranceXMLInput(settings); err != nil {
 		return nil, err
@@ -34,8 +38,9 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	difference := ToWholeCZK(sio.Difference)
 	newMonthlyPrepay := ToWholeCZK(sio.NewMonthlyPrepay)
 	months := int64(sio.ActivityMonths.Count())
-	// ř. 35: the annual base spread over the months of activity, rounded up (same as calc).
-	monthlyAssessmentBase := divideRoundedUp(finalAssessmentBase, months)
+	// ř. 35: the monthly advance base bounded by the payment-year minimum and
+	// maximum; the caller derives it with calc.SocialAdvanceMonthlyBase.
+	monthlyAssessmentBase := ToWholeCZK(advanceMonthlyBase)
 
 	priznElektr := "A"
 	if v := strings.TrimSpace(settings["tax_return_filed_electronically"]); v != "" {
@@ -222,15 +227,4 @@ func mainActivityMonthFlags(m domain.ActivityMonths) MonthFlags {
 		M5: flags[4], M6: flags[5], M7: flags[6], M8: flags[7],
 		M9: flags[8], M10: flags[9], M11: flags[10], M12: flags[11],
 	}
-}
-
-func divideRoundedUp(value int64, divisor int64) int64 {
-	if divisor <= 0 {
-		return 0
-	}
-	result := value / divisor
-	if value%divisor != 0 {
-		result++
-	}
-	return result
 }

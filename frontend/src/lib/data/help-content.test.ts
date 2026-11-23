@@ -173,12 +173,23 @@ describe('help-content', () => {
 			const topic = topics['nova-zaloha'];
 
 			expect(topic.legal).toContain('počtem měsíců výkonu činnosti');
-			expect(topic.legal).toContain('§ 7 odst. 2');
+			expect(topic.legal).toContain('§ 8 odst. 2');
+			expect(topic.legal).not.toContain('§ 7 odst. 2');
+			expect(topic.legal).toContain('§ 14 odst. 1, 2, 5, 6 a 13');
+			expect(topic.legal).toContain('§ 2 odst. 1');
+			expect(topic.legal).toContain('§ 3a odst. 2');
 			expect(topic.legal).not.toContain('1/12');
 			expect(topic.legal).not.toContain('50 % z minimálního vyměřovacího základu');
+			expect(topic.simple).toContain('29,2 %');
+			expect(topic.simple).toContain('13,5 %');
+			expect(topic.simple).toContain('od měsíce následujícího po měsíci, kdy jste přehled podali');
 			expect(topic.simple).toContain('už od měsíce, kdy jste přehled podali');
 			expect(topic.simple).toContain('zatím nekontroluje');
 			expect(topics['prehled-cssz'].legal).toContain('nebo měl být podán');
+			expect(topics['prehled-cssz'].legal).toContain('§ 14a odst. 3');
+			expect(topics['prehled-cssz'].simple).toContain('sami si v něm vypočítáte');
+			expect(topics['prehled-zp'].legal).toContain('§ 8 odst. 5');
+			expect(topics['prehled-zp'].simple).toContain('sami si v něm vypočítáte');
 		});
 
 		it('returns same topics with and without constants', () => {

@@ -150,9 +150,9 @@ describe('social insurance overview detail page', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
 
 		await waitFor(() => {
-			expect(
-				toasts.some((t) => t.message === 'Pro rok 2019 zatím nejsou daňová pravidla.')
-			).toBe(true);
+			expect(toasts.some((t) => t.message === 'Pro rok 2019 zatím nejsou daňová pravidla.')).toBe(
+				true
+			);
 		});
 	});
 

@@ -55,7 +55,7 @@ func setupSocialInsuranceRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 
 func createSocialInsurance(t *testing.T, r *chi.Mux, year int) int64 {
 	t.Helper()
-	body := fmt.Sprintf(`{"year":%d,"filing_type":"regular"}`, year)
+	body := fmt.Sprintf(`{"year":%d,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`, year)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/social-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func createSocialInsurance(t *testing.T, r *chi.Mux, year int) int64 {
 func TestSocialInsurance_Create(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 
-	body := `{"year":2025,"filing_type":"regular"}`
+	body := `{"year":2025,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/social-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -102,6 +102,44 @@ func TestSocialInsurance_Create(t *testing.T) {
 	if resp.Status != "draft" {
 		t.Errorf("Status = %q, want %q", resp.Status, "draft")
 	}
+	wantMonths := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+	if len(resp.ActivityMonths) != len(wantMonths) {
+		t.Fatalf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+	}
+	for i := range wantMonths {
+		if resp.ActivityMonths[i] != wantMonths[i] {
+			t.Errorf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+			break
+		}
+	}
+}
+
+func TestSocialInsurance_Create_MissingActivityMonths(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+
+	body := `{"year":2025,"filing_type":"regular"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/social-insurance", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestSocialInsurance_Create_InvalidActivityMonth(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+
+	body := `{"year":2025,"filing_type":"regular","activity_months":[0]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/social-insurance", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
 }
 
 func TestSocialInsurance_Create_InvalidJSON(t *testing.T) {
@@ -120,7 +158,7 @@ func TestSocialInsurance_Create_InvalidJSON(t *testing.T) {
 func TestSocialInsurance_Create_InvalidYear(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 
-	body := `{"year":0,"filing_type":"regular"}`
+	body := `{"year":0,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/social-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -136,7 +174,7 @@ func TestSocialInsurance_Create_Duplicate(t *testing.T) {
 
 	createSocialInsurance(t, r, 2025)
 
-	body := `{"year":2025,"filing_type":"regular"}`
+	body := `{"year":2025,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/social-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -484,6 +522,76 @@ func TestSocialInsurance_DownloadXML_NoXMLGenerated(t *testing.T) {
 	id := createSocialInsurance(t, r, 2025)
 
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/social-insurance/%d/xml", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusNotFound, w.Body.String())
+	}
+}
+
+func TestSocialInsurance_SetActivityMonths(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+
+	body := `{"activity_months":[7,8,9,10,11,12]}`
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/social-insurance/%d/activity-months", id), bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp socialInsuranceResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+
+	wantMonths := []int{7, 8, 9, 10, 11, 12}
+	if len(resp.ActivityMonths) != len(wantMonths) {
+		t.Fatalf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+	}
+	for i := range wantMonths {
+		if resp.ActivityMonths[i] != wantMonths[i] {
+			t.Errorf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+			break
+		}
+	}
+	if resp.MinAssessmentBase != 9777000 {
+		t.Errorf("MinAssessmentBase = %d, want 9777000", resp.MinAssessmentBase)
+	}
+}
+
+func TestSocialInsurance_SetActivityMonths_Filed_Conflict(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/social-insurance/%d/mark-filed", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("mark-filed: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	body := `{"activity_months":[7,8,9,10,11,12]}`
+	req = httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/social-insurance/%d/activity-months", id), bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusConflict, w.Body.String())
+	}
+}
+
+func TestSocialInsurance_SetActivityMonths_NotFound(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+
+	body := `{"activity_months":[7,8,9,10,11,12]}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/social-insurance/99999/activity-months", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

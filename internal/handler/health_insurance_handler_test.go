@@ -38,7 +38,7 @@ func setupHealthInsuranceRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 
 func createHealthInsurance(t *testing.T, r *chi.Mux, year int) int64 {
 	t.Helper()
-	body := fmt.Sprintf(`{"year":%d,"filing_type":"regular"}`, year)
+	body := fmt.Sprintf(`{"year":%d,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`, year)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/health-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -58,7 +58,7 @@ func createHealthInsurance(t *testing.T, r *chi.Mux, year int) int64 {
 func TestHealthInsurance_Create(t *testing.T) {
 	r, _ := setupHealthInsuranceRouter(t)
 
-	body := `{"year":2025,"filing_type":"regular"}`
+	body := `{"year":2025,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/health-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -85,6 +85,44 @@ func TestHealthInsurance_Create(t *testing.T) {
 	if resp.Status != "draft" {
 		t.Errorf("Status = %q, want %q", resp.Status, "draft")
 	}
+	wantMonths := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+	if len(resp.ActivityMonths) != len(wantMonths) {
+		t.Fatalf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+	}
+	for i := range wantMonths {
+		if resp.ActivityMonths[i] != wantMonths[i] {
+			t.Errorf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+			break
+		}
+	}
+}
+
+func TestHealthInsurance_Create_MissingActivityMonths(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+
+	body := `{"year":2025,"filing_type":"regular"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/health-insurance", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestHealthInsurance_Create_InvalidActivityMonth(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+
+	body := `{"year":2025,"filing_type":"regular","activity_months":[0]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/health-insurance", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
 }
 
 func TestHealthInsurance_Create_InvalidJSON(t *testing.T) {
@@ -103,7 +141,7 @@ func TestHealthInsurance_Create_InvalidJSON(t *testing.T) {
 func TestHealthInsurance_Create_InvalidYear(t *testing.T) {
 	r, _ := setupHealthInsuranceRouter(t)
 
-	body := `{"year":0,"filing_type":"regular"}`
+	body := `{"year":0,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/health-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -119,7 +157,7 @@ func TestHealthInsurance_Create_Duplicate(t *testing.T) {
 
 	createHealthInsurance(t, r, 2025)
 
-	body := `{"year":2025,"filing_type":"regular"}`
+	body := `{"year":2025,"filing_type":"regular","activity_months":[1,2,3,4,5,6,7,8,9,10,11,12]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/health-insurance", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -428,6 +466,76 @@ func TestHealthInsurance_DownloadXML_NoXMLGenerated(t *testing.T) {
 	id := createHealthInsurance(t, r, 2025)
 
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/health-insurance/%d/xml", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusNotFound, w.Body.String())
+	}
+}
+
+func TestHealthInsurance_SetActivityMonths(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+	id := createHealthInsurance(t, r, 2025)
+
+	body := `{"activity_months":[7,8,9,10,11,12]}`
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/health-insurance/%d/activity-months", id), bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp healthInsuranceResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+
+	wantMonths := []int{7, 8, 9, 10, 11, 12}
+	if len(resp.ActivityMonths) != len(wantMonths) {
+		t.Fatalf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+	}
+	for i := range wantMonths {
+		if resp.ActivityMonths[i] != wantMonths[i] {
+			t.Errorf("ActivityMonths = %v, want %v", resp.ActivityMonths, wantMonths)
+			break
+		}
+	}
+	if resp.MinAssessmentBase != 13967100 {
+		t.Errorf("MinAssessmentBase = %d, want 13967100", resp.MinAssessmentBase)
+	}
+}
+
+func TestHealthInsurance_SetActivityMonths_Filed_Conflict(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+	id := createHealthInsurance(t, r, 2025)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/health-insurance/%d/mark-filed", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("mark-filed: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	body := `{"activity_months":[7,8,9,10,11,12]}`
+	req = httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/health-insurance/%d/activity-months", id), bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusConflict, w.Body.String())
+	}
+}
+
+func TestHealthInsurance_SetActivityMonths_NotFound(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+
+	body := `{"activity_months":[7,8,9,10,11,12]}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/health-insurance/99999/activity-months", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

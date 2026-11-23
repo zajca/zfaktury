@@ -13,11 +13,6 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
-// fullYearActivityMonths is the months of activity the insurance overviews
-// assume. Overviews model a full year of activity; months of activity are not
-// stored yet.
-const fullYearActivityMonths = 12
-
 // SocialInsuranceService provides business logic for social insurance overview management.
 type SocialInsuranceService struct {
 	repo                repository.SocialInsuranceOverviewRepo
@@ -64,6 +59,10 @@ func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialI
 		// ok
 	default:
 		return fmt.Errorf("invalid filing_type: %w", domain.ErrInvalidInput)
+	}
+
+	if err := sio.ActivityMonths.Validate(); err != nil {
+		return fmt.Errorf("validating activity months: %w", err)
 	}
 
 	// Check for existing regular filing for this year.
@@ -150,6 +149,9 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	if sio.Status == domain.FilingStatusFiled {
 		return nil, domain.ErrFilingAlreadyFiled
 	}
+	if err := sio.ActivityMonths.Validate(); err != nil {
+		return nil, fmt.Errorf("validating stored activity months of social_insurance_overview %d: %w", sio.ID, err)
+	}
 
 	// Calculate annual base from invoices and expenses.
 	annualBase, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, sio.Year)
@@ -191,7 +193,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		AssessmentBasePermille: 550,
 		RatePermille:           constants.SocialRate,
 		Prepayments:            socialTotal,
-		ActivityMonths:         fullYearActivityMonths,
+		ActivityMonths:         sio.ActivityMonths.Count(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("calculating social insurance: %w", err)
@@ -216,6 +218,32 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
 	}
 	return sio, nil
+}
+
+// SetActivityMonths stores the months of activity and recalculates the
+// overview so the stored amounts match the months.
+func (s *SocialInsuranceService) SetActivityMonths(ctx context.Context, id int64, months domain.ActivityMonths) (*domain.SocialInsuranceOverview, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	if err := months.Validate(); err != nil {
+		return nil, fmt.Errorf("validating activity months: %w", err)
+	}
+
+	sio, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching social_insurance_overview for activity months: %w", err)
+	}
+	if sio.Status == domain.FilingStatusFiled {
+		return nil, domain.ErrFilingAlreadyFiled
+	}
+
+	sio.ActivityMonths = months
+	if err := s.repo.Update(ctx, sio); err != nil {
+		return nil, fmt.Errorf("updating social_insurance_overview activity months: %w", err)
+	}
+
+	return s.Recalculate(ctx, id)
 }
 
 // GenerateXML generates the CSSZ XML for a social insurance overview.

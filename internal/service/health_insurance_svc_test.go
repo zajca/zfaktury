@@ -31,8 +31,9 @@ func TestHealthInsuranceService_Create(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 
 	if err := svc.Create(ctx, hi); err != nil {
@@ -50,7 +51,7 @@ func TestHealthInsuranceService_Create_DefaultFilingType(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -63,12 +64,12 @@ func TestHealthInsuranceService_Create_DuplicateRegular(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	hi2 := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi2 := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	err := svc.Create(ctx, hi2)
 	if err == nil {
 		t.Error("expected error for duplicate regular filing")
@@ -82,7 +83,7 @@ func TestHealthInsuranceService_Create_InvalidYear(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 1999, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 1999, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	err := svc.Create(ctx, hi)
 	if err == nil {
 		t.Error("expected error for invalid year")
@@ -96,7 +97,7 @@ func TestHealthInsuranceService_Create_InvalidFilingType(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: "bad"}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: "bad", ActivityMonths: domain.FullYearActivityMonths}
 	err := svc.Create(ctx, hi)
 	if err == nil {
 		t.Error("expected error for invalid filing_type")
@@ -110,7 +111,7 @@ func TestHealthInsuranceService_GetByID(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -141,7 +142,7 @@ func TestHealthInsuranceService_Delete(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -160,7 +161,7 @@ func TestHealthInsuranceService_Delete_Filed(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -195,7 +196,7 @@ func TestHealthInsuranceService_List(t *testing.T) {
 	ctx := context.Background()
 
 	for _, ft := range []string{domain.FilingTypeRegular, domain.FilingTypeCorrective} {
-		hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: ft}
+		hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: ft, ActivityMonths: domain.FullYearActivityMonths}
 		if err := svc.Create(ctx, hi); err != nil {
 			t.Fatalf("Create() error: %v", err)
 		}
@@ -214,7 +215,7 @@ func TestHealthInsuranceService_MarkFiled(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -251,7 +252,7 @@ func TestHealthInsuranceService_Recalculate_Filed(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -305,7 +306,7 @@ func TestHealthInsuranceService_Recalculate_WithInvoice(t *testing.T) {
 		t.Fatalf("Upsert tax year settings: %v", err)
 	}
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -354,7 +355,7 @@ func TestHealthInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 	ctx := context.Background()
 
 	// No invoices -- revenue = 0, so should use minimum assessment base.
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -397,7 +398,7 @@ func TestHealthInsuranceService_Recalculate_WithPrepayments(t *testing.T) {
 		t.Fatalf("UpsertAll prepayments: %v", err)
 	}
 
-	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 	if err := svc.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
 	}
@@ -410,5 +411,134 @@ func TestHealthInsuranceService_Recalculate_WithPrepayments(t *testing.T) {
 	expectedPrepayments := domain.NewAmount(9000, 0)
 	if result.Prepayments != expectedPrepayments {
 		t.Errorf("Prepayments = %d, want %d", result.Prepayments, expectedPrepayments)
+	}
+}
+
+func TestHealthInsuranceService_Create_MissingActivityMonths(t *testing.T) {
+	svc, _ := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	err := svc.Create(ctx, hi)
+	if err == nil {
+		t.Fatal("Create() error = nil, want ErrInvalidInput")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("Create() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+// July-December activity prorates both the minimum base and the monthly advance.
+func TestHealthInsuranceService_Recalculate_PartialYear(t *testing.T) {
+	svc, _ := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.ActivityMonths(4032),
+	}
+	if err := svc.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	result, err := svc.Recalculate(ctx, hi.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if got, want := result.MinAssessmentBase, domain.NewAmount(139_671, 0); got != want {
+		t.Errorf("MinAssessmentBase = %d, want %d", got, want)
+	}
+	if got, want := result.FinalAssessmentBase, domain.NewAmount(139_671, 0); got != want {
+		t.Errorf("FinalAssessmentBase = %d, want %d", got, want)
+	}
+	if got, want := result.TotalInsurance, domain.NewAmount(18_856, 0); got != want {
+		t.Errorf("TotalInsurance = %d, want %d", got, want)
+	}
+	if got, want := result.NewMonthlyPrepay, domain.NewAmount(3_143, 0); got != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", got, want)
+	}
+}
+
+func TestHealthInsuranceService_SetActivityMonths(t *testing.T) {
+	svc, _ := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+	}
+	if err := svc.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	updated, err := svc.SetActivityMonths(ctx, hi.ID, domain.ActivityMonths(4032))
+	if err != nil {
+		t.Fatalf("SetActivityMonths() error: %v", err)
+	}
+	if updated.ActivityMonths != domain.ActivityMonths(4032) {
+		t.Errorf("ActivityMonths = %d, want 4032", updated.ActivityMonths)
+	}
+	if got, want := updated.MinAssessmentBase, domain.NewAmount(139_671, 0); got != want {
+		t.Errorf("MinAssessmentBase = %d, want %d", got, want)
+	}
+	if got, want := updated.TotalInsurance, domain.NewAmount(18_856, 0); got != want {
+		t.Errorf("TotalInsurance = %d, want %d", got, want)
+	}
+	if got, want := updated.NewMonthlyPrepay, domain.NewAmount(3_143, 0); got != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", got, want)
+	}
+
+	stored, err := svc.GetByID(ctx, hi.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if stored.ActivityMonths != domain.ActivityMonths(4032) {
+		t.Errorf("stored ActivityMonths = %d, want 4032", stored.ActivityMonths)
+	}
+}
+
+func TestHealthInsuranceService_SetActivityMonths_Filed(t *testing.T) {
+	svc, _ := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+	}
+	if err := svc.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.MarkFiled(ctx, hi.ID); err != nil {
+		t.Fatalf("MarkFiled() error: %v", err)
+	}
+
+	_, err := svc.SetActivityMonths(ctx, hi.ID, domain.ActivityMonths(4032))
+	if !errors.Is(err, domain.ErrFilingAlreadyFiled) {
+		t.Errorf("SetActivityMonths() error = %v, want ErrFilingAlreadyFiled", err)
+	}
+}
+
+func TestHealthInsuranceService_SetActivityMonths_InvalidInput(t *testing.T) {
+	svc, _ := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+	}
+	if err := svc.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if _, err := svc.SetActivityMonths(ctx, hi.ID, domain.ActivityMonths(0)); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("SetActivityMonths(mask 0) error = %v, want ErrInvalidInput", err)
+	}
+	if _, err := svc.SetActivityMonths(ctx, 0, domain.FullYearActivityMonths); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("SetActivityMonths(id 0) error = %v, want ErrInvalidInput", err)
 	}
 }

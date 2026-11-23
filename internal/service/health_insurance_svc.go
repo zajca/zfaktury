@@ -58,6 +58,10 @@ func (s *HealthInsuranceService) Create(ctx context.Context, hi *domain.HealthIn
 		return fmt.Errorf("invalid filing_type: %w", domain.ErrInvalidInput)
 	}
 
+	if err := hi.ActivityMonths.Validate(); err != nil {
+		return fmt.Errorf("validating activity months: %w", err)
+	}
+
 	if hi.FilingType == domain.FilingTypeRegular {
 		existing, err := s.repo.GetByYear(ctx, hi.Year, hi.FilingType)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
@@ -141,6 +145,9 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	if hi.Status == domain.FilingStatusFiled {
 		return nil, domain.ErrFilingAlreadyFiled
 	}
+	if err := hi.ActivityMonths.Validate(); err != nil {
+		return nil, fmt.Errorf("validating stored activity months of health_insurance_overview %d: %w", hi.ID, err)
+	}
 
 	base, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, hi.Year)
 	if err != nil {
@@ -177,7 +184,7 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		RatePermille:   constants.HealthRate,
 		Prepayments:    healthTotal,
 		RoundPremiumUp: true,
-		ActivityMonths: fullYearActivityMonths,
+		ActivityMonths: hi.ActivityMonths.Count(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("calculating health insurance: %w", err)
@@ -201,6 +208,32 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		s.audit.Log(ctx, "health_insurance", id, "update", nil, hi)
 	}
 	return hi, nil
+}
+
+// SetActivityMonths stores the months of activity and recalculates the
+// overview so the stored amounts match the months.
+func (s *HealthInsuranceService) SetActivityMonths(ctx context.Context, id int64, months domain.ActivityMonths) (*domain.HealthInsuranceOverview, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("health_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	if err := months.Validate(); err != nil {
+		return nil, fmt.Errorf("validating activity months: %w", err)
+	}
+
+	hi, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching health_insurance_overview for activity months: %w", err)
+	}
+	if hi.Status == domain.FilingStatusFiled {
+		return nil, domain.ErrFilingAlreadyFiled
+	}
+
+	hi.ActivityMonths = months
+	if err := s.repo.Update(ctx, hi); err != nil {
+		return nil, fmt.Errorf("updating health_insurance_overview activity months: %w", err)
+	}
+
+	return s.Recalculate(ctx, id)
 }
 
 // GenerateXML generates the XML for a health insurance overview.

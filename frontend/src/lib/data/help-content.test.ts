@@ -131,7 +131,7 @@ describe('help-content', () => {
 			child_benefit_2: 22320,
 			child_benefit_3_plus: 27840,
 			max_child_bonus: 60300,
-			progressive_threshold: 1935552,
+			progressive_threshold: 1582812,
 			flat_rate_caps: { '80': 1600000, '60': 1200000, '40': 800000, '30': 600000 },
 			deduction_cap_mortgage: 150000,
 			deduction_cap_pension: 0,

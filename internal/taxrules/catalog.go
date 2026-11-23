@@ -33,7 +33,7 @@ var ruleSets = map[int]RuleSet{
 			SocialMinMonthly:     domain.NewAmount(13_191, 0),
 			SocialMinAdvanceBase: wholeYearSchedule(2024, domain.NewAmount(13_191, 0)),
 			SocialRate:           292,
-			HealthMinMonthly:     domain.NewAmount(21_984, 0),
+			HealthMinMonthly:     domain.NewAmount(21_983, 50),
 			HealthRate:           135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
@@ -86,7 +86,7 @@ var ruleSets = map[int]RuleSet{
 			SocialMinMonthly:     domain.NewAmount(16_295, 0),
 			SocialMinAdvanceBase: wholeYearSchedule(2025, domain.NewAmount(16_295, 0)),
 			SocialRate:           292,
-			HealthMinMonthly:     domain.NewAmount(23_279, 0),
+			HealthMinMonthly:     domain.NewAmount(23_278, 50),
 			HealthRate:           135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
@@ -123,7 +123,9 @@ var ruleSets = map[int]RuleSet{
 			{Title: "Finanční správa: obecné informace pro zaměstnance a zaměstnavatele", URL: "https://financnisprava.gov.cz/cs/dane/dane/dan-z-prijmu/zamestnanci-zamestnavatele/obecne-informace", Note: "36násobek průměrné mzdy pro rok 2026"},
 			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od 1. 1. 2026 se limit 40 mil. Kč u podílů a akcií ruší, u kryptoaktiv zůstává"},
 			{Title: "ČSSZ: změna pojistného na důchodové pojištění OSVČ od 1. 7. 2026", URL: "https://www.cssz.gov.cz/-/informace-pro-osvc-o-zmene-pojistneho-na-duchodove-pojisteni-od-1-7-2026", Note: "zálohy: základ 19 587 Kč (leden-červen), 17 139 Kč (od července); Přehled za 2026 přepočítá leden-červen, jako by změna platila od ledna, tedy minimum 17 139 Kč za všech 12 měsíců"},
-			{Title: "VZP: OSVČ - minimální výše záloh", URL: "https://www.vzp.cz/platci/informace/osvc/osvc-minimalni-vyse-zaloh", Note: "minimální měsíční vyměřovací základ OSVČ pro zdravotní pojištění v roce 2026"},
+			{Title: "VZP: OSVČ - minimální výše záloh", URL: "https://www.vzp.cz/platci/informace/povinnosti-platcu-metodika/osvc/osvc-minimalni-vyse-zaloh", Note: "minimální měsíční vyměřovací základ OSVČ pro zdravotní pojištění v roce 2026: 24 483,50 Kč"},
+			{Title: "Nařízení vlády č. 365/2025 Sb.", URL: "https://www.vzp.cz/platci/informace/povinnosti-platcu-metodika/osvc/osvc-prumerna-mzda", Note: "průměrná mzda pro rok 2026: 48 967 Kč"},
+			{Title: "Zákon č. 90/2026 Sb., kterým se mění zákon č. 589/1992 Sb.", URL: "https://www.epravo.cz/_dataPublic/sbirky/2026/Sb_2026_90_PZZ.pdf", Note: "minimální vyměřovací základ OSVČ 35 % průměrné mzdy od 1. 7. 2026"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_762_812, 0),
@@ -139,7 +141,7 @@ var ruleSets = map[int]RuleSet{
 			ChildBenefitZTP:      domain.NewAmount(0, 0),
 			SocialMinMonthly:     domain.NewAmount(17_139, 0),
 			SocialRate:           292,
-			HealthMinMonthly:     domain.NewAmount(24_484, 0),
+			HealthMinMonthly:     domain.NewAmount(24_483, 50),
 			HealthRate:           135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
@@ -175,12 +177,24 @@ var ruleSets = map[int]RuleSet{
 	},
 }
 
+// NoRuleSetError reports a tax year without a rule set. It matches
+// domain.ErrInvalidInput through errors.Is.
+type NoRuleSetError struct {
+	Year int
+}
+
+func (e *NoRuleSetError) Error() string {
+	return fmt.Sprintf("no tax rule set for year %d: %s", e.Year, domain.ErrInvalidInput)
+}
+
+func (e *NoRuleSetError) Unwrap() error { return domain.ErrInvalidInput }
+
 // GetRuleSet returns the validated rule set for year. Unknown years fail hard;
 // tax calculations must never silently fall back to another year.
 func GetRuleSet(year int) (RuleSet, error) {
 	rs, ok := ruleSets[year]
 	if !ok {
-		return RuleSet{}, fmt.Errorf("no tax rule set for year %d: %w", year, domain.ErrInvalidInput)
+		return RuleSet{}, &NoRuleSetError{Year: year}
 	}
 	if err := ValidateRuleSet(rs); err != nil {
 		return RuleSet{}, fmt.Errorf("invalid tax rule set %q: %w", rs.ID, err)

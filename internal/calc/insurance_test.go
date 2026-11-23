@@ -261,6 +261,26 @@ func TestCalculateInsuranceMonthlyRounding(t *testing.T) {
 	}
 }
 
+// The 2026 health minimum is stored as 24 483,50 CZK (50 % of 48 967 CZK), so
+// the yearly minimum base is 293 802 CZK and the insurance 39 663,27 CZK
+// (previously 24 484 CZK x 12 = 293 808 CZK -> 39 664,08 CZK).
+func TestCalculateInsuranceHealthMinimum2026Halere(t *testing.T) {
+	c, err := GetTaxConstants(2026)
+	if err != nil {
+		t.Fatalf("GetTaxConstants(2026) error: %v", err)
+	}
+	got := CalculateInsurance(InsuranceInput{
+		MinMonthlyBase: c.HealthMinMonthly,
+		RatePermille:   c.HealthRate,
+	})
+	if got.MinAssessmentBase != domain.NewAmount(293_802, 0) {
+		t.Errorf("MinAssessmentBase = %s, want 293802.00", got.MinAssessmentBase)
+	}
+	if got.TotalInsurance != domain.NewAmount(39_663, 27) {
+		t.Errorf("TotalInsurance = %s, want 39663.27", got.TotalInsurance)
+	}
+}
+
 func TestCalculateInsuranceSocialAssessmentBase55Percent(t *testing.T) {
 	got := CalculateInsurance(InsuranceInput{
 		Revenue:                domain.NewAmount(1_550_848, 0),

@@ -2,14 +2,24 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
+
+// noRuleSetMessage is the user-facing (Czech) text for a year without tax rules.
+func noRuleSetMessage(year int) string {
+	return fmt.Sprintf("Pro rok %d zatím nejsou daňová pravidla.", year)
+}
 
 // mapDomainError translates domain errors to HTTP status codes.
 func mapDomainError(w http.ResponseWriter, err error) {
+	var noRules *taxrules.NoRuleSetError
 	switch {
+	case errors.As(err, &noRules):
+		respondError(w, http.StatusBadRequest, noRuleSetMessage(noRules.Year))
 	case errors.Is(err, domain.ErrNotFound):
 		respondError(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, domain.ErrInvalidInput):

@@ -40,9 +40,9 @@ func TestGetTaxConstants_2024Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(13_191, 0) {
 		t.Errorf("2024 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(13_191, 0))
 	}
-	// ZP 2024: 50 % × 43 967 = 21 983,50 → 21 984 Kč.
-	if c.HealthMinMonthly != domain.NewAmount(21_984, 0) {
-		t.Errorf("2024 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(21_984, 0))
+	// ZP 2024: 50 % × 43 967 = 21 983,50 Kč (stored in halere).
+	if c.HealthMinMonthly != domain.NewAmount(21_983, 50) {
+		t.Errorf("2024 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(21_983, 50))
 	}
 	// Sleva na studenta zrušena konsolidačním balíčkem od 1. 1. 2024.
 	if c.StudentCredit != 0 {
@@ -62,9 +62,9 @@ func TestGetTaxConstants_2025Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(16_295, 0) {
 		t.Errorf("2025 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(16_295, 0))
 	}
-	// ZP 2025: 50 % × 46 557 = 23 278,50 → 23 279 Kč.
-	if c.HealthMinMonthly != domain.NewAmount(23_279, 0) {
-		t.Errorf("2025 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(23_279, 0))
+	// ZP 2025: 50 % × 46 557 = 23 278,50 Kč (stored in halere).
+	if c.HealthMinMonthly != domain.NewAmount(23_278, 50) {
+		t.Errorf("2025 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(23_278, 50))
 	}
 	if c.StudentCredit != 0 {
 		t.Errorf("2025 StudentCredit = %d, want 0 (zrušena od 2024)", c.StudentCredit)
@@ -84,9 +84,9 @@ func TestGetTaxConstants_2026Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(17_139, 0) {
 		t.Errorf("2026 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(17_139, 0))
 	}
-	// ZP 2026: 50 % × 48 967 = 24 483,50 → 24 484 Kč.
-	if c.HealthMinMonthly != domain.NewAmount(24_484, 0) {
-		t.Errorf("2026 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(24_484, 0))
+	// ZP 2026: 50 % × 48 967 = 24 483,50 Kč (stored in halere).
+	if c.HealthMinMonthly != domain.NewAmount(24_483, 50) {
+		t.Errorf("2026 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(24_483, 50))
 	}
 	if c.StudentCredit != 0 {
 		t.Errorf("2026 StudentCredit = %d, want 0 (zrušena od 2024)", c.StudentCredit)

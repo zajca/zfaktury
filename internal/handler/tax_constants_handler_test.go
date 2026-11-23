@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -117,5 +118,30 @@ func TestHandleGetTaxConstants(t *testing.T) {
 		if rr.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", rr.Code)
 		}
+		var resp errorResponse
+		if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if want := "Pro rok 1990 zatím nejsou daňová pravidla."; resp.Error != want {
+			t.Errorf("error = %q, want %q", resp.Error, want)
+		}
 	})
+}
+
+func TestMapDomainError_NoRuleSetIsCzech(t *testing.T) {
+	_, err := taxrules.GetRuleSet(2099)
+	wrapped := fmt.Errorf("calculating income tax return: %w", err)
+
+	rr := httptest.NewRecorder()
+	mapDomainError(rr, wrapped)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+	var resp errorResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if want := "Pro rok 2099 zatím nejsou daňová pravidla."; resp.Error != want {
+		t.Errorf("error = %q, want %q", resp.Error, want)
+	}
 }

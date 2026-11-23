@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -95,6 +96,11 @@ func handleGetTaxConstants(w http.ResponseWriter, r *http.Request) {
 
 	rules, err := taxrules.GetRuleSet(year)
 	if err != nil {
+		var noRules *taxrules.NoRuleSetError
+		if errors.As(err, &noRules) {
+			respondError(w, http.StatusNotFound, noRuleSetMessage(noRules.Year))
+			return
+		}
 		respondError(w, http.StatusNotFound, err.Error())
 		return
 	}

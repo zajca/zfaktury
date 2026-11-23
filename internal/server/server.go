@@ -41,8 +41,17 @@ type App struct {
 type Options struct {
 	ConfigFile string
 	InitConfig bool
-	Port       int // 0 = let the OS pick a free port
+	Port       *int // nil = keep server.port from the config; 0 = let the OS pick a free port
 	DevMode    bool
+}
+
+// effectivePort returns the explicit override when one was given (including 0),
+// otherwise the port from the config.
+func effectivePort(configPort int, override *int) int {
+	if override != nil {
+		return *override
+	}
+	return configPort
 }
 
 // New creates a fully wired application: config, logging, lock, DB, migrations,
@@ -63,7 +72,7 @@ func New(opts Options) (*App, error) {
 		return nil, fmt.Errorf("setting up logging: %w", err)
 	}
 
-	cfg.Server.Port = opts.Port
+	cfg.Server.Port = effectivePort(cfg.Server.Port, opts.Port)
 	cfg.Server.Dev = opts.DevMode
 
 	if err := cfg.Validate(); err != nil {

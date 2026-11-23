@@ -319,4 +319,108 @@ describe('Invoice detail page', () => {
 
 		expect(screen.queryByText('Vytvořit dobropis')).not.toBeInTheDocument();
 	});
+
+	it('reloads the invoice after a successful email send', async () => {
+		let invoiceGets = 0;
+		let sendCalled = false;
+		mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+			if (url === '/api/v1/invoices/1' && init?.method === 'GET') {
+				invoiceGets++;
+				return jsonResponse(sendCalled ? { ...sampleInvoice, status: 'sent' } : sampleInvoice);
+			}
+			if (url === '/api/v1/invoices/1/send-email') {
+				sendCalled = true;
+				return jsonResponse({ status: 'sent' });
+			}
+			if (url.startsWith('/api/v1/email/defaults')) {
+				return jsonResponse({
+					attach_pdf: true,
+					attach_isdoc: false,
+					subject: 'Faktura FV2026001',
+					body: 'Dobry den'
+				});
+			}
+			return jsonResponse([]);
+		});
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Koncept')).toBeInTheDocument();
+		});
+		const getsBeforeSend = invoiceGets;
+
+		await fireEvent.click(screen.getByText('Odeslat emailem'));
+		const recipient = await screen.findByLabelText('Příjemce');
+		await fireEvent.input(recipient, { target: { value: 'customer@example.com' } });
+		await waitFor(() => {
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe(
+				'Faktura FV2026001'
+			);
+		});
+		await fireEvent.submit(recipient.closest('form') as HTMLFormElement);
+
+		await waitFor(() => {
+			expect(invoiceGets).toBeGreaterThan(getsBeforeSend);
+		});
+		await waitFor(() => {
+			expect(screen.getByText('Odeslaná')).toBeInTheDocument();
+		});
+	});
+
+	it('closes the dialog and reloads the invoice when the email was sent but the status update failed', async () => {
+		let invoiceGets = 0;
+		let sendCalls = 0;
+		mockFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+			if (url === '/api/v1/invoices/1' && init?.method === 'GET') {
+				invoiceGets++;
+				return jsonResponse(sendCalls > 0 ? { ...sampleInvoice, status: 'sent' } : sampleInvoice);
+			}
+			if (url === '/api/v1/invoices/1/send-email') {
+				sendCalls++;
+				return jsonResponse(
+					{
+						error: 'email was sent, but updating the invoice status to sent failed',
+						code: 'email_sent_status_not_updated'
+					},
+					500
+				);
+			}
+			if (url.startsWith('/api/v1/email/defaults')) {
+				return jsonResponse({
+					attach_pdf: true,
+					attach_isdoc: false,
+					subject: 'Faktura FV2026001',
+					body: 'Dobry den'
+				});
+			}
+			return jsonResponse([]);
+		});
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Koncept')).toBeInTheDocument();
+		});
+		const getsBeforeSend = invoiceGets;
+
+		await fireEvent.click(screen.getByText('Odeslat emailem'));
+		const recipient = await screen.findByLabelText('Příjemce');
+		await fireEvent.input(recipient, { target: { value: 'customer@example.com' } });
+		await waitFor(() => {
+			expect((screen.getByLabelText('Předmět') as HTMLInputElement).value).toBe(
+				'Faktura FV2026001'
+			);
+		});
+		await fireEvent.submit(recipient.closest('form') as HTMLFormElement);
+
+		await waitFor(() => {
+			expect(invoiceGets).toBeGreaterThan(getsBeforeSend);
+		});
+		await waitFor(() => {
+			expect(screen.getByText('Odeslaná')).toBeInTheDocument();
+		});
+		expect(screen.queryByLabelText('Příjemce')).not.toBeInTheDocument();
+		expect(sendCalls).toBe(1);
+	});
 });

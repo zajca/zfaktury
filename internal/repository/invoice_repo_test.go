@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -321,6 +322,22 @@ func TestInvoiceRepository_GetNextNumber_NotFound(t *testing.T) {
 	_, err := repo.GetNextNumber(ctx, 99999)
 	if err == nil {
 		t.Error("expected error for non-existent sequence")
+	}
+}
+
+func TestInvoiceRepository_GetNextNumber_SoftDeletedSequence(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	seqID := testutil.SeedInvoiceSequence(t, db, "FV", 2026)
+	if err := NewSequenceRepository(db).Delete(ctx, seqID); err != nil {
+		t.Fatalf("deleting sequence: %v", err)
+	}
+
+	_, err := repo.GetNextNumber(ctx, seqID)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("GetNextNumber() error = %v, want domain.ErrNotFound", err)
 	}
 }
 

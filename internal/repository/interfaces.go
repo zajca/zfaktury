@@ -51,6 +51,7 @@ type InvoiceSequenceRepo interface {
 	GetByPrefixAndYear(ctx context.Context, prefix string, year int) (*domain.InvoiceSequence, error)
 	CountInvoicesBySequenceID(ctx context.Context, sequenceID int64) (int, error)
 	MaxUsedNumber(ctx context.Context, sequenceID int64) (int, error)
+	MaxDeletedNextNumber(ctx context.Context, prefix string, year int) (int, error)
 }
 
 // CategoryRepo defines the persistence interface for expense categories.

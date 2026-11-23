@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -143,6 +145,248 @@ func TestSequenceService_Delete_NoReferences(t *testing.T) {
 	_, err := svc.GetByID(ctx, seq.ID)
 	if err == nil {
 		t.Error("expected error for soft-deleted sequence")
+	}
+}
+
+func TestSequenceService_Create_AfterDelete(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	first := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, first); err != nil {
+		t.Fatalf("Create() first error: %v", err)
+	}
+	if err := svc.Delete(ctx, first.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	recreated := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, recreated); err != nil {
+		t.Fatalf("Create() after delete error: %v", err)
+	}
+
+	duplicate := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, duplicate); !errors.Is(err, domain.ErrDuplicateNumber) {
+		t.Errorf("Create() duplicate error = %v, want ErrDuplicateNumber", err)
+	}
+}
+
+func TestSequenceService_Create_AfterDelete_SkipsNumbersOfDeletedInvoices(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.NewTestDB(t)
+	sequenceSvc := NewSequenceService(repository.NewSequenceRepository(db), nil)
+	contactSvc := NewContactService(repository.NewContactRepository(db), nil, nil)
+	invoiceSvc := NewInvoiceService(repository.NewInvoiceRepository(db), contactSvc, sequenceSvc, nil)
+
+	customer := &domain.Contact{Name: "Test Customer", Type: domain.ContactTypeCompany}
+	if err := contactSvc.Create(ctx, customer); err != nil {
+		t.Fatalf("creating customer: %v", err)
+	}
+
+	newInvoice := func(sequenceID int64) *domain.Invoice {
+		return &domain.Invoice{
+			CustomerID:    customer.ID,
+			SequenceID:    sequenceID,
+			Type:          domain.InvoiceTypeRegular,
+			IssueDate:     time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+			DueDate:       time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
+			DeliveryDate:  time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+			CurrencyCode:  domain.CurrencyCZK,
+			PaymentMethod: "bank_transfer",
+			Items: []domain.InvoiceItem{
+				{Description: "Test service", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
+			},
+		}
+	}
+
+	first := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := sequenceSvc.Create(ctx, first); err != nil {
+		t.Fatalf("creating sequence: %v", err)
+	}
+	oldInvoice := newInvoice(first.ID)
+	if err := invoiceSvc.Create(ctx, oldInvoice); err != nil {
+		t.Fatalf("creating first invoice: %v", err)
+	}
+	if err := invoiceSvc.Delete(ctx, oldInvoice.ID); err != nil {
+		t.Fatalf("deleting invoice: %v", err)
+	}
+	if err := sequenceSvc.Delete(ctx, first.ID); err != nil {
+		t.Fatalf("deleting sequence: %v", err)
+	}
+
+	recreated := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := sequenceSvc.Create(ctx, recreated); err != nil {
+		t.Fatalf("recreating sequence: %v", err)
+	}
+	if recreated.NextNumber != 2 {
+		t.Errorf("recreated NextNumber = %d, want 2", recreated.NextNumber)
+	}
+
+	next := newInvoice(recreated.ID)
+	if err := invoiceSvc.Create(ctx, next); err != nil {
+		t.Fatalf("creating invoice in recreated sequence: %v", err)
+	}
+	if next.InvoiceNumber == oldInvoice.InvoiceNumber {
+		t.Errorf("invoice number %q reused", next.InvoiceNumber)
+	}
+	if want := "FV20260002"; next.InvoiceNumber != want {
+		t.Errorf("invoice number = %q, want %q", next.InvoiceNumber, want)
+	}
+
+	// A requested number above the deleted sequences' counter is kept.
+	if err := invoiceSvc.Delete(ctx, next.ID); err != nil {
+		t.Fatalf("deleting second invoice: %v", err)
+	}
+	if err := sequenceSvc.Delete(ctx, recreated.ID); err != nil {
+		t.Fatalf("deleting recreated sequence: %v", err)
+	}
+	high := &domain.InvoiceSequence{Prefix: "FV", Year: 2026, NextNumber: 50}
+	if err := sequenceSvc.Create(ctx, high); err != nil {
+		t.Fatalf("creating sequence with high start: %v", err)
+	}
+	if high.NextNumber != 50 {
+		t.Errorf("NextNumber = %d, want 50", high.NextNumber)
+	}
+}
+
+// deletedInvoiceStack creates FV/2026 with one invoice, then deletes the invoice
+// and the sequence, so a soft-deleted invoice still owns number FV20260001.
+type deletedInvoiceStack struct {
+	sequenceSvc *SequenceService
+	invoiceSvc  *InvoiceService
+	customerID  int64
+	oldNumber   string
+}
+
+func newDeletedInvoiceStack(t *testing.T) *deletedInvoiceStack {
+	t.Helper()
+	ctx := context.Background()
+	db := testutil.NewTestDB(t)
+	sequenceSvc := NewSequenceService(repository.NewSequenceRepository(db), nil)
+	contactSvc := NewContactService(repository.NewContactRepository(db), nil, nil)
+	st := &deletedInvoiceStack{
+		sequenceSvc: sequenceSvc,
+		invoiceSvc:  NewInvoiceService(repository.NewInvoiceRepository(db), contactSvc, sequenceSvc, nil),
+	}
+
+	customer := &domain.Contact{Name: "Test Customer", Type: domain.ContactTypeCompany}
+	if err := contactSvc.Create(ctx, customer); err != nil {
+		t.Fatalf("creating customer: %v", err)
+	}
+	st.customerID = customer.ID
+
+	first := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := sequenceSvc.Create(ctx, first); err != nil {
+		t.Fatalf("creating sequence: %v", err)
+	}
+	old := st.newInvoice(first.ID)
+	if err := st.invoiceSvc.Create(ctx, old); err != nil {
+		t.Fatalf("creating first invoice: %v", err)
+	}
+	st.oldNumber = old.InvoiceNumber
+	if err := st.invoiceSvc.Delete(ctx, old.ID); err != nil {
+		t.Fatalf("deleting invoice: %v", err)
+	}
+	if err := sequenceSvc.Delete(ctx, first.ID); err != nil {
+		t.Fatalf("deleting sequence: %v", err)
+	}
+	return st
+}
+
+func (st *deletedInvoiceStack) newInvoice(sequenceID int64) *domain.Invoice {
+	return &domain.Invoice{
+		CustomerID:    st.customerID,
+		SequenceID:    sequenceID,
+		Type:          domain.InvoiceTypeRegular,
+		IssueDate:     time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+		DueDate:       time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
+		DeliveryDate:  time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+		CurrencyCode:  domain.CurrencyCZK,
+		PaymentMethod: "bank_transfer",
+		Items: []domain.InvoiceItem{
+			{Description: "Test service", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
+		},
+	}
+}
+
+func TestInvoiceService_Create_WithoutSequence_SkipsNumbersOfDeletedInvoices(t *testing.T) {
+	ctx := context.Background()
+	st := newDeletedInvoiceStack(t)
+
+	inv := st.newInvoice(0)
+	if err := st.invoiceSvc.Create(ctx, inv); err != nil {
+		t.Fatalf("creating invoice without sequence: %v", err)
+	}
+	if inv.InvoiceNumber == st.oldNumber {
+		t.Errorf("invoice number %q reused", inv.InvoiceNumber)
+	}
+	if want := "FV20260002"; inv.InvoiceNumber != want {
+		t.Errorf("invoice number = %q, want %q", inv.InvoiceNumber, want)
+	}
+}
+
+func TestSequenceService_Update_ToDeletedPrefixYear_SkipsNumbersOfDeletedInvoices(t *testing.T) {
+	ctx := context.Background()
+	st := newDeletedInvoiceStack(t)
+
+	other := &domain.InvoiceSequence{Prefix: "XX", Year: 2026}
+	if err := st.sequenceSvc.Create(ctx, other); err != nil {
+		t.Fatalf("creating other sequence: %v", err)
+	}
+	other.Prefix = "FV"
+	if err := st.sequenceSvc.Update(ctx, other); err != nil {
+		t.Fatalf("moving sequence onto deleted prefix/year: %v", err)
+	}
+	if other.NextNumber != 2 {
+		t.Errorf("NextNumber = %d, want 2", other.NextNumber)
+	}
+
+	inv := st.newInvoice(other.ID)
+	if err := st.invoiceSvc.Create(ctx, inv); err != nil {
+		t.Fatalf("creating invoice in moved sequence: %v", err)
+	}
+	if inv.InvoiceNumber == st.oldNumber {
+		t.Errorf("invoice number %q reused", inv.InvoiceNumber)
+	}
+	if want := "FV20260002"; inv.InvoiceNumber != want {
+		t.Errorf("invoice number = %q, want %q", inv.InvoiceNumber, want)
+	}
+}
+
+func TestInvoiceService_Create_WithDeletedSequenceID_FailsAndKeepsLiveCounter(t *testing.T) {
+	ctx := context.Background()
+	st := newDeletedInvoiceStack(t)
+
+	seqs, err := st.sequenceSvc.List(ctx)
+	if err != nil {
+		t.Fatalf("listing sequences: %v", err)
+	}
+	if len(seqs) != 0 {
+		t.Fatalf("expected no live sequences, got %d", len(seqs))
+	}
+
+	// The deleted sequence has the lowest id; recreate FV/2026 as a live one.
+	const deletedID = 1
+	live := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := st.sequenceSvc.Create(ctx, live); err != nil {
+		t.Fatalf("recreating sequence: %v", err)
+	}
+	if live.ID == deletedID {
+		t.Fatalf("live sequence reused deleted id %d", deletedID)
+	}
+	wantNext := live.NextNumber
+
+	err = st.invoiceSvc.Create(ctx, st.newInvoice(deletedID))
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("Create() error = %v, want domain.ErrInvalidInput", err)
+	}
+
+	got, err := st.sequenceSvc.GetByID(ctx, live.ID)
+	if err != nil {
+		t.Fatalf("fetching live sequence: %v", err)
+	}
+	if got.NextNumber != wantNext {
+		t.Errorf("live NextNumber = %d, want %d (untouched)", got.NextNumber, wantNext)
 	}
 }
 

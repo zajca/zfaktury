@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import {
 		healthInsuranceApi,
+		ApiError,
 		type HealthInsuranceOverview,
 		type TaxConstants
 	} from '$lib/api/client';
@@ -103,10 +104,22 @@
 			toastSuccess('Měsíce činnosti uloženy a přehled přepočítán');
 			editingMonths = false;
 		} catch (e) {
-			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit měsíce činnosti');
+			toastError(activityMonthsError(e));
 		} finally {
 			actionLoading = null;
 		}
+	}
+
+	function activityMonthsError(e: unknown): string {
+		if (e instanceof ApiError) {
+			if (e.status === 409) {
+				return 'Přehled je už podaný, měsíce nelze změnit.';
+			}
+			if (e.status === 400) {
+				return 'Vyberte alespoň jeden měsíc činnosti.';
+			}
+		}
+		return 'Nepodařilo se uložit měsíce činnosti';
 	}
 
 	function handleMarkFiled() {

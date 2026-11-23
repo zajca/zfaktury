@@ -8,6 +8,7 @@
 		type TaxConstants
 	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
+	import ActivityMonthsPicker from '$lib/components/tax/ActivityMonthsPicker.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -25,6 +26,8 @@
 	let taxConstants = $state<TaxConstants | null>(null);
 	let showFileConfirm = $state(false);
 	let showDeleteConfirm = $state(false);
+	let editingMonths = $state(false);
+	let monthsDraft = $state<number[]>([]);
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -67,6 +70,40 @@
 			data = await healthInsuranceApi.recalculate(returnId);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se přepočítat');
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	const monthNames = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) =>
+		new Intl.DateTimeFormat('cs-CZ', { month: 'long' }).format(new Date(2024, month - 1, 1))
+	);
+
+	let monthsLabel = $derived(
+		data
+			? data.activity_months.length === 12
+				? 'celý rok'
+				: `${data.activity_months.map((m) => monthNames[m - 1]).join(', ')} (${data.activity_months.length} měs.)`
+			: ''
+	);
+
+	function startEditingMonths() {
+		monthsDraft = [...(data?.activity_months ?? [])];
+		editingMonths = true;
+	}
+
+	async function saveActivityMonths() {
+		if (monthsDraft.length === 0) {
+			return;
+		}
+
+		actionLoading = 'months';
+		try {
+			data = await healthInsuranceApi.setActivityMonths(returnId, monthsDraft);
+			toastSuccess('Měsíce činnosti uloženy a přehled přepočítán');
+			editingMonths = false;
+		} catch (e) {
+			toastError(e instanceof Error ? e.message : 'Nepodařilo se uložit měsíce činnosti');
 		} finally {
 			actionLoading = null;
 		}
@@ -197,6 +234,9 @@
 					Vyměřovací základ <HelpTip topic="vymerovaci-zaklad" {taxConstants} />
 				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+					<dt class="text-secondary">Měsíce činnosti</dt>
+					<dd class="text-right font-medium text-primary">{monthsLabel}</dd>
+
 					<dt class="text-secondary">Základ daně</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{formatCZK(data.tax_base)}
@@ -217,6 +257,43 @@
 						{formatCZK(data.final_assessment_base)}
 					</dd>
 				</div>
+
+				{#if data.status !== 'filed'}
+					<div class="mt-4 border-t border-border pt-4">
+						{#if !editingMonths}
+							<Button
+								variant="secondary"
+								onclick={startEditingMonths}
+								disabled={actionLoading !== null}
+							>
+								Upravit měsíce
+							</Button>
+						{:else}
+							<ActivityMonthsPicker
+								idPrefix="health-months-edit"
+								value={monthsDraft}
+								onchange={(months) => (monthsDraft = months)}
+								disabled={actionLoading !== null}
+							/>
+							<div class="mt-3 flex gap-3">
+								<Button
+									variant="primary"
+									onclick={saveActivityMonths}
+									disabled={actionLoading !== null || monthsDraft.length === 0}
+								>
+									{actionLoading === 'months' ? 'Ukládám...' : 'Uložit'}
+								</Button>
+								<Button
+									variant="secondary"
+									onclick={() => (editingMonths = false)}
+									disabled={actionLoading !== null}
+								>
+									Zrušit
+								</Button>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</Card>
 
 			<!-- Insurance -->

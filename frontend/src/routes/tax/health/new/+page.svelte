@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { healthInsuranceApi } from '$lib/api/client';
+	import ActivityMonthsPicker from '$lib/components/tax/ActivityMonthsPicker.svelte';
 	import { toastError } from '$lib/data/toast-state.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import FormActions from '$lib/ui/FormActions.svelte';
@@ -19,15 +20,21 @@
 
 	let form = $state({
 		year: paramYear ? Number(paramYear) : new Date().getFullYear() - 1,
-		filing_type: 'regular'
+		filing_type: 'regular',
+		activity_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 	});
 
 	async function handleSubmit() {
+		if (form.activity_months.length === 0) {
+			return;
+		}
+
 		saving = true;
 		try {
 			const result = await healthInsuranceApi.create({
 				year: form.year,
-				filing_type: form.filing_type
+				filing_type: form.filing_type,
+				activity_months: form.activity_months
 			});
 			goto(`/tax/health/${result.id}`);
 		} catch (e) {
@@ -81,6 +88,12 @@
 					</select>
 				</div>
 			</div>
+
+			<ActivityMonthsPicker
+				idPrefix="health-months"
+				value={form.activity_months}
+				onchange={(months) => (form.activity_months = months)}
+			/>
 		</Card>
 
 		<FormActions

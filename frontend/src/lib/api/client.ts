@@ -1088,6 +1088,7 @@ export interface SocialInsuranceOverview {
 	id: number;
 	year: number;
 	filing_type: string;
+	activity_months: number[];
 	total_revenue: number;
 	total_expenses: number;
 	tax_base: number;
@@ -1110,6 +1111,7 @@ export interface HealthInsuranceOverview {
 	id: number;
 	year: number;
 	filing_type: string;
+	activity_months: number[];
 	total_revenue: number;
 	total_expenses: number;
 	tax_base: number;
@@ -1171,7 +1173,7 @@ export const socialInsuranceApi = {
 	getById(id: number) {
 		return get<SocialInsuranceOverview>(`/social-insurance/${id}`);
 	},
-	create(data: { year: number; filing_type?: string }) {
+	create(data: { year: number; filing_type?: string; activity_months: number[] }) {
 		return post<SocialInsuranceOverview>('/social-insurance', data);
 	},
 	delete(id: number) {
@@ -1185,6 +1187,11 @@ export const socialInsuranceApi = {
 	},
 	markFiled(id: number) {
 		return post<SocialInsuranceOverview>(`/social-insurance/${id}/mark-filed`, {});
+	},
+	setActivityMonths(id: number, activityMonths: number[]) {
+		return put<SocialInsuranceOverview>(`/social-insurance/${id}/activity-months`, {
+			activity_months: activityMonths
+		});
 	}
 };
 
@@ -1198,7 +1205,7 @@ export const healthInsuranceApi = {
 	getById(id: number) {
 		return get<HealthInsuranceOverview>(`/health-insurance/${id}`);
 	},
-	create(data: { year: number; filing_type?: string }) {
+	create(data: { year: number; filing_type?: string; activity_months: number[] }) {
 		return post<HealthInsuranceOverview>('/health-insurance', data);
 	},
 	delete(id: number) {
@@ -1212,6 +1219,11 @@ export const healthInsuranceApi = {
 	},
 	markFiled(id: number) {
 		return post<HealthInsuranceOverview>(`/health-insurance/${id}/mark-filed`, {});
+	},
+	setActivityMonths(id: number, activityMonths: number[]) {
+		return put<HealthInsuranceOverview>(`/health-insurance/${id}/activity-months`, {
+			activity_months: activityMonths
+		});
 	}
 };
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/xml"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -784,8 +785,9 @@ func TestGenerateXML_2024UsesStoredBoundedBase(t *testing.T) {
 	}
 }
 
-// Rows calculated before the base was stored fall back to the formula they were
-// calculated with and keep their stored advance.
+// Overviews stored before the base was kept have none; the base is then taken
+// as the final annual base over the months of activity, which matches their
+// stored advance only when both formulas agree.
 func TestGenerateXML_LegacyRowWithoutStoredBase(t *testing.T) {
 	svc, db := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
@@ -845,5 +847,60 @@ func TestGenerateXML_RejectsInconsistentStoredAdvance(t *testing.T) {
 	}
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+// Overviews stored by the release before the base was kept computed the advance
+// as the annual premium divided by 12, rounded up to whole CZK, so for some
+// final bases their stored advance does not follow from the monthly base.
+// final base 158 293 CZK: base 13 192, expected advance 3 853, stored 3 852.
+func TestGenerateXML_LegacyProductionRowWithoutStoredBase(t *testing.T) {
+	tests := []struct {
+		name       string
+		status     string
+		filed      bool
+		wantPhrase string
+	}{
+		{name: "not filed", status: domain.FilingStatusDraft, wantPhrase: "recalculate the overview"},
+		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantPhrase: "already filed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, db := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			seedSocialInsuranceXMLSettings(t, db)
+
+			sio := &domain.SocialInsuranceOverview{
+				Year:                2024,
+				FilingType:          domain.FilingTypeRegular,
+				ActivityMonths:      domain.FullYearActivityMonths,
+				AssessmentBase:      domain.NewAmount(87_062, 0),
+				MinAssessmentBase:   domain.NewAmount(158_292, 0),
+				FinalAssessmentBase: domain.NewAmount(158_293, 0),
+				InsuranceRate:       292,
+				TotalInsurance:      domain.NewAmount(46_221, 0),
+				NewMonthlyPrepay:    domain.NewAmount(3_852, 0),
+				Status:              tt.status,
+			}
+			if tt.filed {
+				now := time.Now()
+				sio.FiledAt = &now
+			}
+			if err := svc.Create(ctx, sio); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, sio.ID)
+			if err == nil {
+				t.Fatal("GenerateXML() error = nil, want ErrInvalidInput")
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			if !strings.Contains(err.Error(), tt.wantPhrase) {
+				t.Errorf("GenerateXML() error = %v, want it to contain %q", err, tt.wantPhrase)
+			}
+		})
 	}
 }

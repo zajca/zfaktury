@@ -148,6 +148,9 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 		// with a payment year that has a single minimum period it is raised to that
 		// minimum and capped at that maximum, otherwise the final annual base is
 		// used. The advance is the rate applied to the base, rounded up to whole CZK.
+		// Overviews stored before the base was kept have no stored base, so their
+		// base is taken as the final annual base over the months and their stored
+		// advance may not follow from it; those overviews must be recalculated.
 		monthlyBase := SocialAdvanceMonthlyBase(domain.Amount(assessmentBase), domain.Amount(finalBase), input.ActivityMonths, input.AdvanceBounds)
 		newMonthlyBase = int64(monthlyBase)
 		newMonthlyPrepay = int64(SocialAdvanceFromMonthlyBase(monthlyBase, input.RatePermille))

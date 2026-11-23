@@ -183,9 +183,10 @@ func (s *SocialInsuranceService) advanceBounds(year int) (*calc.AdvanceBaseBound
 	return bounds, nil
 }
 
-// storedAdvanceBase returns the monthly advance base the overview was calculated
-// with. Rows calculated before the base was stored fall back to the formula they
-// were calculated with: the final annual base over the months of activity.
+// storedAdvanceBase returns the monthly advance base stored with the overview.
+// Overviews stored before the base was kept have none, so their base is taken as
+// the final annual base over the months of activity and their stored advance may
+// not follow from it; such an overview has to be recalculated.
 func (s *SocialInsuranceService) storedAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
 	if sio.NewMonthlyBase != nil {
 		return *sio.NewMonthlyBase
@@ -261,6 +262,8 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	sio.Difference = insResult.Difference
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
 	newMonthlyBase := insResult.NewMonthlyBase
+	// The base is stored with the amounts it produced, so a later export reports
+	// ř. 35 and ř. 36 from the same calculation.
 	sio.NewMonthlyBase = &newMonthlyBase
 	// A stored XML describes the previous amounts and months, so it is dropped
 	// and has to be generated again.
@@ -352,6 +355,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 
 	advanceBase := s.storedAdvanceBase(sio)
 	if want := calc.SocialAdvanceFromMonthlyBase(advanceBase, sio.InsuranceRate); want != sio.NewMonthlyPrepay {
+		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
+			return nil, fmt.Errorf("social_insurance_overview %d: the stored advance %d does not match the monthly base %d (expected %d) and the overview is already filed, so the stored XML stays unchanged: %w", sio.ID, sio.NewMonthlyPrepay, advanceBase, want, domain.ErrInvalidInput)
+		}
 		return nil, fmt.Errorf("social_insurance_overview %d: the stored advance %d does not match the monthly base %d (expected %d), recalculate the overview: %w", sio.ID, sio.NewMonthlyPrepay, advanceBase, want, domain.ErrInvalidInput)
 	}
 	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings, advanceBase)

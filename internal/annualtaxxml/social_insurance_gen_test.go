@@ -293,6 +293,39 @@ func TestSocialInsuranceXML_ValidatesAgainstOSVC25XSD(t *testing.T) {
 	}
 }
 
+// The repository holds no OSVC26 schema; the 2026 overview with the minimum
+// assessment base is validated against the newest available one (OSVC25).
+func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.T) {
+	xmllint, err := exec.LookPath("xmllint")
+	if err != nil {
+		t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+	}
+
+	sio := &domain.SocialInsuranceOverview{
+		Year:                2026,
+		FilingType:          domain.FilingTypeRegular,
+		FinalAssessmentBase: domain.NewAmount(205_668, 0),
+		TotalInsurance:      domain.NewAmount(60_057, 0),
+		Prepayments:         domain.NewAmount(60_000, 0),
+		Difference:          domain.NewAmount(57, 0),
+		NewMonthlyPrepay:    domain.NewAmount(5_005, 0),
+	}
+	xmlData, err := GenerateSocialInsuranceXML(sio, validSocialInsuranceSettings())
+	if err != nil {
+		t.Fatalf("GenerateSocialInsuranceXML: %v", err)
+	}
+
+	xmlPath := filepath.Join(t.TempDir(), "osvc26.xml")
+	if err := os.WriteFile(xmlPath, xmlData, 0o600); err != nil {
+		t.Fatalf("write generated XML: %v", err)
+	}
+	xsdPath := filepath.Join("..", "..", "docs", "xml-schemas", "cssz", "OSVC25.xsd")
+	out, err := exec.Command(xmllint, "--noout", "--schema", xsdPath, xmlPath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("xmllint XSD validation failed: %v\n%s", err, out)
+	}
+}
+
 func validSocialInsuranceSettings() map[string]string {
 	return map[string]string{
 		"cssz_code":             "775",

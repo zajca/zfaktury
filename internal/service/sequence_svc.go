@@ -46,14 +46,8 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 		return fmt.Errorf("checking sequence uniqueness: %w", err)
 	}
 
-	// Invoices of a soft-deleted sequence keep their numbers, so the new
-	// sequence must not hand out numbers they already used.
-	deletedNext, err := s.repo.MaxDeletedNextNumber(ctx, seq.Prefix, seq.Year)
-	if err != nil {
-		return fmt.Errorf("checking deleted sequences: %w", err)
-	}
-	if deletedNext > seq.NextNumber {
-		seq.NextNumber = deletedNext
+	if err := s.applyDeletedNumberFloor(ctx, seq); err != nil {
+		return err
 	}
 
 	if err := s.repo.Create(ctx, seq); err != nil {
@@ -61,6 +55,21 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 	}
 	if s.audit != nil {
 		s.audit.Log(ctx, "sequence", seq.ID, "create", nil, seq)
+	}
+	return nil
+}
+
+// applyDeletedNumberFloor raises seq.NextNumber to the highest counter of
+// soft-deleted sequences with the same prefix and year. Their invoices keep
+// their numbers, so a sequence taking over that prefix and year must not hand
+// them out again. Every create and every prefix/year change goes through here.
+func (s *SequenceService) applyDeletedNumberFloor(ctx context.Context, seq *domain.InvoiceSequence) error {
+	floor, err := s.repo.MaxDeletedNextNumber(ctx, seq.Prefix, seq.Year)
+	if err != nil {
+		return fmt.Errorf("checking deleted sequences: %w", err)
+	}
+	if floor > seq.NextNumber {
+		seq.NextNumber = floor
 	}
 	return nil
 }
@@ -100,6 +109,12 @@ func (s *SequenceService) Update(ctx context.Context, seq *domain.InvoiceSequenc
 	duplicate, err := s.repo.GetByPrefixAndYear(ctx, seq.Prefix, seq.Year)
 	if err == nil && duplicate != nil && duplicate.ID != seq.ID {
 		return fmt.Errorf("sequence with prefix %q and year %d already exists: %w", seq.Prefix, seq.Year, domain.ErrDuplicateNumber)
+	}
+
+	if existing.Prefix != seq.Prefix || existing.Year != seq.Year {
+		if err := s.applyDeletedNumberFloor(ctx, seq); err != nil {
+			return err
+		}
 	}
 
 	if err := s.repo.Update(ctx, seq); err != nil {
@@ -181,6 +196,9 @@ func (s *SequenceService) GetOrCreateForYear(ctx context.Context, prefix string,
 		NextNumber:    1,
 		Year:          year,
 		FormatPattern: "{prefix}{year}{number:04d}",
+	}
+	if err := s.applyDeletedNumberFloor(ctx, newSeq); err != nil {
+		return nil, err
 	}
 	if err := s.repo.Create(ctx, newSeq); err != nil {
 		// Race condition: another goroutine may have created the sequence concurrently.

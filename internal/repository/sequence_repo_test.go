@@ -54,6 +54,43 @@ func TestSequenceRepository_Create_DuplicatePrefixYear(t *testing.T) {
 	}
 }
 
+func TestSequenceRepository_Create_AfterSoftDelete(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSequenceRepository(db)
+	ctx := context.Background()
+
+	first := &domain.InvoiceSequence{
+		Prefix: "FV", NextNumber: 1, Year: 2026,
+		FormatPattern: "{prefix}{year}{number:04d}",
+	}
+	if err := repo.Create(ctx, first); err != nil {
+		t.Fatalf("Create() first error: %v", err)
+	}
+	if err := repo.Delete(ctx, first.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	recreated := &domain.InvoiceSequence{
+		Prefix: "FV", NextNumber: 1, Year: 2026,
+		FormatPattern: "{prefix}{year}{number:04d}",
+	}
+	if err := repo.Create(ctx, recreated); err != nil {
+		t.Fatalf("Create() after soft delete error: %v", err)
+	}
+	if recreated.ID == first.ID {
+		t.Errorf("recreated sequence reused ID %d", first.ID)
+	}
+
+	// Two live rows with the same prefix and year are still rejected by the index.
+	duplicate := &domain.InvoiceSequence{
+		Prefix: "FV", NextNumber: 1, Year: 2026,
+		FormatPattern: "{prefix}{year}{number:04d}",
+	}
+	if err := repo.Create(ctx, duplicate); err == nil {
+		t.Error("expected error for a second live sequence with the same prefix and year")
+	}
+}
+
 func TestSequenceRepository_GetByID(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewSequenceRepository(db)

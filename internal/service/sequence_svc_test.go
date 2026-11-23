@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -143,6 +144,29 @@ func TestSequenceService_Delete_NoReferences(t *testing.T) {
 	_, err := svc.GetByID(ctx, seq.ID)
 	if err == nil {
 		t.Error("expected error for soft-deleted sequence")
+	}
+}
+
+func TestSequenceService_Create_AfterDelete(t *testing.T) {
+	svc, _ := newSequenceTestStack(t)
+	ctx := context.Background()
+
+	first := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, first); err != nil {
+		t.Fatalf("Create() first error: %v", err)
+	}
+	if err := svc.Delete(ctx, first.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	recreated := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, recreated); err != nil {
+		t.Fatalf("Create() after delete error: %v", err)
+	}
+
+	duplicate := &domain.InvoiceSequence{Prefix: "FV", Year: 2026}
+	if err := svc.Create(ctx, duplicate); !errors.Is(err, domain.ErrDuplicateNumber) {
+		t.Errorf("Create() duplicate error = %v, want ErrDuplicateNumber", err)
 	}
 }
 

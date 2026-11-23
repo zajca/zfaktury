@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -343,7 +344,7 @@ func TestEmailHandler_SendEmail_InvalidRequestBody(t *testing.T) {
 
 // startFakeSMTP starts a loopback SMTP server. When rejectMail is true the server
 // answers MAIL FROM with a permanent failure so that every send fails.
-func startFakeSMTP(t *testing.T, rejectMail bool) (host string, port int) {
+func startFakeSMTP(t *testing.T, rejectMail bool, onData func()) (host string, port int) {
 	t.Helper()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -358,7 +359,7 @@ func startFakeSMTP(t *testing.T, rejectMail bool) (host string, port int) {
 			if err != nil {
 				return
 			}
-			go serveFakeSMTP(conn, rejectMail)
+			go serveFakeSMTP(conn, rejectMail, onData)
 		}
 	}()
 
@@ -366,7 +367,7 @@ func startFakeSMTP(t *testing.T, rejectMail bool) (host string, port int) {
 	return "127.0.0.1", addr.Port
 }
 
-func serveFakeSMTP(conn net.Conn, rejectMail bool) {
+func serveFakeSMTP(conn net.Conn, rejectMail bool, onData func()) {
 	defer func() { _ = conn.Close() }()
 	tp := textproto.NewConn(conn)
 	_ = tp.PrintfLine("220 fake ESMTP")
@@ -392,6 +393,9 @@ func serveFakeSMTP(conn net.Conn, rejectMail bool) {
 			if _, err := tp.ReadDotBytes(); err != nil {
 				return
 			}
+			if onData != nil {
+				onData()
+			}
 			_ = tp.PrintfLine("250 queued")
 		case strings.HasPrefix(cmd, "QUIT"):
 			_ = tp.PrintfLine("221 bye")
@@ -406,8 +410,15 @@ func serveFakeSMTP(conn net.Conn, rejectMail bool) {
 // returns the router, the invoice service and a seeded sequence ID.
 func setupEmailStatusRouter(t *testing.T, rejectMail bool) (*chi.Mux, *service.InvoiceService, int64) {
 	t.Helper()
+	return setupEmailStatusRouterWithHook(t, rejectMail, nil)
+}
 
-	host, port := startFakeSMTP(t, rejectMail)
+// setupEmailStatusRouterWithHook is setupEmailStatusRouter with a callback that
+// runs on the fake SMTP server after the message body was received.
+func setupEmailStatusRouterWithHook(t *testing.T, rejectMail bool, onData func()) (*chi.Mux, *service.InvoiceService, int64) {
+	t.Helper()
+
+	host, port := startFakeSMTP(t, rejectMail, onData)
 
 	db := testutil.NewTestDB(t)
 	invoiceRepo := repository.NewInvoiceRepository(db)
@@ -498,6 +509,38 @@ func TestEmailHandler_SendEmail_PaidInvoiceKeepsStatus(t *testing.T) {
 	}
 	if got := getInvoiceJSON(t, r, invoiceID)["status"]; got != "paid" {
 		t.Errorf("status = %v, want paid", got)
+	}
+}
+
+func TestEmailHandler_SendEmail_StatusUpdateFailureAfterSend(t *testing.T) {
+	var deliveredInvoiceID atomic.Int64
+	var invoiceSvc atomic.Pointer[service.InvoiceService]
+	// The invoice leaves draft while the message is being delivered, so
+	// MarkAsSent fails after the email went out.
+	onData := func() {
+		if err := invoiceSvc.Load().MarkAsSent(context.Background(), deliveredInvoiceID.Load()); err != nil {
+			t.Errorf("marking sent during delivery: %v", err)
+		}
+	}
+	r, svc, seqID := setupEmailStatusRouterWithHook(t, false, onData)
+	invoiceSvc.Store(svc)
+	invoiceID := createEmailTestInvoice(t, r, createEmailTestCustomer(t, r), seqID)
+	deliveredInvoiceID.Store(invoiceID)
+
+	rr := sendTestEmail(t, r, invoiceID)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500, body = %s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if resp["code"] != EmailSentStatusNotUpdatedCode {
+		t.Errorf("code = %q, want %q", resp["code"], EmailSentStatusNotUpdatedCode)
+	}
+	if !strings.Contains(resp["error"], "email was sent") {
+		t.Errorf("error = %q, want it to say the email was sent", resp["error"])
 	}
 }
 

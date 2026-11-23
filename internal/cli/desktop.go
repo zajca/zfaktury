@@ -13,7 +13,7 @@ import (
 var desktopPort int
 
 func init() {
-	rootCmd.Flags().IntVar(&desktopPort, "port", 0, "HTTP server port (0 = random free port)")
+	rootCmd.Flags().IntVar(&desktopPort, "port", 0, "HTTP server port (0 = use server.port from the config)")
 }
 
 func runDesktop(cmd *cobra.Command, args []string) error {

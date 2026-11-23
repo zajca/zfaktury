@@ -160,6 +160,23 @@ func (r *SequenceRepository) CountInvoicesBySequenceID(ctx context.Context, sequ
 	return count, nil
 }
 
+// MaxDeletedNextNumber returns the highest next_number among soft-deleted
+// sequences with the given prefix and year, or 0 when there are none. Invoices
+// of a deleted sequence keep their numbers, so a recreated sequence must start
+// at or above this value.
+func (r *SequenceRepository) MaxDeletedNextNumber(ctx context.Context, prefix string, year int) (int, error) {
+	var maxNext int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(MAX(next_number), 0)
+		FROM invoice_sequences
+		WHERE prefix = ? AND year = ? AND deleted_at IS NOT NULL`, prefix, year,
+	).Scan(&maxNext)
+	if err != nil {
+		return 0, fmt.Errorf("querying deleted sequences for prefix %q and year %d: %w", prefix, year, err)
+	}
+	return maxNext, nil
+}
+
 // MaxUsedNumber returns the highest invoice number used for a given sequence,
 // by looking at the invoices table. Returns 0 if no invoices reference this sequence.
 func (r *SequenceRepository) MaxUsedNumber(ctx context.Context, sequenceID int64) (int, error) {

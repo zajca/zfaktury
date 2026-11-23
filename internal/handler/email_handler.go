@@ -16,6 +16,10 @@ import (
 	"github.com/zajca/zfaktury/internal/service/email"
 )
 
+// EmailSentStatusNotUpdatedCode is the error code returned when the email went
+// out but the invoice could not be marked as sent; clients must not resend.
+const EmailSentStatusNotUpdatedCode = "email_sent_status_not_updated"
+
 // EmailHandler handles sending invoices via email.
 type EmailHandler struct {
 	invoiceSvc  *service.InvoiceService
@@ -261,7 +265,10 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	if invoice.Status == domain.InvoiceStatusDraft {
 		if err := h.invoiceSvc.MarkAsSent(r.Context(), id); err != nil {
 			slog.Error("invoice email sent but status update failed", "error", err, "id", id)
-			respondError(w, http.StatusInternalServerError, "email was sent, but updating the invoice status to sent failed")
+			respondJSON(w, http.StatusInternalServerError, map[string]string{
+				"error": "email was sent, but updating the invoice status to sent failed",
+				"code":  EmailSentStatusNotUpdatedCode,
+			})
 			return
 		}
 	}

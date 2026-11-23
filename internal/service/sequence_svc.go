@@ -46,6 +46,16 @@ func (s *SequenceService) Create(ctx context.Context, seq *domain.InvoiceSequenc
 		return fmt.Errorf("checking sequence uniqueness: %w", err)
 	}
 
+	// Invoices of a soft-deleted sequence keep their numbers, so the new
+	// sequence must not hand out numbers they already used.
+	deletedNext, err := s.repo.MaxDeletedNextNumber(ctx, seq.Prefix, seq.Year)
+	if err != nil {
+		return fmt.Errorf("checking deleted sequences: %w", err)
+	}
+	if deletedNext > seq.NextNumber {
+		seq.NextNumber = deletedNext
+	}
+
 	if err := s.repo.Create(ctx, seq); err != nil {
 		return fmt.Errorf("creating sequence: %w", err)
 	}

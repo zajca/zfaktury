@@ -35,12 +35,12 @@ func (r *RecurringExpense) NextDate() time.Time {
 	case "weekly":
 		return r.NextIssueDate.AddDate(0, 0, 7)
 	case "monthly":
-		return r.NextIssueDate.AddDate(0, 1, 0)
+		return addMonthsClamped(r.NextIssueDate, 1)
 	case "quarterly":
-		return r.NextIssueDate.AddDate(0, 3, 0)
+		return addMonthsClamped(r.NextIssueDate, 3)
 	case "yearly":
-		return r.NextIssueDate.AddDate(1, 0, 0)
+		return addMonthsClamped(r.NextIssueDate, 12)
 	default:
-		return r.NextIssueDate.AddDate(0, 1, 0)
+		return addMonthsClamped(r.NextIssueDate, 1)
 	}
 }

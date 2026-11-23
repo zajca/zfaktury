@@ -225,6 +225,9 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	sio.Prepayments = socialTotal
 	sio.Difference = insResult.Difference
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
+	// A stored XML describes the previous amounts and months, so it is dropped
+	// and has to be generated again.
+	sio.XMLData = nil
 
 	return nil
 }

@@ -531,6 +531,36 @@ func TestHealthInsuranceService_SetActivityMonths_RecalculateFails(t *testing.T)
 	}
 }
 
+func TestHealthInsuranceService_SetActivityMonths_ClearsStoredXML(t *testing.T) {
+	svc, db := setupHealthInsuranceSvc(t)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+	}
+	if err := svc.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	if _, err := db.ExecContext(ctx, `UPDATE health_insurance_overviews SET xml_data = '<xml/>' WHERE id = ?`, hi.ID); err != nil {
+		t.Fatalf("storing XML: %v", err)
+	}
+
+	if _, err := svc.SetActivityMonths(ctx, hi.ID, domain.ActivityMonths(4032)); err != nil {
+		t.Fatalf("SetActivityMonths() error: %v", err)
+	}
+
+	stored, err := svc.GetXMLData(ctx, hi.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() error: %v", err)
+	}
+	if len(stored) != 0 {
+		t.Errorf("stored XML = %q, want it cleared after changing the months", stored)
+	}
+}
+
 func TestHealthInsuranceService_SetActivityMonths_Filed(t *testing.T) {
 	svc, _ := setupHealthInsuranceSvc(t)
 	ctx := context.Background()

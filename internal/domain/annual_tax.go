@@ -126,7 +126,7 @@ type SocialInsuranceOverview struct {
 	TotalRevenue        Amount
 	TotalExpenses       Amount // used expenses (actual or flat-rate)
 	TaxBase             Amount // prijmy - vydaje
-	AssessmentBase      Amount // vymericaci zaklad = 50% of TaxBase
+	AssessmentBase      Amount // vymerovaci zaklad = 55 % of TaxBase from 2024 (50 % before)
 	MinAssessmentBase   Amount // minimum for the year
 	FinalAssessmentBase Amount // min(max(AssessmentBase, MinAssessmentBase), max annual base)
 

@@ -23,17 +23,20 @@ func loadTestConfig(t *testing.T, serverSection string) *config.Config {
 	return cfg
 }
 
+func intPtr(v int) *int { return &v }
+
 func TestEffectivePort(t *testing.T) {
 	tests := []struct {
 		name          string
 		serverSection string
-		override      int
+		override      *int
 		want          int
 	}{
-		{name: "config port without flag", serverSection: "[server]\nport = 9090\n", override: 0, want: 9090},
-		{name: "flag overrides config port", serverSection: "[server]\nport = 9090\n", override: 7000, want: 7000},
-		{name: "neither config port nor flag", serverSection: "", override: 0, want: 8080},
-		{name: "flag without config port", serverSection: "", override: 7000, want: 7000},
+		{name: "config port without flag", serverSection: "[server]\nport = 9090\n", override: nil, want: 9090},
+		{name: "flag overrides config port", serverSection: "[server]\nport = 9090\n", override: intPtr(7000), want: 7000},
+		{name: "flag 0 overrides config port", serverSection: "[server]\nport = 9090\n", override: intPtr(0), want: 0},
+		{name: "neither config port nor flag", serverSection: "", override: nil, want: 8080},
+		{name: "flag without config port", serverSection: "", override: intPtr(7000), want: 7000},
 	}
 
 	for _, tt := range tests {

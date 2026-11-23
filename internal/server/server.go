@@ -41,15 +41,15 @@ type App struct {
 type Options struct {
 	ConfigFile string
 	InitConfig bool
-	Port       int // 0 = keep server.port from the config
+	Port       *int // nil = keep server.port from the config; 0 = let the OS pick a free port
 	DevMode    bool
 }
 
-// effectivePort returns the explicit override when it is non-zero, otherwise
-// the port from the config.
-func effectivePort(configPort, override int) int {
-	if override != 0 {
-		return override
+// effectivePort returns the explicit override when one was given (including 0),
+// otherwise the port from the config.
+func effectivePort(configPort int, override *int) int {
+	if override != nil {
+		return *override
 	}
 	return configPort
 }

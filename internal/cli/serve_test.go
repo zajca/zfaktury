@@ -17,11 +17,12 @@ func TestPortOverride(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
-		want int
+		want *int
 	}{
-		{name: "flag not given", args: nil, want: 0},
-		{name: "flag given", args: []string{"--port", "7000"}, want: 7000},
-		{name: "flag given with the old default value", args: []string{"--port", "8080"}, want: 8080},
+		{name: "flag not given", args: nil, want: nil},
+		{name: "flag given", args: []string{"--port", "7000"}, want: intPtr(7000)},
+		{name: "flag given with the old default value", args: []string{"--port", "8080"}, want: intPtr(8080)},
+		{name: "flag given as zero", args: []string{"--port", "0"}, want: intPtr(0)},
 	}
 
 	for _, tt := range tests {
@@ -30,19 +31,17 @@ func TestPortOverride(t *testing.T) {
 			if err := cmd.ParseFlags(tt.args); err != nil {
 				t.Fatalf("ParseFlags() error: %v", err)
 			}
-			if got := portOverride(cmd, *port); got != tt.want {
-				t.Errorf("portOverride() = %d, want %d", got, tt.want)
+			got := portOverride(cmd, *port)
+			switch {
+			case tt.want == nil && got != nil:
+				t.Errorf("portOverride() = %d, want nil", *got)
+			case tt.want != nil && got == nil:
+				t.Errorf("portOverride() = nil, want %d", *tt.want)
+			case tt.want != nil && *got != *tt.want:
+				t.Errorf("portOverride() = %d, want %d", *got, *tt.want)
 			}
 		})
 	}
 }
 
-func TestServeCommandPortFlagHasNoDefault(t *testing.T) {
-	flag := serveCmd.Flags().Lookup("port")
-	if flag == nil {
-		t.Fatal("serve command has no --port flag")
-	}
-	if flag.DefValue != "0" {
-		t.Errorf("--port default = %q, want 0 so that server.port applies", flag.DefValue)
-	}
-}
+func intPtr(v int) *int { return &v }

@@ -13,14 +13,14 @@ import (
 var desktopPort int
 
 func init() {
-	rootCmd.Flags().IntVar(&desktopPort, "port", 0, "HTTP server port (0 = use server.port from the config)")
+	rootCmd.Flags().IntVar(&desktopPort, "port", 0, "HTTP server port (overrides server.port from the config; 0 = random free port)")
 }
 
 func runDesktop(cmd *cobra.Command, args []string) error {
 	srvApp, err := server.New(server.Options{
 		ConfigFile: configFile,
 		InitConfig: true,
-		Port:       desktopPort,
+		Port:       portOverride(cmd, desktopPort),
 	})
 	if err != nil {
 		return err

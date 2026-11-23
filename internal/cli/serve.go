@@ -18,19 +18,20 @@ var (
 )
 
 func init() {
-	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP server port (overrides server.port from the config)")
+	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP server port (overrides server.port from the config; 0 = random free port)")
 	serveCmd.Flags().BoolVar(&serveDev, "dev", false, "Enable development mode (proxy frontend to Vite)")
 	serveCmd.Flags().BoolVar(&serveInitConfig, "init-config", false, "Create a default config file if it does not exist")
 	rootCmd.AddCommand(serveCmd)
 }
 
 // portOverride returns the --port value only when the flag was given on the
-// command line; 0 tells the server to keep the port from the config.
-func portOverride(cmd *cobra.Command, port int) int {
+// command line (including --port 0); nil tells the server to keep the port from
+// the config.
+func portOverride(cmd *cobra.Command, port int) *int {
 	if cmd.Flags().Changed("port") {
-		return port
+		return &port
 	}
-	return 0
+	return nil
 }
 
 var serveCmd = &cobra.Command{

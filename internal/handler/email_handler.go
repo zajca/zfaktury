@@ -9,6 +9,7 @@ import (
 	"net/mail"
 	"strings"
 
+	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
@@ -255,5 +256,15 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("invoice email sent", "id", id, "to", req.To)
+
+	// Only drafts move to sent; invoices already past draft keep their status.
+	if invoice.Status == domain.InvoiceStatusDraft {
+		if err := h.invoiceSvc.MarkAsSent(r.Context(), id); err != nil {
+			slog.Error("invoice email sent but status update failed", "error", err, "id", id)
+			respondError(w, http.StatusInternalServerError, "email was sent, but updating the invoice status to sent failed")
+			return
+		}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]string{"status": "sent"})
 }

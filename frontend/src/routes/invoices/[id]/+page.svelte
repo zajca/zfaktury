@@ -429,6 +429,7 @@
 					}}
 					onsuccess={() => {
 						showSendEmailDialog = false;
+						loadInvoice();
 					}}
 				/>
 			{/if}

@@ -14,7 +14,7 @@ var csszDepCodePattern = regexp.MustCompile(`^\d{3}$`)
 
 // GenerateSocialInsuranceXML produces CSSZ OSVC overview XML from a SocialInsuranceOverview,
 // application settings containing taxpayer information and the monthly advance
-// base for ř. 35 (bounded by the payment-year minimum and maximum by the caller).
+// base for ř. 35 that the overview was calculated with.
 func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings map[string]string, advanceMonthlyBase domain.Amount) ([]byte, error) {
 	if sio == nil {
 		return nil, fmt.Errorf("social insurance overview is nil: %w", domain.ErrInvalidInput)
@@ -38,8 +38,7 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	difference := ToWholeCZK(sio.Difference)
 	newMonthlyPrepay := ToWholeCZK(sio.NewMonthlyPrepay)
 	months := int64(sio.ActivityMonths.Count())
-	// ř. 35: the monthly advance base bounded by the payment-year minimum and
-	// maximum; the caller derives it with calc.SocialAdvanceMonthlyBase.
+	// ř. 35: the monthly advance base of the stored calculation.
 	monthlyAssessmentBase := ToWholeCZK(advanceMonthlyBase)
 
 	priznElektr := "A"

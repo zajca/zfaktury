@@ -25,7 +25,7 @@ const socialInsuranceColumns = `id, year, filing_type, activity_months,
 	total_revenue, total_expenses, tax_base,
 	assessment_base, min_assessment_base, final_assessment_base,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
-	xml_data, status, filed_at, created_at, updated_at`
+	new_monthly_base, xml_data, status, filed_at, created_at, updated_at`
 
 // activityMonthsFromDB converts the stored activity_months integer into a mask.
 // Values that cannot be a January-December mask are reported as a plain error,
@@ -37,6 +37,15 @@ func activityMonthsFromDB(value int64) (domain.ActivityMonths, error) {
 	return domain.ActivityMonths(value), nil
 }
 
+// nullableAmount converts an optional amount into a database value; nil is
+// stored as NULL.
+func nullableAmount(amount *domain.Amount) any {
+	if amount == nil {
+		return nil
+	}
+	return int64(*amount)
+}
+
 // scanSocialInsuranceOverview scans a SocialInsuranceOverview from a row.
 func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, error) {
 	sio := &domain.SocialInsuranceOverview{}
@@ -44,13 +53,14 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 	var createdAtStr, updatedAtStr string
 	var xmlData []byte
 	var activityMonths int64
+	var newMonthlyBase sql.NullInt64
 
 	err := s.Scan(
 		&sio.ID, &sio.Year, &sio.FilingType, &activityMonths,
 		&sio.TotalRevenue, &sio.TotalExpenses, &sio.TaxBase,
 		&sio.AssessmentBase, &sio.MinAssessmentBase, &sio.FinalAssessmentBase,
 		&sio.InsuranceRate, &sio.TotalInsurance, &sio.Prepayments, &sio.Difference, &sio.NewMonthlyPrepay,
-		&xmlData, &sio.Status, &filedAtStr,
+		&newMonthlyBase, &xmlData, &sio.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
@@ -63,6 +73,10 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 	}
 	sio.ActivityMonths = months
 	sio.XMLData = xmlData
+	if newMonthlyBase.Valid {
+		base := domain.Amount(newMonthlyBase.Int64)
+		sio.NewMonthlyBase = &base
+	}
 
 	sio.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
 	if err != nil {
@@ -95,13 +109,13 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 			total_revenue, total_expenses, tax_base,
 			assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
-			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			new_monthly_base, xml_data, status, filed_at, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
-		nil, sio.Status, nil,
+		nullableAmount(sio.NewMonthlyBase), nil, sio.Status, nil,
 		sio.CreatedAt.Format(time.RFC3339), sio.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -131,13 +145,13 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 			total_revenue = ?, total_expenses = ?, tax_base = ?,
 			assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
-			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
+			new_monthly_base = ?, xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
-		sio.XMLData, sio.Status, filedAt,
+		nullableAmount(sio.NewMonthlyBase), sio.XMLData, sio.Status, filedAt,
 		sio.UpdatedAt.Format(time.RFC3339), sio.ID,
 	)
 	if err != nil {

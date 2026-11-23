@@ -183,6 +183,16 @@ func (s *SocialInsuranceService) advanceBounds(year int) (*calc.AdvanceBaseBound
 	return bounds, nil
 }
 
+// storedAdvanceBase returns the monthly advance base the overview was calculated
+// with. Rows calculated before the base was stored fall back to the formula they
+// were calculated with: the final annual base over the months of activity.
+func (s *SocialInsuranceService) storedAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
+	if sio.NewMonthlyBase != nil {
+		return *sio.NewMonthlyBase
+	}
+	return calc.SocialAdvanceMonthlyBase(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), nil)
+}
+
 // applyRecalculatedAmounts fills the calculated amounts of the overview in memory
 // from its activity months, without persisting anything.
 func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
@@ -250,6 +260,8 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	sio.Prepayments = socialTotal
 	sio.Difference = insResult.Difference
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
+	newMonthlyBase := insResult.NewMonthlyBase
+	sio.NewMonthlyBase = &newMonthlyBase
 	// A stored XML describes the previous amounts and months, so it is dropped
 	// and has to be generated again.
 	sio.XMLData = nil
@@ -338,12 +350,10 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		settings["flat_rate_expenses"] = "true"
 	}
 
-	bounds, err := s.advanceBounds(sio.Year)
-	if err != nil {
-		return nil, err
+	advanceBase := s.storedAdvanceBase(sio)
+	if want := calc.SocialAdvanceFromMonthlyBase(advanceBase, sio.InsuranceRate); want != sio.NewMonthlyPrepay {
+		return nil, fmt.Errorf("social_insurance_overview %d: the stored advance %d does not match the monthly base %d (expected %d), recalculate the overview: %w", sio.ID, sio.NewMonthlyPrepay, advanceBase, want, domain.ErrInvalidInput)
 	}
-
-	advanceBase := calc.SocialAdvanceMonthlyBase(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), bounds)
 	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings, advanceBase)
 	if err != nil {
 		return nil, fmt.Errorf("generating social_insurance_overview XML: %w", err)

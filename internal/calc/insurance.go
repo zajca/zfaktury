@@ -87,6 +87,9 @@ type InsuranceResult struct {
 	// NewMonthlyPrepay is the advance on premiums per month of activity, rounded
 	// up to whole CZK.
 	NewMonthlyPrepay domain.Amount
+	// NewMonthlyBase is the monthly assessment base the social advance was
+	// derived from (ř. 35); zero for health and the historical branch.
+	NewMonthlyBase domain.Amount
 }
 
 // CalculateInsurance computes the annual insurance overview from the given input.
@@ -137,13 +140,17 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 
 	rate := int64(input.RatePermille)
 	var newMonthlyPrepay int64
+	var newMonthlyBase int64
 	switch {
 	case input.AssessmentBasePermille != 0:
 		// CSSZ: the monthly base is the annual base spread over the months of
 		// activity, rounded up to whole CZK (§ 14 odst. 13 zakona c. 589/1992 Sb.);
-		// the advance is the rate applied to it, rounded up to whole CZK.
-		monthlyBase := int64(SocialAdvanceMonthlyBase(domain.Amount(assessmentBase), domain.Amount(finalBase), input.ActivityMonths, input.AdvanceBounds))
-		newMonthlyPrepay = ceilToWholeCZK(ceilDiv(monthlyBase*rate, 1000))
+		// with a payment year that has a single minimum period it is raised to that
+		// minimum and capped at that maximum, otherwise the final annual base is
+		// used. The advance is the rate applied to the base, rounded up to whole CZK.
+		monthlyBase := SocialAdvanceMonthlyBase(domain.Amount(assessmentBase), domain.Amount(finalBase), input.ActivityMonths, input.AdvanceBounds)
+		newMonthlyBase = int64(monthlyBase)
+		newMonthlyPrepay = int64(SocialAdvanceFromMonthlyBase(monthlyBase, input.RatePermille))
 	case input.RoundPremiumUp:
 		// Health: the premium is divided by the months of activity in a single
 		// step, so the monthly base itself is not rounded to whole CZK.
@@ -161,7 +168,15 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 		TotalInsurance:      domain.Amount(totalInsurance),
 		Difference:          domain.Amount(difference),
 		NewMonthlyPrepay:    domain.Amount(newMonthlyPrepay),
+		NewMonthlyBase:      domain.Amount(newMonthlyBase),
 	}, nil
+}
+
+// SocialAdvanceFromMonthlyBase returns the monthly social insurance advance
+// from the monthly assessment base (ř. 36): the rate applied to the base,
+// rounded up to whole CZK.
+func SocialAdvanceFromMonthlyBase(base domain.Amount, ratePermille int) domain.Amount {
+	return domain.Amount(ceilToWholeCZK(ceilDiv(int64(base)*int64(ratePermille), 1000)))
 }
 
 // ceilDiv divides non-negative a by positive b, rounding the result up.

@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/xml"
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/annualtaxxml"
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -727,5 +729,121 @@ func TestRecalculate_2026KeepsUnboundedAdvance_NoNextYearRules(t *testing.T) {
 
 	if want := domain.NewAmount(5_005, 0); result.NewMonthlyPrepay != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d (2026 base 17 139 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	}
+}
+
+// seedSocialInsuranceXMLSettings stores the taxpayer data the CSSZ XML needs.
+func seedSocialInsuranceXMLSettings(t *testing.T, db *sql.DB) {
+	t.Helper()
+	settingsRepo := repository.NewSettingsRepository(db)
+	settings := map[string]string{
+		"cssz_code":    "775",
+		"first_name":   "Jan",
+		"last_name":    "Testovaci",
+		"birth_number": "8001010006",
+		"birth_date":   "1980-01-01",
+		"street":       "Testovaci",
+		"house_number": "1",
+		"zip":          "11000",
+		"city":         "Praha",
+	}
+	if err := settingsRepo.SetBulk(context.Background(), settings); err != nil {
+		t.Fatalf("storing settings: %v", err)
+	}
+}
+
+// The XML must report the base and the advance from one stored recalculation,
+// so the 2024 overview keeps the 2025 payment-year bounds.
+func TestGenerateXML_2024UsesStoredBoundedBase(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+	seedSocialInsuranceXMLSettings(t, db)
+
+	sio := &domain.SocialInsuranceOverview{Year: 2024, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, sio.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	generated, err := svc.GenerateXML(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+
+	var doc annualtaxxml.OSVC
+	if err := xml.Unmarshal(generated.XMLData, &doc); err != nil {
+		t.Fatalf("unmarshal generated XML: %v", err)
+	}
+	if doc.Prehled.Zal.VZ != "16295" {
+		t.Errorf("zal@vz = %q, want 16295", doc.Prehled.Zal.VZ)
+	}
+	if doc.Prehled.Zal.DP != "4759" {
+		t.Errorf("zal@dp = %q, want 4759", doc.Prehled.Zal.DP)
+	}
+}
+
+// Rows calculated before the base was stored fall back to the formula they were
+// calculated with and keep their stored advance.
+func TestGenerateXML_LegacyRowWithoutStoredBase(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+	seedSocialInsuranceXMLSettings(t, db)
+
+	sio := &domain.SocialInsuranceOverview{
+		Year:                2024,
+		FilingType:          domain.FilingTypeRegular,
+		ActivityMonths:      domain.FullYearActivityMonths,
+		AssessmentBase:      domain.NewAmount(55_000, 0),
+		MinAssessmentBase:   domain.NewAmount(158_292, 0),
+		FinalAssessmentBase: domain.NewAmount(158_292, 0),
+		InsuranceRate:       292,
+		TotalInsurance:      domain.NewAmount(46_221, 0),
+		NewMonthlyPrepay:    domain.NewAmount(3_852, 0),
+	}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	generated, err := svc.GenerateXML(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+
+	var doc annualtaxxml.OSVC
+	if err := xml.Unmarshal(generated.XMLData, &doc); err != nil {
+		t.Fatalf("unmarshal generated XML: %v", err)
+	}
+	if doc.Prehled.Zal.VZ != "13191" {
+		t.Errorf("zal@vz = %q, want 13191 (the legacy base)", doc.Prehled.Zal.VZ)
+	}
+	if doc.Prehled.Zal.DP != "3852" {
+		t.Errorf("zal@dp = %q, want 3852", doc.Prehled.Zal.DP)
+	}
+}
+
+func TestGenerateXML_RejectsInconsistentStoredAdvance(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+	seedSocialInsuranceXMLSettings(t, db)
+
+	sio := &domain.SocialInsuranceOverview{Year: 2024, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, sio.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE social_insurance_overviews SET new_monthly_prepay = ? WHERE id = ?`, domain.NewAmount(9_999, 0), sio.ID); err != nil {
+		t.Fatalf("updating stored advance: %v", err)
+	}
+
+	_, err := svc.GenerateXML(ctx, sio.ID)
+	if err == nil {
+		t.Fatal("GenerateXML() error = nil, want ErrInvalidInput")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
 	}
 }

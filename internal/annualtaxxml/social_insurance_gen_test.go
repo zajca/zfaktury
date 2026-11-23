@@ -499,8 +499,8 @@ func validSocialInsuranceSettings() map[string]string {
 	}
 }
 
-// testAdvanceBase keeps the fixtures on the ř. 35 value the generator used to
-// derive itself: the final base spread over the months, rounded up.
+// testAdvanceBase returns the ř. 35 base the fixtures are calculated with: the
+// final annual base spread over the months of activity, rounded up.
 func testAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
 	months := int64(sio.ActivityMonths.Count())
 	if months <= 0 {

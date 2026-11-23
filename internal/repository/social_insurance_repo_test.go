@@ -326,3 +326,44 @@ func TestSocialInsuranceOverviewRepository_ActivityMonthsMigrationBackfill(t *te
 		t.Errorf("ActivityMonths after migration = %d, want %d", got.ActivityMonths, domain.FullYearActivityMonths)
 	}
 }
+
+func TestSocialInsuranceOverviewRepository_NewMonthlyBase(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	base := domain.NewAmount(16_295, 0)
+	sio := &domain.SocialInsuranceOverview{
+		Year:           2024,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+		NewMonthlyBase: &base,
+	}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.NewMonthlyBase == nil {
+		t.Fatal("NewMonthlyBase = nil, want the stored base")
+	}
+	if *got.NewMonthlyBase != base {
+		t.Errorf("NewMonthlyBase = %d, want %d", *got.NewMonthlyBase, base)
+	}
+
+	got.NewMonthlyBase = nil
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	cleared, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after clearing error: %v", err)
+	}
+	if cleared.NewMonthlyBase != nil {
+		t.Errorf("NewMonthlyBase = %d, want nil after clearing", *cleared.NewMonthlyBase)
+	}
+}

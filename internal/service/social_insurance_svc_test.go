@@ -455,7 +455,10 @@ func TestSocialInsuranceService_Recalculate_MaxAssessmentBase(t *testing.T) {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	constants, _ := calc.GetTaxConstants(2025)
+	constants, err := calc.GetTaxConstants(2025)
+	if err != nil {
+		t.Fatalf("GetTaxConstants(2025) error: %v", err)
+	}
 	wantAssessmentBase := domain.NewAmount(2_750_000, 0)
 	if result.AssessmentBase != wantAssessmentBase {
 		t.Errorf("AssessmentBase = %d, want %d", result.AssessmentBase, wantAssessmentBase)

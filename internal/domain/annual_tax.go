@@ -128,7 +128,7 @@ type SocialInsuranceOverview struct {
 	TaxBase             Amount // prijmy - vydaje
 	AssessmentBase      Amount // vymericaci zaklad = 50% of TaxBase
 	MinAssessmentBase   Amount // minimum for the year
-	FinalAssessmentBase Amount // max(Assessment, Min)
+	FinalAssessmentBase Amount // min(max(AssessmentBase, MinAssessmentBase), max annual base)
 
 	InsuranceRate    int    // 292 = 29.2% (permille*10)
 	TotalInsurance   Amount // pojistne

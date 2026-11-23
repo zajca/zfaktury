@@ -649,64 +649,117 @@ func TestInvestmentIncomeService_RecalculateFIFO_ExemptionLimit2025(t *testing.T
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()
 
-	// SecurityExemptionLimit for 2025 = NewAmount(100_000_000, 0) = 10_000_000_000 halere.
-	// Create two sells whose combined exempt gains exceed the limit.
-	buy1 := testSecTx(2025, domain.AssetTypeStock, "BIG1", domain.TransactionTypeBuy,
-		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100)
-	if err := svc.CreateSecurityTransaction(ctx, buy1); err != nil {
-		t.Fatalf("Create buy1: %v", err)
+	// 2025 limit: 40 000 000 CZK = 4_000_000_000 halere of gross time-test income.
+	// Two sells with 3e9 + 3e9 halere of income exceed it, so 4/6 of each gain is exempt.
+	for _, name := range []string{"BIG1", "BIG2"} {
+		buy := testSecTx(2025, domain.AssetTypeStock, name, domain.TransactionTypeBuy,
+			time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 1_000_000_000)
+		if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+			t.Fatalf("Create buy %s: %v", name, err)
+		}
 	}
-
-	// First sell: gain just under the limit.
 	sell1 := testSecTx(2025, domain.AssetTypeStock, "BIG1", domain.TransactionTypeSell,
-		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 9_000_000_000)
-	if err := svc.CreateSecurityTransaction(ctx, sell1); err != nil {
-		t.Fatalf("Create sell1: %v", err)
-	}
-
-	buy2 := testSecTx(2025, domain.AssetTypeStock, "BIG2", domain.TransactionTypeBuy,
-		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 100)
-	if err := svc.CreateSecurityTransaction(ctx, buy2); err != nil {
-		t.Fatalf("Create buy2: %v", err)
-	}
-
-	// Second sell: gain that would push total over the limit.
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 3_000_000_000)
 	sell2 := testSecTx(2025, domain.AssetTypeStock, "BIG2", domain.TransactionTypeSell,
 		time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC), 10000, 3_000_000_000)
-	if err := svc.CreateSecurityTransaction(ctx, sell2); err != nil {
-		t.Fatalf("Create sell2: %v", err)
+	for _, s := range []*domain.SecurityTransaction{sell1, sell2} {
+		if err := svc.CreateSecurityTransaction(ctx, s); err != nil {
+			t.Fatalf("Create sell: %v", err)
+		}
 	}
 
 	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
 		t.Fatalf("RecalculateFIFO() error: %v", err)
 	}
 
-	got1, err := svc.GetSecurityTransaction(ctx, sell1.ID)
-	if err != nil {
-		t.Fatalf("Get sell1: %v", err)
+	for _, id := range []int64{sell1.ID, sell2.ID} {
+		got, err := svc.GetSecurityTransaction(ctx, id)
+		if err != nil {
+			t.Fatalf("Get sell: %v", err)
+		}
+		// Gain = 3e9 - 1e9 = 2e9; exempt share = 4e9 / 6e9 -> 2e9 * 2/3 = 1_333_333_333.
+		if got.ComputedGain != 2_000_000_000 {
+			t.Errorf("ComputedGain = %d, want 2000000000", got.ComputedGain)
+		}
+		if got.ExemptAmount != 1_333_333_333 {
+			t.Errorf("ExemptAmount = %d, want 1333333333", got.ExemptAmount)
+		}
+		if !got.TimeTestExempt {
+			t.Error("expected TimeTestExempt = true for the partially exempt sell")
+		}
 	}
-	got2, err := svc.GetSecurityTransaction(ctx, sell2.ID)
+}
+
+// recalcSingleSell stores one time-test-satisfying sale and returns its FIFO result.
+func recalcSingleSell(t *testing.T, year int, assetType string, cost, proceeds domain.Amount) *domain.SecurityTransaction {
+	t.Helper()
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	buy := testSecTx(year, assetType, "LIM", domain.TransactionTypeBuy,
+		time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC), 100, cost)
+	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := testSecTx(year, assetType, "LIM", domain.TransactionTypeSell,
+		time.Date(year, 6, 1, 0, 0, 0, 0, time.UTC), 100, proceeds)
+	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+	if err := svc.RecalculateFIFO(ctx, year); err != nil {
+		t.Fatalf("RecalculateFIFO() error: %v", err)
+	}
+	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
 	if err != nil {
-		t.Fatalf("Get sell2: %v", err)
+		t.Fatalf("Get sell: %v", err)
+	}
+	return got
+}
+
+func TestInvestmentIncomeService_RecalculateFIFO_ExemptionLimitBoundary2025(t *testing.T) {
+	const limit = domain.Amount(4_000_000_000) // 40 000 000 CZK in halere
+
+	tests := []struct {
+		name       string
+		proceeds   domain.Amount
+		wantExempt domain.Amount
+	}{
+		{"below limit is fully exempt", limit - 100, (limit - 100) - 1_000_000_000},
+		{"at limit is fully exempt", limit, limit - 1_000_000_000},
+		// Income 8e9 is twice the limit: half of the 7e9 gain stays exempt.
+		{"above limit exempts the proportional share", 2 * limit, 3_500_000_000},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := recalcSingleSell(t, 2025, domain.AssetTypeStock, 1_000_000_000, tt.proceeds)
+			if got.ExemptAmount != tt.wantExempt {
+				t.Errorf("ExemptAmount = %d, want %d", got.ExemptAmount, tt.wantExempt)
+			}
+			if !got.TimeTestExempt {
+				t.Error("expected TimeTestExempt = true")
+			}
+		})
+	}
+}
+
+// From 2026 the limit stays only for crypto-assets (MF press release).
+func TestInvestmentIncomeService_RecalculateFIFO_ExemptionLimit2026(t *testing.T) {
+	stock := recalcSingleSell(t, 2026, domain.AssetTypeStock, 1_000_000_000, 8_000_000_000)
+	if stock.ExemptAmount != stock.ComputedGain {
+		t.Errorf("stock ExemptAmount = %d, want full gain %d", stock.ExemptAmount, stock.ComputedGain)
 	}
 
-	if !got1.TimeTestExempt {
-		t.Error("sell1: expected TimeTestExempt = true")
+	crypto := recalcSingleSell(t, 2026, domain.AssetTypeCrypto, 1_000_000_000, 8_000_000_000)
+	if crypto.ExemptAmount != 3_500_000_000 {
+		t.Errorf("crypto ExemptAmount = %d, want 3500000000", crypto.ExemptAmount)
 	}
-	if !got2.TimeTestExempt {
-		t.Error("sell2: expected TimeTestExempt = true")
-	}
+}
 
-	// Total exempt should be capped at the limit (10_000_000_000).
-	totalExempt := got1.ExemptAmount + got2.ExemptAmount
-	limit := domain.NewAmount(100_000_000, 0) // 10_000_000_000 halere
-	if totalExempt > limit {
-		t.Errorf("total exempt = %d, should not exceed limit %d", totalExempt, limit)
-	}
-	// sell2's exempt amount should be less than its full gain (it's capped).
-	sell2Gain := got2.ComputedGain
-	if got2.ExemptAmount >= sell2Gain {
-		t.Errorf("sell2 exempt %d should be less than full gain %d (capped by limit)", got2.ExemptAmount, sell2Gain)
+func TestProportionalAmount_NoOverflow(t *testing.T) {
+	// 9e12 halere gain x 4e9 limit exceeds int64 as a plain product.
+	got := proportionalAmount(9_000_000_000_000, 4_000_000_000, 8_000_000_000)
+	if got != 4_500_000_000_000 {
+		t.Errorf("proportionalAmount = %d, want 4500000000000", got)
 	}
 }
 

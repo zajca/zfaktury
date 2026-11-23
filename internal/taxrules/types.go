@@ -167,7 +167,7 @@ type TaxYearConstants struct {
 	HealthRate             int                   // permille*10, e.g. 135 = 13.5%
 	FlatRateCaps           map[int]domain.Amount // percent -> max halere amount
 	TimeTestYears          int                   // years to hold for time test exemption
-	SecurityExemptionLimit domain.Amount         // max exempt amount per year (0 = no limit)
+	SecurityExemptionLimit domain.Amount         // max yearly gross time-test income that stays exempt (0 = no limit)
 
 	SpouseIncomeLimit           domain.Amount
 	DeductionCapMortgage        domain.Amount
@@ -176,6 +176,10 @@ type TaxYearConstants struct {
 	DeductionCapSavingsCombined domain.Amount
 	DeductionCapUnionDues       domain.Amount
 	MaxChildBonus               domain.Amount
+
+	// SecurityExemptionLimitAssetTypes lists the asset types whose time-test
+	// income counts toward SecurityExemptionLimit; empty means all asset types.
+	SecurityExemptionLimitAssetTypes []string
 
 	// SocialMinAdvanceBase is the minimum monthly assessment base used for
 	// monthly advances; it can change mid-year while the annual overview uses

@@ -69,8 +69,8 @@ func TestGetTaxConstants_2025Values(t *testing.T) {
 	if c.StudentCredit != 0 {
 		t.Errorf("2025 StudentCredit = %d, want 0 (zrušena od 2024)", c.StudentCredit)
 	}
-	if c.SecurityExemptionLimit != domain.NewAmount(100_000_000, 0) {
-		t.Errorf("2025 SecurityExemptionLimit = %d, want %d", c.SecurityExemptionLimit, domain.NewAmount(100_000_000, 0))
+	if c.SecurityExemptionLimit != domain.NewAmount(40_000_000, 0) {
+		t.Errorf("2025 SecurityExemptionLimit = %d, want %d", c.SecurityExemptionLimit, domain.NewAmount(40_000_000, 0))
 	}
 }
 

@@ -69,6 +69,7 @@ var ruleSets = map[int]RuleSet{
 		Sources: []LegalSource{
 			{Title: "Zákon č. 586/1992 Sb., § 15, § 16, § 35ba, § 35c"},
 			{Title: "Nařízení vlády č. 282/2024 Sb.", Note: "průměrná mzda pro rok 2025"},
+			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od ledna 2025 limit 40 mil. Kč na úhrn příjmů ve zdaňovacím období, příjmy nad limit se zdaňují poměrně"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_676_052, 0),
@@ -94,7 +95,7 @@ var ruleSets = map[int]RuleSet{
 				30: domain.NewAmount(600_000, 0),
 			},
 			TimeTestYears:               3,
-			SecurityExemptionLimit:      domain.NewAmount(100_000_000, 0),
+			SecurityExemptionLimit:      domain.NewAmount(40_000_000, 0),
 			SpouseIncomeLimit:           domain.NewAmount(68_000, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
 			DeductionCapLifeInsurance:   domain.NewAmount(0, 0),
@@ -120,6 +121,7 @@ var ruleSets = map[int]RuleSet{
 		Sources: []LegalSource{
 			{Title: "Zákon č. 586/1992 Sb., § 15, § 16, § 35ba, § 35c"},
 			{Title: "Finanční správa: obecné informace pro zaměstnance a zaměstnavatele", URL: "https://financnisprava.gov.cz/cs/dane/dane/dan-z-prijmu/zamestnanci-zamestnavatele/obecne-informace", Note: "36násobek průměrné mzdy pro rok 2026"},
+			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od 1. 1. 2026 se limit 40 mil. Kč u podílů a akcií ruší, u kryptoaktiv zůstává"},
 			{Title: "ČSSZ: změna pojistného na důchodové pojištění OSVČ od 1. 7. 2026", URL: "https://www.cssz.gov.cz/-/informace-pro-osvc-o-zmene-pojistneho-na-duchodove-pojisteni-od-1-7-2026", Note: "zálohy: základ 19 587 Kč (leden-červen), 17 139 Kč (od července); Přehled za 2026 přepočítá leden-červen, jako by změna platila od ledna, tedy minimum 17 139 Kč za všech 12 měsíců"},
 			{Title: "VZP: OSVČ - minimální výše záloh", URL: "https://www.vzp.cz/platci/informace/osvc/osvc-minimalni-vyse-zaloh", Note: "minimální měsíční vyměřovací základ OSVČ pro zdravotní pojištění v roce 2026"},
 		},
@@ -146,7 +148,7 @@ var ruleSets = map[int]RuleSet{
 				30: domain.NewAmount(600_000, 0),
 			},
 			TimeTestYears:               3,
-			SecurityExemptionLimit:      domain.NewAmount(100_000_000, 0),
+			SecurityExemptionLimit:      domain.NewAmount(40_000_000, 0),
 			SpouseIncomeLimit:           domain.NewAmount(68_000, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
 			DeductionCapLifeInsurance:   domain.NewAmount(0, 0),
@@ -154,6 +156,8 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
 			MaxChildBonus:               domain.NewAmount(60_300, 0),
+
+			SecurityExemptionLimitAssetTypes: []string{domain.AssetTypeCrypto},
 			SocialMinAdvanceBase: Schedule[domain.Amount]{
 				{From: NewDate(2026, time.January, 1), To: NewDate(2026, time.June, 30), Value: domain.NewAmount(19_587, 0)},
 				{From: NewDate(2026, time.July, 1), To: NewDate(2026, time.December, 31), Value: domain.NewAmount(17_139, 0)},
@@ -197,6 +201,7 @@ func SupportedYears() []int {
 func cloneRuleSet(rs RuleSet) RuleSet {
 	rs.Sources = append([]LegalSource(nil), rs.Sources...)
 	rs.Constants.FlatRateCaps = cloneAmountMap(rs.Constants.FlatRateCaps)
+	rs.Constants.SecurityExemptionLimitAssetTypes = append([]string(nil), rs.Constants.SecurityExemptionLimitAssetTypes...)
 	rs.Constants.SocialMinAdvanceBase = append(Schedule[domain.Amount](nil), rs.Constants.SocialMinAdvanceBase...)
 	rs.Deductions.Pension.MonthlyThreshold = append(Schedule[domain.Amount](nil), rs.Deductions.Pension.MonthlyThreshold...)
 	return rs

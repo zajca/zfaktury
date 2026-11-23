@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"slices"
 	"sort"
 
 	"github.com/zajca/zfaktury/internal/calc"
@@ -211,8 +213,10 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 		groups[key] = append(groups[key], sell)
 	}
 
-	// Track cumulative exempt amount across all groups for the year.
-	var cumulativeExempt domain.Amount
+	// FIFO results are collected first because the exemption limit applies to
+	// the yearly total of time-test income across all assets.
+	var results []fifoSellResult
+	var limitedIncome domain.Amount
 
 	// Sort group keys for deterministic processing.
 	keys := make([]assetGroupKey, 0, len(groups))
@@ -284,32 +288,70 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 				allBuysExempt = false
 			}
 
-			computedGain := sell.TotalAmount - sell.Fees - costBasis
-			timeTestExempt := allBuysExempt && computedGain > 0
-
-			var exemptAmount domain.Amount
-			if timeTestExempt {
-				exemptAmount = computedGain
-				// Apply SecurityExemptionLimit if configured (> 0).
-				if constants.SecurityExemptionLimit > 0 {
-					remaining := constants.SecurityExemptionLimit - cumulativeExempt
-					if remaining <= 0 {
-						exemptAmount = 0
-						timeTestExempt = false
-					} else if exemptAmount > remaining {
-						exemptAmount = remaining
-					}
-				}
-				cumulativeExempt += exemptAmount
+			limited := allBuysExempt && exemptionLimitApplies(constants, sell.AssetType)
+			if limited {
+				limitedIncome += sell.TotalAmount
 			}
+			results = append(results, fifoSellResult{
+				sell:          sell,
+				costBasis:     costBasis,
+				computedGain:  sell.TotalAmount - sell.Fees - costBasis,
+				timeTestMet:   allBuysExempt,
+				limitedIncome: limited,
+			})
+		}
+	}
 
-			if err := s.securityRepo.UpdateFIFOResults(ctx, sell.ID, costBasis, computedGain, exemptAmount, timeTestExempt); err != nil {
-				return fmt.Errorf("updating FIFO results for sell %d: %w", sell.ID, err)
+	limit := constants.SecurityExemptionLimit
+	overLimit := limit > 0 && limitedIncome > limit
+
+	for _, r := range results {
+		var exemptAmount domain.Amount
+		if r.timeTestMet && r.computedGain > 0 {
+			exemptAmount = r.computedGain
+			if overLimit && r.limitedIncome {
+				// Income above the limit is taxed proportionally, with expenses
+				// split in the same ratio, so the exempt share of the gain is
+				// limit / total limited income.
+				exemptAmount = proportionalAmount(r.computedGain, limit, limitedIncome)
 			}
+		}
+		timeTestExempt := exemptAmount > 0
+		if err := s.securityRepo.UpdateFIFOResults(ctx, r.sell.ID, r.costBasis, r.computedGain, exemptAmount, timeTestExempt); err != nil {
+			return fmt.Errorf("updating FIFO results for sell %d: %w", r.sell.ID, err)
 		}
 	}
 
 	return nil
+}
+
+// fifoSellResult is the FIFO outcome of one sell before the exemption limit is applied.
+type fifoSellResult struct {
+	sell          domain.SecurityTransaction
+	costBasis     domain.Amount
+	computedGain  domain.Amount
+	timeTestMet   bool // every matched buy is older than the time-test cutoff
+	limitedIncome bool // the sale counts toward the exemption limit
+}
+
+// exemptionLimitApplies reports whether time-test income from assetType counts
+// toward the yearly exemption limit. An empty asset-type list means all types.
+func exemptionLimitApplies(c calc.TaxYearConstants, assetType string) bool {
+	if c.SecurityExemptionLimit <= 0 {
+		return false
+	}
+	if len(c.SecurityExemptionLimitAssetTypes) == 0 {
+		return true
+	}
+	return slices.Contains(c.SecurityExemptionLimitAssetTypes, assetType)
+}
+
+// proportionalAmount returns amount * numerator / denominator, rounded down,
+// without overflowing int64 on large halere values.
+func proportionalAmount(amount, numerator, denominator domain.Amount) domain.Amount {
+	r := new(big.Int).Mul(big.NewInt(int64(amount)), big.NewInt(int64(numerator)))
+	r.Quo(r, big.NewInt(int64(denominator)))
+	return domain.Amount(r.Int64())
 }
 
 // --- Year Summary ---

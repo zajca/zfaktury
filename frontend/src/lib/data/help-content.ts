@@ -467,7 +467,7 @@ const staticTopics: Record<string, HelpTopic> = {
 		simple:
 			'Přehled pro Českou správu sociálního zabezpečení je roční formulář, ve kterém vykazujete své příjmy a výdaje z podnikání. ČSSZ z něj vypočítá vaše pojistné a novou výši měsíčních záloh.\n\nPřehled se podává do jednoho měsíce po lhůtě pro podání daňového přiznání. Pokud vám vyšel doplatek, musíte ho zaplatit do 8 dnů od podání přehledu.',
 		legal:
-			'Povinnost podat přehled vyplývá z § 15 zákona č. 589/1992 Sb. o pojistném na sociální zabezpečení. Lhůta: do jednoho měsíce po lhůtě pro podání daňového přiznání (§ 15 odst. 1). Doplatek pojistného je splatný do 8 dnů po podání přehledu (§ 14a odst. 2). Nová výše zálohy platí od měsíce následujícího po měsíci podání přehledu.'
+			'Povinnost podat přehled vyplývá z § 15 zákona č. 589/1992 Sb. o pojistném na sociální zabezpečení. Lhůta: do jednoho měsíce po lhůtě pro podání daňového přiznání (§ 15 odst. 1). Doplatek pojistného je splatný do 8 dnů po podání přehledu (§ 14a odst. 2). Nová výše zálohy platí od měsíce následujícího po měsíci, ve kterém byl přehled podán nebo měl být podán.'
 	},
 	'prehled-zp': {
 		title: 'Přehled OSVČ pro zdravotní pojišťovnu',
@@ -521,9 +521,9 @@ const staticTopics: Record<string, HelpTopic> = {
 	'nova-zaloha': {
 		title: 'Nová měsíční záloha',
 		simple:
-			'Po podání přehledu ČSSZ a ZP vám pojišťovna vypočítá novou výši měsíční zálohy na další období. Výše zálohy se odvíjí od vašich příjmů v minulém roce.\n\nPokud jste měli vyšší příjmy, zálohy se zvýší. Pokud nižší, sníží se (ale ne pod zákonné minimum). Nová záloha platí od měsíce následujícího po podání přehledu.',
+			'Po podání přehledů vám ČSSZ a zdravotní pojišťovna stanoví novou měsíční zálohu. Vychází z vyměřovacího základu za minulý rok vyděleného počtem měsíců, ve kterých jste činnost vykonávali.\n\nZáloha nesmí být nižší než zákonné minimum pro rok, ve kterém ji platíte. Aplikace toto minimum zatím nekontroluje, porovnejte zálohu s minimem ČSSZ a pojišťovny. Nová záloha na sociální pojištění platí od měsíce následujícího po měsíci, kdy jste přehled podali (nebo měli podat). Nová záloha na zdravotní pojištění platí už od měsíce, kdy jste přehled podali (nebo měli podat).',
 		legal:
-			'Zálohy na sociální pojištění: § 14a zákona č. 589/1992 Sb. Nová výše zálohy = 1/12 ročního pojistného. Minimální záloha se odvíjí od průměrné mzdy. Platí od měsíce následujícího po měsíci podání přehledu. Zálohy na zdravotní pojištění: § 7 zákona č. 592/1992 Sb. Minimální záloha je 50 % z minimálního vyměřovacího základu.'
+			'Zálohy na sociální pojištění: § 14 odst. 13 a § 14a zákona č. 589/1992 Sb. Měsíční vyměřovací základ je roční vyměřovací základ vydělený počtem měsíců výkonu činnosti, zaokrouhlený na celé koruny nahoru; záloha je 29,2 % z něj, zaokrouhleno na celé koruny nahoru, nejméně však minimální pojistné pro daný kalendářní rok. Platí od měsíce následujícího po měsíci, ve kterém byl přehled podán nebo měl být podán. Zálohy na zdravotní pojištění: § 7 odst. 2 zákona č. 592/1992 Sb. Záloha je 13,5 % z průměru ročního vyměřovacího základu na měsíce, kdy jste byli OSVČ alespoň část měsíce, zaokrouhleno na celé koruny nahoru; minimální záloha je 13,5 % z minimálního vyměřovacího základu (50 % průměrné mzdy). Poprvé se platí za měsíc, ve kterém byl přehled podán nebo měl být podán.'
 	},
 	'fifo-prepocet': {
 		title: 'FIFO metoda pro nabývací cenu',

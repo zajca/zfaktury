@@ -168,6 +168,19 @@ describe('help-content', () => {
 			expect(topics['dan-15-23'].simple).toContain('36násobku');
 		});
 
+		it('describes the statutory advance and its first month', () => {
+			const topics = getHelpTopics(null);
+			const topic = topics['nova-zaloha'];
+
+			expect(topic.legal).toContain('počtem měsíců výkonu činnosti');
+			expect(topic.legal).toContain('§ 7 odst. 2');
+			expect(topic.legal).not.toContain('1/12');
+			expect(topic.legal).not.toContain('50 % z minimálního vyměřovacího základu');
+			expect(topic.simple).toContain('už od měsíce, kdy jste přehled podali');
+			expect(topic.simple).toContain('zatím nekontroluje');
+			expect(topics['prehled-cssz'].legal).toContain('nebo měl být podán');
+		});
+
 		it('returns same topics with and without constants', () => {
 			const withConstants = getHelpTopics(mockConstants);
 			const withoutConstants = getHelpTopics(null);

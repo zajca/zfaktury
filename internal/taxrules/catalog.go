@@ -49,7 +49,6 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapPension:         domain.NewAmount(0, 0),
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
-			MaxChildBonus:               domain.NewAmount(60_300, 0),
 		},
 		Deductions: DeductionRules{
 			Pension: PensionDeductionRules{
@@ -102,7 +101,6 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapPension:         domain.NewAmount(0, 0),
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
-			MaxChildBonus:               domain.NewAmount(60_300, 0),
 		},
 		Deductions: DeductionRules{
 			Pension: PensionDeductionRules{
@@ -157,7 +155,6 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapPension:         domain.NewAmount(0, 0),
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
-			MaxChildBonus:               domain.NewAmount(60_300, 0),
 
 			SecurityExemptionLimitAssetTypes: []string{domain.AssetTypeCrypto},
 			SocialMinAdvanceBase: Schedule[domain.Amount]{

@@ -130,7 +130,6 @@ describe('help-content', () => {
 			child_benefit_1: 15204,
 			child_benefit_2: 22320,
 			child_benefit_3_plus: 27840,
-			max_child_bonus: 60300,
 			progressive_threshold: 1582812,
 			flat_rate_caps: { '80': 1600000, '60': 1200000, '40': 800000, '30': 600000 },
 			deduction_cap_mortgage: 150000,
@@ -153,6 +152,12 @@ describe('help-content', () => {
 			expect(topics['nezdanitelne-odpocty'].simple).toContain('150');
 			expect(topics['ztpp'].simple).toContain('24');
 			expect(topics['pausalni-vydaje'].simple).toContain('2024');
+		});
+
+		it('states that the child tax bonus has no annual cap', () => {
+			const topic = getHelpTopics(mockConstants)['zvyhodneni-na-deti'];
+			expect(topic.simple).toContain('bez ročního stropu');
+			expect(topic.legal).toContain('zrušen');
 		});
 
 		it('returns generic text without constants', () => {

@@ -1229,7 +1229,6 @@ export interface TaxConstants {
 	child_benefit_1: number;
 	child_benefit_2: number;
 	child_benefit_3_plus: number;
-	max_child_bonus: number;
 	progressive_threshold: number;
 	flat_rate_caps: Record<string, number>;
 	deduction_cap_mortgage: number;

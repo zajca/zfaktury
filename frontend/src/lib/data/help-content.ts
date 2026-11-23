@@ -683,10 +683,10 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 		'zvyhodneni-na-deti': {
 			title: 'Daňové zvýhodnění na děti',
 			simple: tc
-				? `Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Roční částky (${tc.year}):\n\n- 1. dítě: ${fmtCZK(tc.child_benefit_1)}\n- 2. dítě: ${fmtCZK(tc.child_benefit_2)}\n- 3. a další: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí (max ${fmtCZK(tc.max_child_bonus)}/rok).`
+				? `Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Roční částky (${tc.year}):\n\n- 1. dítě: ${fmtCZK(tc.child_benefit_1)}\n- 2. dítě: ${fmtCZK(tc.child_benefit_2)}\n- 3. a další: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí (od roku 2021 bez ročního stropu).`
 				: 'Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Konkrétní výše se liší podle pořadí dítěte a zdaňovacího období.\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí.',
 			legal:
-				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Maximální roční daňový bonus je stanoven v § 35c odst. 3. Zvýhodnění nelze uplatnit při paušálních výdajích (§ 35c odst. 9).'
+				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Roční strop daňového bonusu byl od roku 2021 zrušen. Zvýhodnění nelze uplatnit při paušálních výdajích (§ 35c odst. 9).'
 		},
 
 		'nezdanitelne-odpocty': {

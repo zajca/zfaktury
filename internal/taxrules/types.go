@@ -175,7 +175,6 @@ type TaxYearConstants struct {
 	DeductionCapPension         domain.Amount
 	DeductionCapSavingsCombined domain.Amount
 	DeductionCapUnionDues       domain.Amount
-	MaxChildBonus               domain.Amount
 
 	// SecurityExemptionLimitAssetTypes lists the asset types whose time-test
 	// income counts toward SecurityExemptionLimit; empty means all asset types.

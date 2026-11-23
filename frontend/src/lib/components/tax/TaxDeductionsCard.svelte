@@ -99,7 +99,15 @@
 							></span
 						>
 						{#if ded.max_amount > 0}
-							<span class="text-tertiary">Max: {formatCZK(ded.max_amount)}</span>
+							{#if ded.category === 'pension' || ded.category === 'life_insurance'}
+								<span class="text-tertiary"
+									>Společný limit penzijního a životního pojištění: {formatCZK(
+										ded.max_amount
+									)}</span
+								>
+							{:else}
+								<span class="text-tertiary">Max: {formatCZK(ded.max_amount)}</span>
+							{/if}
 						{/if}
 						<span class="text-tertiary"
 							>Uznáno: <strong class="text-primary">{formatCZK(ded.allowed_amount)}</strong></span
@@ -197,15 +205,19 @@
 				</div>
 			</div>
 			{#if isPensionDeduction}
-				<div class="mt-3 rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-sm text-warning">
-					Zadejte částku pro daňový odpočet z potvrzení penzijní společnosti, ne celkově
-					zaplacený příspěvek. U platby 1 700 Kč v prosinci 2024 je uznatelná částka 0 Kč.
-					Od 1. 7. 2024 se běžně uplatňuje jen část měsíčního příspěvku nad 1 700 Kč.
+				<div
+					class="mt-3 rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-sm text-warning"
+				>
+					Zadejte částku pro daňový odpočet z potvrzení penzijní společnosti, ne celkově zaplacený
+					příspěvek. U platby 1 700 Kč v prosinci 2024 je uznatelná částka 0 Kč. Od 1. 7. 2024 se
+					běžně uplatňuje jen část měsíčního příspěvku nad 1 700 Kč.
 				</div>
 			{:else if isSavingsDeduction && savingsCap > 0}
-				<div class="mt-3 rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-tertiary">
-					Tato kategorie sdílí roční limit {formatCZK(savingsCap * 100)} s ostatními
-					daňově podporovanými produkty spoření na stáří a dlouhodobé péče.
+				<div
+					class="mt-3 rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-tertiary"
+				>
+					Tato kategorie sdílí roční limit {formatCZK(savingsCap * 100)} s ostatními daňově podporovanými
+					produkty spoření na stáří a dlouhodobé péče.
 				</div>
 			{/if}
 			<div class="mt-3 flex gap-2">

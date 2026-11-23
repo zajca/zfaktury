@@ -29,7 +29,6 @@ type taxConstantsResponse struct {
 	ChildBenefit1             int64            `json:"child_benefit_1"`
 	ChildBenefit2             int64            `json:"child_benefit_2"`
 	ChildBenefit3Plus         int64            `json:"child_benefit_3_plus"`
-	MaxChildBonus             int64            `json:"max_child_bonus"`
 	ProgressiveThreshold      int64            `json:"progressive_threshold"`
 	FlatRateCaps              map[string]int64 `json:"flat_rate_caps"`
 	DeductionCapMortgage      int64            `json:"deduction_cap_mortgage"`
@@ -72,7 +71,6 @@ func taxConstantsFromRuleSet(rules taxrules.RuleSet) (taxConstantsResponse, erro
 		ChildBenefit1:             toCZK(c.ChildBenefit1),
 		ChildBenefit2:             toCZK(c.ChildBenefit2),
 		ChildBenefit3Plus:         toCZK(c.ChildBenefit3Plus),
-		MaxChildBonus:             toCZK(c.MaxChildBonus),
 		ProgressiveThreshold:      toCZK(c.ProgressiveThreshold),
 		FlatRateCaps:              flatRateCaps,
 		DeductionCapMortgage:      toCZK(c.DeductionCapMortgage),

@@ -80,7 +80,6 @@ const taxConstants = {
 	child_benefit_1: 0,
 	child_benefit_2: 0,
 	child_benefit_3_plus: 0,
-	max_child_bonus: 0,
 	progressive_threshold: 167605200,
 	flat_rate_caps: { '60': 120000000 },
 	deduction_cap_mortgage: 0,

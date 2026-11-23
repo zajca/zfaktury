@@ -308,3 +308,80 @@ func TestCalculateInsuranceSocialAssessmentBase55Percent(t *testing.T) {
 		t.Errorf("NewMonthlyPrepay = %s, want 8303.00", got.NewMonthlyPrepay)
 	}
 }
+
+// CSSZ caps the annual assessment base at 48x the average wage; health
+// insurance passes MaxAnnualBase 0 and therefore stays uncapped.
+func TestCalculateInsuranceSocialMaxBase(t *testing.T) {
+	tests := []struct {
+		name                 string
+		input                InsuranceInput
+		wantAssessmentBase   domain.Amount
+		wantFinalBase        domain.Amount
+		wantTotalInsurance   domain.Amount
+		wantNewMonthlyPrepay domain.Amount
+	}{
+		{
+			name: "assessment base capped at the social maximum",
+			input: InsuranceInput{
+				Revenue:                domain.NewAmount(5_000_000, 0),
+				UsedExpenses:           domain.NewAmount(0, 0),
+				MinMonthlyBase:         domain.NewAmount(16_295, 0),
+				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
+				AssessmentBasePermille: 550,
+				RatePermille:           292,
+			},
+			wantAssessmentBase:   domain.NewAmount(2_750_000, 0),
+			wantFinalBase:        domain.NewAmount(2_234_736, 0),
+			wantTotalInsurance:   domain.NewAmount(652_543, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(54_379, 0),
+		},
+		{
+			name: "assessment base below the maximum is unchanged",
+			input: InsuranceInput{
+				Revenue:                domain.NewAmount(1_000_000, 0),
+				UsedExpenses:           domain.NewAmount(0, 0),
+				MinMonthlyBase:         domain.NewAmount(16_295, 0),
+				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
+				AssessmentBasePermille: 550,
+				RatePermille:           292,
+			},
+			wantAssessmentBase:   domain.NewAmount(550_000, 0),
+			wantFinalBase:        domain.NewAmount(550_000, 0),
+			wantTotalInsurance:   domain.NewAmount(160_600, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(13_384, 0),
+		},
+		{
+			name: "zero maximum means no cap",
+			input: InsuranceInput{
+				Revenue:                domain.NewAmount(5_000_000, 0),
+				UsedExpenses:           domain.NewAmount(0, 0),
+				MinMonthlyBase:         domain.NewAmount(16_295, 0),
+				MaxAnnualBase:          domain.NewAmount(0, 0),
+				AssessmentBasePermille: 550,
+				RatePermille:           292,
+			},
+			wantAssessmentBase:   domain.NewAmount(2_750_000, 0),
+			wantFinalBase:        domain.NewAmount(2_750_000, 0),
+			wantTotalInsurance:   domain.NewAmount(803_000, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(66_917, 0),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CalculateInsurance(tt.input)
+			if got.AssessmentBase != tt.wantAssessmentBase {
+				t.Errorf("AssessmentBase = %s, want %s", got.AssessmentBase, tt.wantAssessmentBase)
+			}
+			if got.FinalAssessmentBase != tt.wantFinalBase {
+				t.Errorf("FinalAssessmentBase = %s, want %s", got.FinalAssessmentBase, tt.wantFinalBase)
+			}
+			if got.TotalInsurance != tt.wantTotalInsurance {
+				t.Errorf("TotalInsurance = %s, want %s", got.TotalInsurance, tt.wantTotalInsurance)
+			}
+			if got.NewMonthlyPrepay != tt.wantNewMonthlyPrepay {
+				t.Errorf("NewMonthlyPrepay = %s, want %s", got.NewMonthlyPrepay, tt.wantNewMonthlyPrepay)
+			}
+		})
+	}
+}

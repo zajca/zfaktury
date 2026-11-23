@@ -40,6 +40,7 @@ type TaxYearConstants struct {
 	ChildBenefitZTP        domain.Amount         // ZTP prirazka (double)
 	SocialMinMonthly       domain.Amount         // min mesicni vym. zaklad CSSZ pro rocni Prehled (platny pro vsechny mesice roku)
 	SocialRate             int                   // permille*10, e.g. 292 = 29.2%
+	SocialMaxAnnualBase    domain.Amount         // max rocni vym. zaklad CSSZ (48nasobek prumerne mzdy)
 	HealthMinMonthly       domain.Amount         // min mesicni vym. zaklad ZP
 	HealthRate             int                   // permille*10, e.g. 135 = 13.5%
 	FlatRateCaps           map[int]domain.Amount // percent -> max halere amount
@@ -116,6 +117,12 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if r.Constants.SocialRate <= 0 || r.Constants.HealthRate <= 0 {
 		errs = append(errs, fmt.Errorf("%s insurance rates must be positive: %w", r.ID, domain.ErrInvalidInput))
+	}
+	if r.Constants.SocialMaxAnnualBase <= 0 {
+		errs = append(errs, fmt.Errorf("%s social max annual base must be positive: %w", r.ID, domain.ErrInvalidInput))
+	}
+	if r.Constants.SocialMaxAnnualBase < r.Constants.SocialMinMonthly*12 {
+		errs = append(errs, fmt.Errorf("%s social max annual base %d is below the annual minimum base %d: %w", r.ID, r.Constants.SocialMaxAnnualBase, r.Constants.SocialMinMonthly*12, domain.ErrInvalidInput))
 	}
 	if len(r.Constants.FlatRateCaps) == 0 {
 		errs = append(errs, fmt.Errorf("%s flat-rate caps are empty: %w", r.ID, domain.ErrInvalidInput))

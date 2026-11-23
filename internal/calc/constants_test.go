@@ -164,7 +164,7 @@ func TestMinimumSocialAdvanceFromCatalog(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SocialMinAdvanceBaseFor(%d, %d) error: %v", tt.year, tt.month, err)
 		}
-		got := domain.Amount(ceilToWholeCZK(int64(base) * int64(c.SocialRate) / 1000))
+		got := domain.Amount(ceilToWholeCZK(ceilDiv(int64(base)*int64(c.SocialRate), 1000)))
 		if got != tt.want {
 			t.Errorf("minimum advance %d/%d = %d, want %d", tt.year, tt.month, got, tt.want)
 		}

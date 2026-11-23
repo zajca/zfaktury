@@ -65,7 +65,7 @@ var ruleSets = map[int]RuleSet{
 			{Title: "Nařízení vlády č. 282/2024 Sb.", Note: "průměrná mzda pro rok 2025"},
 			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od ledna 2025 limit 40 mil. Kč na úhrn příjmů ve zdaňovacím období, příjmy nad limit se zdaňují poměrně"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 234 736 Kč (48násobek průměrné mzdy)"},
-			{Title: "ČSSZ: zálohy na pojistné na důchodové pojištění", URL: "https://www.cssz.gov.cz/zalohy-na-pojistne-na-duchodove-pojisteni", Note: "minimální záloha 2025: 4 759 Kč (základ 16 295 Kč)"},
+			{Title: "ČSSZ: výše minimálních vyměřovacích základů OSVČ", URL: "https://www.cssz.gov.cz/web/cz/vyse-minimalnich-vymerovacich-zakladu-osvc", Note: "minimální roční vyměřovací základ 2025 (hlavní činnost): 195 540 Kč, tj. 16 295 Kč měsíčně; minimální záloha 4 759 Kč"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_676_052, 0),

@@ -118,7 +118,9 @@ func TestValidateRuleSet_RejectsBadSocialMinAdvanceBases(t *testing.T) {
 		{name: "does not start in January", periods: []MonthlyBasePeriod{{FromMonth: 2, Base: domain.NewAmount(16_295, 0)}}},
 		{name: "repeated month", periods: []MonthlyBasePeriod{{FromMonth: 1, Base: domain.NewAmount(16_295, 0)}, {FromMonth: 1, Base: domain.NewAmount(17_139, 0)}}},
 		{name: "month out of range", periods: []MonthlyBasePeriod{{FromMonth: 1, Base: domain.NewAmount(16_295, 0)}, {FromMonth: 13, Base: domain.NewAmount(17_139, 0)}}},
+		{name: "decreasing months", periods: []MonthlyBasePeriod{{FromMonth: 1, Base: domain.NewAmount(19_587, 0)}, {FromMonth: 7, Base: domain.NewAmount(17_139, 0)}, {FromMonth: 3, Base: domain.NewAmount(16_295, 0)}}},
 		{name: "zero base", periods: []MonthlyBasePeriod{{FromMonth: 1, Base: domain.NewAmount(0, 0)}}},
+		{name: "negative base", periods: []MonthlyBasePeriod{{FromMonth: 1, Base: domain.NewAmount(16_295, 0)}, {FromMonth: 7, Base: -domain.NewAmount(17_139, 0)}}},
 	}
 
 	base, err := GetRuleSet(2025)

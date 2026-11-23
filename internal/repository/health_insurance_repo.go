@@ -46,7 +46,11 @@ func scanHealthInsuranceOverview(s scanner) (*domain.HealthInsuranceOverview, er
 		return nil, err
 	}
 
-	hi.ActivityMonths = domain.ActivityMonths(activityMonths)
+	months, err := activityMonthsFromDB(activityMonths)
+	if err != nil {
+		return nil, err
+	}
+	hi.ActivityMonths = months
 	hi.XMLData = xmlData
 
 	hi.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)

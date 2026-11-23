@@ -16,8 +16,9 @@ func TestSocialInsuranceOverviewRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 
 	if err := repo.Create(ctx, sio); err != nil {
@@ -46,6 +47,7 @@ func TestSocialInsuranceOverviewRepository_GetByID(t *testing.T) {
 		TotalRevenue:   domain.NewAmount(800000, 0),
 		TotalExpenses:  domain.NewAmount(300000, 0),
 		TotalInsurance: domain.NewAmount(145000, 0),
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -87,8 +89,9 @@ func TestSocialInsuranceOverviewRepository_Update(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -120,8 +123,9 @@ func TestSocialInsuranceOverviewRepository_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -158,8 +162,9 @@ func TestSocialInsuranceOverviewRepository_List(t *testing.T) {
 
 	for i, ft := range []string{domain.FilingTypeRegular, domain.FilingTypeCorrective} {
 		sio := &domain.SocialInsuranceOverview{
-			Year:       2025,
-			FilingType: ft,
+			Year:           2025,
+			FilingType:     ft,
+			ActivityMonths: domain.FullYearActivityMonths,
 		}
 		if err := repo.Create(ctx, sio); err != nil {
 			t.Fatalf("Create() %d error: %v", i, err)
@@ -168,8 +173,9 @@ func TestSocialInsuranceOverviewRepository_List(t *testing.T) {
 
 	// Different year.
 	sio2024 := &domain.SocialInsuranceOverview{
-		Year:       2024,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2024,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, sio2024); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -198,8 +204,9 @@ func TestSocialInsuranceOverviewRepository_GetByYear(t *testing.T) {
 	ctx := context.Background()
 
 	sio := &domain.SocialInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, sio); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -220,6 +227,43 @@ func TestSocialInsuranceOverviewRepository_GetByYear(t *testing.T) {
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got: %v", err)
+	}
+}
+
+func TestActivityMonthsFromDB(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   int64
+		want    domain.ActivityMonths
+		wantErr bool
+	}{
+		{name: "single month", value: 1, want: domain.ActivityMonths(1)},
+		{name: "july to december", value: 4032, want: domain.ActivityMonths(4032)},
+		{name: "full year", value: 4095, want: domain.FullYearActivityMonths},
+		{name: "zero mask", value: 0, wantErr: true},
+		{name: "negative", value: -1, wantErr: true},
+		{name: "bit outside the year", value: 4096, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := activityMonthsFromDB(tt.value)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("activityMonthsFromDB() error = nil, want ErrInvalidInput")
+				}
+				if !errors.Is(err, domain.ErrInvalidInput) {
+					t.Errorf("activityMonthsFromDB() error = %v, want ErrInvalidInput", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("activityMonthsFromDB() error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("activityMonthsFromDB() = %d, want %d", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -264,8 +308,8 @@ func TestSocialInsuranceOverviewRepository_ActivityMonthsMigrationBackfill(t *te
 	repo := NewSocialInsuranceOverviewRepository(db)
 	ctx := context.Background()
 
-	// Row inserted without the new column, as rows written before the
-	// migration were: the default must stand for a full year of activity.
+	// A row that omits activity_months takes the default, which stands for a
+	// full year of activity.
 	now := time.Now().Format(time.RFC3339)
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO social_insurance_overviews (year, filing_type, created_at, updated_at)

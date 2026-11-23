@@ -2,14 +2,21 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/config"
+	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -332,5 +339,225 @@ func TestEmailHandler_SendEmail_InvalidRequestBody(t *testing.T) {
 	json.NewDecoder(rr.Body).Decode(&resp)
 	if resp.Error != "invalid request body" {
 		t.Errorf("expected error %q, got %q", "invalid request body", resp.Error)
+	}
+}
+
+// startFakeSMTP starts a loopback SMTP server. When rejectMail is true the server
+// answers MAIL FROM with a permanent failure so that every send fails.
+func startFakeSMTP(t *testing.T, rejectMail bool, onData func()) (host string, port int) {
+	t.Helper()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listening for fake SMTP: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go serveFakeSMTP(conn, rejectMail, onData)
+		}
+	}()
+
+	addr := ln.Addr().(*net.TCPAddr)
+	return "127.0.0.1", addr.Port
+}
+
+func serveFakeSMTP(conn net.Conn, rejectMail bool, onData func()) {
+	defer func() { _ = conn.Close() }()
+	tp := textproto.NewConn(conn)
+	_ = tp.PrintfLine("220 fake ESMTP")
+	for {
+		line, err := tp.ReadLine()
+		if err != nil {
+			return
+		}
+		cmd := strings.ToUpper(line)
+		switch {
+		case strings.HasPrefix(cmd, "EHLO"), strings.HasPrefix(cmd, "HELO"):
+			_ = tp.PrintfLine("250 fake")
+		case strings.HasPrefix(cmd, "MAIL"):
+			if rejectMail {
+				_ = tp.PrintfLine("550 rejected")
+				continue
+			}
+			_ = tp.PrintfLine("250 ok")
+		case strings.HasPrefix(cmd, "RCPT"):
+			_ = tp.PrintfLine("250 ok")
+		case strings.HasPrefix(cmd, "DATA"):
+			_ = tp.PrintfLine("354 go ahead")
+			if _, err := tp.ReadDotBytes(); err != nil {
+				return
+			}
+			if onData != nil {
+				onData()
+			}
+			_ = tp.PrintfLine("250 queued")
+		case strings.HasPrefix(cmd, "QUIT"):
+			_ = tp.PrintfLine("221 bye")
+			return
+		default:
+			_ = tp.PrintfLine("250 ok")
+		}
+	}
+}
+
+// setupEmailStatusRouter wires the email handler to a fake SMTP server and
+// returns the router, the invoice service and a seeded sequence ID.
+func setupEmailStatusRouter(t *testing.T, rejectMail bool) (*chi.Mux, *service.InvoiceService, int64) {
+	t.Helper()
+	return setupEmailStatusRouterWithHook(t, rejectMail, nil)
+}
+
+// setupEmailStatusRouterWithHook is setupEmailStatusRouter with a callback that
+// runs on the fake SMTP server after the message body was received.
+func setupEmailStatusRouterWithHook(t *testing.T, rejectMail bool, onData func()) (*chi.Mux, *service.InvoiceService, int64) {
+	t.Helper()
+
+	host, port := startFakeSMTP(t, rejectMail, onData)
+
+	db := testutil.NewTestDB(t)
+	invoiceRepo := repository.NewInvoiceRepository(db)
+	contactRepo := repository.NewContactRepository(db)
+	sequenceRepo := repository.NewSequenceRepository(db)
+	settingsRepo := repository.NewSettingsRepository(db)
+
+	contactSvc := service.NewContactService(contactRepo, nil, nil)
+	sequenceSvc := service.NewSequenceService(sequenceRepo, nil)
+	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
+	settingsSvc := service.NewSettingsService(settingsRepo, nil)
+	sender := email.NewEmailSender(config.SMTPConfig{Host: host, Port: port, From: "noreply@example.com"})
+
+	h := NewEmailHandler(invoiceSvc, settingsSvc, pdf.NewInvoicePDFGenerator(), isdoc.NewISDOCGenerator(), sender)
+
+	r := chi.NewRouter()
+	r.Mount("/api/v1/contacts", NewContactHandler(contactSvc).Routes())
+	r.Mount("/api/v1/invoices", NewInvoiceHandler(invoiceSvc, nil, nil, nil).Routes())
+	r.Post("/api/v1/invoices/{id}/send-email", h.SendEmail)
+
+	return r, invoiceSvc, testutil.SeedInvoiceSequence(t, db, "FV", 2026)
+}
+
+func sendTestEmail(t *testing.T, r *chi.Mux, invoiceID int64) *httptest.ResponseRecorder {
+	t.Helper()
+	b, _ := json.Marshal(map[string]string{"to": "customer@example.com", "subject": "Invoice", "body": "Attached."})
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/invoices/%d/send-email", invoiceID), bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	return rr
+}
+
+func getInvoiceJSON(t *testing.T, r *chi.Mux, invoiceID int64) map[string]any {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/invoices/%d", invoiceID), nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("getting invoice: status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	var resp map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding invoice: %v", err)
+	}
+	return resp
+}
+
+func TestEmailHandler_SendEmail_DraftBecomesSent(t *testing.T) {
+	r, _, seqID := setupEmailStatusRouter(t, false)
+	invoiceID := createEmailTestInvoice(t, r, createEmailTestCustomer(t, r), seqID)
+
+	if got := getInvoiceJSON(t, r, invoiceID)["status"]; got != "draft" {
+		t.Fatalf("precondition: status = %v, want draft", got)
+	}
+
+	rr := sendTestEmail(t, r, invoiceID)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	if strings.TrimSpace(rr.Body.String()) != `{"status":"sent"}` {
+		t.Errorf("body = %s, want {\"status\":\"sent\"}", rr.Body.String())
+	}
+
+	inv := getInvoiceJSON(t, r, invoiceID)
+	if inv["status"] != "sent" {
+		t.Errorf("status = %v, want sent", inv["status"])
+	}
+	if inv["sent_at"] == nil || inv["sent_at"] == "" {
+		t.Errorf("sent_at is not set: %v", inv["sent_at"])
+	}
+}
+
+func TestEmailHandler_SendEmail_PaidInvoiceKeepsStatus(t *testing.T) {
+	r, invoiceSvc, seqID := setupEmailStatusRouter(t, false)
+	invoiceID := createEmailTestInvoice(t, r, createEmailTestCustomer(t, r), seqID)
+
+	if err := invoiceSvc.MarkAsSent(context.Background(), invoiceID); err != nil {
+		t.Fatalf("marking sent: %v", err)
+	}
+	if err := invoiceSvc.MarkAsPaid(context.Background(), invoiceID, domain.NewAmount(1000, 0), time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("marking paid: %v", err)
+	}
+
+	rr := sendTestEmail(t, r, invoiceID)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	if got := getInvoiceJSON(t, r, invoiceID)["status"]; got != "paid" {
+		t.Errorf("status = %v, want paid", got)
+	}
+}
+
+func TestEmailHandler_SendEmail_StatusUpdateFailureAfterSend(t *testing.T) {
+	var deliveredInvoiceID atomic.Int64
+	var invoiceSvc atomic.Pointer[service.InvoiceService]
+	// The invoice leaves draft while the message is being delivered, so
+	// MarkAsSent fails after the email went out.
+	onData := func() {
+		if err := invoiceSvc.Load().MarkAsSent(context.Background(), deliveredInvoiceID.Load()); err != nil {
+			t.Errorf("marking sent during delivery: %v", err)
+		}
+	}
+	r, svc, seqID := setupEmailStatusRouterWithHook(t, false, onData)
+	invoiceSvc.Store(svc)
+	invoiceID := createEmailTestInvoice(t, r, createEmailTestCustomer(t, r), seqID)
+	deliveredInvoiceID.Store(invoiceID)
+
+	rr := sendTestEmail(t, r, invoiceID)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500, body = %s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if resp["code"] != EmailSentStatusNotUpdatedCode {
+		t.Errorf("code = %q, want %q", resp["code"], EmailSentStatusNotUpdatedCode)
+	}
+	if !strings.Contains(resp["error"], "email was sent") {
+		t.Errorf("error = %q, want it to say the email was sent", resp["error"])
+	}
+}
+
+func TestEmailHandler_SendEmail_FailedSendLeavesDraft(t *testing.T) {
+	r, _, seqID := setupEmailStatusRouter(t, true)
+	invoiceID := createEmailTestInvoice(t, r, createEmailTestCustomer(t, r), seqID)
+
+	rr := sendTestEmail(t, r, invoiceID)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500, body = %s", rr.Code, rr.Body.String())
+	}
+
+	inv := getInvoiceJSON(t, r, invoiceID)
+	if inv["status"] != "draft" {
+		t.Errorf("status = %v, want draft", inv["status"])
+	}
+	if inv["sent_at"] != nil {
+		t.Errorf("sent_at = %v, want nil", inv["sent_at"])
 	}
 }

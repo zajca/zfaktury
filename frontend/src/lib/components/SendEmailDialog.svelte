@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { invoicesApi, emailApi } from '$lib/api/client';
+	import { invoicesApi, emailApi, ApiError } from '$lib/api/client';
 	import { onMount } from 'svelte';
-	import { toastSuccess } from '$lib/data/toast-state.svelte';
+	import { toastSuccess, toastWarning } from '$lib/data/toast-state.svelte';
 
 	interface Props {
 		invoiceId: number;
@@ -39,6 +39,12 @@
 		}
 	});
 
+	function isSentStatusNotUpdated(err: unknown): boolean {
+		if (!(err instanceof ApiError) || err.status !== 500) return false;
+		const body = err.body as Record<string, unknown> | undefined;
+		return body?.code === 'email_sent_status_not_updated';
+	}
+
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
@@ -61,6 +67,12 @@
 			toastSuccess('Email odeslán');
 			onsuccess();
 		} catch (err: unknown) {
+			if (isSentStatusNotUpdated(err)) {
+				// The email left, so resending would duplicate it; close and let the page reload.
+				toastWarning('Email byl odeslán, ale stav faktury se nepodařilo změnit na Odeslaná.');
+				onsuccess();
+				return;
+			}
 			if (err instanceof Error) {
 				error = err.message;
 			} else {

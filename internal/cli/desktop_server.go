@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	rootCmd.Flags().IntVar(&servePort, "port", 8080, "HTTP server port")
+	rootCmd.Flags().IntVar(&servePort, "port", 0, "HTTP server port (overrides server.port from the config; 0 = random free port)")
 }
 
 func runDesktop(cmd *cobra.Command, args []string) error {

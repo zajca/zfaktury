@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -82,6 +83,9 @@ func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) er
 	// Assign invoice number from sequence.
 	if invoice.InvoiceNumber == "" && invoice.SequenceID > 0 {
 		number, err := s.repo.GetNextNumber(ctx, invoice.SequenceID)
+		if errors.Is(err, domain.ErrNotFound) {
+			return fmt.Errorf("sequence %d does not exist or was deleted: %w", invoice.SequenceID, domain.ErrInvalidInput)
+		}
 		if err != nil {
 			return fmt.Errorf("getting next invoice number: %w", err)
 		}

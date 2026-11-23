@@ -3,7 +3,6 @@ package handler
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -410,7 +409,7 @@ func setupEmailStatusRouter(t *testing.T, rejectMail bool) (*chi.Mux, *service.I
 
 	host, port := startFakeSMTP(t, rejectMail)
 
-	var db *sql.DB = testutil.NewTestDB(t)
+	db := testutil.NewTestDB(t)
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	contactRepo := repository.NewContactRepository(db)
 	sequenceRepo := repository.NewSequenceRepository(db)

@@ -33,7 +33,7 @@ func portOverride(cmd *cobra.Command, port int) int {
 	return 0
 }
 
-var serveCmd =&cobra.Command{
+var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the HTTP server",
 	Long:  "Start the ZFaktury HTTP server serving both the API and the frontend.",

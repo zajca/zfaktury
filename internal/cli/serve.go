@@ -18,13 +18,22 @@ var (
 )
 
 func init() {
-	serveCmd.Flags().IntVar(&servePort, "port", 8080, "HTTP server port")
+	serveCmd.Flags().IntVar(&servePort, "port", 0, "HTTP server port (overrides server.port from the config)")
 	serveCmd.Flags().BoolVar(&serveDev, "dev", false, "Enable development mode (proxy frontend to Vite)")
 	serveCmd.Flags().BoolVar(&serveInitConfig, "init-config", false, "Create a default config file if it does not exist")
 	rootCmd.AddCommand(serveCmd)
 }
 
-var serveCmd = &cobra.Command{
+// portOverride returns the --port value only when the flag was given on the
+// command line; 0 tells the server to keep the port from the config.
+func portOverride(cmd *cobra.Command, port int) int {
+	if cmd.Flags().Changed("port") {
+		return port
+	}
+	return 0
+}
+
+var serveCmd =&cobra.Command{
 	Use:   "serve",
 	Short: "Start the HTTP server",
 	Long:  "Start the ZFaktury HTTP server serving both the API and the frontend.",
@@ -32,7 +41,7 @@ var serveCmd = &cobra.Command{
 		app, err := server.New(server.Options{
 			ConfigFile: configFile,
 			InitConfig: serveInitConfig,
-			Port:       servePort,
+			Port:       portOverride(cmd, servePort),
 			DevMode:    serveDev,
 		})
 		if err != nil {

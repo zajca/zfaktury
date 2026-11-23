@@ -170,14 +170,18 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	}
 
 	// Pure calculation.
-	insResult := calc.CalculateInsurance(calc.InsuranceInput{
+	insResult, err := calc.CalculateInsurance(calc.InsuranceInput{
 		Revenue:        base.Revenue,
 		UsedExpenses:   usedExpenses,
 		MinMonthlyBase: constants.HealthMinMonthly,
 		RatePermille:   constants.HealthRate,
 		Prepayments:    healthTotal,
 		RoundPremiumUp: true,
+		ActivityMonths: fullYearActivityMonths,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("calculating health insurance: %w", err)
+	}
 
 	hi.TaxBase = insResult.TaxBase
 	hi.AssessmentBase = insResult.AssessmentBase

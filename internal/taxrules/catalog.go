@@ -3,7 +3,6 @@ package taxrules
 import (
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
@@ -49,15 +48,6 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
 		},
-		Deductions: DeductionRules{
-			Pension: PensionDeductionRules{
-				SharedSavingsCap: domain.NewAmount(48_000, 0),
-				MonthlyThreshold: Schedule[domain.Amount]{
-					{From: NewDate(2024, time.January, 1), To: NewDate(2024, time.June, 30), Value: domain.NewAmount(1_000, 0)},
-					{From: NewDate(2024, time.July, 1), To: NewDate(2024, time.December, 31), Value: domain.NewAmount(1_700, 0)},
-				},
-			},
-		},
 		Forms: dpfodp7Forms(),
 	},
 	2025: {
@@ -99,14 +89,6 @@ var ruleSets = map[int]RuleSet{
 			DeductionCapPension:         domain.NewAmount(0, 0),
 			DeductionCapSavingsCombined: domain.NewAmount(48_000, 0),
 			DeductionCapUnionDues:       domain.NewAmount(3_000, 0),
-		},
-		Deductions: DeductionRules{
-			Pension: PensionDeductionRules{
-				SharedSavingsCap: domain.NewAmount(48_000, 0),
-				MonthlyThreshold: Schedule[domain.Amount]{
-					{From: NewDate(2025, time.January, 1), To: NewDate(2025, time.December, 31), Value: domain.NewAmount(1_700, 0)},
-				},
-			},
 		},
 		Forms: dpfodp7Forms(),
 	},
@@ -156,14 +138,6 @@ var ruleSets = map[int]RuleSet{
 
 			SecurityExemptionLimitAssetTypes: []string{domain.AssetTypeCrypto},
 		},
-		Deductions: DeductionRules{
-			Pension: PensionDeductionRules{
-				SharedSavingsCap: domain.NewAmount(48_000, 0),
-				MonthlyThreshold: Schedule[domain.Amount]{
-					{From: NewDate(2026, time.January, 1), To: NewDate(2026, time.December, 31), Value: domain.NewAmount(1_700, 0)},
-				},
-			},
-		},
 		Forms: dpfodp7Forms(),
 	},
 }
@@ -207,7 +181,6 @@ func cloneRuleSet(rs RuleSet) RuleSet {
 	rs.Sources = append([]LegalSource(nil), rs.Sources...)
 	rs.Constants.FlatRateCaps = cloneAmountMap(rs.Constants.FlatRateCaps)
 	rs.Constants.SecurityExemptionLimitAssetTypes = append([]string(nil), rs.Constants.SecurityExemptionLimitAssetTypes...)
-	rs.Deductions.Pension.MonthlyThreshold = append(Schedule[domain.Amount](nil), rs.Deductions.Pension.MonthlyThreshold...)
 	return rs
 }
 

@@ -207,9 +207,11 @@
 				<div
 					class="mt-3 rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-sm text-warning"
 				>
-					Zadejte částku pro daňový odpočet z potvrzení penzijní společnosti, ne celkově zaplacený
-					příspěvek. U platby 1 700 Kč v prosinci 2024 je uznatelná částka 0 Kč. Od 1. 7. 2024 se
-					běžně uplatňuje jen část měsíčního příspěvku nad 1 700 Kč.
+					Zadejte částku z potvrzení penzijní společnosti, ne celkově zaplacený příspěvek. Tato
+					částka se počítá do společného limitu{savingsCap > 0
+						? ` ${formatCZK(savingsCap * 100)}`
+						: ''} s ostatními produkty spoření na stáří a dlouhodobé péče. Příjemci starobního důchodu
+					odečítají příspěvky od první koruny.
 				</div>
 			{:else if isSavingsDeduction && savingsCap > 0}
 				<div

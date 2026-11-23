@@ -58,7 +58,8 @@ func CalculateInsurance(input InsuranceInput) InsuranceResult {
 
 	totalInsurance := finalBase * int64(input.RatePermille) / 1000
 	if input.AssessmentBasePermille != 0 || input.RoundPremiumUp {
-		// CSSZ form line D32.1 is rounded up to whole CZK.
+		// The premium is rounded up to whole CZK: CSSZ form line D32.1 (social)
+		// and § 2 odst. 2 zakona c. 592/1992 Sb. (health).
 		totalInsurance = ceilToWholeCZK(totalInsurance)
 	}
 

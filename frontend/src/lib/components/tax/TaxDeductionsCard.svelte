@@ -211,7 +211,8 @@
 					částka se počítá do společného limitu{savingsCap > 0
 						? ` ${formatCZK(savingsCap * 100)}`
 						: ''} s ostatními produkty spoření na stáří a dlouhodobé péče. Příjemci starobního důchodu
-					odečítají příspěvky od první koruny.
+					odečítají příspěvky od první koruny od 1. 7. 2024; dříve platila hranice podle § 15 odst. 7
+					ZDP.
 				</div>
 			{:else if isSavingsDeduction && savingsCap > 0}
 				<div

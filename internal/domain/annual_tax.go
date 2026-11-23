@@ -119,9 +119,10 @@ type IncomeTaxReturn struct {
 
 // SocialInsuranceOverview represents Prehled OSVC pro CSSZ.
 type SocialInsuranceOverview struct {
-	ID         int64
-	Year       int
-	FilingType string
+	ID             int64
+	Year           int
+	FilingType     string
+	ActivityMonths ActivityMonths // months with activity (hlavni cinnost)
 
 	TotalRevenue        Amount
 	TotalExpenses       Amount // used expenses (actual or flat-rate)
@@ -145,9 +146,10 @@ type SocialInsuranceOverview struct {
 
 // HealthInsuranceOverview represents Prehled OSVC pro ZP.
 type HealthInsuranceOverview struct {
-	ID         int64
-	Year       int
-	FilingType string
+	ID             int64
+	Year           int
+	FilingType     string
+	ActivityMonths ActivityMonths // months with activity (hlavni cinnost)
 
 	TotalRevenue        Amount
 	TotalExpenses       Amount

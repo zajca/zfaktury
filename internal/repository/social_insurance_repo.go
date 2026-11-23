@@ -21,7 +21,7 @@ func NewSocialInsuranceOverviewRepository(db *sql.DB) *SocialInsuranceOverviewRe
 }
 
 // socialInsuranceColumns is the list of columns to select for a SocialInsuranceOverview row.
-const socialInsuranceColumns = `id, year, filing_type,
+const socialInsuranceColumns = `id, year, filing_type, activity_months,
 	total_revenue, total_expenses, tax_base,
 	assessment_base, min_assessment_base, final_assessment_base,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
@@ -33,9 +33,10 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 	var filedAtStr sql.NullString
 	var createdAtStr, updatedAtStr string
 	var xmlData []byte
+	var activityMonths int64
 
 	err := s.Scan(
-		&sio.ID, &sio.Year, &sio.FilingType,
+		&sio.ID, &sio.Year, &sio.FilingType, &activityMonths,
 		&sio.TotalRevenue, &sio.TotalExpenses, &sio.TaxBase,
 		&sio.AssessmentBase, &sio.MinAssessmentBase, &sio.FinalAssessmentBase,
 		&sio.InsuranceRate, &sio.TotalInsurance, &sio.Prepayments, &sio.Difference, &sio.NewMonthlyPrepay,
@@ -46,6 +47,7 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 		return nil, err
 	}
 
+	sio.ActivityMonths = domain.ActivityMonths(activityMonths)
 	sio.XMLData = xmlData
 
 	sio.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
@@ -75,13 +77,13 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO social_insurance_overviews (
-			year, filing_type,
+			year, filing_type, activity_months,
 			total_revenue, total_expenses, tax_base,
 			assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		sio.Year, sio.FilingType,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
@@ -111,13 +113,13 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE social_insurance_overviews SET
-			year = ?, filing_type = ?,
+			year = ?, filing_type = ?, activity_months = ?,
 			total_revenue = ?, total_expenses = ?, tax_base = ?,
 			assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
-		sio.Year, sio.FilingType,
+		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,

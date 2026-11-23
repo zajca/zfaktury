@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/testutil"
@@ -219,5 +220,65 @@ func TestSocialInsuranceOverviewRepository_GetByYear(t *testing.T) {
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got: %v", err)
+	}
+}
+
+func TestSocialInsuranceOverviewRepository_ActivityMonthsRoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.ActivityMonths(4032),
+	}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.ActivityMonths != domain.ActivityMonths(4032) {
+		t.Errorf("ActivityMonths after Create = %d, want 4032", got.ActivityMonths)
+	}
+
+	got.ActivityMonths = domain.ActivityMonths(4092)
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	reloaded, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after update error: %v", err)
+	}
+	if reloaded.ActivityMonths != domain.ActivityMonths(4092) {
+		t.Errorf("ActivityMonths after Update = %d, want 4092", reloaded.ActivityMonths)
+	}
+}
+
+func TestSocialInsuranceOverviewRepository_ActivityMonthsMigrationBackfill(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	// Row inserted without the new column, as rows written before the
+	// migration were: the default must stand for a full year of activity.
+	now := time.Now().Format(time.RFC3339)
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO social_insurance_overviews (year, filing_type, created_at, updated_at)
+		VALUES (2024, 'regular', ?, ?)`, now, now)
+	if err != nil {
+		t.Fatalf("inserting row without activity_months: %v", err)
+	}
+
+	got, err := repo.GetByYear(ctx, 2024, domain.FilingTypeRegular)
+	if err != nil {
+		t.Fatalf("GetByYear() error: %v", err)
+	}
+	if got.ActivityMonths != domain.FullYearActivityMonths {
+		t.Errorf("ActivityMonths after migration = %d, want %d", got.ActivityMonths, domain.FullYearActivityMonths)
 	}
 }

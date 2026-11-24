@@ -153,6 +153,65 @@ func TestLoad_EPOSectionOptional(t *testing.T) {
 	}
 }
 
+func TestLoad_ISDSSection(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+	content := `
+data_dir = "` + dir + `"
+
+[isds]
+test_cssz_box = "abcdefg"
+xsd_check_timeout = "15s"
+xsd_check_max_output_bytes = 4096
+
+[isds.test_tax_office_boxes]
+451 = "hijklmn"
+13 = "opqrstu"
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.ISDS.TestCSSZBox != "abcdefg" {
+		t.Errorf("TestCSSZBox = %q", cfg.ISDS.TestCSSZBox)
+	}
+	if cfg.ISDS.XSDCheckTimeout != 15*time.Second || cfg.ISDS.XSDCheckMaxOutputBytes != 4096 {
+		t.Errorf("XSD check settings = %v, %d", cfg.ISDS.XSDCheckTimeout, cfg.ISDS.XSDCheckMaxOutputBytes)
+	}
+	want := map[string]string{"451": "hijklmn", "13": "opqrstu"}
+	if len(cfg.ISDS.TestTaxOfficeBoxes) != len(want) {
+		t.Fatalf("TestTaxOfficeBoxes = %v, want %v", cfg.ISDS.TestTaxOfficeBoxes, want)
+	}
+	for k, v := range want {
+		if cfg.ISDS.TestTaxOfficeBoxes[k] != v {
+			t.Errorf("TestTaxOfficeBoxes[%q] = %q, want %q", k, cfg.ISDS.TestTaxOfficeBoxes[k], v)
+		}
+	}
+}
+
+// An absent [isds] section stays zero: no test boxes are invented, and zero
+// XSD check limits mean the xsdcheck package defaults apply.
+func TestLoad_ISDSSectionOptional(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfgPath, []byte(`data_dir = "`+dir+`"`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	isds := cfg.ISDS
+	if isds.TestCSSZBox != "" || len(isds.TestTaxOfficeBoxes) != 0 || isds.XSDCheckTimeout != 0 || isds.XSDCheckMaxOutputBytes != 0 {
+		t.Errorf("ISDS config = %+v, want the zero value (no invented defaults)", isds)
+	}
+}
+
 func TestLoad(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.toml")

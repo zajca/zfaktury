@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -104,7 +105,7 @@ func TestTaxYearSettingsService_Save(t *testing.T) {
 		{Month: 1, TaxAmount: 100000, SocialAmount: 200000, HealthAmount: 300000},
 		{Month: 2, TaxAmount: 110000, SocialAmount: 210000, HealthAmount: 310000},
 	}
-	if err := svc.Save(ctx, 2025, 60, prepayments); err != nil {
+	if err := svc.Save(ctx, 2025, 60, domain.FilingMethodElectronic, prepayments); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
@@ -116,6 +117,9 @@ func TestTaxYearSettingsService_Save(t *testing.T) {
 	if tys.FlatRatePercent != 60 {
 		t.Errorf("expected flat_rate_percent 60, got %d", tys.FlatRatePercent)
 	}
+	if tys.FilingMethod != domain.FilingMethodElectronic {
+		t.Errorf("expected filing method electronic, got %q", tys.FilingMethod)
+	}
 
 	// Verify prepayments were saved
 	result, err := prepaymentRepo.ListByYear(ctx, 2025)
@@ -124,6 +128,29 @@ func TestTaxYearSettingsService_Save(t *testing.T) {
 	}
 	if len(result) != 2 {
 		t.Fatalf("expected 2 prepayments, got %d", len(result))
+	}
+}
+
+func TestTaxYearSettingsService_Save_InvalidFilingMethod(t *testing.T) {
+	svc, settingsRepo, prepaymentRepo := newTaxYearSettingsSvc(t)
+	ctx := context.Background()
+
+	prepayments := []domain.TaxPrepayment{{Month: 1, TaxAmount: 100000}}
+	// Year 2031 has no row; the migrations seed one for 2025.
+	err := svc.Save(ctx, 2031, 60, domain.FilingMethod("x"), prepayments)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("Save error = %v, want ErrInvalidInput", err)
+	}
+
+	if _, err := settingsRepo.GetByYear(ctx, 2031); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("settings GetByYear error = %v, want ErrNotFound", err)
+	}
+	result, err := prepaymentRepo.ListByYear(ctx, 2031)
+	if err != nil {
+		t.Fatalf("ListByYear: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected no prepayments written, got %d", len(result))
 	}
 }
 

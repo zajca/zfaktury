@@ -23,11 +23,11 @@ func NewTaxYearSettingsRepository(db *sql.DB) *TaxYearSettingsRepository {
 // GetByYear retrieves tax year settings for a specific year.
 func (r *TaxYearSettingsRepository) GetByYear(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT year, flat_rate_percent, created_at, updated_at FROM tax_year_settings WHERE year = ?`, year)
+		`SELECT year, flat_rate_percent, filing_method, created_at, updated_at FROM tax_year_settings WHERE year = ?`, year)
 
 	var tys domain.TaxYearSettings
-	var createdAt, updatedAt string
-	err := row.Scan(&tys.Year, &tys.FlatRatePercent, &createdAt, &updatedAt)
+	var filingMethod, createdAt, updatedAt string
+	err := row.Scan(&tys.Year, &tys.FlatRatePercent, &filingMethod, &createdAt, &updatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -35,6 +35,7 @@ func (r *TaxYearSettingsRepository) GetByYear(ctx context.Context, year int) (*d
 		return nil, fmt.Errorf("querying tax_year_settings for year %d: %w", year, err)
 	}
 
+	tys.FilingMethod = domain.FilingMethod(filingMethod)
 	tys.CreatedAt, err = parseDate(time.RFC3339, createdAt)
 	if err != nil {
 		return nil, fmt.Errorf("parsing created_at for tax_year_settings year %d: %w", year, err)
@@ -50,10 +51,11 @@ func (r *TaxYearSettingsRepository) GetByYear(ctx context.Context, year int) (*d
 func (r *TaxYearSettingsRepository) Upsert(ctx context.Context, tys *domain.TaxYearSettings) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO tax_year_settings (year, flat_rate_percent, created_at, updated_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(year) DO UPDATE SET flat_rate_percent = excluded.flat_rate_percent, updated_at = excluded.updated_at`,
-		tys.Year, tys.FlatRatePercent, now, now,
+		INSERT INTO tax_year_settings (year, flat_rate_percent, filing_method, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(year) DO UPDATE SET flat_rate_percent = excluded.flat_rate_percent,
+			filing_method = excluded.filing_method, updated_at = excluded.updated_at`,
+		tys.Year, tys.FlatRatePercent, string(tys.FilingMethod), now, now,
 	)
 	if err != nil {
 		return fmt.Errorf("upserting tax_year_settings for year %d: %w", tys.Year, err)

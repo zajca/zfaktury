@@ -16,6 +16,7 @@ function jsonResponse(data: unknown, status = 200) {
 function makeTaxYearSettings(
 	overrides?: Partial<{
 		flat_rate_percent: number;
+		filing_method: string;
 		prepayments: Array<{
 			month: number;
 			tax_amount: number;
@@ -35,6 +36,7 @@ function makeTaxYearSettings(
 	return {
 		year: 2024,
 		flat_rate_percent: overrides?.flat_rate_percent ?? 0,
+		filing_method: overrides?.filing_method ?? '',
 		prepayments
 	};
 }
@@ -162,6 +164,51 @@ describe('Tax Prepayments Page', () => {
 			(c: unknown[]) => c[1] && (c[1] as RequestInit).method === 'PUT'
 		);
 		expect(saveCalls.length).toBe(1);
+		const body = JSON.parse((saveCalls[0][1] as RequestInit).body as string);
+		expect(body.filing_method).toBe('');
+	});
+
+	it('renders the filing method select with its four options', async () => {
+		mockSettingsAndConstants(makeTaxYearSettings());
+		const { default: Page } = await import('./+page.svelte');
+		render(Page);
+
+		const select = (await screen.findByLabelText(/Podání přiznání za rok/)) as HTMLSelectElement;
+		expect(select.id).toBe('filing_method');
+		expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+			'Nevybráno (počítá se s podáním do 1. dubna)',
+			'Do 1. dubna (papírově nebo elektronicky)',
+			'Elektronicky po 1. dubnu',
+			'Daňový poradce po 1. dubnu'
+		]);
+	});
+
+	it('selects the loaded filing method', async () => {
+		mockSettingsAndConstants(makeTaxYearSettings({ filing_method: 'electronic' }));
+		const { default: Page } = await import('./+page.svelte');
+		render(Page);
+
+		const select = (await screen.findByLabelText(/Podání přiznání za rok/)) as HTMLSelectElement;
+		expect(select.value).toBe('electronic');
+	});
+
+	it('sends the chosen filing method when saving', async () => {
+		mockSettingsAndConstants(makeTaxYearSettings({ filing_method: 'electronic' }));
+		const { default: Page } = await import('./+page.svelte');
+		render(Page);
+
+		const select = (await screen.findByLabelText(/Podání přiznání za rok/)) as HTMLSelectElement;
+		await fireEvent.change(select, { target: { value: 'advisor' } });
+		await fireEvent.click(screen.getByText('Uložit nastavení'));
+
+		await waitFor(() => {
+			const saveCalls = mockFetch.mock.calls.filter(
+				(c: unknown[]) => c[1] && (c[1] as RequestInit).method === 'PUT'
+			);
+			expect(saveCalls.length).toBe(1);
+			const body = JSON.parse((saveCalls[0][1] as RequestInit).body as string);
+			expect(body.filing_method).toBe('advisor');
+		});
 	});
 
 	it('shows error on API failure', async () => {

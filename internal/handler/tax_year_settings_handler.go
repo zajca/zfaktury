@@ -33,6 +33,7 @@ func (h *TaxYearSettingsHandler) Routes() chi.Router {
 type taxYearSettingsResponse struct {
 	Year            int                `json:"year"`
 	FlatRatePercent int                `json:"flat_rate_percent"`
+	FilingMethod    string             `json:"filing_method"`
 	Prepayments     []taxPrepaymentDTO `json:"prepayments"`
 }
 
@@ -45,6 +46,7 @@ type taxPrepaymentDTO struct {
 
 type taxYearSettingsRequest struct {
 	FlatRatePercent int                `json:"flat_rate_percent"`
+	FilingMethod    string             `json:"filing_method"`
 	Prepayments     []taxPrepaymentDTO `json:"prepayments"`
 }
 
@@ -84,6 +86,7 @@ func (h *TaxYearSettingsHandler) GetByYear(w http.ResponseWriter, r *http.Reques
 	resp := taxYearSettingsResponse{
 		Year:            tys.Year,
 		FlatRatePercent: tys.FlatRatePercent,
+		FilingMethod:    string(tys.FilingMethod),
 		Prepayments:     make([]taxPrepaymentDTO, 0, len(prepayments)),
 	}
 	for _, tp := range prepayments {
@@ -118,6 +121,12 @@ func (h *TaxYearSettingsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filingMethod := domain.FilingMethod(req.FilingMethod)
+	if err := filingMethod.Validate(); err != nil {
+		respondError(w, http.StatusBadRequest, "filing_method must be one of '', standard, electronic, advisor")
+		return
+	}
+
 	prepayments := make([]domain.TaxPrepayment, 0, len(req.Prepayments))
 	for _, dto := range req.Prepayments {
 		if dto.Month < 1 || dto.Month > 12 {
@@ -137,7 +146,7 @@ func (h *TaxYearSettingsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if err := h.svc.Save(r.Context(), year, req.FlatRatePercent, prepayments); err != nil {
+	if err := h.svc.Save(r.Context(), year, req.FlatRatePercent, filingMethod, prepayments); err != nil {
 		slog.Error("failed to save tax year settings", "error", err, "year", year)
 		respondError(w, http.StatusInternalServerError, "failed to save tax year settings")
 		return

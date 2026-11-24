@@ -108,6 +108,11 @@ func (s *TaxCalendarService) GetDeadlines(year int) []TaxDeadline {
 
 // nextBusinessDay shifts a date forward if it falls on a weekend or Czech public holiday.
 func (s *TaxCalendarService) nextBusinessDay(date time.Time, holidays map[time.Time]bool) time.Time {
+	return nextBusinessDayIn(date, holidays)
+}
+
+// nextBusinessDayIn shifts a date forward past weekends and the given holidays.
+func nextBusinessDayIn(date time.Time, holidays map[time.Time]bool) time.Time {
 	for date.Weekday() == time.Saturday || date.Weekday() == time.Sunday || holidays[date] {
 		date = date.AddDate(0, 0, 1)
 	}

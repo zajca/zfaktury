@@ -33,6 +33,7 @@ func (h *HealthInsuranceHandler) Routes() chi.Router {
 	r.Delete("/{id}", h.Delete)
 	r.Post("/{id}/recalculate", h.Recalculate)
 	r.Put("/{id}/activity-months", h.SetActivityMonths)
+	r.Put("/{id}/no-minimum", h.SetNoMinimum)
 	r.Post("/{id}/generate-xml", h.GenerateXML)
 	r.Get("/{id}/xml", h.DownloadXML)
 	r.Post("/{id}/mark-filed", h.MarkFiled)
@@ -55,31 +56,47 @@ type healthInsuranceActivityMonthsRequest struct {
 
 // healthInsuranceResponse is the JSON response for a health insurance overview.
 type healthInsuranceResponse struct {
-	ID                  int64   `json:"id"`
-	Year                int     `json:"year"`
-	FilingType          string  `json:"filing_type"`
-	ActivityMonths      []int   `json:"activity_months"`
-	TotalRevenue        int64   `json:"total_revenue"`
-	TotalExpenses       int64   `json:"total_expenses"`
-	TaxBase             int64   `json:"tax_base"`
-	AssessmentBase      int64   `json:"assessment_base"`
-	MinAssessmentBase   int64   `json:"min_assessment_base"`
-	FinalAssessmentBase int64   `json:"final_assessment_base"`
-	InsuranceRate       int     `json:"insurance_rate"`
-	TotalInsurance      int64   `json:"total_insurance"`
-	Prepayments         int64   `json:"prepayments"`
-	Difference          int64   `json:"difference"`
-	NewMonthlyPrepay    int64   `json:"new_monthly_prepay"`
-	HasXML              bool    `json:"has_xml"`
-	Status              string  `json:"status"`
-	FiledAt             *string `json:"filed_at,omitempty"`
-	CreatedAt           string  `json:"created_at"`
-	UpdatedAt           string  `json:"updated_at"`
+	ID                  int64    `json:"id"`
+	Year                int      `json:"year"`
+	FilingType          string   `json:"filing_type"`
+	ActivityMonths      []int    `json:"activity_months"`
+	TotalRevenue        int64    `json:"total_revenue"`
+	TotalExpenses       int64    `json:"total_expenses"`
+	TaxBase             int64    `json:"tax_base"`
+	AssessmentBase      int64    `json:"assessment_base"`
+	MinAssessmentBase   int64    `json:"min_assessment_base"`
+	FinalAssessmentBase int64    `json:"final_assessment_base"`
+	InsuranceRate       int      `json:"insurance_rate"`
+	TotalInsurance      int64    `json:"total_insurance"`
+	Prepayments         int64    `json:"prepayments"`
+	Difference          int64    `json:"difference"`
+	NewMonthlyPrepay    int64    `json:"new_monthly_prepay"`
+	NoMinimumMonths     []int    `json:"no_minimum_months"`
+	NoMinimumReason     string   `json:"no_minimum_reason"`
+	FilingMethod        string   `json:"filing_method"`
+	AdvanceYear         int      `json:"advance_year"`
+	AdvanceStartMonth   int      `json:"advance_start_month"`
+	Warnings            []string `json:"warnings"`
+	HasXML              bool     `json:"has_xml"`
+	Status              string   `json:"status"`
+	FiledAt             *string  `json:"filed_at,omitempty"`
+	CreatedAt           string   `json:"created_at"`
+	UpdatedAt           string   `json:"updated_at"`
 }
 
 // healthInsuranceFromDomain converts a domain.HealthInsuranceOverview to a healthInsuranceResponse.
 func healthInsuranceFromDomain(hi *domain.HealthInsuranceOverview) healthInsuranceResponse {
+	warnings := hi.Warnings
+	if warnings == nil {
+		warnings = []string{}
+	}
 	return healthInsuranceResponse{
+		NoMinimumMonths:     hi.NoMinimumMonths.Months(),
+		NoMinimumReason:     string(hi.NoMinimumReason),
+		FilingMethod:        string(hi.FilingMethod),
+		AdvanceYear:         hi.Year + 1,
+		AdvanceStartMonth:   hi.AdvanceStartMonth,
+		Warnings:            warnings,
 		ID:                  hi.ID,
 		Year:                hi.Year,
 		FilingType:          hi.FilingType,
@@ -235,6 +252,46 @@ func (h *HealthInsuranceHandler) SetActivityMonths(w http.ResponseWriter, r *htt
 	hi, err := h.svc.SetActivityMonths(r.Context(), id, months)
 	if err != nil {
 		slog.Error("failed to set health insurance activity months", "error", err, "id", id)
+		mapDomainError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, healthInsuranceFromDomain(hi))
+}
+
+// healthInsuranceNoMinimumRequest is the JSON request body for the months without
+// minimum assessment base; no months and an empty reason clear the setting.
+type healthInsuranceNoMinimumRequest struct {
+	Months []int  `json:"months"`
+	Reason string `json:"reason"`
+}
+
+// SetNoMinimum handles PUT /api/v1/health-insurance/{id}/no-minimum.
+func (h *HealthInsuranceHandler) SetNoMinimum(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid health insurance overview ID")
+		return
+	}
+
+	var req healthInsuranceNoMinimumRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	var months domain.ActivityMonths
+	if len(req.Months) > 0 {
+		months, err = domain.NewActivityMonths(req.Months)
+		if err != nil {
+			mapDomainError(w, err)
+			return
+		}
+	}
+
+	hi, err := h.svc.SetNoMinimum(r.Context(), id, months, domain.HealthNoMinimumReason(req.Reason))
+	if err != nil {
+		slog.Error("failed to set health insurance months without minimum", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}

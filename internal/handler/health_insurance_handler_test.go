@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -505,6 +506,77 @@ func TestHealthInsurance_SetActivityMonths(t *testing.T) {
 	}
 	if resp.MinAssessmentBase != 13967100 {
 		t.Errorf("MinAssessmentBase = %d, want 13967100", resp.MinAssessmentBase)
+	}
+}
+
+func putNoMinimum(t *testing.T, r *chi.Mux, id int64, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/health-insurance/%d/no-minimum", id), bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestHealthInsurance_SetNoMinimum(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+	id := createHealthInsurance(t, r, 2025)
+
+	w := putNoMinimum(t, r, id, `{"months":[1,2],"reason":"ztp"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp healthInsuranceResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(resp.NoMinimumMonths) != 2 || resp.NoMinimumReason != "ztp" {
+		t.Errorf("no minimum = %v/%q, want [1 2]/ztp", resp.NoMinimumMonths, resp.NoMinimumReason)
+	}
+	if resp.AdvanceYear != 2026 || resp.AdvanceStartMonth != 5 {
+		t.Errorf("advance year/start = %d/%d, want 2026/5", resp.AdvanceYear, resp.AdvanceStartMonth)
+	}
+}
+
+func TestHealthInsurance_SetNoMinimum_MonthsWithoutReason(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+	id := createHealthInsurance(t, r, 2025)
+
+	w := putNoMinimum(t, r, id, `{"months":[1],"reason":""}`)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+	var resp struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if want := "vyberte důvod, proč minimum neplatí"; resp.Error != want {
+		t.Errorf("error = %q, want %q", resp.Error, want)
+	}
+}
+
+func TestHealthInsurance_SetNoMinimum_Clear(t *testing.T) {
+	r, _ := setupHealthInsuranceRouter(t)
+	id := createHealthInsurance(t, r, 2025)
+	if w := putNoMinimum(t, r, id, `{"months":[1],"reason":"employee"}`); w.Code != http.StatusOK {
+		t.Fatalf("set: status = %d, body: %s", w.Code, w.Body.String())
+	}
+
+	w := putNoMinimum(t, r, id, `{"months":[],"reason":""}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("clear: status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp healthInsuranceResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if len(resp.NoMinimumMonths) != 0 || resp.NoMinimumReason != "" {
+		t.Errorf("no minimum = %v/%q, want cleared", resp.NoMinimumMonths, resp.NoMinimumReason)
+	}
+	if !strings.Contains(w.Body.String(), `"warnings":[`) || strings.Contains(w.Body.String(), `"warnings":null`) {
+		t.Errorf("warnings is not an array: %s", w.Body.String())
 	}
 }
 

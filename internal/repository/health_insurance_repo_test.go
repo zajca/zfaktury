@@ -69,6 +69,59 @@ func TestHealthInsuranceOverviewRepository_GetByID(t *testing.T) {
 	}
 }
 
+func TestHealthInsuranceOverviewRepository_AdvanceFieldsRoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewHealthInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	hi := &domain.HealthInsuranceOverview{
+		Year:              2025,
+		FilingType:        domain.FilingTypeRegular,
+		ActivityMonths:    domain.FullYearActivityMonths,
+		NoMinimumMonths:   domain.ActivityMonths(3),
+		NoMinimumReason:   domain.HealthNoMinimumStateInsured,
+		FilingMethod:      domain.FilingMethodAdvisor,
+		AdvanceStartMonth: 8,
+		Warnings:          []string{domain.WarningAdvanceMinimumMissing},
+	}
+	if err := repo.Create(ctx, hi); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, hi.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.NoMinimumMonths != 3 || got.NoMinimumReason != domain.HealthNoMinimumStateInsured ||
+		got.FilingMethod != domain.FilingMethodAdvisor || got.AdvanceStartMonth != 8 ||
+		len(got.Warnings) != 1 || got.Warnings[0] != domain.WarningAdvanceMinimumMissing {
+		t.Errorf("round trip = %+v", got)
+	}
+}
+
+func TestHealthInsuranceOverviewRepository_DefaultsForRowsWithoutNewColumns(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewHealthInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	now := time.Now().Format(time.RFC3339)
+	result, err := db.ExecContext(ctx, `
+		INSERT INTO health_insurance_overviews (year, filing_type, activity_months, created_at, updated_at)
+		VALUES (2024, 'regular', 4095, ?, ?)`, now, now)
+	if err != nil {
+		t.Fatalf("inserting row: %v", err)
+	}
+	id, _ := result.LastInsertId()
+
+	got, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.NoMinimumMonths != 0 || got.NoMinimumReason != "" || got.AdvanceStartMonth != 0 || got.FilingMethod != "" || got.Warnings != nil {
+		t.Errorf("defaults = %+v, want zero values", got)
+	}
+}
+
 func TestHealthInsuranceOverviewRepository_GetByID_NotFound(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewHealthInsuranceOverviewRepository(db)

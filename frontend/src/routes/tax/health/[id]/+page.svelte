@@ -6,9 +6,11 @@
 		healthInsuranceApi,
 		ApiError,
 		type HealthInsuranceOverview,
+		type HealthNoMinimumReason,
 		type TaxConstants
 	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
+	import AdvanceSchedule from '$lib/components/tax/AdvanceSchedule.svelte';
 	import ActivityMonthsPicker from '$lib/components/tax/ActivityMonthsPicker.svelte';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
@@ -29,6 +31,9 @@
 	let showDeleteConfirm = $state(false);
 	let editingMonths = $state(false);
 	let monthsDraft = $state<number[]>([]);
+	let editingNoMinimum = $state(false);
+	let noMinimumDraft = $state<number[]>([]);
+	let noMinimumReasonDraft = $state<HealthNoMinimumReason>('');
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -127,6 +132,58 @@
 			}
 		}
 		return 'Nepodařilo se uložit měsíce činnosti';
+	}
+
+	const NO_MINIMUM_REASON_OPTIONS: { value: HealthNoMinimumReason; label: string }[] = [
+		{ value: '', label: 'Vyberte důvod' },
+		{ value: 'employee', label: 'Zaměstnanec s pojistným alespoň z minimální mzdy' },
+		{
+			value: 'state_insured',
+			label: 'Pojištěnec státu (např. student, rodič na rodičovské, důchodce)'
+		},
+		{ value: 'ztp', label: 'Držitel průkazu ZTP nebo ZTP/P' },
+		{ value: 'retirement_age', label: 'Dosažený důchodový věk bez nároku na důchod' }
+	];
+
+	const noMinimumReasonLabels: Record<HealthNoMinimumReason, string> = Object.fromEntries(
+		NO_MINIMUM_REASON_OPTIONS.map((opt) => [opt.value, opt.label])
+	) as Record<HealthNoMinimumReason, string>;
+
+	let noMinimumLabel = $derived(
+		data
+			? `${data.no_minimum_months.map((m) => monthNames[m - 1]).join(', ')} (${data.no_minimum_months.length} měs.)`
+			: ''
+	);
+
+	function startEditingNoMinimum() {
+		noMinimumDraft = [...(data?.no_minimum_months ?? [])];
+		noMinimumReasonDraft = data?.no_minimum_reason ?? '';
+		editingNoMinimum = true;
+	}
+
+	async function saveNoMinimum() {
+		actionLoading = 'no-minimum';
+		try {
+			data = await healthInsuranceApi.setNoMinimum(returnId, noMinimumDraft, noMinimumReasonDraft);
+			toastSuccess('Měsíce bez minima uloženy a přehled přepočítán');
+			editingNoMinimum = false;
+		} catch (e) {
+			toastError(noMinimumError(e));
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	function noMinimumError(e: unknown): string {
+		if (e instanceof ApiError) {
+			if (e.status === 409) {
+				return 'Přehled je už podaný, nelze ho změnit.';
+			}
+			if (e.status === 400 && !e.message.startsWith('API Error ')) {
+				return e.message;
+			}
+		}
+		return 'Nepodařilo se uložit měsíce bez minima';
 	}
 
 	function handleMarkFiled() {
@@ -316,6 +373,70 @@
 				{/if}
 			</Card>
 
+			<!-- Months without minimum -->
+			<Card>
+				<h2 class="text-base font-semibold text-primary">Měsíce bez minima</h2>
+				<p class="mt-1 text-sm text-secondary">
+					{#if data.no_minimum_months.length === 0}
+						Minimum platí ve všech měsících činnosti
+					{:else}
+						{noMinimumLabel} – {noMinimumReasonLabels[data.no_minimum_reason]}
+					{/if}
+				</p>
+
+				{#if data.status !== 'filed'}
+					<div class="mt-4 border-t border-border pt-4">
+						{#if !editingNoMinimum}
+							<Button
+								variant="secondary"
+								onclick={startEditingNoMinimum}
+								disabled={actionLoading !== null}
+							>
+								Upravit
+							</Button>
+						{:else}
+							<ActivityMonthsPicker
+								idPrefix="health-no-minimum-edit"
+								legend="Měsíce bez minimálního vyměřovacího základu"
+								hint="Celé měsíce, ve kterých se na vás minimum nevztahovalo (§ 3a odst. 3 zákona č. 592/1992 Sb.)."
+								allowedMonths={data.activity_months}
+								required={false}
+								value={noMinimumDraft}
+								onchange={(months) => (noMinimumDraft = months)}
+								disabled={actionLoading !== null}
+							/>
+							<div class="mt-3 max-w-md">
+								<label for="no-minimum-reason" class="block text-sm font-medium text-secondary"
+									>Důvod</label
+								>
+								<select
+									id="no-minimum-reason"
+									bind:value={noMinimumReasonDraft}
+									disabled={actionLoading !== null}
+									class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+								>
+									{#each NO_MINIMUM_REASON_OPTIONS as opt (opt.value)}
+										<option value={opt.value}>{opt.label}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="mt-3 flex gap-3">
+								<Button variant="primary" onclick={saveNoMinimum} disabled={actionLoading !== null}>
+									{actionLoading === 'no-minimum' ? 'Ukládám...' : 'Uložit'}
+								</Button>
+								<Button
+									variant="secondary"
+									onclick={() => (editingNoMinimum = false)}
+									disabled={actionLoading !== null}
+								>
+									Zrušit
+								</Button>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</Card>
+
 			<!-- Insurance -->
 			<Card>
 				<h2 class="text-base font-semibold text-primary">
@@ -362,6 +483,13 @@
 						{formatCZK(data.new_monthly_prepay)}
 					</dd>
 				</div>
+				<AdvanceSchedule
+					overviewYear={data.year}
+					startMonth={data.advance_start_month}
+					periods={[]}
+					warnings={data.warnings}
+					reportedPrepay={null}
+				/>
 			</Card>
 
 			<!-- Timestamps -->

@@ -36,7 +36,13 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
 		total_insurance: 1780700,
 		prepayments: 0,
 		difference: 1780700,
-		new_monthly_prepay: 296800,
+		new_monthly_prepay: 330600,
+		no_minimum_months: [],
+		no_minimum_reason: '',
+		filing_method: 'standard',
+		advance_year: 2026,
+		advance_start_month: 5,
+		warnings: [],
 		has_xml: false,
 		status: 'draft',
 		filed_at: null,
@@ -59,6 +65,9 @@ function mockApi(options: MockOptions = {}) {
 	mockFetch.mockImplementation((url: string) => {
 		if (url.includes('/tax-constants')) {
 			return Promise.resolve(jsonResponse({ error: 'not found' }, 404));
+		}
+		if (url.includes('/no-minimum')) {
+			return Promise.resolve(jsonResponse(options.updateOverview ?? overview));
 		}
 		if (url.includes('/activity-months')) {
 			if (options.updateStatus && options.updateStatus !== 200) {
@@ -100,6 +109,87 @@ describe('health insurance overview detail page', () => {
 		expect(
 			screen.getByText('červenec, srpen, září, říjen, listopad, prosinec (6 měs.)')
 		).toBeInTheDocument();
+	});
+
+	it('shows the advance start month', async () => {
+		mockApi();
+
+		await renderPage();
+
+		expect(screen.getByText(/Nová záloha od:/)).toHaveTextContent('květen 2026');
+	});
+
+	it('shows the months without minimum with their reason', async () => {
+		mockApi({
+			overview: makeOverview({ no_minimum_months: [7, 8], no_minimum_reason: 'ztp' })
+		});
+
+		await renderPage();
+
+		expect(screen.getByText('Měsíce bez minima')).toBeInTheDocument();
+		expect(
+			screen.getByText(/červenec, srpen \(2 měs\.\) – Držitel průkazu ZTP nebo ZTP\/P/)
+		).toBeInTheDocument();
+	});
+
+	it('says the minimum applies when no months are exempt', async () => {
+		mockApi();
+
+		await renderPage();
+
+		expect(screen.getByText('Minimum platí ve všech měsících činnosti')).toBeInTheDocument();
+	});
+
+	it('shows the warning that advances are not required', async () => {
+		mockApi({ overview: makeOverview({ warnings: ['health_advance_not_required'] }) });
+
+		await renderPage();
+
+		expect(screen.getByRole('alert')).toHaveTextContent('v roce 2026 nejsou povinné');
+	});
+
+	it('saves the months without minimum through the no-minimum endpoint', async () => {
+		mockApi({
+			updateOverview: makeOverview({ no_minimum_months: [7], no_minimum_reason: 'employee' })
+		});
+
+		await renderPage();
+		await fireEvent.click(screen.getByRole('button', { name: 'Upravit' }));
+		await fireEvent.click(screen.getByLabelText('červenec'));
+		await fireEvent.change(screen.getByLabelText('Důvod'), { target: { value: 'employee' } });
+		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
+
+		await waitFor(() => {
+			expect(
+				mockFetch.mock.calls.some(([url]) => url === '/api/v1/health-insurance/1/no-minimum')
+			).toBe(true);
+		});
+		const call = mockFetch.mock.calls.find(
+			([url]) => url === '/api/v1/health-insurance/1/no-minimum'
+		);
+		expect(call?.[1].method).toBe('PUT');
+		expect(JSON.parse(call?.[1].body as string)).toEqual({ months: [7], reason: 'employee' });
+	});
+
+	it('shows only the Czech sentence when the reason is missing', async () => {
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/no-minimum')) {
+				return Promise.resolve(jsonResponse({ error: 'vyberte důvod, proč minimum neplatí' }, 400));
+			}
+			if (url.includes('/tax-constants')) {
+				return Promise.resolve(jsonResponse({ error: 'not found' }, 404));
+			}
+			return Promise.resolve(jsonResponse(makeOverview()));
+		});
+
+		await renderPage();
+		await fireEvent.click(screen.getByRole('button', { name: 'Upravit' }));
+		await fireEvent.click(screen.getByLabelText('červenec'));
+		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message === 'vyberte důvod, proč minimum neplatí')).toBe(true);
+		});
 	});
 
 	it('saves the months through the activity-months endpoint', async () => {

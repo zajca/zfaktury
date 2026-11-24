@@ -9,6 +9,7 @@ import (
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 // HealthInsuranceService provides business logic for health insurance overview management.
@@ -20,6 +21,7 @@ type HealthInsuranceService struct {
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 	audit               *AuditService
+	now                 func() time.Time
 }
 
 // NewHealthInsuranceService creates a new HealthInsuranceService.
@@ -40,6 +42,7 @@ func NewHealthInsuranceService(
 		taxYearSettingsRepo: taxYearSettingsRepo,
 		taxPrepaymentRepo:   taxPrepaymentRepo,
 		audit:               audit,
+		now:                 time.Now,
 	}
 }
 
@@ -176,11 +179,44 @@ func (s *HealthInsuranceService) applyRecalculatedAmounts(ctx context.Context, h
 		return fmt.Errorf("getting tax constants for health insurance: %w", err)
 	}
 
-	// Determine flat-rate or actual expenses.
-	flatRatePercent := 0
-	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, hi.Year)
-	if err == nil {
-		flatRatePercent = tys.FlatRatePercent
+	if err := domain.ValidateHealthNoMinimum(hi.ActivityMonths, hi.NoMinimumMonths, hi.NoMinimumReason); err != nil {
+		return fmt.Errorf("validating months without minimum of health_insurance_overview %d: %w", hi.ID, err)
+	}
+
+	// Determine flat-rate or actual expenses and the filing method.
+	tys := &domain.TaxYearSettings{Year: hi.Year}
+	if stored, err := s.taxYearSettingsRepo.GetByYear(ctx, hi.Year); err == nil {
+		tys = stored
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return fmt.Errorf("fetching tax year settings for health insurance: %w", err)
+	}
+	flatRatePercent := tys.FlatRatePercent
+
+	deadline, err := OverviewDeadline(hi.Year, tys.FilingMethod)
+	if err != nil {
+		return fmt.Errorf("computing overview deadline for health insurance: %w", err)
+	}
+	startMonth, err := HealthAdvanceStartMonth(hi.Year, deadline, hi.FiledAt)
+	if err != nil {
+		return fmt.Errorf("computing health advance start month: %w", err)
+	}
+
+	// The payment year is the year after the overview year; without its rules the
+	// advance is not raised to a minimum.
+	var warnings []string
+	var bounds *calc.AdvanceBaseBounds
+	payment, err := calc.GetTaxConstants(hi.Year + 1)
+	var noRules *taxrules.NoRuleSetError
+	switch {
+	case errors.As(err, &noRules):
+		warnings = append(warnings, domain.WarningAdvanceMinimumMissing)
+	case err != nil:
+		return fmt.Errorf("getting tax constants for advances paid after %d: %w", hi.Year, err)
+	case hi.NoMinimumMonths != hi.ActivityMonths:
+		bounds = &calc.AdvanceBaseBounds{MinMonthly: payment.HealthMinMonthly}
+	}
+	if tys.FilingMethod == domain.FilingMethodUnset {
+		warnings = append([]string{domain.WarningFilingMethodMissing}, warnings...)
 	}
 
 	usedExpenses := calc.ResolveUsedExpenses(base.Revenue, base.Expenses, flatRatePercent, constants.FlatRateCaps)
@@ -202,6 +238,9 @@ func (s *HealthInsuranceService) applyRecalculatedAmounts(ctx context.Context, h
 		Prepayments:    healthTotal,
 		RoundPremiumUp: true,
 		ActivityMonths: hi.ActivityMonths.Count(),
+
+		MinimumExemptMonths: hi.NoMinimumMonths.Count(),
+		AdvanceBounds:       bounds,
 	})
 	if err != nil {
 		return fmt.Errorf("calculating health insurance: %w", err)
@@ -216,6 +255,15 @@ func (s *HealthInsuranceService) applyRecalculatedAmounts(ctx context.Context, h
 	hi.Prepayments = healthTotal
 	hi.Difference = insResult.Difference
 	hi.NewMonthlyPrepay = insResult.NewMonthlyPrepay
+	if hi.NoMinimumMonths == hi.ActivityMonths {
+		// The minimum base applies in no month of activity, so advances are not
+		// obligatory (§ 8 odst. 3 zakona c. 592/1992 Sb.).
+		hi.NewMonthlyPrepay = 0
+		warnings = append(warnings, domain.WarningHealthAdvanceNotRequired)
+	}
+	hi.FilingMethod = tys.FilingMethod
+	hi.AdvanceStartMonth = startMonth
+	hi.Warnings = warnings
 	// A stored XML describes the previous amounts and months, so it is dropped
 	// and has to be generated again.
 	hi.XMLData = nil
@@ -242,6 +290,10 @@ func (s *HealthInsuranceService) SetActivityMonths(ctx context.Context, id int64
 		return nil, domain.ErrFilingAlreadyFiled
 	}
 
+	if err := domain.ValidateHealthNoMinimum(months, hi.NoMinimumMonths, hi.NoMinimumReason); err != nil {
+		return nil, fmt.Errorf("validating activity months against months without minimum: %w", err)
+	}
+
 	hi.ActivityMonths = months
 	if err := s.applyRecalculatedAmounts(ctx, hi); err != nil {
 		return nil, err
@@ -249,6 +301,42 @@ func (s *HealthInsuranceService) SetActivityMonths(ctx context.Context, id int64
 
 	if err := s.repo.Update(ctx, hi); err != nil {
 		return nil, fmt.Errorf("updating health_insurance_overview after changing activity months: %w", err)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "health_insurance", id, "update", nil, hi)
+	}
+	return hi, nil
+}
+
+// SetNoMinimum stores the months in which the minimum assessment base does not
+// apply, with their reason, and recalculates the overview. No months and no
+// reason clear the setting. The overview is written once, only after the
+// recalculation succeeds.
+func (s *HealthInsuranceService) SetNoMinimum(ctx context.Context, id int64, months domain.ActivityMonths, reason domain.HealthNoMinimumReason) (*domain.HealthInsuranceOverview, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("health_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+
+	hi, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching health_insurance_overview for months without minimum: %w", err)
+	}
+	if hi.Status == domain.FilingStatusFiled {
+		return nil, domain.ErrFilingAlreadyFiled
+	}
+	if err := domain.ValidateHealthNoMinimum(hi.ActivityMonths, months, reason); err != nil {
+		return nil, fmt.Errorf("validating months without minimum: %w", err)
+	}
+
+	hi.NoMinimumMonths = months
+	hi.NoMinimumReason = reason
+	if err := s.applyRecalculatedAmounts(ctx, hi); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(ctx, hi); err != nil {
+		return nil, fmt.Errorf("updating health_insurance_overview after changing months without minimum: %w", err)
 	}
 
 	if s.audit != nil {
@@ -298,9 +386,21 @@ func (s *HealthInsuranceService) MarkFiled(ctx context.Context, id int64) (*doma
 		return nil, domain.ErrFilingAlreadyFiled
 	}
 
-	now := time.Now()
+	now := s.now()
 	hi.Status = domain.FilingStatusFiled
 	hi.FiledAt = &now
+
+	// An earlier filing date moves the advance start month; amounts stay as calculated.
+	if hi.AdvanceStartMonth != 0 {
+		deadline, err := OverviewDeadline(hi.Year, hi.FilingMethod)
+		if err != nil {
+			return nil, fmt.Errorf("computing overview deadline for health insurance: %w", err)
+		}
+		hi.AdvanceStartMonth, err = HealthAdvanceStartMonth(hi.Year, deadline, hi.FiledAt)
+		if err != nil {
+			return nil, fmt.Errorf("computing health advance start month: %w", err)
+		}
+	}
 
 	if err := s.repo.Update(ctx, hi); err != nil {
 		return nil, fmt.Errorf("marking health_insurance_overview as filed: %w", err)

@@ -456,7 +456,8 @@ func TestHealthInsuranceService_Recalculate_PartialYear(t *testing.T) {
 	if got, want := result.TotalInsurance, domain.NewAmount(18_856, 0); got != want {
 		t.Errorf("TotalInsurance = %d, want %d", got, want)
 	}
-	if got, want := result.NewMonthlyPrepay, domain.NewAmount(3_143, 0); got != want {
+	// The advance is raised to the 2026 minimum (24 483,50 x 13,5 % = 3 306 CZK).
+	if got, want := result.NewMonthlyPrepay, domain.NewAmount(3_306, 0); got != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d", got, want)
 	}
 }
@@ -487,7 +488,7 @@ func TestHealthInsuranceService_SetActivityMonths(t *testing.T) {
 	if got, want := updated.TotalInsurance, domain.NewAmount(18_856, 0); got != want {
 		t.Errorf("TotalInsurance = %d, want %d", got, want)
 	}
-	if got, want := updated.NewMonthlyPrepay, domain.NewAmount(3_143, 0); got != want {
+	if got, want := updated.NewMonthlyPrepay, domain.NewAmount(3_306, 0); got != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d", got, want)
 	}
 

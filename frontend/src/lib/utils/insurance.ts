@@ -10,6 +10,8 @@ export function insuranceWarningText(token: string, overviewYear: number): strin
 			return `Způsob podání daňového přiznání za rok ${overviewYear} není nastaven. Lhůta přehledu a první měsíc nové zálohy jsou spočítány pro podání přiznání do 1. dubna.`;
 		case 'advance_differs_from_xml':
 			return 'Přehled byl podán dříve, než aplikace počítala. Od prvního měsíce platí záloha podle tabulky níže, ne částka z XML přehledu.';
+		case 'health_advance_not_required':
+			return `Zálohy na zdravotní pojištění v roce ${overviewYear + 1} nejsou povinné, protože minimální vyměřovací základ se na vás za rok ${overviewYear} nevztahoval (§ 8 odst. 3 zákona č. 592/1992 Sb.). Pokud důvod v roce ${overviewYear + 1} skončí, platíte zálohy alespoň v minimální výši.`;
 		default:
 			return token;
 	}

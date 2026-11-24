@@ -25,9 +25,13 @@ type InsuranceInput struct {
 	// ActivityMonths is the number of months of activity in the year (1-12).
 	// It prorates the minimum assessment base; the maximum is not prorated.
 	ActivityMonths int
+	// MinimumExemptMonths is the number of months of activity in which the
+	// minimum base does not apply; zero means the minimum applies in every month.
+	MinimumExemptMonths int
 	// AdvanceBounds bounds the monthly advance base by the minimum and maximum
 	// of the year the advance is paid in (CSSZ Pokyny, ř. 35). Nil leaves the
-	// final annual base divided by the months unchanged.
+	// final annual base divided by the months unchanged. Health insurance uses
+	// only MinMonthly, as the floor of the advance.
 	AdvanceBounds *AdvanceBaseBounds
 }
 
@@ -140,6 +144,9 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 	if input.ActivityMonths < 1 || input.ActivityMonths > 12 {
 		return InsuranceResult{}, fmt.Errorf("activity months %d out of range 1-12: %w", input.ActivityMonths, domain.ErrInvalidInput)
 	}
+	if input.MinimumExemptMonths < 0 || input.MinimumExemptMonths > input.ActivityMonths {
+		return InsuranceResult{}, fmt.Errorf("minimum exempt months %d out of range 0-%d: %w", input.MinimumExemptMonths, input.ActivityMonths, domain.ErrInvalidInput)
+	}
 	months := int64(input.ActivityMonths)
 
 	// taxBase = revenue - usedExpenses, clamped to 0.
@@ -159,8 +166,9 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 		assessmentBase = ceilToWholeCZK(assessmentBase)
 	}
 
-	// minAssessmentBase = minMonthlyBase * months of activity.
-	minAssessmentBase := int64(input.MinMonthlyBase) * months
+	// minAssessmentBase = minMonthlyBase * months of activity without an exemption
+	// (§ 3a odst. 4 zakona c. 592/1992 Sb.).
+	minAssessmentBase := int64(input.MinMonthlyBase) * (months - int64(input.MinimumExemptMonths))
 
 	// finalBase = max(assessmentBase, minAssessmentBase).
 	finalBase := assessmentBase
@@ -201,6 +209,13 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 		// Health: the premium is divided by the months of activity in a single
 		// step, so the monthly base itself is not rounded to whole CZK.
 		newMonthlyPrepay = ceilToWholeCZK(ceilDiv(finalBase*rate, 1000*months))
+		if input.AdvanceBounds != nil {
+			// The advance is not paid below the minimum advance of the payment year.
+			floor := ceilToWholeCZK(ceilDiv(int64(input.AdvanceBounds.MinMonthly)*rate, 1000))
+			if floor > newMonthlyPrepay {
+				newMonthlyPrepay = floor
+			}
+		}
 	default:
 		monthlyHalere := ceilDiv(totalInsurance, months)
 		newMonthlyPrepay = ((monthlyHalere + 99) / 100) * 100

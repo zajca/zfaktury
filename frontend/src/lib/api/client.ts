@@ -1119,6 +1119,8 @@ export interface SocialInsuranceOverview {
 	updated_at: string;
 }
 
+export type HealthNoMinimumReason = '' | 'employee' | 'state_insured' | 'ztp' | 'retirement_age';
+
 export interface HealthInsuranceOverview {
 	id: number;
 	year: number;
@@ -1135,6 +1137,12 @@ export interface HealthInsuranceOverview {
 	prepayments: number;
 	difference: number;
 	new_monthly_prepay: number;
+	no_minimum_months: number[];
+	no_minimum_reason: HealthNoMinimumReason;
+	filing_method: FilingMethod;
+	advance_year: number;
+	advance_start_month: number;
+	warnings: string[];
 	has_xml: boolean;
 	status: string;
 	filed_at: string | null;
@@ -1235,6 +1243,12 @@ export const healthInsuranceApi = {
 	setActivityMonths(id: number, activityMonths: number[]) {
 		return put<HealthInsuranceOverview>(`/health-insurance/${id}/activity-months`, {
 			activity_months: activityMonths
+		});
+	},
+	setNoMinimum(id: number, months: number[], reason: HealthNoMinimumReason) {
+		return put<HealthInsuranceOverview>(`/health-insurance/${id}/no-minimum`, {
+			months,
+			reason
 		});
 	}
 };

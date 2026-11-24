@@ -184,7 +184,8 @@ describe('help-content', () => {
 			expect(topic.simple).toContain('13,5 %');
 			expect(topic.simple).toContain('od měsíce následujícího po měsíci, kdy jste přehled podali');
 			expect(topic.simple).toContain('už od měsíce, kdy jste přehled podali');
-			expect(topic.simple).toContain('zatím nekontroluje');
+			expect(topic.simple).not.toContain('zatím nekontroluje');
+			expect(topic.simple).toContain('Aplikace zálohu na toto minimum zvýší');
 			expect(topics['prehled-cssz'].legal).toContain('nebo měl být podán');
 			expect(topics['prehled-cssz'].legal).toContain('§ 14a odst. 3');
 			expect(topics['prehled-cssz'].simple).toContain('sami si v něm vypočítáte');

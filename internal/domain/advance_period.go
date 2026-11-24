@@ -20,4 +20,8 @@ const (
 	// deadline used for the XML, and the advance due from the start month
 	// differs from the one reported in the XML.
 	WarningAdvanceDiffersFromXML = "advance_differs_from_xml"
+	// WarningHealthAdvanceNotRequired: the health minimum base did not apply in
+	// any month of activity, so advances are not obligatory (§ 8 odst. 3 zákona
+	// č. 592/1992 Sb.).
+	WarningHealthAdvanceNotRequired = "health_advance_not_required"
 )

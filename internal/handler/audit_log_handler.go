@@ -83,7 +83,7 @@ func (h *AuditLogHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if v := q.Get("from"); v != "" {
-		t, err := time.Parse("2006-01-02", v)
+		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, "invalid 'from' date format, expected YYYY-MM-DD")
 			return
@@ -91,13 +91,13 @@ func (h *AuditLogHandler) List(w http.ResponseWriter, r *http.Request) {
 		filter.From = t
 	}
 	if v := q.Get("to"); v != "" {
-		t, err := time.Parse("2006-01-02", v)
+		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
 		if err != nil {
 			respondError(w, http.StatusBadRequest, "invalid 'to' date format, expected YYYY-MM-DD")
 			return
 		}
-		// Include the entire "to" day.
-		filter.To = t.Add(24*time.Hour - time.Second)
+		// Include the entire local "to" day: one second before the next local midnight.
+		filter.To = t.AddDate(0, 0, 1).Add(-time.Second)
 	}
 
 	limit, offset := parsePagination(r)

@@ -305,11 +305,11 @@ func (r *ExpenseRepository) List(ctx context.Context, filter domain.ExpenseFilte
 	}
 	if filter.DateFrom != nil {
 		where += " AND e.issue_date >= ?"
-		args = append(args, *filter.DateFrom)
+		args = append(args, dateArg(*filter.DateFrom))
 	}
 	if filter.DateTo != nil {
 		where += " AND e.issue_date <= ?"
-		args = append(args, *filter.DateTo)
+		args = append(args, dateArg(*filter.DateTo))
 	}
 	if filter.Search != "" {
 		where += " AND (e.expense_number LIKE ? OR e.description LIKE ? OR COALESCE(c.name, '') LIKE ?)"

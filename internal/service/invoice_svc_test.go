@@ -135,6 +135,30 @@ func TestInvoiceService_Update_Valid(t *testing.T) {
 	}
 }
 
+func TestInvoiceService_Update_EmptyDeliveryDateDefaultsToIssueDate(t *testing.T) {
+	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	inv.DeliveryDate = time.Time{}
+	if err := svc.Update(ctx, inv); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+
+	got, err := svc.GetByID(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.DeliveryDate.IsZero() || !got.DeliveryDate.Equal(got.IssueDate) {
+		t.Errorf("DeliveryDate = %v, want the issue date %v", got.DeliveryDate, got.IssueDate)
+	}
+}
+
 func TestInvoiceService_Update_PaidInvoice(t *testing.T) {
 	svc, _, _, _, createCustomer := newInvoiceTestStack(t)
 	ctx := context.Background()

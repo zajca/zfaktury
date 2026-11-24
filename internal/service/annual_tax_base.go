@@ -32,10 +32,10 @@ func CalculateAnnualBase(
 	dateTo := time.Date(year, 12, 31, 23, 59, 59, 0, time.UTC)
 
 	invoices, _, err := invoiceRepo.List(ctx, domain.InvoiceFilter{
-		DateFrom: &dateFrom,
-		DateTo:   &dateTo,
-		Limit:    100000,
-		Offset:   0,
+		DeliveryDateFrom: &dateFrom,
+		DeliveryDateTo:   &dateTo,
+		Limit:            100000,
+		Offset:           0,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("listing invoices for annual base: %w", err)

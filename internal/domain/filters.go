@@ -9,9 +9,14 @@ type InvoiceFilter struct {
 	CustomerID *int64
 	DateFrom   *time.Time
 	DateTo     *time.Time
-	Search     string
-	Limit      int
-	Offset     int
+	// DeliveryDateFrom and DeliveryDateTo select by the date of the taxable
+	// supply (DUZP). An invoice without a delivery date counts as delivered
+	// on its issue date.
+	DeliveryDateFrom *time.Time
+	DeliveryDateTo   *time.Time
+	Search           string
+	Limit            int
+	Offset           int
 }
 
 // ExpenseFilter holds filtering options for listing expenses.

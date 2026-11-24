@@ -124,6 +124,15 @@ func (inv *Invoice) CalculateTotals() {
 	inv.TotalAmount = total
 }
 
+// TaxableSupplyDate returns the delivery date (DUZP), or the issue date when
+// no delivery date is set.
+func (inv *Invoice) TaxableSupplyDate() time.Time {
+	if inv.DeliveryDate.IsZero() {
+		return inv.IssueDate
+	}
+	return inv.DeliveryDate
+}
+
 // IsOverdue returns true if the invoice is past due and not yet fully paid.
 func (inv *Invoice) IsOverdue() bool {
 	if inv.Status == InvoiceStatusPaid || inv.Status == InvoiceStatusCancelled {

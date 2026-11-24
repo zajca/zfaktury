@@ -176,6 +176,52 @@ func TestFilingSubmissionRepository_ResolveSentRefusesAMessageIDOfAnotherSubmiss
 	}
 }
 
+func TestFilingSubmissionRepository_RevertAttachedOnlyForAnAttachedSentRow(t *testing.T) {
+	repo := NewFilingSubmissionRepository(testutil.NewTestDB(t))
+	ctx := context.Background()
+	at := time.Date(2026, 11, 24, 10, 0, 0, 0, time.UTC)
+
+	attached := newSubmission(sha("a"))
+	own := newSubmission(sha("b"))
+	for _, s := range []*domain.FilingSubmission{attached, own} {
+		if err := repo.Create(ctx, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.ResolveSent(ctx, attached.ID, "501", at); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.MarkSent(ctx, own.ID, "502", at); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.GetByID(ctx, attached.ID); !got.DmIDAttached {
+		t.Fatal("an attached id is not flagged")
+	}
+	if got, _ := repo.GetByID(ctx, own.ID); got.DmIDAttached {
+		t.Fatal("an id from CreateMessage is flagged as attached")
+	}
+
+	if err := repo.RevertAttached(ctx, own.ID, "502", "x"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("revert of an own id = %v, want ErrNotFound", err)
+	}
+	if err := repo.RevertAttached(ctx, attached.ID, "999", "x"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("revert with another id = %v, want ErrNotFound", err)
+	}
+	if err := repo.RevertAttached(ctx, attached.ID, "501", "wrong message"); err != nil {
+		t.Fatalf("RevertAttached: %v", err)
+	}
+	got, _ := repo.GetByID(ctx, attached.ID)
+	if got.Status != domain.SubmissionUnknown || got.DmID != "" || got.DmIDAttached || got.SentAt != nil || got.ErrorText != "wrong message" {
+		t.Errorf("reverted row = %+v", got)
+	}
+	if err := repo.RevertAttached(ctx, attached.ID, "501", "x"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("second revert = %v, want ErrNotFound", err)
+	}
+	if err := repo.ResolveSent(ctx, attached.ID, "501", at); err != nil {
+		t.Errorf("the freed id cannot be attached again: %v", err)
+	}
+}
+
 func TestFilingSubmissionRepository_UpdateDeliveryCanFailASentSubmission(t *testing.T) {
 	repo := NewFilingSubmissionRepository(testutil.NewTestDB(t))
 	ctx := context.Background()

@@ -53,10 +53,13 @@ type FilingSubmission struct {
 	RecipientBoxID string
 	RecipientName  string
 	DmID           string
-	DmAnnotation   string
-	FileName       string
-	XMLSHA256      string
-	Status         FilingSubmissionStatus
+	// DmIDAttached is true when the user supplied DmID instead of ISDS
+	// returning it for our own send.
+	DmIDAttached bool
+	DmAnnotation string
+	FileName     string
+	XMLSHA256    string
+	Status       FilingSubmissionStatus
 	// DmMessageStatus is the last dmMessageStatus received as is, nil until a
 	// delivery query ran.
 	DmMessageStatus *int

@@ -634,10 +634,7 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 	// The message id may come from the user (Resolve): the evidence counts only
 	// for a message that went to this recipient with this subject.
 	if info.RecipientBoxID != sub.RecipientBoxID || info.Annotation != sub.DmAnnotation {
-		slog.Warn("ISDS message does not match the submission, delivery evidence ignored",
-			"submission_id", sub.ID, "dm_id", sub.DmID,
-			"recipient_matches", info.RecipientBoxID == sub.RecipientBoxID,
-			"annotation_matches", info.Annotation == sub.DmAnnotation)
+		s.handleMismatch(ctx, sub, info)
 		return nil, fmt.Errorf("refreshing submission %d: %w", submissionID, domain.ErrMessageMismatch)
 	}
 
@@ -663,6 +660,36 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 		result.DocumentFiled = s.markFiled(ctx, updated)
 	}
 	return result, nil
+}
+
+// mismatchReason is the text kept with a submission whose attached message
+// turned out to belong to another send.
+const mismatchReason = "Číslo zprávy zadané uživatelem patří jiné zprávě (jiný příjemce nebo předmět)."
+
+// handleMismatch deals with a message that does not fit its submission. A
+// message id the user attached is dropped, which returns the submission to
+// unknown so the right id can be attached or the send declared unsent. An id
+// from our own CreateMessage that ISDS reports differently is an ISDS
+// inconsistency: it is logged and the submission is left as it is.
+func (s *FilingService) handleMismatch(ctx context.Context, sub *domain.FilingSubmission, info *isds.DeliveryInfo) {
+	attrs := []any{
+		"submission_id", sub.ID, "kind", string(sub.DocumentKind), "id", sub.DocumentID,
+		"environment", sub.Environment, "dm_id", sub.DmID,
+		"recipient_matches", info.RecipientBoxID == sub.RecipientBoxID,
+		"annotation_matches", info.Annotation == sub.DmAnnotation,
+	}
+	if !sub.DmIDAttached || sub.Status != domain.SubmissionSent {
+		slog.Error("ISDS reports another recipient or subject for a message id it returned, delivery evidence ignored", attrs...)
+		return
+	}
+	if err := s.repo.RevertAttached(ctx, sub.ID, sub.DmID, mismatchReason); err != nil {
+		slog.Error("reverting the attached message id failed", append(attrs, "error", err)...)
+		return
+	}
+	slog.Warn("attached message id belongs to another message, submission returned to unknown", attrs...)
+	if s.audit != nil {
+		s.audit.Log(ctx, "filing_submission", sub.ID, "isds_attach_reverted", nil, nil)
+	}
 }
 
 // deliveryState maps ISDS delivery evidence to a submission status and the

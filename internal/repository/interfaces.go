@@ -359,6 +359,9 @@ type FilingSubmissionRepo interface {
 	// the user's word; another status is domain.ErrSubmissionNotResolvable.
 	ResolveSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error
 	ResolveNotSent(ctx context.Context, id int64, errorText string) error
+	// RevertAttached turns a sent submission with a user-attached message id
+	// back into unknown and clears the id; domain.ErrNotFound if it changed.
+	RevertAttached(ctx context.Context, id int64, dmID, errorText string) error
 	// MarkStaleSendingUnknown moves sending submissions created before the
 	// cutoff to unknown and returns how many changed.
 	MarkStaleSendingUnknown(ctx context.Context, createdBefore time.Time, errorText string) (int64, error)

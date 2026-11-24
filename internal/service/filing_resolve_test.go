@@ -458,6 +458,43 @@ func TestFilingService_ResolveAttachRefusesAMessageIDOfAnotherSubmission(t *test
 	}
 }
 
+func TestFilingService_RevertedAttachCanBeDeclaredNotSent(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	sub := sendWithUnknownOutcome(t, h)
+	if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654321"}); err != nil {
+		t.Fatal(err)
+	}
+	h.client.delivery = &isds.DeliveryInfo{Status: isds.StatusDelivered, RecipientBoxID: "zzzzzzz", Annotation: "x"}
+	h.client.deliveryExact = true
+	if _, err := h.svc.Refresh(ctx, sub.ID); !errors.Is(err, domain.ErrMessageMismatch) {
+		t.Fatalf("Refresh = %v, want ErrMessageMismatch", err)
+	}
+	got, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveNotSent})
+	if err != nil || got.Status != domain.SubmissionFailed {
+		t.Errorf("Resolve notSent = %+v, %v", got, err)
+	}
+}
+
+func TestFilingService_MismatchOfOwnMessageIDKeepsTheSubmissionSent(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	_, sub := h.previewSend(t, "production")
+	h.client.delivery = &isds.DeliveryInfo{Status: isds.StatusDelivered, RecipientBoxID: "zzzzzzz", Annotation: "x"}
+	h.client.deliveryExact = true
+
+	if _, err := h.svc.Refresh(ctx, sub.ID); !errors.Is(err, domain.ErrMessageMismatch) {
+		t.Fatalf("Refresh = %v, want ErrMessageMismatch", err)
+	}
+	got, _ := h.repo.GetByID(ctx, sub.ID)
+	if got.Status != domain.SubmissionSent || got.DmID != sub.DmID || got.DmIDAttached {
+		t.Errorf("submission = %+v, want it unchanged and sent", got)
+	}
+	if !strings.Contains(h.logs.String(), `"level":"ERROR","msg":"ISDS reports another recipient`) {
+		t.Errorf("no error log for the ISDS inconsistency: %s", h.logs.String())
+	}
+}
+
 func TestFilingService_RefreshIgnoresAMessageOfAnotherRecipientOrSubject(t *testing.T) {
 	ctx := context.Background()
 	at := time.Date(2026, 11, 24, 12, 7, 0, 0, time.UTC)
@@ -488,8 +525,16 @@ func TestFilingService_RefreshIgnoresAMessageOfAnotherRecipientOrSubject(t *test
 				t.Errorf("a foreign message filed the document (%v) or its receipt was downloaded (%d)", h.doc.markCalls, h.client.zfoHit)
 			}
 			got, _ := h.repo.GetByID(ctx, sub.ID)
-			if got.Status != domain.SubmissionSent || got.DeliveredAt != nil || got.DmMessageStatus != nil || got.HasReceipt {
-				t.Errorf("a foreign message changed the submission: %+v", got)
+			// The id was typed by the user: it is dropped and the submission can be settled again.
+			if got.Status != domain.SubmissionUnknown || got.DmID != "" || got.DmIDAttached || got.SentAt != nil ||
+				got.DeliveredAt != nil || got.DmMessageStatus != nil || got.HasReceipt || got.ErrorText == "" {
+				t.Errorf("after a mismatch the submission = %+v, want unknown without a message id", got)
+			}
+			if !strings.Contains(h.logs.String(), "returned to unknown") {
+				t.Errorf("no log line for the reverted attach: %s", h.logs.String())
+			}
+			if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654322"}); err != nil {
+				t.Errorf("attaching the right id after the revert: %v", err)
 			}
 		})
 	}

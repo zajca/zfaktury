@@ -26,7 +26,7 @@ func NewFilingSubmissionRepository(db *sql.DB) *FilingSubmissionRepository {
 // filingSubmissionCols lists the columns scanFilingSubmission reads. The
 // receipt blob is never selected; has_receipt stands in for it.
 const filingSubmissionCols = `id, document_kind, document_id, channel, environment,
-	recipient_box_id, recipient_name, dm_id, dm_annotation, file_name, xml_sha256,
+	recipient_box_id, recipient_name, dm_id, dm_id_attached, dm_annotation, file_name, xml_sha256,
 	status, dm_message_status, sent_at, delivered_at,
 	COALESCE(length(receipt_zfo), 0) > 0, error_text, created_at`
 
@@ -39,7 +39,7 @@ func scanFilingSubmission(s scanner) (*domain.FilingSubmission, error) {
 
 	err := s.Scan(
 		&sub.ID, &kind, &sub.DocumentID, &channel, &sub.Environment,
-		&sub.RecipientBoxID, &sub.RecipientName, &sub.DmID, &sub.DmAnnotation, &sub.FileName, &sub.XMLSHA256,
+		&sub.RecipientBoxID, &sub.RecipientName, &sub.DmID, &sub.DmIDAttached, &sub.DmAnnotation, &sub.FileName, &sub.XMLSHA256,
 		&status, &dmMessageStatus, &sentAt, &deliveredAt,
 		&sub.HasReceipt, &sub.ErrorText, &createdAt,
 	)
@@ -162,13 +162,24 @@ func (r *FilingSubmissionRepository) MarkFailed(ctx context.Context, id int64, s
 // submission of the same environment already holds (domain.ErrMessageIDInUse).
 func (r *FilingSubmissionRepository) ResolveSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error {
 	return r.resolve(ctx, id, "resolving filing submission as sent", domain.ErrMessageIDInUse, `
-		UPDATE filing_submissions SET dm_id = ?, status = ?, sent_at = ?, error_text = ''
+		UPDATE filing_submissions SET dm_id = ?, dm_id_attached = 1, status = ?, sent_at = ?, error_text = ''
 		WHERE id = ? AND status IN (?, ?) AND deleted_at IS NULL
 		AND NOT EXISTS (
 			SELECT 1 FROM filing_submissions o
 			WHERE o.dm_id = ? AND o.id <> filing_submissions.id
 			AND o.environment = filing_submissions.environment AND o.deleted_at IS NULL)`,
 		[]any{dmID, string(domain.SubmissionSent), sentAt.UTC().Format(time.RFC3339)}, []any{dmID})
+}
+
+// RevertAttached returns a sent submission whose message id the user attached
+// to unknown and clears the id, so a different id can be attached. The update
+// applies only while the row is still sent with that very id; otherwise it
+// returns domain.ErrNotFound.
+func (r *FilingSubmissionRepository) RevertAttached(ctx context.Context, id int64, dmID, errorText string) error {
+	return r.updateOne(ctx, "reverting an attached filing submission", `
+		UPDATE filing_submissions SET status = ?, dm_id = '', dm_id_attached = 0, sent_at = NULL, error_text = ?
+		WHERE id = ? AND status = ? AND dm_id = ? AND dm_id_attached = 1 AND deleted_at IS NULL`,
+		string(domain.SubmissionUnknown), errorText, id, string(domain.SubmissionSent), dmID)
 }
 
 // ResolveNotSent records the user's confirmation that nothing left the data

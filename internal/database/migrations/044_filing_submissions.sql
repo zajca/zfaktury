@@ -15,6 +15,8 @@ CREATE TABLE filing_submissions (
     recipient_name TEXT NOT NULL,
     -- ISDS message id; empty until CreateMessage answered.
     dm_id TEXT NOT NULL DEFAULT '',
+    -- 1 when the user typed dm_id (resolve), 0 when it came from our own CreateMessage.
+    dm_id_attached INTEGER NOT NULL DEFAULT 0 CHECK (dm_id_attached IN (0, 1)),
     dm_annotation TEXT NOT NULL DEFAULT '',
     file_name TEXT NOT NULL,
     -- Lowercase hex sha256 of the sent XML bytes.

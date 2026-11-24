@@ -729,6 +729,49 @@ func TestTaxCredits_UpsertPersonal_StudentMonthsOutOfRange(t *testing.T) {
 	}
 }
 
+func TestTaxCredits_UpsertPersonal_ZTPPRoundTrip(t *testing.T) {
+	r := setupTaxCreditsRouter(t)
+
+	body := `{"is_student":false,"student_months":0,"disability_level":2,"ztpp":true}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/tax-credits/2025", nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var resp struct {
+		Personal *taxPersonalCreditsResponse `json:"personal"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if resp.Personal == nil || !resp.Personal.ZTPP || resp.Personal.DisabilityLevel != 2 {
+		t.Errorf("personal = %+v, want ZTPP=true level=2", resp.Personal)
+	}
+}
+
+func TestTaxCredits_UpsertPersonal_DisabilityLevel3Rejected(t *testing.T) {
+	r := setupTaxCreditsRouter(t)
+
+	body := `{"is_student":false,"student_months":0,"disability_level":3}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
 func TestTaxCredits_UpsertPersonal_DisabilityLevelOutOfRange(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 

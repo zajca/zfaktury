@@ -632,8 +632,9 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 	}
 
 	// The message id may come from the user (Resolve): the evidence counts only
-	// for a message that went to this recipient with this subject.
-	if info.RecipientBoxID != sub.RecipientBoxID || info.Annotation != sub.DmAnnotation {
+	// for a message that went to this recipient with this subject and was not
+	// accepted before the submission existed.
+	if info.RecipientBoxID != sub.RecipientBoxID || info.Annotation != sub.DmAnnotation || predatesAttachedSubmission(sub, info) {
 		s.handleMismatch(ctx, sub, info)
 		return nil, fmt.Errorf("refreshing submission %d: %w", submissionID, domain.ErrMessageMismatch)
 	}
@@ -664,7 +665,30 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 
 // mismatchReason is the text kept with a submission whose attached message
 // turned out to belong to another send.
-const mismatchReason = "Číslo zprávy zadané uživatelem patří jiné zprávě (jiný příjemce nebo předmět)."
+const mismatchReason = "Číslo zprávy zadané uživatelem patří jiné zprávě (jiný příjemce, předmět nebo čas odeslání)."
+
+// attachedClockSkew is how much earlier than the submission row a message may
+// have been accepted or delivered before an attached id is rejected. It covers
+// the difference between this machine's clock and the ISDS clock.
+const attachedClockSkew = time.Hour
+
+// predatesAttachedSubmission reports whether a message the user attached was
+// accepted or delivered clearly before the submission row was created, which
+// means it is an older message with the same recipient and subject. An id from
+// our own CreateMessage is ours by construction, and evidence without a time
+// cannot be judged.
+func predatesAttachedSubmission(sub *domain.FilingSubmission, info *isds.DeliveryInfo) bool {
+	if !sub.DmIDAttached {
+		return false
+	}
+	earliest := sub.CreatedAt.UTC().Add(-attachedClockSkew)
+	for _, at := range []*time.Time{info.AcceptanceTime, info.DeliveryTime} {
+		if at != nil && at.UTC().Before(earliest) {
+			return true
+		}
+	}
+	return false
+}
 
 // handleMismatch deals with a message that does not fit its submission. A
 // message id the user attached is dropped, which returns the submission to
@@ -677,6 +701,7 @@ func (s *FilingService) handleMismatch(ctx context.Context, sub *domain.FilingSu
 		"environment", sub.Environment, "dm_id", sub.DmID,
 		"recipient_matches", info.RecipientBoxID == sub.RecipientBoxID,
 		"annotation_matches", info.Annotation == sub.DmAnnotation,
+		"predates_submission", predatesAttachedSubmission(sub, info),
 	}
 	if !sub.DmIDAttached || sub.Status != domain.SubmissionSent {
 		slog.Error("ISDS reports another recipient or subject for a message id it returned, delivery evidence ignored", attrs...)

@@ -130,8 +130,11 @@ func formulaCases() []formulaCase {
 func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 	// Row formulas and month x rate products of the published EPO controls.
 	omitWhenZero := []string{
-		"kc_dztrata", "kc_op15_1a", "kc_op15_1c", "kc_manztpp", "kc_op15_1d", "kc_op15_1e1", "kc_op15_1e2",
-		"uhrn_slevy35ba", "kc_dazvyhod", "kc_slevy35c", "kc_danbonus", "kc_db_po_odpd", "kc_zalpred",
+		"kc_op15_1a", "kc_op15_1c", "kc_manztpp", "kc_op15_1d", "kc_op15_1e1", "kc_op15_1e2",
+	}
+	// Rows EPO computes itself must be present even at 0 (codes 108, 191, 354).
+	alwaysPresent := []string{
+		"kc_dztrata", "uhrn_slevy35ba", "kc_dazvyhod", "kc_slevy35c", "kc_danbonus", "kc_db_po_odpd", "kc_zalpred",
 	}
 
 	for _, tc := range formulaCases() {
@@ -204,6 +207,11 @@ func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 					t.Errorf("%s is emitted as \"0\"; an unclaimed item must be left out", key)
 				}
 			}
+			for _, key := range alwaysPresent {
+				if _, ok := d[key]; !ok {
+					t.Errorf("%s is missing; EPO computes this row and expects it present", key)
+				}
+			}
 			if v, ok := s["kc_odcelk"]; ok && v == "0" {
 				t.Error("kc_odcelk is emitted as \"0\"")
 			}
@@ -220,10 +228,33 @@ func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 		if d["da_slevy35ba"] != "0" || d["kc_danbonus"] != "37524" || d["kc_db_po_odpd"] != "37524" {
 			t.Errorf("ř.71/76/77a = %s/%s/%s, want 0/37524/37524", d["da_slevy35ba"], d["kc_danbonus"], d["kc_db_po_odpd"])
 		}
-		if _, ok := d["kc_slevy35c"]; ok {
-			t.Error("kc_slevy35c must be absent when ř.73 is 0")
+		if d["kc_slevy35c"] != "0" {
+			t.Errorf("kc_slevy35c = %q, want \"0\" when ř.73 is 0", d["kc_slevy35c"])
 		}
 	})
+}
+
+// TestIncomeTaxXML_ComputedRowsPresentAtZero guards the EPO serious errors 108
+// (ř.61), 191 (ř.76) and 354 (ř.77a): each is raised when the row is missing
+// while its formula result is 0.
+func TestIncomeTaxXML_ComputedRowsPresentAtZero(t *testing.T) {
+	for _, tc := range formulaCases() {
+		if tc.name != "full" && tc.name != "minimal" {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse)
+			if err != nil {
+				t.Fatalf("GenerateIncomeTaxXML: %v", err)
+			}
+			d, _, _ := parseIncomeTax(t, data)
+			for code, key := range map[string]string{"108": "kc_dztrata", "191": "kc_danbonus", "354": "kc_db_po_odpd"} {
+				if d[key] != "0" {
+					t.Errorf("code %s: %s = %q, want \"0\"", code, key, d[key])
+				}
+			}
+		})
+	}
 }
 
 func TestIncomeTaxXML_DisabilityRows(t *testing.T) {

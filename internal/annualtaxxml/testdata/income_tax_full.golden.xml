@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost nazevSW="ZFaktury" verzeSW="1.0">
   <DPFDP7 verzePis="01.01.02">
-    <VetaD dokument="DP7" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="451" pln_moc="N" audit="N" zdobd_od="1.1.2025" zdobd_do="31.12.2025" da_slezap="120000.00" da_celod13="120000" kc_op15_1a="30840" manz_jmeno="Marie" manz_prijmeni="Novakova" manz_r_cislo="8551010006" kc_op15_1c="24840" m_vyzmanzl="12" kc_op15_1d="2520" m_cinvduch="12" uhrn_slevy35ba="58200" da_slevy35ba="61800" m_deti="12" m_deti2="12" kc_dazvyhod="37524" kc_slevy35c="37524" da_slevy35c="24276" kc_dan_celk="24276" kc_dan_po_db="24276" kc_zalpred="12000" kc_zbyvpred="12276"></VetaD>
+    <VetaD dokument="DP7" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="451" pln_moc="N" audit="N" zdobd_od="1.1.2025" zdobd_do="31.12.2025" kc_dztrata="0" da_slezap="120000.00" da_celod13="120000" kc_op15_1a="30840" manz_jmeno="Marie" manz_prijmeni="Novakova" manz_r_cislo="8551010006" kc_op15_1c="24840" m_vyzmanzl="12" kc_op15_1d="2520" m_cinvduch="12" uhrn_slevy35ba="58200" da_slevy35ba="61800" m_deti="12" m_deti2="12" kc_dazvyhod="37524" kc_slevy35c="37524" da_slevy35c="24276" kc_dan_celk="24276" kc_danbonus="0" kc_dan_po_db="24276" kc_db_po_odpd="0" kc_zalpred="12000" kc_zbyvpred="12276"></VetaD>
     <VetaP jmeno="Jan" prijmeni="Novak" rod_c="8001010006" dic="8001010006" ulice="Hlavni" c_pop="42" naz_obce="Praha" psc="11000" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
     <VetaO kc_zd7="800000" kc_uhrn="800000" kc_zakldan23="800000" kc_zakldan="800000"></VetaO>
     <VetaS kc_zdsniz="800000" kc_zdzaokr="800000" da_dan16="120000"></VetaS>

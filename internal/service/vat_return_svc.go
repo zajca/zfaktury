@@ -350,6 +350,12 @@ func (s *VATReturnService) GetXMLData(ctx context.Context, id int64) ([]byte, er
 
 // MarkFiled marks a VAT return as filed and records the timestamp.
 func (s *VATReturnService) MarkFiled(ctx context.Context, id int64) (*domain.VATReturn, error) {
+	return s.MarkFiledAt(ctx, id, time.Now())
+}
+
+// MarkFiledAt marks a VAT return as filed at the given time. An already filed
+// return yields domain.ErrFilingAlreadyFiled and is left unchanged.
+func (s *VATReturnService) MarkFiledAt(ctx context.Context, id int64, at time.Time) (*domain.VATReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
 	}
@@ -362,9 +368,8 @@ func (s *VATReturnService) MarkFiled(ctx context.Context, id int64) (*domain.VAT
 		return nil, domain.ErrFilingAlreadyFiled
 	}
 
-	now := time.Now()
 	vr.Status = domain.FilingStatusFiled
-	vr.FiledAt = &now
+	vr.FiledAt = &at
 
 	if err := s.repo.Update(ctx, vr); err != nil {
 		return nil, fmt.Errorf("marking vat_return as filed: %w", err)

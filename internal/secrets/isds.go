@@ -78,6 +78,9 @@ func NewISDSStore() *ISDSStore {
 // setSecret writes one keyring item; tests replace it to fail a single write.
 var setSecret = keyring.Set
 
+// deleteSecret removes one keyring item; tests replace it to fail a single delete.
+var deleteSecret = keyring.Delete
+
 // getSecret reads one keyring item; tests replace it to observe which items are read.
 var getSecret = keyring.Get
 
@@ -124,7 +127,8 @@ func (c ISDSCredentials) Normalize() ISDSCredentials {
 // Save stores the login for env. The password is written first and the
 // username last: the username entry is the marker that a complete login
 // exists, so Status never has to read the password. When writing the username
-// fails, the password is removed again.
+// fails, both entries are removed: after an overwrite the old username would
+// otherwise stay behind and report a login without its password as configured.
 func (s *ISDSStore) Save(env ISDSEnvironment, creds ISDSCredentials) error {
 	creds = creds.Normalize()
 	if err := creds.Validate(); err != nil {
@@ -138,8 +142,11 @@ func (s *ISDSStore) Save(env ISDSEnvironment, creds ISDSCredentials) error {
 		return mapKeyringError("saving", env, err, creds)
 	}
 	if err := setSecret(keyringService, itemKey(env, "username"), creds.Username); err != nil {
-		if rollbackErr := keyring.Delete(keyringService, itemKey(env, "password")); rollbackErr != nil && !errors.Is(rollbackErr, keyring.ErrNotFound) {
-			slog.Warn("rolling back ISDS password failed", "environment", env)
+		// The username goes first: it is the configured marker.
+		for _, field := range []string{"username", "password"} {
+			if rollbackErr := deleteSecret(keyringService, itemKey(env, field)); rollbackErr != nil && !errors.Is(rollbackErr, keyring.ErrNotFound) {
+				slog.Warn("rolling back ISDS credentials failed", "environment", env, "field", field)
+			}
 		}
 		return mapKeyringError("saving", env, err, creds)
 	}
@@ -175,20 +182,23 @@ func (s *ISDSStore) Status(env ISDSEnvironment) (ISDSStatus, error) {
 }
 
 // Delete removes both entries for env, the username marker first so an
-// interrupted delete never leaves a login that reports as configured.
-// Entries that are already absent are not an error.
+// interrupted delete never leaves a login that reports as configured. When the
+// marker cannot be deleted the password is left alone, so the login stays
+// complete and the delete can be retried. Entries that are already absent are
+// not an error.
 func (s *ISDSStore) Delete(env ISDSEnvironment) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var firstErr error
-	for _, field := range []string{"username", "password"} {
-		err := keyring.Delete(keyringService, itemKey(env, field))
-		if err != nil && !errors.Is(err, keyring.ErrNotFound) && firstErr == nil {
-			firstErr = mapKeyringError("deleting", env, err, ISDSCredentials{})
-		}
+	err := deleteSecret(keyringService, itemKey(env, "username"))
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return mapKeyringError("deleting", env, err, ISDSCredentials{})
 	}
-	return firstErr
+	err = deleteSecret(keyringService, itemKey(env, "password"))
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return mapKeyringError("deleting", env, err, ISDSCredentials{})
+	}
+	return nil
 }
 
 // mapKeyringError converts a keyring error into a domain sentinel. The

@@ -41,7 +41,7 @@ func newISDSRouter(t *testing.T, devMode bool, bindHost string) *chi.Mux {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-		svc,
+		svc, nil,
 		RouterConfig{DevMode: devMode, DataDir: t.TempDir(), BindHost: bindHost},
 	)
 }
@@ -192,6 +192,27 @@ func TestISDSCredentials_Lifecycle(t *testing.T) {
 
 	// Neither the password nor the username appears in any log line.
 	assertNoLoginInLogs(t, logs.String())
+}
+
+func TestISDSCredentials_PutReturnsTrimmedUsername(t *testing.T) {
+	r := newISDSRouter(t, false, "127.0.0.1")
+	q := validPut("test")
+	q.body = putBody("test", "  "+testISDSUsername+" \t", testISDSPassword)
+
+	w := q.do(r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d, body: %s", w.Code, w.Body.String())
+	}
+	var got isdsStatusResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Username != testISDSUsername {
+		t.Errorf("PUT username = %q, want the trimmed %q", got.Username, testISDSUsername)
+	}
+	if stored, err := keyring.Get("zfaktury", "isds/test/username"); err != nil || stored != got.Username {
+		t.Errorf("stored username = %q, %v; the response must match it", stored, err)
+	}
 }
 
 func TestISDSCredentials_ChangingStateRequiresContentTypeAndConfirmHeader(t *testing.T) {

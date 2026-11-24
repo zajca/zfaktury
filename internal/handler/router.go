@@ -69,6 +69,7 @@ func NewRouter(
 	backupSvc *service.BackupService,
 	epoSvc *service.EPOService,
 	isdsCredentialsSvc *service.ISDSCredentialsService,
+	filingSvc *service.FilingService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -185,7 +186,11 @@ func NewRouter(
 			sr.Delete("/logo", pdfSettingsHandler.DeleteLogo)
 			sr.Get("/pdf-preview", pdfSettingsHandler.PreviewPDF)
 			if isdsCredentialsSvc != nil {
-				sr.Mount("/isds-credentials", NewISDSCredentialsHandler(isdsCredentialsSvc, cfg.BindHost).Routes())
+				credentialsHandler := NewISDSCredentialsHandler(isdsCredentialsSvc, cfg.BindHost)
+				if filingSvc != nil {
+					credentialsHandler.WithLoginTester(filingSvc)
+				}
+				sr.Mount("/isds-credentials", credentialsHandler.Routes())
 			}
 		})
 
@@ -224,6 +229,10 @@ func NewRouter(
 		if epoSvc != nil {
 			epoHandler := NewEPOHandler(epoSvc)
 			api.Mount("/epo", epoHandler.Routes())
+		}
+
+		if filingSvc != nil {
+			api.Mount("/filings", NewFilingHandler(filingSvc, cfg.BindHost).Routes())
 		}
 
 		socialInsuranceHandler := NewSocialInsuranceHandler(socialInsuranceSvc)
@@ -364,8 +373,9 @@ func isLongRunningPath(path string) bool {
 // corsMiddleware adds permissive CORS headers for development.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The credentials API is never opened to other origins, not even in dev.
-		if strings.HasPrefix(r.URL.Path, isdsCredentialsPath) {
+		// The credentials and filing APIs are never opened to other origins,
+		// not even in dev.
+		if strings.HasPrefix(r.URL.Path, isdsCredentialsPath) || strings.HasPrefix(r.URL.Path, filingsPath) {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -37,6 +37,39 @@ var (
 	// unlocked (the unlock prompt was dismissed or refused).
 	ErrKeyringLocked = errors.New("system keyring locked")
 
+	// Data-box filing errors
+	//
+	// ErrFilingAlreadySent means the same XML was already sent (or may have
+	// been sent) to the same environment.
+	ErrFilingAlreadySent = errors.New("filing already sent through the data box")
+	// ErrFilingOutcomeUnknown means an earlier send of the document may have
+	// left but its outcome is not settled yet (sending or unknown).
+	ErrFilingOutcomeUnknown = errors.New("outcome of an earlier send of the filing is unknown")
+	// ErrFilingSendInProgress means another send of the same document is running.
+	ErrFilingSendInProgress = errors.New("filing send already in progress")
+	// ErrConfirmTokenInvalid means the confirmation token is unknown, expired,
+	// already used, or does not match the document, environment, recipient and
+	// XML it was issued for.
+	ErrConfirmTokenInvalid = errors.New("confirmation token invalid or expired")
+	// ErrWarningsNotAccepted means the pre-send check reported warnings and
+	// the caller did not explicitly accept them.
+	ErrWarningsNotAccepted = errors.New("pre-send warnings not accepted")
+	// ErrISDSCredentialsMissing means no data-box login is stored for the
+	// requested environment.
+	ErrISDSCredentialsMissing = errors.New("data box credentials not configured")
+	// ErrFilingRecordFailed means the message was accepted by ISDS but the
+	// local record of it could not be written.
+	ErrFilingRecordFailed = errors.New("filing sent but its record could not be stored")
+	// ErrSubmissionNotResolvable means a submission is not in a state that
+	// the user can resolve (only sending and unknown are).
+	ErrSubmissionNotResolvable = errors.New("submission is not awaiting resolution")
+	// ErrMessageIDInUse means the message id already belongs to another
+	// submission of the same environment.
+	ErrMessageIDInUse = errors.New("message id already belongs to another submission")
+	// ErrMessageMismatch means the message ISDS reports for a submission has
+	// another recipient or subject than the submission.
+	ErrMessageMismatch = errors.New("message does not match the submission")
+
 	// Reminder errors
 	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")
 	ErrNoCustomerEmail   = errors.New("customer has no email address")

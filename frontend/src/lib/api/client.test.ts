@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ApiError, contactsApi, invoicesApi, expensesApi, settingsApi } from './client';
+import {
+	ApiError,
+	contactsApi,
+	invoicesApi,
+	expensesApi,
+	settingsApi,
+	filingApi,
+	isdsCredentialsApi
+} from './client';
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -265,6 +273,114 @@ describe('settingsApi', () => {
 		expect(url).toBe('/api/v1/settings');
 		expect(opts.method).toBe('PUT');
 		expect(JSON.parse(opts.body)).toEqual(settings);
+	});
+});
+
+// --- Data-box filing ---
+
+describe('filingApi', () => {
+	function lastCall() {
+		const [url, init] = mockFetch.mock.calls.at(-1) as [string, RequestInit];
+		return { url, init, headers: init.headers as Record<string, string> };
+	}
+
+	it('previews with the environment, the confirm header and a JSON body', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ confirmToken: 'tok' }));
+
+		await filingApi.preview('vat-return', 7, 'test');
+
+		const { url, init, headers } = lastCall();
+		expect(url).toBe('/api/v1/filings/vat-return/7/isds/preview');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body as string)).toEqual({ environment: 'test' });
+		expect(headers['X-ZFaktury-Confirm']).toBe('1');
+		expect(headers['Content-Type']).toBe('application/json');
+	});
+
+	it('sends the token and the warning acceptance, never a recipient', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ id: 1 }, 201));
+
+		await filingApi.send('social-insurance', 3, {
+			environment: 'production',
+			confirmToken: 'tok',
+			acceptWarnings: true
+		});
+
+		const { url, init, headers } = lastCall();
+		expect(url).toBe('/api/v1/filings/social-insurance/3/isds/send');
+		expect(JSON.parse(init.body as string)).toEqual({
+			environment: 'production',
+			confirmToken: 'tok',
+			acceptWarnings: true
+		});
+		expect(headers['X-ZFaktury-Confirm']).toBe('1');
+	});
+
+	it('lists submissions with a plain GET', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse([]));
+
+		await filingApi.submissions('vies-summary', 4);
+
+		const { url, init } = lastCall();
+		expect(url).toBe('/api/v1/filings/vies-summary/4/isds/submissions');
+		expect(init.method).toBe('GET');
+	});
+
+	it('refreshes with the confirm header', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ documentFiled: true }));
+
+		await filingApi.refresh(12);
+
+		const { url, init, headers } = lastCall();
+		expect(url).toBe('/api/v1/filings/submissions/12/refresh');
+		expect(init.method).toBe('POST');
+		expect(headers['X-ZFaktury-Confirm']).toBe('1');
+	});
+
+	it('resolves a submission with the confirm header and the chosen action', async () => {
+		mockFetch.mockImplementation(async () => jsonResponse({ id: 12, status: 'sent' }));
+
+		await filingApi.resolve(12, { action: 'attach', dmId: '424242' });
+		let call = lastCall();
+		expect(call.url).toBe('/api/v1/filings/submissions/12/resolve');
+		expect(call.init.method).toBe('POST');
+		expect(call.headers['X-ZFaktury-Confirm']).toBe('1');
+		expect(JSON.parse(call.init.body as string)).toEqual({ action: 'attach', dmId: '424242' });
+
+		await filingApi.resolve(12, { action: 'notSent' });
+		call = lastCall();
+		expect(JSON.parse(call.init.body as string)).toEqual({ action: 'notSent' });
+	});
+
+	it('builds the receipt download URL', () => {
+		expect(filingApi.receiptUrl(12)).toBe('/api/v1/filings/submissions/12/receipt.zfo');
+	});
+
+	it('exposes the findings of a rejected preview on the error body', async () => {
+		const findings = [{ type: 'K', code: 'X', field: '', section: '', row: '', text: 'bad' }];
+		mockFetch.mockResolvedValueOnce(errorResponse(422, { error: 'EPO', findings }));
+
+		await expect(filingApi.preview('vat-return', 7, 'test')).rejects.toMatchObject({
+			status: 422,
+			body: { findings }
+		});
+	});
+});
+
+describe('isdsCredentialsApi.test', () => {
+	it('posts the environment with the confirm header', async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ boxId: 'abc1234', canCreateAndSend: true, canReadMessages: false })
+		);
+
+		const result = await isdsCredentialsApi.test('production');
+
+		const [url, init] = mockFetch.mock.calls.at(-1) as [string, RequestInit];
+		expect(url).toBe('/api/v1/settings/isds-credentials/test');
+		expect(init.method).toBe('POST');
+		expect(JSON.parse(init.body as string)).toEqual({ environment: 'production' });
+		expect((init.headers as Record<string, string>)['X-ZFaktury-Confirm']).toBe('1');
+		expect(result.boxId).toBe('abc1234');
 	});
 });
 

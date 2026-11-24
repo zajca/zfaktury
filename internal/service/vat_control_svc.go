@@ -431,14 +431,26 @@ func (s *VATControlStatementService) GetXMLData(ctx context.Context, id int64) (
 
 // MarkFiled marks a control statement as filed.
 func (s *VATControlStatementService) MarkFiled(ctx context.Context, id int64) error {
+	return s.markFiled(ctx, id, time.Now(), false)
+}
+
+// MarkFiledAt marks a control statement as filed at the given time. An already
+// filed statement yields domain.ErrFilingAlreadyFiled and is left unchanged.
+func (s *VATControlStatementService) MarkFiledAt(ctx context.Context, id int64, at time.Time) error {
+	return s.markFiled(ctx, id, at, true)
+}
+
+func (s *VATControlStatementService) markFiled(ctx context.Context, id int64, at time.Time, rejectFiled bool) error {
 	cs, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("fetching control statement for mark filed: %w", err)
 	}
+	if rejectFiled && cs.Status == domain.FilingStatusFiled {
+		return fmt.Errorf("marking control statement as filed: %w", domain.ErrFilingAlreadyFiled)
+	}
 
-	now := time.Now()
 	cs.Status = domain.FilingStatusFiled
-	cs.FiledAt = &now
+	cs.FiledAt = &at
 
 	if err := s.repo.Update(ctx, cs); err != nil {
 		return fmt.Errorf("marking control statement as filed: %w", err)

@@ -556,6 +556,12 @@ func (s *SocialInsuranceService) moveAdvanceStart(sio *domain.SocialInsuranceOve
 
 // MarkFiled marks a social insurance overview as filed and records the timestamp.
 func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
+	return s.MarkFiledAt(ctx, id, s.now())
+}
+
+// MarkFiledAt marks a social insurance overview as filed at the given time. An
+// already filed overview yields domain.ErrFilingAlreadyFiled and is left unchanged.
+func (s *SocialInsuranceService) MarkFiledAt(ctx context.Context, id int64, at time.Time) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
 	}
@@ -568,9 +574,8 @@ func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*doma
 		return nil, domain.ErrFilingAlreadyFiled
 	}
 
-	now := s.now()
 	sio.Status = domain.FilingStatusFiled
-	sio.FiledAt = &now
+	sio.FiledAt = &at
 
 	if sio.AdvanceStartMonth != 0 {
 		if err := s.moveAdvanceStart(sio); err != nil {

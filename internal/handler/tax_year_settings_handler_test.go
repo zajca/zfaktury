@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -37,8 +38,9 @@ func TestTaxYearSettings_GetByYear_Default(t *testing.T) {
 		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
 	}
 
+	rawBody := w.Body.String()
 	var resp taxYearSettingsResponse
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+	if err := json.NewDecoder(strings.NewReader(rawBody)).Decode(&resp); err != nil {
 		t.Fatalf("decode error: %v", err)
 	}
 
@@ -47,6 +49,12 @@ func TestTaxYearSettings_GetByYear_Default(t *testing.T) {
 	}
 	if resp.FlatRatePercent != 0 {
 		t.Errorf("FlatRatePercent = %d, want 0", resp.FlatRatePercent)
+	}
+	if resp.FilingMethod != "" {
+		t.Errorf("FilingMethod = %q, want empty", resp.FilingMethod)
+	}
+	if !strings.Contains(rawBody, `"filing_method":""`) {
+		t.Errorf("body %s does not carry an empty filing_method", rawBody)
 	}
 	if len(resp.Prepayments) != 12 {
 		t.Errorf("len(Prepayments) = %d, want 12", len(resp.Prepayments))
@@ -155,6 +163,45 @@ func TestTaxYearSettings_Save_InvalidJSON(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTaxYearSettings_Save_FilingMethodRoundTrip(t *testing.T) {
+	r := setupTaxYearSettingsRouter(t)
+
+	body := `{"flat_rate_percent": 60, "filing_method": "advisor", "prepayments": []}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-year-settings/2025", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("PUT status = %d, want %d, body: %s", w.Code, http.StatusNoContent, w.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/tax-year-settings/2025", nil)
+	getW := httptest.NewRecorder()
+	r.ServeHTTP(getW, getReq)
+
+	var resp taxYearSettingsResponse
+	if err := json.NewDecoder(getW.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if resp.FilingMethod != "advisor" {
+		t.Errorf("FilingMethod = %q, want advisor", resp.FilingMethod)
+	}
+}
+
+func TestTaxYearSettings_Save_InvalidFilingMethod(t *testing.T) {
+	r := setupTaxYearSettingsRouter(t)
+
+	body := `{"flat_rate_percent": 60, "filing_method": "paper", "prepayments": []}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-year-settings/2025", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
 	}
 }
 

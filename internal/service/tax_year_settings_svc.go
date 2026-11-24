@@ -65,13 +65,18 @@ func (s *TaxYearSettingsService) GetPrepayments(ctx context.Context, year int) (
 }
 
 // Save upserts both tax year settings and all 12 months of prepayments.
-func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePercent int, prepayments []domain.TaxPrepayment) error {
+func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePercent int, filingMethod domain.FilingMethod, prepayments []domain.TaxPrepayment) error {
+	if err := filingMethod.Validate(); err != nil {
+		return fmt.Errorf("validating filing method: %w", err)
+	}
+
 	// Fetch existing settings before upsert for audit logging.
 	existing, _ := s.settingsRepo.GetByYear(ctx, year)
 
 	tys := &domain.TaxYearSettings{
 		Year:            year,
 		FlatRatePercent: flatRatePercent,
+		FilingMethod:    filingMethod,
 	}
 	if err := s.settingsRepo.Upsert(ctx, tys); err != nil {
 		return fmt.Errorf("saving tax_year_settings: %w", err)
@@ -89,6 +94,7 @@ func (s *TaxYearSettingsService) Save(ctx context.Context, year int, flatRatePer
 		s.audit.Log(ctx, "tax_year_settings", int64(year), action, existing, map[string]any{
 			"year":              year,
 			"flat_rate_percent": flatRatePercent,
+			"filing_method":     filingMethod,
 		})
 	}
 

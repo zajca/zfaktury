@@ -1263,9 +1263,12 @@ export const taxConstantsApi = {
 
 // --- Tax Year Settings Types ---
 
+export type FilingMethod = '' | 'standard' | 'electronic' | 'advisor';
+
 export interface TaxYearSettings {
 	year: number;
 	flat_rate_percent: number;
+	filing_method: FilingMethod;
 	prepayments: TaxPrepaymentMonth[];
 }
 
@@ -1282,7 +1285,14 @@ export const taxYearSettingsApi = {
 	getByYear(year: number) {
 		return get<TaxYearSettings>(`/tax-year-settings/${year}`);
 	},
-	save(year: number, data: { flat_rate_percent: number; prepayments: TaxPrepaymentMonth[] }) {
+	save(
+		year: number,
+		data: {
+			flat_rate_percent: number;
+			filing_method: FilingMethod;
+			prepayments: TaxPrepaymentMonth[];
+		}
+	) {
 		return put<void>(`/tax-year-settings/${year}`, data);
 	}
 };

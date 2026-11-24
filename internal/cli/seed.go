@@ -761,7 +761,7 @@ func seedTaxYearSettings(ctx context.Context, svc *service.TaxYearSettingsServic
 			HealthAmount: domain.Amount(280000), // 2 800 CZK ZP
 		}
 	}
-	if err := svc.Save(ctx, 2025, 0, prepayments2025); err != nil {
+	if err := svc.Save(ctx, 2025, 0, domain.FilingMethodUnset, prepayments2025); err != nil {
 		return fmt.Errorf("saving 2025 settings: %w", err)
 	}
 
@@ -776,7 +776,7 @@ func seedTaxYearSettings(ctx context.Context, svc *service.TaxYearSettingsServic
 			HealthAmount: domain.Amount(320000), // 3 200 CZK ZP
 		}
 	}
-	return svc.Save(ctx, 2026, 0, prepayments2026)
+	return svc.Save(ctx, 2026, 0, domain.FilingMethodUnset, prepayments2026)
 }
 
 func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {

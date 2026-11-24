@@ -3,6 +3,7 @@
 	import {
 		taxYearSettingsApi,
 		type TaxYearSettings,
+		type FilingMethod,
 		type TaxPrepaymentMonth,
 		type TaxConstants
 	} from '$lib/api/client';
@@ -37,12 +38,20 @@
 		{ value: 80, label: '80 %' }
 	];
 
+	const FILING_METHOD_OPTIONS: { value: FilingMethod; label: string }[] = [
+		{ value: '', label: 'Nevybráno (počítá se s podáním do 1. dubna)' },
+		{ value: 'standard', label: 'Do 1. dubna (papírově nebo elektronicky)' },
+		{ value: 'electronic', label: 'Elektronicky po 1. dubnu' },
+		{ value: 'advisor', label: 'Daňový poradce po 1. dubnu' }
+	];
+
 	let selectedYear = $state(new Date().getFullYear() - 1);
 	let loading = $state(true);
 	let saving = $state(false);
 	let taxConstants = $state<TaxConstants | null>(null);
 
 	let flatRatePercent = $state(0);
+	let filingMethod = $state<FilingMethod>('');
 	let prepayments = $state<TaxPrepaymentMonth[]>(emptyPrepayments());
 
 	// Quick-fill values (in CZK)
@@ -84,6 +93,7 @@
 		try {
 			const data: TaxYearSettings = await taxYearSettingsApi.getByYear(selectedYear);
 			flatRatePercent = data.flat_rate_percent;
+			filingMethod = data.filing_method;
 			if (data.prepayments && data.prepayments.length === 12) {
 				prepayments = data.prepayments;
 			} else {
@@ -92,6 +102,7 @@
 		} catch (e) {
 			// If 404 or not found, start with empty defaults
 			flatRatePercent = 0;
+			filingMethod = '';
 			prepayments = emptyPrepayments();
 		} finally {
 			loading = false;
@@ -103,6 +114,7 @@
 		try {
 			await taxYearSettingsApi.save(selectedYear, {
 				flat_rate_percent: flatRatePercent,
+				filing_method: filingMethod,
 				prepayments
 			});
 			toastSuccess('Nastavení bylo uloženo');
@@ -210,6 +222,32 @@
 						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
 					>
 						{#each FLAT_RATE_OPTIONS as opt}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
+				</div>
+			</Card>
+
+			<!-- Způsob podání přiznání -->
+			<Card>
+				<h2 class="text-base font-semibold text-primary">Způsob podání daňového přiznání</h2>
+				<p class="mt-1 text-sm text-tertiary">
+					Podle způsobu podání aplikace určí lhůtu pro přehledy ČSSZ a zdravotní pojišťovny a měsíc,
+					od kterého platí nová záloha. Po změně přehledy za tento rok přepočítejte.
+				</p>
+				<div class="mt-4 max-w-md">
+					<label for="filing_method" class="block text-sm font-medium text-secondary"
+						>Podání přiznání za rok {selectedYear}</label
+					>
+					<select
+						id="filing_method"
+						value={filingMethod}
+						onchange={(e) => {
+							filingMethod = (e.target as HTMLSelectElement).value as FilingMethod;
+						}}
+						class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+					>
+						{#each FILING_METHOD_OPTIONS as opt}
 							<option value={opt.value}>{opt.label}</option>
 						{/each}
 					</select>

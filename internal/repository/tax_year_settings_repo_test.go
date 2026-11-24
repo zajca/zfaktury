@@ -54,6 +54,56 @@ func TestTaxYearSettingsRepository_Upsert_And_GetByYear(t *testing.T) {
 	}
 }
 
+func TestTaxYearSettingsRepository_FilingMethod(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewTaxYearSettingsRepository(db)
+	ctx := context.Background()
+
+	tys := &domain.TaxYearSettings{Year: 2025, FlatRatePercent: 60, FilingMethod: domain.FilingMethodAdvisor}
+	if err := repo.Upsert(ctx, tys); err != nil {
+		t.Fatalf("Upsert advisor: %v", err)
+	}
+	got, err := repo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetByYear: %v", err)
+	}
+	if got.FilingMethod != domain.FilingMethodAdvisor {
+		t.Errorf("FilingMethod = %q, want advisor", got.FilingMethod)
+	}
+
+	tys.FilingMethod = domain.FilingMethodUnset
+	if err := repo.Upsert(ctx, tys); err != nil {
+		t.Fatalf("Upsert unset: %v", err)
+	}
+	got, err = repo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetByYear after unset: %v", err)
+	}
+	if got.FilingMethod != domain.FilingMethodUnset {
+		t.Errorf("FilingMethod = %q, want empty", got.FilingMethod)
+	}
+}
+
+func TestTaxYearSettingsRepository_FilingMethod_ColumnDefault(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewTaxYearSettingsRepository(db)
+	ctx := context.Background()
+
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO tax_year_settings (year, flat_rate_percent, created_at, updated_at) VALUES (2024, 40, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')`)
+	if err != nil {
+		t.Fatalf("insert without filing_method: %v", err)
+	}
+
+	got, err := repo.GetByYear(ctx, 2024)
+	if err != nil {
+		t.Fatalf("GetByYear: %v", err)
+	}
+	if got.FilingMethod != domain.FilingMethodUnset {
+		t.Errorf("FilingMethod = %q, want empty", got.FilingMethod)
+	}
+}
+
 func TestTaxYearSettingsRepository_Upsert_Overwrites(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewTaxYearSettingsRepository(db)

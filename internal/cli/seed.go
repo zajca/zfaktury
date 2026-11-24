@@ -939,9 +939,10 @@ func seedIncomeTaxReturn(ctx context.Context, svc *service.IncomeTaxReturnServic
 func seedSocialInsurance(ctx context.Context, svc *service.SocialInsuranceService) error {
 	// 2025 social insurance overview — filed.
 	sio := &domain.SocialInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
-		Status:     domain.FilingStatusFiled,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		Status:         domain.FilingStatusFiled,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	return svc.Create(ctx, sio)
 }
@@ -949,9 +950,10 @@ func seedSocialInsurance(ctx context.Context, svc *service.SocialInsuranceServic
 func seedHealthInsurance(ctx context.Context, svc *service.HealthInsuranceService) error {
 	// 2025 health insurance overview — filed.
 	hio := &domain.HealthInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
-		Status:     domain.FilingStatusFiled,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		Status:         domain.FilingStatusFiled,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	return svc.Create(ctx, hio)
 }

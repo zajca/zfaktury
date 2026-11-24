@@ -13,11 +13,6 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
-// fullYearActivityMonths is the months of activity the insurance overviews
-// assume. Overviews model a full year of activity; months of activity are not
-// stored yet.
-const fullYearActivityMonths = 12
-
 // SocialInsuranceService provides business logic for social insurance overview management.
 type SocialInsuranceService struct {
 	repo                repository.SocialInsuranceOverviewRepo
@@ -64,6 +59,10 @@ func (s *SocialInsuranceService) Create(ctx context.Context, sio *domain.SocialI
 		// ok
 	default:
 		return fmt.Errorf("invalid filing_type: %w", domain.ErrInvalidInput)
+	}
+
+	if err := sio.ActivityMonths.Validate(); err != nil {
+		return fmt.Errorf("validating activity months: %w", err)
 	}
 
 	// Check for existing regular filing for this year.
@@ -150,11 +149,31 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	if sio.Status == domain.FilingStatusFiled {
 		return nil, domain.ErrFilingAlreadyFiled
 	}
+	if err := s.applyRecalculatedAmounts(ctx, sio); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(ctx, sio); err != nil {
+		return nil, fmt.Errorf("updating social_insurance_overview after recalculation: %w", err)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
+	}
+	return sio, nil
+}
+
+// applyRecalculatedAmounts fills the calculated amounts of the overview in memory
+// from its activity months, without persisting anything.
+func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
+	if err := sio.ActivityMonths.Validate(); err != nil {
+		return fmt.Errorf("validating stored activity months of social_insurance_overview %d: %w", sio.ID, err)
+	}
 
 	// Calculate annual base from invoices and expenses.
 	annualBase, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, sio.Year)
 	if err != nil {
-		return nil, fmt.Errorf("calculating annual base for social insurance: %w", err)
+		return fmt.Errorf("calculating annual base for social insurance: %w", err)
 	}
 
 	// Get flat_rate_percent from tax year settings.
@@ -167,7 +186,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	// Get tax constants for the year.
 	constants, err := calc.GetTaxConstants(sio.Year)
 	if err != nil {
-		return nil, fmt.Errorf("getting tax constants for social insurance: %w", err)
+		return fmt.Errorf("getting tax constants for social insurance: %w", err)
 	}
 
 	// Resolve used expenses (flat-rate or actual).
@@ -179,7 +198,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	// Read prepayments from tax prepayments table.
 	_, socialTotal, _, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, sio.Year)
 	if sumErr != nil {
-		return nil, fmt.Errorf("summing social prepayments: %w", sumErr)
+		return fmt.Errorf("summing social prepayments: %w", sumErr)
 	}
 
 	// Pure calculation.
@@ -191,10 +210,10 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		AssessmentBasePermille: 550,
 		RatePermille:           constants.SocialRate,
 		Prepayments:            socialTotal,
-		ActivityMonths:         fullYearActivityMonths,
+		ActivityMonths:         sio.ActivityMonths.Count(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("calculating social insurance: %w", err)
+		return fmt.Errorf("calculating social insurance: %w", err)
 	}
 
 	sio.TaxBase = insResult.TaxBase
@@ -206,10 +225,39 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	sio.Prepayments = socialTotal
 	sio.Difference = insResult.Difference
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
+	// A stored XML describes the previous amounts and months, so it is dropped
+	// and has to be generated again.
+	sio.XMLData = nil
 
-	// Persist updated values.
+	return nil
+}
+
+// SetActivityMonths stores the months of activity and recalculates the
+// overview so the stored amounts match the months. The overview is written
+// once, only after the recalculation succeeds.
+func (s *SocialInsuranceService) SetActivityMonths(ctx context.Context, id int64, months domain.ActivityMonths) (*domain.SocialInsuranceOverview, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	if err := months.Validate(); err != nil {
+		return nil, fmt.Errorf("validating activity months: %w", err)
+	}
+
+	sio, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching social_insurance_overview for activity months: %w", err)
+	}
+	if sio.Status == domain.FilingStatusFiled {
+		return nil, domain.ErrFilingAlreadyFiled
+	}
+
+	sio.ActivityMonths = months
+	if err := s.applyRecalculatedAmounts(ctx, sio); err != nil {
+		return nil, err
+	}
+
 	if err := s.repo.Update(ctx, sio); err != nil {
-		return nil, fmt.Errorf("updating social_insurance_overview after recalculation: %w", err)
+		return nil, fmt.Errorf("updating social_insurance_overview after changing activity months: %w", err)
 	}
 
 	if s.audit != nil {

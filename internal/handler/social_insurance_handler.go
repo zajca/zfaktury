@@ -32,6 +32,7 @@ func (h *SocialInsuranceHandler) Routes() chi.Router {
 	r.Get("/{id}", h.GetByID)
 	r.Delete("/{id}", h.Delete)
 	r.Post("/{id}/recalculate", h.Recalculate)
+	r.Put("/{id}/activity-months", h.SetActivityMonths)
 	r.Post("/{id}/generate-xml", h.GenerateXML)
 	r.Get("/{id}/xml", h.DownloadXML)
 	r.Post("/{id}/mark-filed", h.MarkFiled)
@@ -42,8 +43,14 @@ func (h *SocialInsuranceHandler) Routes() chi.Router {
 
 // socialInsuranceRequest is the JSON request body for creating a social insurance overview.
 type socialInsuranceRequest struct {
-	Year       int    `json:"year"`
-	FilingType string `json:"filing_type"`
+	Year           int    `json:"year"`
+	FilingType     string `json:"filing_type"`
+	ActivityMonths []int  `json:"activity_months"`
+}
+
+// socialInsuranceActivityMonthsRequest is the JSON request body for updating the months of activity.
+type socialInsuranceActivityMonthsRequest struct {
+	ActivityMonths []int `json:"activity_months"`
 }
 
 // socialInsuranceResponse is the JSON response for a social insurance overview.
@@ -51,6 +58,7 @@ type socialInsuranceResponse struct {
 	ID                  int64   `json:"id"`
 	Year                int     `json:"year"`
 	FilingType          string  `json:"filing_type"`
+	ActivityMonths      []int   `json:"activity_months"`
 	TotalRevenue        int64   `json:"total_revenue"`
 	TotalExpenses       int64   `json:"total_expenses"`
 	TaxBase             int64   `json:"tax_base"`
@@ -75,6 +83,7 @@ func socialInsuranceFromDomain(sio *domain.SocialInsuranceOverview) socialInsura
 		ID:                  sio.ID,
 		Year:                sio.Year,
 		FilingType:          sio.FilingType,
+		ActivityMonths:      sio.ActivityMonths.Months(),
 		TotalRevenue:        int64(sio.TotalRevenue),
 		TotalExpenses:       int64(sio.TotalExpenses),
 		TaxBase:             int64(sio.TaxBase),
@@ -106,6 +115,13 @@ func (h *SocialInsuranceHandler) Create(w http.ResponseWriter, r *http.Request) 
 		Year:       req.Year,
 		FilingType: req.FilingType,
 	}
+
+	months, err := domain.NewActivityMonths(req.ActivityMonths)
+	if err != nil {
+		mapDomainError(w, err)
+		return
+	}
+	sio.ActivityMonths = months
 
 	if err := h.svc.Create(r.Context(), sio); err != nil {
 		slog.Error("failed to create social insurance overview", "error", err)
@@ -189,6 +205,36 @@ func (h *SocialInsuranceHandler) Recalculate(w http.ResponseWriter, r *http.Requ
 	sio, err := h.svc.Recalculate(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to recalculate social insurance overview", "error", err, "id", id)
+		mapDomainError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, socialInsuranceFromDomain(sio))
+}
+
+// SetActivityMonths handles PUT /api/v1/social-insurance/{id}/activity-months.
+func (h *SocialInsuranceHandler) SetActivityMonths(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
+		return
+	}
+
+	var req socialInsuranceActivityMonthsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	months, err := domain.NewActivityMonths(req.ActivityMonths)
+	if err != nil {
+		mapDomainError(w, err)
+		return
+	}
+
+	sio, err := h.svc.SetActivityMonths(r.Context(), id, months)
+	if err != nil {
+		slog.Error("failed to set social insurance activity months", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}

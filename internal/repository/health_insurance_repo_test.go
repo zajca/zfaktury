@@ -16,8 +16,9 @@ func TestHealthInsuranceOverviewRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 
 	if err := repo.Create(ctx, hi); err != nil {
@@ -46,6 +47,7 @@ func TestHealthInsuranceOverviewRepository_GetByID(t *testing.T) {
 		TotalRevenue:   domain.NewAmount(900000, 0),
 		TotalExpenses:  domain.NewAmount(400000, 0),
 		TotalInsurance: domain.NewAmount(67500, 0),
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -87,8 +89,9 @@ func TestHealthInsuranceOverviewRepository_Update(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -120,8 +123,9 @@ func TestHealthInsuranceOverviewRepository_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -158,8 +162,9 @@ func TestHealthInsuranceOverviewRepository_List(t *testing.T) {
 
 	for i, ft := range []string{domain.FilingTypeRegular, domain.FilingTypeCorrective} {
 		hi := &domain.HealthInsuranceOverview{
-			Year:       2025,
-			FilingType: ft,
+			Year:           2025,
+			FilingType:     ft,
+			ActivityMonths: domain.FullYearActivityMonths,
 		}
 		if err := repo.Create(ctx, hi); err != nil {
 			t.Fatalf("Create() %d error: %v", i, err)
@@ -167,8 +172,9 @@ func TestHealthInsuranceOverviewRepository_List(t *testing.T) {
 	}
 
 	hi2024 := &domain.HealthInsuranceOverview{
-		Year:       2024,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2024,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, hi2024); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -197,8 +203,9 @@ func TestHealthInsuranceOverviewRepository_GetByYear(t *testing.T) {
 	ctx := context.Background()
 
 	hi := &domain.HealthInsuranceOverview{
-		Year:       2025,
-		FilingType: domain.FilingTypeRegular,
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
 	}
 	if err := repo.Create(ctx, hi); err != nil {
 		t.Fatalf("Create() error: %v", err)
@@ -263,8 +270,8 @@ func TestHealthInsuranceOverviewRepository_ActivityMonthsMigrationBackfill(t *te
 	repo := NewHealthInsuranceOverviewRepository(db)
 	ctx := context.Background()
 
-	// Row inserted without the new column, as rows written before the
-	// migration were: the default must stand for a full year of activity.
+	// A row that omits activity_months takes the default, which stands for a
+	// full year of activity.
 	now := time.Now().Format(time.RFC3339)
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO health_insurance_overviews (year, filing_type, created_at, updated_at)

@@ -58,6 +58,10 @@ func (s *HealthInsuranceService) Create(ctx context.Context, hi *domain.HealthIn
 		return fmt.Errorf("invalid filing_type: %w", domain.ErrInvalidInput)
 	}
 
+	if err := hi.ActivityMonths.Validate(); err != nil {
+		return fmt.Errorf("validating activity months: %w", err)
+	}
+
 	if hi.FilingType == domain.FilingTypeRegular {
 		existing, err := s.repo.GetByYear(ctx, hi.Year, hi.FilingType)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
@@ -141,15 +145,35 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	if hi.Status == domain.FilingStatusFiled {
 		return nil, domain.ErrFilingAlreadyFiled
 	}
+	if err := s.applyRecalculatedAmounts(ctx, hi); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(ctx, hi); err != nil {
+		return nil, fmt.Errorf("updating health_insurance_overview after recalculation: %w", err)
+	}
+
+	if s.audit != nil {
+		s.audit.Log(ctx, "health_insurance", id, "update", nil, hi)
+	}
+	return hi, nil
+}
+
+// applyRecalculatedAmounts fills the calculated amounts of the overview in memory
+// from its activity months, without persisting anything.
+func (s *HealthInsuranceService) applyRecalculatedAmounts(ctx context.Context, hi *domain.HealthInsuranceOverview) error {
+	if err := hi.ActivityMonths.Validate(); err != nil {
+		return fmt.Errorf("validating stored activity months of health_insurance_overview %d: %w", hi.ID, err)
+	}
 
 	base, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, hi.Year)
 	if err != nil {
-		return nil, fmt.Errorf("calculating annual base for health_insurance_overview: %w", err)
+		return fmt.Errorf("calculating annual base for health_insurance_overview: %w", err)
 	}
 
 	constants, err := calc.GetTaxConstants(hi.Year)
 	if err != nil {
-		return nil, fmt.Errorf("getting tax constants for health insurance: %w", err)
+		return fmt.Errorf("getting tax constants for health insurance: %w", err)
 	}
 
 	// Determine flat-rate or actual expenses.
@@ -166,7 +190,7 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 
 	_, _, healthTotal, sumErr := s.taxPrepaymentRepo.SumByYear(ctx, hi.Year)
 	if sumErr != nil {
-		return nil, fmt.Errorf("summing health prepayments: %w", sumErr)
+		return fmt.Errorf("summing health prepayments: %w", sumErr)
 	}
 
 	// Pure calculation.
@@ -177,10 +201,10 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		RatePermille:   constants.HealthRate,
 		Prepayments:    healthTotal,
 		RoundPremiumUp: true,
-		ActivityMonths: fullYearActivityMonths,
+		ActivityMonths: hi.ActivityMonths.Count(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("calculating health insurance: %w", err)
+		return fmt.Errorf("calculating health insurance: %w", err)
 	}
 
 	hi.TaxBase = insResult.TaxBase
@@ -192,9 +216,39 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	hi.Prepayments = healthTotal
 	hi.Difference = insResult.Difference
 	hi.NewMonthlyPrepay = insResult.NewMonthlyPrepay
+	// A stored XML describes the previous amounts and months, so it is dropped
+	// and has to be generated again.
+	hi.XMLData = nil
+
+	return nil
+}
+
+// SetActivityMonths stores the months of activity and recalculates the
+// overview so the stored amounts match the months. The overview is written
+// once, only after the recalculation succeeds.
+func (s *HealthInsuranceService) SetActivityMonths(ctx context.Context, id int64, months domain.ActivityMonths) (*domain.HealthInsuranceOverview, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("health_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	if err := months.Validate(); err != nil {
+		return nil, fmt.Errorf("validating activity months: %w", err)
+	}
+
+	hi, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching health_insurance_overview for activity months: %w", err)
+	}
+	if hi.Status == domain.FilingStatusFiled {
+		return nil, domain.ErrFilingAlreadyFiled
+	}
+
+	hi.ActivityMonths = months
+	if err := s.applyRecalculatedAmounts(ctx, hi); err != nil {
+		return nil, err
+	}
 
 	if err := s.repo.Update(ctx, hi); err != nil {
-		return nil, fmt.Errorf("updating health_insurance_overview after recalculation: %w", err)
+		return nil, fmt.Errorf("updating health_insurance_overview after changing activity months: %w", err)
 	}
 
 	if s.audit != nil {

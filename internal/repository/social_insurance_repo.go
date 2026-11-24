@@ -27,6 +27,16 @@ const socialInsuranceColumns = `id, year, filing_type, activity_months,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 	xml_data, status, filed_at, created_at, updated_at`
 
+// activityMonthsFromDB converts the stored activity_months integer into a mask.
+// Values that cannot be a January-December mask are reported as a plain error,
+// because they signal a corrupted row rather than invalid client input.
+func activityMonthsFromDB(value int64) (domain.ActivityMonths, error) {
+	if value < 1 || value > int64(domain.FullYearActivityMonths) {
+		return 0, fmt.Errorf("activity_months %d out of range 1..4095", value)
+	}
+	return domain.ActivityMonths(value), nil
+}
+
 // scanSocialInsuranceOverview scans a SocialInsuranceOverview from a row.
 func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, error) {
 	sio := &domain.SocialInsuranceOverview{}
@@ -47,7 +57,11 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 		return nil, err
 	}
 
-	sio.ActivityMonths = domain.ActivityMonths(activityMonths)
+	months, err := activityMonthsFromDB(activityMonths)
+	if err != nil {
+		return nil, err
+	}
+	sio.ActivityMonths = months
 	sio.XMLData = xmlData
 
 	sio.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)

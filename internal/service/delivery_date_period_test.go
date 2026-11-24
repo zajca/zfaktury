@@ -52,33 +52,99 @@ func TestVATReturnService_Recalculate_SelectsInvoicesByDeliveryDate(t *testing.T
 	}
 }
 
+// emptyDeliveryDates are the stored forms of an unset delivery date: NULL, the
+// empty string, and the zero date the repository writes for a zero time.
+var emptyDeliveryDates = []struct {
+	name  string
+	value any
+}{
+	{"NULL", nil},
+	{"empty string", ""},
+	{"zero date", "0001-01-01"},
+}
+
 func TestVATReturnService_Recalculate_InvoiceWithoutDeliveryDateUsesIssueDate(t *testing.T) {
-	svc, db := setupVATReturnSvc(t)
-	vatRepo := repository.NewVATReturnRepository(db)
-	ctx := context.Background()
+	for _, tc := range emptyDeliveryDates {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, db := setupVATReturnSvc(t)
+			vatRepo := repository.NewVATReturnRepository(db)
+			ctx := context.Background()
 
-	customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Customer a.s.", DIC: "CZ11223344"})
-	inv := seedInvoiceWithDates(t, db, customer.ID,
-		time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
-		time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
-		domain.InvoiceStatusSent, domain.InvoiceTypeRegular, supplyItems())
-	if _, err := db.ExecContext(ctx, `UPDATE invoices SET delivery_date = NULL WHERE id = ?`, inv.ID); err != nil {
-		t.Fatalf("clearing delivery_date: %v", err)
-	}
+			customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Customer a.s.", DIC: "CZ11223344"})
+			inv := seedInvoiceWithDates(t, db, customer.ID,
+				time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
+				time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
+				domain.InvoiceStatusSent, domain.InvoiceTypeRegular, supplyItems())
+			if _, err := db.ExecContext(ctx, `UPDATE invoices SET delivery_date = ? WHERE id = ?`, tc.value, inv.ID); err != nil {
+				t.Fatalf("setting delivery_date: %v", err)
+			}
 
-	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2026, Month: 6}, FilingType: domain.FilingTypeRegular}
-	if err := svc.Create(ctx, vr); err != nil {
-		t.Fatalf("Create() error: %v", err)
+			vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2026, Month: 6}, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, vr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			if _, err := svc.Recalculate(ctx, vr.ID); err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			ids, err := vatRepo.GetLinkedInvoiceIDs(ctx, vr.ID)
+			if err != nil {
+				t.Fatalf("GetLinkedInvoiceIDs() error: %v", err)
+			}
+			if !slices.Contains(ids, inv.ID) {
+				t.Errorf("June return linked %v, want it to contain invoice %d", ids, inv.ID)
+			}
+		})
 	}
-	if _, err := svc.Recalculate(ctx, vr.ID); err != nil {
-		t.Fatalf("Recalculate() error: %v", err)
-	}
-	ids, err := vatRepo.GetLinkedInvoiceIDs(ctx, vr.ID)
-	if err != nil {
-		t.Fatalf("GetLinkedInvoiceIDs() error: %v", err)
-	}
-	if !slices.Contains(ids, inv.ID) {
-		t.Errorf("June return linked %v, want it to contain invoice %d", ids, inv.ID)
+}
+
+// An invoice above the control statement threshold without a delivery date is
+// reported as an A4 line whose DPPD is the issue date.
+func TestVATControlStatementService_Recalculate_InvoiceWithoutDeliveryDateUsesIssueDate(t *testing.T) {
+	for _, tc := range emptyDeliveryDates {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, db := setupVATControlSvc(t)
+			ctx := context.Background()
+
+			customer := testutil.SeedContact(t, db, &domain.Contact{Name: "Customer a.s.", DIC: "CZ11223344"})
+			// 12 000 CZK base + 21 % VAT, above the 10 000 CZK threshold.
+			items := []domain.InvoiceItem{
+				{Description: "Consulting", Quantity: 100, Unit: "hod", UnitPrice: 1200000, VATRatePercent: 21},
+			}
+			inv := seedInvoiceWithDates(t, db, customer.ID,
+				time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
+				time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
+				domain.InvoiceStatusSent, domain.InvoiceTypeRegular, items)
+			if _, err := db.ExecContext(ctx, `UPDATE invoices SET delivery_date = ? WHERE id = ?`, tc.value, inv.ID); err != nil {
+				t.Fatalf("setting delivery_date: %v", err)
+			}
+
+			cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2026, Month: 6}, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, cs); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			if err := svc.Recalculate(ctx, cs.ID); err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			lines, err := svc.GetLines(ctx, cs.ID)
+			if err != nil {
+				t.Fatalf("GetLines() error: %v", err)
+			}
+
+			var a4 []domain.VATControlStatementLine
+			for _, l := range lines {
+				if l.Section == domain.ControlSectionA4 {
+					a4 = append(a4, l)
+				}
+			}
+			if len(a4) == 0 {
+				t.Fatalf("no A4 line in %d lines", len(lines))
+			}
+			for _, l := range a4 {
+				if l.DPPD != "2026-06-10" {
+					t.Errorf("A4 DPPD = %q, want 2026-06-10", l.DPPD)
+				}
+			}
+		})
 	}
 }
 

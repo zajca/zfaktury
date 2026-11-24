@@ -152,6 +152,10 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 		invoice.Type = existing.Type
 	}
 
+	if invoice.DeliveryDate.IsZero() {
+		invoice.DeliveryDate = invoice.IssueDate
+	}
+
 	// Recalculate totals.
 	invoice.CalculateTotals()
 

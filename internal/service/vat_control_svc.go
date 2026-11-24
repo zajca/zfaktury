@@ -233,7 +233,7 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 		}
 
 		invID := fullInv.ID
-		dppd := fullInv.DeliveryDate.Format("2006-01-02")
+		dppd := fullInv.TaxableSupplyDate().Format("2006-01-02")
 
 		if totalAbs > domain.ControlStatementThreshold {
 			// A4: individual lines per invoice item rate.

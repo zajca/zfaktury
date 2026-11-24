@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
-import InvoiceEditFormTestWrapper from './InvoiceEditFormTestWrapper.svelte';
+import InvoiceEditFormTestWrapper from '../InvoiceEditFormTestWrapper.svelte';
 
 beforeEach(() => {
 	vi.useFakeTimers();

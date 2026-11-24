@@ -142,7 +142,7 @@ func (s *RecurringInvoiceService) GenerateInvoice(ctx context.Context, id int64)
 // the next_issue_date, and deactivates recurring invoices that are past their end_date.
 // Returns the count of generated invoices.
 func (s *RecurringInvoiceService) ProcessDue(ctx context.Context) (int, error) {
-	today := time.Now().Truncate(24 * time.Hour)
+	today := s.now().Truncate(24 * time.Hour)
 	dueList, err := s.repo.ListDue(ctx, today)
 	if err != nil {
 		return 0, fmt.Errorf("listing due recurring invoices: %w", err)

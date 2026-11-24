@@ -1,5 +1,5 @@
 <script lang="ts">
-	import InvoiceEditForm from './InvoiceEditForm.svelte';
+	import InvoiceEditForm from './invoice/InvoiceEditForm.svelte';
 
 	let { dueDateOffset: initialOffset = 14 }: { dueDateOffset?: number } = $props();
 

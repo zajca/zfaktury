@@ -87,7 +87,7 @@ func (h *TaxYearSettingsHandler) GetByYear(w http.ResponseWriter, r *http.Reques
 		Year:            tys.Year,
 		FlatRatePercent: tys.FlatRatePercent,
 		FilingMethod:    string(tys.FilingMethod),
-		Prepayments:    make([]taxPrepaymentDTO, 0, len(prepayments)),
+		Prepayments:     make([]taxPrepaymentDTO, 0, len(prepayments)),
 	}
 	for _, tp := range prepayments {
 		resp.Prepayments = append(resp.Prepayments, taxPrepaymentDTO{

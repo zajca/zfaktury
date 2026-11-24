@@ -66,6 +66,48 @@ func TestIncomeTaxReturnRepository_GetByID(t *testing.T) {
 	}
 }
 
+func TestIncomeTaxReturnRepository_DisabilityRows_Persist(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewIncomeTaxReturnRepository(db)
+	ctx := context.Background()
+
+	itr := &domain.IncomeTaxReturn{
+		Year:                 2025,
+		FilingType:           domain.FilingTypeRegular,
+		CreditDisability:     domain.Amount(252_000 + 504_000 + 1_614_000),
+		CreditDisability12:   domain.Amount(252_000),
+		CreditDisability3:    domain.Amount(504_000),
+		CreditDisabilityZTPP: domain.Amount(1_614_000),
+	}
+	if err := repo.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.CreditDisability12 != 252_000 || got.CreditDisability3 != 504_000 || got.CreditDisabilityZTPP != 1_614_000 {
+		t.Errorf("disability rows = %d/%d/%d, want 252000/504000/1614000",
+			got.CreditDisability12, got.CreditDisability3, got.CreditDisabilityZTPP)
+	}
+
+	got.CreditDisability12 = 0
+	got.CreditDisability3 = 0
+	got.CreditDisabilityZTPP = 1_614_000
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+	updated, err := repo.GetByID(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after update error: %v", err)
+	}
+	if updated.CreditDisability12 != 0 || updated.CreditDisability3 != 0 || updated.CreditDisabilityZTPP != 1_614_000 {
+		t.Errorf("disability rows after update = %d/%d/%d, want 0/0/1614000",
+			updated.CreditDisability12, updated.CreditDisability3, updated.CreditDisabilityZTPP)
+	}
+}
+
 func TestIncomeTaxReturnRepository_GetByID_NotFound(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewIncomeTaxReturnRepository(db)

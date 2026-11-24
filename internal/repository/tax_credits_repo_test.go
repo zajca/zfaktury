@@ -422,6 +422,29 @@ func TestTaxPersonalCreditsRepository_Upsert(t *testing.T) {
 	}
 }
 
+func TestTaxPersonalCreditsRepository_ZTPP_RoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewTaxPersonalCreditsRepository(db)
+	ctx := context.Background()
+
+	if err := repo.Upsert(ctx, &domain.TaxPersonalCredits{
+		Year:             2025,
+		DisabilityLevel:  domain.DisabilityLevel3,
+		ZTPP:             true,
+		CreditDisability: domain.NewAmount(21_180, 0),
+	}); err != nil {
+		t.Fatalf("Upsert() error: %v", err)
+	}
+
+	got, err := repo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetByYear() error: %v", err)
+	}
+	if !got.ZTPP || got.DisabilityLevel != domain.DisabilityLevel3 {
+		t.Errorf("got ZTPP=%v level=%d, want true/%d", got.ZTPP, got.DisabilityLevel, domain.DisabilityLevel3)
+	}
+}
+
 func TestTaxPersonalCreditsRepository_Upsert_Replace(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewTaxPersonalCreditsRepository(db)

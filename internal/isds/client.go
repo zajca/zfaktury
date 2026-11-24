@@ -77,9 +77,6 @@ const (
 	// DefaultMaxResponseBytes bounds the response read from ISDS. It leaves
 	// room for the base64 form of a 20 MiB message plus the SOAP wrapper.
 	DefaultMaxResponseBytes int64 = 32 << 20
-
-	soapEnvelopeNS = "http://schemas.xmlsoap.org/soap/envelope/"
-	isdsNS         = "http://isds.czechpoint.cz/v20"
 )
 
 // Credentials are the ISDS login of the box (or delegated user). The value is

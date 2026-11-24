@@ -144,6 +144,111 @@ func TestSocialInsuranceOverviewRepository_RejectsUnorderedAdvancePeriods(t *tes
 	}
 }
 
+func TestSocialInsuranceOverviewRepository_SecondaryEmploymentRoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	employment := domain.NewAmount(500_000, 0)
+	reported := domain.NewAmount(450_000, 0)
+	sio := &domain.SocialInsuranceOverview{
+		Year:                     2025,
+		FilingType:               domain.FilingTypeRegular,
+		ActivityMonths:           domain.FullYearActivityMonths,
+		SecondaryMonths:          domain.ActivityMonths(0b111111000000),
+		SecondaryReason:          domain.SecondaryReasonEmployment,
+		EmploymentAssessmentBase: &employment,
+		ReportedEmploymentBase:   &reported,
+		MainTaxBaseShare:         domain.NewAmount(120_000, 0),
+		SecondaryTaxBaseShare:    domain.NewAmount(120_000, 0),
+		SecondaryAssessmentBase:  domain.NewAmount(66_000, 0),
+		MainPartialBase:          domain.NewAmount(97_770, 0),
+		SecondaryPartialBase:     domain.NewAmount(30_732, 0),
+		SecondaryDecisiveAmount:  domain.NewAmount(55_864, 0),
+		SumBase:                  domain.NewAmount(2_700_000, 0),
+		InsuredBase:              domain.NewAmount(1_734_736, 0),
+	}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.SecondaryMonths != sio.SecondaryMonths || got.SecondaryReason != domain.SecondaryReasonEmployment {
+		t.Errorf("secondary = %d/%q, want %d/employment", got.SecondaryMonths, got.SecondaryReason, sio.SecondaryMonths)
+	}
+	if got.EmploymentAssessmentBase == nil || *got.EmploymentAssessmentBase != employment {
+		t.Errorf("EmploymentAssessmentBase = %v, want %d", got.EmploymentAssessmentBase, employment)
+	}
+	if got.ReportedEmploymentBase == nil || *got.ReportedEmploymentBase != reported {
+		t.Errorf("ReportedEmploymentBase = %v, want %d", got.ReportedEmploymentBase, reported)
+	}
+	if got.MainTaxBaseShare != sio.MainTaxBaseShare || got.SecondaryTaxBaseShare != sio.SecondaryTaxBaseShare ||
+		got.SecondaryAssessmentBase != sio.SecondaryAssessmentBase || got.MainPartialBase != sio.MainPartialBase ||
+		got.SecondaryPartialBase != sio.SecondaryPartialBase || got.SecondaryDecisiveAmount != sio.SecondaryDecisiveAmount ||
+		got.SumBase != sio.SumBase || got.InsuredBase != sio.InsuredBase {
+		t.Errorf("stored rows = %+v, want the values written", got)
+	}
+
+	got.SecondaryMonths = 0
+	got.SecondaryReason = domain.SecondaryReasonNone
+	got.EmploymentAssessmentBase = nil
+	got.ReportedEmploymentBase = nil
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+	again, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after clearing: %v", err)
+	}
+	if again.SecondaryMonths != 0 || again.SecondaryReason != domain.SecondaryReasonNone {
+		t.Errorf("secondary after clearing = %d/%q, want 0/empty", again.SecondaryMonths, again.SecondaryReason)
+	}
+	if again.EmploymentAssessmentBase != nil || again.ReportedEmploymentBase != nil {
+		t.Errorf("employment fields after clearing = %v/%v, want nil", again.EmploymentAssessmentBase, again.ReportedEmploymentBase)
+	}
+}
+
+func TestSocialInsuranceOverviewRepository_RejectsSecondaryMonthsOutOfRange(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE social_insurance_overviews SET secondary_months = 4095 WHERE id = ?`, sio.ID); err != nil {
+		t.Fatalf("storing the highest valid mask: %v", err)
+	}
+	if _, err := repo.GetByID(ctx, sio.ID); err != nil {
+		t.Fatalf("GetByID() with mask 4095 error: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE social_insurance_overviews SET secondary_months = 4096 WHERE id = ?`, sio.ID); err == nil {
+		t.Fatal("storing mask 4096 error = nil, want the CHECK constraint to reject it")
+	}
+}
+
+func TestSocialInsuranceOverviewRepository_NewOverviewHasNoSecondaryOrEmployment(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	got, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.SecondaryMonths != 0 || got.EmploymentAssessmentBase != nil || got.ReportedEmploymentBase != nil {
+		t.Errorf("defaults = %d/%v/%v, want no secondary months and no employment", got.SecondaryMonths, got.EmploymentAssessmentBase, got.ReportedEmploymentBase)
+	}
+}
+
 func TestSocialInsuranceOverviewRepository_GetByID_NotFound(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewSocialInsuranceOverviewRepository(db)

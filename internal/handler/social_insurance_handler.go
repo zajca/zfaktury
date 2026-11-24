@@ -33,6 +33,8 @@ func (h *SocialInsuranceHandler) Routes() chi.Router {
 	r.Delete("/{id}", h.Delete)
 	r.Post("/{id}/recalculate", h.Recalculate)
 	r.Put("/{id}/activity-months", h.SetActivityMonths)
+	r.Put("/{id}/secondary-activity", h.SetSecondaryActivity)
+	r.Put("/{id}/employment-base", h.SetEmploymentBase)
 	r.Post("/{id}/generate-xml", h.GenerateXML)
 	r.Get("/{id}/xml", h.DownloadXML)
 	r.Post("/{id}/mark-filed", h.MarkFiled)
@@ -53,12 +55,37 @@ type socialInsuranceActivityMonthsRequest struct {
 	ActivityMonths []int `json:"activity_months"`
 }
 
+// socialInsuranceSecondaryActivityRequest is the JSON request body for the months
+// of secondary activity; empty months with an empty reason clear them.
+type socialInsuranceSecondaryActivityRequest struct {
+	Months []int  `json:"months"`
+	Reason string `json:"reason"`
+}
+
+// socialInsuranceEmploymentBaseRequest is the JSON request body for the
+// employment assessment base in halere; null removes it.
+type socialInsuranceEmploymentBaseRequest struct {
+	EmploymentAssessmentBase *int64 `json:"employment_assessment_base"`
+}
+
 // socialInsuranceResponse is the JSON response for a social insurance overview.
 type socialInsuranceResponse struct {
 	ID                  int64              `json:"id"`
 	Year                int                `json:"year"`
 	FilingType          string             `json:"filing_type"`
 	ActivityMonths      []int              `json:"activity_months"`
+	SecondaryMonths     []int              `json:"secondary_months"`
+	SecondaryReason     string             `json:"secondary_reason"`
+	EmploymentBase      *int64             `json:"employment_assessment_base"`
+	ReportedEmployment  *int64             `json:"reported_employment_base"`
+	MainTaxBaseShare    int64              `json:"main_tax_base_share"`
+	SecondaryTaxShare   int64              `json:"secondary_tax_base_share"`
+	SecondaryAssessment int64              `json:"secondary_assessment_base"`
+	MainPartialBase     int64              `json:"main_partial_base"`
+	SecondaryPartial    int64              `json:"secondary_partial_base"`
+	SecondaryDecisive   int64              `json:"secondary_decisive_amount"`
+	SumBase             int64              `json:"sum_base"`
+	InsuredBase         int64              `json:"insured_base"`
 	TotalRevenue        int64              `json:"total_revenue"`
 	TotalExpenses       int64              `json:"total_expenses"`
 	TaxBase             int64              `json:"tax_base"`
@@ -115,6 +142,18 @@ func socialInsuranceFromDomain(sio *domain.SocialInsuranceOverview) socialInsura
 		warnings = []string{}
 	}
 	return socialInsuranceResponse{
+		SecondaryMonths:     sio.SecondaryMonths.Months(),
+		SecondaryReason:     string(sio.SecondaryReason),
+		EmploymentBase:      optionalAmountToInt64(sio.EmploymentAssessmentBase),
+		ReportedEmployment:  optionalAmountToInt64(sio.ReportedEmploymentBase),
+		MainTaxBaseShare:    int64(sio.MainTaxBaseShare),
+		SecondaryTaxShare:   int64(sio.SecondaryTaxBaseShare),
+		SecondaryAssessment: int64(sio.SecondaryAssessmentBase),
+		MainPartialBase:     int64(sio.MainPartialBase),
+		SecondaryPartial:    int64(sio.SecondaryPartialBase),
+		SecondaryDecisive:   int64(sio.SecondaryDecisiveAmount),
+		SumBase:             int64(sio.SumBase),
+		InsuredBase:         int64(sio.InsuredBase),
 		NewMonthlyBase:      newMonthlyBase,
 		FilingMethod:        string(sio.FilingMethod),
 		AdvanceYear:         sio.Year + 1,
@@ -276,6 +315,78 @@ func (h *SocialInsuranceHandler) SetActivityMonths(w http.ResponseWriter, r *htt
 	sio, err := h.svc.SetActivityMonths(r.Context(), id, months)
 	if err != nil {
 		slog.Error("failed to set social insurance activity months", "error", err, "id", id)
+		mapDomainError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, socialInsuranceFromDomain(sio))
+}
+
+// optionalAmountToInt64 converts an optional amount into a JSON-friendly pointer.
+func optionalAmountToInt64(amount *domain.Amount) *int64 {
+	if amount == nil {
+		return nil
+	}
+	value := int64(*amount)
+	return &value
+}
+
+// SetSecondaryActivity handles PUT /api/v1/social-insurance/{id}/secondary-activity.
+func (h *SocialInsuranceHandler) SetSecondaryActivity(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
+		return
+	}
+
+	var req socialInsuranceSecondaryActivityRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	var months domain.ActivityMonths
+	if len(req.Months) > 0 {
+		months, err = domain.NewActivityMonths(req.Months)
+		if err != nil {
+			mapDomainError(w, err)
+			return
+		}
+	}
+
+	sio, err := h.svc.SetSecondaryActivity(r.Context(), id, months, domain.SecondaryActivityReason(req.Reason))
+	if err != nil {
+		slog.Error("failed to set social insurance secondary activity", "error", err, "id", id)
+		mapDomainError(w, err)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, socialInsuranceFromDomain(sio))
+}
+
+// SetEmploymentBase handles PUT /api/v1/social-insurance/{id}/employment-base.
+func (h *SocialInsuranceHandler) SetEmploymentBase(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid social insurance overview ID")
+		return
+	}
+
+	var req socialInsuranceEmploymentBaseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	var base *domain.Amount
+	if req.EmploymentAssessmentBase != nil {
+		amount := domain.Amount(*req.EmploymentAssessmentBase)
+		base = &amount
+	}
+
+	sio, err := h.svc.SetEmploymentBase(r.Context(), id, base)
+	if err != nil {
+		slog.Error("failed to set social insurance employment base", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}

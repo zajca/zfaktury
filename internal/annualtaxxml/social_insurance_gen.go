@@ -31,6 +31,9 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	if err := sio.FilingMethod.Validate(); err != nil {
 		return nil, fmt.Errorf("social insurance overview filing method: %w", err)
 	}
+	if err := domain.ValidateSecondaryActivity(sio.ActivityMonths, sio.SecondaryMonths, sio.SecondaryReason); err != nil {
+		return nil, fmt.Errorf("social insurance overview secondary activity: %w", err)
+	}
 
 	rok := strconv.Itoa(sio.Year)
 
@@ -41,6 +44,41 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	difference := ToWholeCZK(sio.Difference)
 	newMonthlyPrepay := ToWholeCZK(sio.NewMonthlyPrepay)
 	months := int64(sio.ActivityMonths.Count())
+
+	mainMonths := sio.ActivityMonths &^ sio.SecondaryMonths
+	secondaryCount := sio.SecondaryMonths.Count()
+	mixed := mainMonths != 0 && secondaryCount > 0
+	// ř. 13: kind of activity of the year.
+	activityKind := "H"
+	switch {
+	case mixed:
+		activityKind = "S"
+	case secondaryCount > 0:
+		activityKind = "V"
+	}
+	var mainFlags MonthFlags
+	if mainMonths != 0 {
+		mainFlags = mainActivityMonthFlags(mainMonths)
+	}
+	rdza, dvz := HVPair{H: "0", V: "0"}, HVPair{H: "0", V: "0"}
+	if mixed {
+		rdza = HVPair{H: formatAmount(sio.MainTaxBaseShare), V: formatAmount(sio.SecondaryTaxBaseShare)}
+		dvz = HVPair{H: strconv.FormatInt(ToWholeCZK(sio.MainPartialBase), 10), V: strconv.FormatInt(ToWholeCZK(sio.SecondaryPartialBase), 10)}
+	}
+	mesc := HVPair{H: strconv.Itoa(mainMonths.Count())}
+	if secondaryCount > 0 {
+		mesc.V = strconv.Itoa(secondaryCount)
+	}
+	// ř. 22: months with a whole-month sickness benefit are not tracked, so it equals ř. 21.
+	mesv := mesc
+	var employmentBase string
+	if sio.ReportedEmploymentBase != nil {
+		employmentBase = strconv.FormatInt(ToWholeCZK(*sio.ReportedEmploymentBase), 10)
+	}
+	advanceKind := "H"
+	if sio.AdvanceAsSecondary() {
+		advanceKind = "V"
+	}
 	// ř. 35: the monthly advance base of the stored calculation.
 	monthlyAssessmentBase := ToWholeCZK(advanceMonthlyBase)
 
@@ -93,30 +131,30 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 				IDDS:  settings["taxpayer_databox_id"],
 				Email: settings["taxpayer_email"],
 				Tel:   settings["taxpayer_phone"],
-				Druc:  "H",
+				Druc:  activityKind,
 				Hlavc: Hlavc{
-					MonthFlags: mainActivityMonthFlags(sio.ActivityMonths),
+					MonthFlags: mainFlags,
 				},
-				Vedc:  Vedc{},
+				Vedc:  secondaryActivity(sio.SecondaryMonths, sio.SecondaryReason),
 				Sleva: MonthFlags{},
 			},
 
 			PVV: PVV{
 				Pri:  formatAmount(sio.TaxBase),
-				Mesc: HVPair{H: strconv.Itoa(sio.ActivityMonths.Count()), V: ""},
-				// ř. 22: months with a whole-month sickness benefit are not tracked, so it equals ř. 21.
-				Mesv: HVPair{H: strconv.Itoa(sio.ActivityMonths.Count()), V: ""},
+				Mesc: mesc,
+				Mesv: mesv,
 				Mesp: formatMonthlyAverage(sio.TaxBase, months),
-				Rdza: HVPair{H: "0", V: "0"},
+				Rdza: rdza,
 				VVZ: HVPair{
 					H: strconv.FormatInt(assessmentBase, 10),
-					V: "0",
+					V: strconv.FormatInt(ToWholeCZK(sio.SecondaryAssessmentBase), 10),
 				},
-				DVZ:       HVPair{H: "0", V: "0"},
+				DVZ:       dvz,
 				MVZ:       strconv.FormatInt(finalAssessmentBase, 10),
 				UVZ:       strconv.FormatInt(finalAssessmentBase, 10),
-				Vzsu:      strconv.FormatInt(finalAssessmentBase, 10),
-				Vzsvc:     strconv.FormatInt(finalAssessmentBase, 10),
+				Vzza:      employmentBase,
+				Vzsu:      strconv.FormatInt(ToWholeCZK(sio.SumBase), 10),
+				Vzsvc:     strconv.FormatInt(ToWholeCZK(sio.InsuredBase), 10),
 				Poj:       strconv.FormatInt(totalInsurance, 10),
 				Slev:      "0",
 				Pojposlev: strconv.FormatInt(totalInsurance, 10),
@@ -125,7 +163,7 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 			},
 
 			Zal: Zal{
-				Ved:  "H",
+				Ved:  advanceKind,
 				Pau:  settings["flat_tax_regime"],
 				VZ:   strconv.FormatInt(monthlyAssessmentBase, 10),
 				DP:   strconv.FormatInt(newMonthlyPrepay, 10),
@@ -214,6 +252,32 @@ func formatMonthlyAverage(amount domain.Amount, months int64) string {
 		return domain.Amount(-((-2*value + months) / (2 * months))).String()
 	}
 	return domain.Amount((2*value + months) / (2 * months)).String()
+}
+
+// secondaryActivity marks the months of secondary activity and the reason (ř. 13
+// and ř. 14-19). Without secondary months the element stays empty.
+func secondaryActivity(months domain.ActivityMonths, reason domain.SecondaryActivityReason) Vedc {
+	if months == 0 {
+		return Vedc{}
+	}
+	flags := mainActivityMonthFlags(months)
+	reasons := map[domain.SecondaryActivityReason]*string{}
+	vedc := Vedc{
+		M1: flags.M1, M2: flags.M2, M3: flags.M3, M4: flags.M4, M5: flags.M5, M6: flags.M6,
+		M7: flags.M7, M8: flags.M8, M9: flags.M9, M10: flags.M10, M11: flags.M11, M12: flags.M12,
+		M13: flags.M13,
+		Zam: "N", Duchod: "N", Pdite: "N", PPM: "N", Pece: "N", Ndite: "N",
+	}
+	reasons[domain.SecondaryReasonEmployment] = &vedc.Zam
+	reasons[domain.SecondaryReasonPension] = &vedc.Duchod
+	reasons[domain.SecondaryReasonChildCare] = &vedc.Pdite
+	reasons[domain.SecondaryReasonMaternity] = &vedc.PPM
+	reasons[domain.SecondaryReasonCare] = &vedc.Pece
+	reasons[domain.SecondaryReasonStudent] = &vedc.Ndite
+	if field, ok := reasons[reason]; ok {
+		*field = "A"
+	}
+	return vedc
 }
 
 // mainActivityMonthFlags marks the months of main activity ("A"); a full year is

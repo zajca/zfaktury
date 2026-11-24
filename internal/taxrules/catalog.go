@@ -9,7 +9,7 @@ import (
 
 var ruleSets = map[int]RuleSet{
 	2024: {
-		ID:     "cz-dpfo-2024.v3",
+		ID:     "cz-dpfo-2024.v4",
 		Year:   2024,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -18,6 +18,7 @@ var ruleSets = map[int]RuleSet{
 			{Title: "Finanční správa: DPFO 2024 dotazy a odpovědi", URL: "https://financnisprava.gov.cz/cs/dane/dane/dan-z-prijmu/dotazy-a-odpovedi/dan-z-prijmu-fyzickych-osob/aktualne-k-dani-z-prijmu-fyzickych-osob-2024"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 110 416 Kč (48násobek průměrné mzdy)"},
 			{Title: "ČSSZ: výše minimálních vyměřovacích základů OSVČ", URL: "https://www.cssz.gov.cz/web/cz/vyse-minimalnich-vymerovacich-zakladu-osvc", Note: "minimální roční vyměřovací základ 2024 (hlavní činnost): 158 292 Kč, tj. 13 191 Kč měsíčně"},
+			{Title: "ČSSZ: Pokyny k vyplnění Přehledu o příjmech a výdajích OSVČ za rok 2024", URL: "https://www.cssz.gov.cz/documents/20143/2860132/Pokyny+k+vypln%C4%9Bn%C3%AD+p%C5%99ehledu+o+p%C5%99%C3%ADjmech+a+v%C3%BDdaj%C3%ADch+OSV%C4%8C+za+rok+2024.pdf/a1e348bc-e138-3952-b228-c37fb305b374", Note: "vedlejší činnost: minimální měsíční základ 4 837 Kč, rozhodná částka 105 520 Kč snížená o 8 794 Kč za každý měsíc bez vedlejší činnosti"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_582_812, 0),
@@ -37,8 +38,11 @@ var ruleSets = map[int]RuleSet{
 			SocialMinAdvanceBases: []MonthlyBasePeriod{
 				{FromMonth: 1, Base: domain.NewAmount(13_191, 0)},
 			},
-			HealthMinMonthly: domain.NewAmount(21_983, 50),
-			HealthRate:       135,
+			SocialSecondaryMinMonthly:       domain.NewAmount(4_837, 0),
+			SocialDecisiveAmount:            domain.NewAmount(105_520, 0),
+			SocialDecisiveAmountMonthlyStep: domain.NewAmount(8_794, 0),
+			HealthMinMonthly:                domain.NewAmount(21_983, 50),
+			HealthRate:                      135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
 				60: domain.NewAmount(1_200_000, 0),
@@ -57,7 +61,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2025: {
-		ID:     "cz-dpfo-2025.v3",
+		ID:     "cz-dpfo-2025.v4",
 		Year:   2025,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -66,6 +70,7 @@ var ruleSets = map[int]RuleSet{
 			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od ledna 2025 limit 40 mil. Kč na úhrn příjmů ve zdaňovacím období, příjmy nad limit se zdaňují poměrně"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 234 736 Kč (48násobek průměrné mzdy)"},
 			{Title: "ČSSZ: výše minimálních vyměřovacích základů OSVČ", URL: "https://www.cssz.gov.cz/web/cz/vyse-minimalnich-vymerovacich-zakladu-osvc", Note: "minimální roční vyměřovací základ 2025 (hlavní činnost): 195 540 Kč, tj. 16 295 Kč měsíčně; minimální záloha 4 759 Kč"},
+			{Title: "ČSSZ: Pokyny k vyplnění Přehledu o příjmech a výdajích OSVČ za rok 2025", URL: "https://www.cssz.gov.cz/documents/20143/3201321/OSVC25+Pokyny+k+vypln%C4%9Bn%C3%AD+za+rok+2025.pdf/8291cdc3-d6d7-eb67-4995-0dd316d9ccbf", Note: "vedlejší činnost: minimální měsíční základ 5 122 Kč, rozhodná částka 111 736 Kč snížená o 9 312 Kč za každý měsíc bez vedlejší činnosti"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_676_052, 0),
@@ -85,8 +90,11 @@ var ruleSets = map[int]RuleSet{
 			SocialMinAdvanceBases: []MonthlyBasePeriod{
 				{FromMonth: 1, Base: domain.NewAmount(16_295, 0)},
 			},
-			HealthMinMonthly: domain.NewAmount(23_278, 50),
-			HealthRate:       135,
+			SocialSecondaryMinMonthly:       domain.NewAmount(5_122, 0),
+			SocialDecisiveAmount:            domain.NewAmount(111_736, 0),
+			SocialDecisiveAmountMonthlyStep: domain.NewAmount(9_312, 0),
+			HealthMinMonthly:                domain.NewAmount(23_278, 50),
+			HealthRate:                      135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
 				60: domain.NewAmount(1_200_000, 0),
@@ -105,7 +113,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2026: {
-		ID:     "cz-dpfo-2026.v2-provisional",
+		ID:     "cz-dpfo-2026.v3-provisional",
 		Year:   2026,
 		Status: RuleStatusProvisional,
 		Sources: []LegalSource{
@@ -117,6 +125,7 @@ var ruleSets = map[int]RuleSet{
 			{Title: "Nařízení vlády č. 365/2025 Sb.", URL: "https://www.vzp.cz/platci/informace/povinnosti-platcu-metodika/osvc/osvc-prumerna-mzda", Note: "průměrná mzda pro rok 2026: 48 967 Kč"},
 			{Title: "Zákon č. 90/2026 Sb., kterým se mění zákon č. 589/1992 Sb.", URL: "https://www.epravo.cz/_dataPublic/sbirky/2026/Sb_2026_90_PZZ.pdf", Note: "minimální vyměřovací základ OSVČ 35 % průměrné mzdy od 1. 7. 2026"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 350 416 Kč (48násobek průměrné mzdy)"},
+			{Title: "ČSSZ: přehled nejdůležitějších údajů pro sociální zabezpečení v roce 2026", URL: "https://www.cssz.gov.cz/-/prehled-nejdulezitejsich-udaju-pro-socialni-zabezpeceni-v-roce-2026", Note: "vedlejší činnost: minimální měsíční základ 5 387 Kč, rozhodná částka 117 521 Kč; krok 9 794 Kč odvozen jako 117 521 / 12 zaokrouhleno nahoru, ověřit v Pokynech 2026"},
 		},
 		Constants: TaxYearConstants{
 			ProgressiveThreshold: domain.NewAmount(1_762_812, 0),
@@ -137,8 +146,11 @@ var ruleSets = map[int]RuleSet{
 				{FromMonth: 1, Base: domain.NewAmount(19_587, 0)},
 				{FromMonth: 7, Base: domain.NewAmount(17_139, 0)},
 			},
-			HealthMinMonthly: domain.NewAmount(24_483, 50),
-			HealthRate:       135,
+			SocialSecondaryMinMonthly:       domain.NewAmount(5_387, 0),
+			SocialDecisiveAmount:            domain.NewAmount(117_521, 0),
+			SocialDecisiveAmountMonthlyStep: domain.NewAmount(9_794, 0),
+			HealthMinMonthly:                domain.NewAmount(24_483, 50),
+			HealthRate:                      135,
 			FlatRateCaps: map[int]domain.Amount{
 				80: domain.NewAmount(1_600_000, 0),
 				60: domain.NewAmount(1_200_000, 0),

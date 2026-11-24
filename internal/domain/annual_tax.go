@@ -122,14 +122,32 @@ type SocialInsuranceOverview struct {
 	ID             int64
 	Year           int
 	FilingType     string
-	ActivityMonths ActivityMonths // months with activity (hlavni cinnost)
+	ActivityMonths ActivityMonths // months with activity (hlavni i vedlejsi cinnost)
+
+	// SecondaryMonths is the subset of ActivityMonths with secondary activity
+	// (vedlejsi SVC, ř. 13); the other activity months are main activity.
+	SecondaryMonths ActivityMonths
+	SecondaryReason SecondaryActivityReason // ř. 14-19, set exactly when SecondaryMonths is not empty
+	// EmploymentAssessmentBase is the assessment base from employment entered
+	// by the user; nil = none.
+	EmploymentAssessmentBase *Amount
 
 	TotalRevenue        Amount
 	TotalExpenses       Amount // used expenses (actual or flat-rate)
-	TaxBase             Amount // prijmy - vydaje
-	AssessmentBase      Amount // vymerovaci zaklad = 55 % of TaxBase from 2024 (50 % before)
-	MinAssessmentBase   Amount // minimum for the year
-	FinalAssessmentBase Amount // min(max(AssessmentBase, MinAssessmentBase), max annual base)
+	TaxBase             Amount // prijmy - vydaje (ř. 20)
+	AssessmentBase      Amount // ř. 25 hlavni: 55 % of the main part of the tax base
+	MinAssessmentBase   Amount // ř. 27 minimum for the year
+	FinalAssessmentBase Amount // ř. 28: min(max(AssessmentBase, MinAssessmentBase), max annual base)
+
+	MainTaxBaseShare        Amount  // ř. 24 h: tax base share of the main months, mixed years only
+	SecondaryTaxBaseShare   Amount  // ř. 24 v: tax base share of the secondary months, mixed years only
+	SecondaryAssessmentBase Amount  // ř. 25 v: 55 % of the secondary part; 0 below the decisive amount
+	MainPartialBase         Amount  // ř. 26 h: minimum base of the main months, mixed years only
+	SecondaryPartialBase    Amount  // ř. 26 v: minimum base of the secondary months, mixed years only
+	SecondaryDecisiveAmount Amount  // rozhodna castka prorated to the secondary months; 0 without secondary months
+	ReportedEmploymentBase  *Amount // ř. 29: employment base as reported; nil = row empty
+	SumBase                 Amount  // ř. 30: FinalAssessmentBase plus the reported employment base
+	InsuredBase             Amount  // ř. 31: base the premium is calculated from
 
 	InsuranceRate    int     // 292 = 29.2% (permille*10)
 	TotalInsurance   Amount  // pojistne

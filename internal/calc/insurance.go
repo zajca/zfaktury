@@ -10,16 +10,10 @@ import (
 type InsuranceInput struct {
 	Revenue        domain.Amount
 	UsedExpenses   domain.Amount // already resolved (flat-rate or actual)
-	MinMonthlyBase domain.Amount // e.g. constants.SocialMinMonthly or HealthMinMonthly
-	// MaxAnnualBase caps the assessment base (social insurance, CSSZ). Zero
-	// means no cap (health insurance has no maximum assessment base).
-	MaxAnnualBase domain.Amount
-	// AssessmentBasePermille is the share of tax base used as the assessment
-	// base. Zero keeps the historical/default 50% behavior.
-	AssessmentBasePermille int
-	RatePermille           int // 292 for social, 135 for health
-	// RoundPremiumUp rounds the total premium up to whole CZK regardless of
-	// AssessmentBasePermille (health insurance, § 2 odst. 2 zakona c. 592/1992 Sb.).
+	MinMonthlyBase domain.Amount // e.g. HealthMinMonthly
+	RatePermille   int           // 135 for health
+	// RoundPremiumUp rounds the total premium up to whole CZK (health insurance,
+	// § 2 odst. 2 zakona c. 592/1992 Sb.).
 	RoundPremiumUp bool
 	Prepayments    domain.Amount
 	// ActivityMonths is the number of months of activity in the year (1-12).
@@ -28,10 +22,9 @@ type InsuranceInput struct {
 	// MinimumExemptMonths is the number of months of activity in which the
 	// minimum base does not apply; zero means the minimum applies in every month.
 	MinimumExemptMonths int
-	// AdvanceBounds bounds the monthly advance base by the minimum and maximum
-	// of the year the advance is paid in (CSSZ Pokyny, ř. 35). Nil leaves the
-	// final annual base divided by the months unchanged. Health insurance uses
-	// only MinMonthly, as the floor of the advance.
+	// AdvanceBounds carries the minimum of the year the health advance is paid
+	// in; only MinMonthly is used, as the floor of the advance. Nil leaves the
+	// advance without a floor.
 	AdvanceBounds *AdvanceBaseBounds
 }
 
@@ -81,14 +74,27 @@ func SocialAdvanceBoundsForMonth(c TaxYearConstants, month int) (*AdvanceBaseBou
 
 // SocialAdvancePeriods returns the social advances due in the payment year
 // from startMonth on, one per minimum period of the payment year (ř. 35-36);
-// consecutive periods with the same base are merged. Without payment-year
-// rules it returns a single unbounded period.
-func SocialAdvancePeriods(computedAnnualBase, finalAnnualBase domain.Amount, months, startMonth int, payment *TaxYearConstants, ratePermille int) ([]domain.AdvancePeriod, error) {
+// consecutive periods with the same base are merged. A secondary activity has
+// one period bounded by the secondary minimum, which does not change within a
+// year. Without payment-year rules it returns a single unbounded period.
+func SocialAdvancePeriods(computedAnnualBase, finalAnnualBase domain.Amount, months, startMonth int, payment *TaxYearConstants, ratePermille int, secondary bool) ([]domain.AdvancePeriod, error) {
 	if startMonth < 1 || startMonth > 12 {
 		return nil, fmt.Errorf("advance start month %d out of range 1-12: %w", startMonth, domain.ErrInvalidInput)
 	}
 	if payment == nil {
 		base := SocialAdvanceMonthlyBase(computedAnnualBase, finalAnnualBase, months, nil)
+		return []domain.AdvancePeriod{{
+			FromMonth:     startMonth,
+			MonthlyBase:   base,
+			MonthlyPrepay: SocialAdvanceFromMonthlyBase(base, ratePermille),
+		}}, nil
+	}
+	if secondary {
+		bounds := &AdvanceBaseBounds{
+			MinMonthly: payment.SocialSecondaryMinMonthly,
+			MaxMonthly: domain.Amount(int64(payment.SocialMaxAnnualBase) / 12),
+		}
+		base := SocialAdvanceMonthlyBase(computedAnnualBase, finalAnnualBase, months, bounds)
 		return []domain.AdvancePeriod{{
 			FromMonth:     startMonth,
 			MonthlyBase:   base,
@@ -134,9 +140,6 @@ type InsuranceResult struct {
 	// NewMonthlyPrepay is the advance on premiums per month of activity, rounded
 	// up to whole CZK.
 	NewMonthlyPrepay domain.Amount
-	// NewMonthlyBase is the monthly assessment base the social advance was
-	// derived from (ř. 35); zero for health and the historical branch.
-	NewMonthlyBase domain.Amount
 }
 
 // CalculateInsurance computes the annual insurance overview from the given input.
@@ -155,16 +158,7 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 		taxBase = 0
 	}
 
-	assessmentBasePermille := input.AssessmentBasePermille
-	if assessmentBasePermille == 0 {
-		assessmentBasePermille = 500
-	}
-
-	assessmentBase := taxBase * int64(assessmentBasePermille) / 1000
-	if input.AssessmentBasePermille != 0 {
-		// CSSZ expects the computed assessment base rounded up to whole CZK.
-		assessmentBase = ceilToWholeCZK(assessmentBase)
-	}
+	assessmentBase := taxBase * 500 / 1000
 
 	// minAssessmentBase = minMonthlyBase * months of activity without an exemption
 	// (§ 3a odst. 4 zakona c. 592/1992 Sb.).
@@ -175,14 +169,10 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 	if minAssessmentBase > finalBase {
 		finalBase = minAssessmentBase
 	}
-	if input.MaxAnnualBase > 0 && finalBase > int64(input.MaxAnnualBase) {
-		finalBase = int64(input.MaxAnnualBase)
-	}
 
 	totalInsurance := finalBase * int64(input.RatePermille) / 1000
-	if input.AssessmentBasePermille != 0 || input.RoundPremiumUp {
-		// The premium is rounded up to whole CZK: CSSZ form line D32.1 (social)
-		// and § 2 odst. 2 zakona c. 592/1992 Sb. (health).
+	if input.RoundPremiumUp {
+		// § 2 odst. 2 zakona c. 592/1992 Sb.
 		totalInsurance = ceilToWholeCZK(totalInsurance)
 	}
 
@@ -191,20 +181,7 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 
 	rate := int64(input.RatePermille)
 	var newMonthlyPrepay int64
-	var newMonthlyBase int64
 	switch {
-	case input.AssessmentBasePermille != 0:
-		// CSSZ: the monthly base is the annual base spread over the months of
-		// activity, rounded up to whole CZK (§ 14 odst. 13 zakona c. 589/1992 Sb.);
-		// with a payment year that has a single minimum period it is raised to that
-		// minimum and capped at that maximum, otherwise the final annual base is
-		// used. The advance is the rate applied to the base, rounded up to whole CZK.
-		// Overviews stored before the base was kept have no stored base, so their
-		// base is taken as the final annual base over the months and their stored
-		// advance may not follow from it; those overviews must be recalculated.
-		monthlyBase := SocialAdvanceMonthlyBase(domain.Amount(assessmentBase), domain.Amount(finalBase), input.ActivityMonths, input.AdvanceBounds)
-		newMonthlyBase = int64(monthlyBase)
-		newMonthlyPrepay = int64(SocialAdvanceFromMonthlyBase(monthlyBase, input.RatePermille))
 	case input.RoundPremiumUp:
 		// Health: the premium is divided by the months of activity in a single
 		// step, so the monthly base itself is not rounded to whole CZK.
@@ -229,7 +206,6 @@ func CalculateInsurance(input InsuranceInput) (InsuranceResult, error) {
 		TotalInsurance:      domain.Amount(totalInsurance),
 		Difference:          domain.Amount(difference),
 		NewMonthlyPrepay:    domain.Amount(newMonthlyPrepay),
-		NewMonthlyBase:      domain.Amount(newMonthlyBase),
 	}, nil
 }
 

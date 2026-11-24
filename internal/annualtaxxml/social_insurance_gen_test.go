@@ -28,6 +28,8 @@ func TestSocialInsuranceXML_CorrectiveFilingType(t *testing.T) {
 	sio := &domain.SocialInsuranceOverview{
 		Year:                2025,
 		FilingType:          domain.FilingTypeCorrective,
+		SumBase:             domain.NewAmount(154000, 0),
+		InsuredBase:         domain.NewAmount(154000, 0),
 		TotalRevenue:        domain.NewAmount(900000, 0),
 		TotalExpenses:       domain.NewAmount(620000, 0),
 		TaxBase:             domain.NewAmount(280000, 0),
@@ -68,6 +70,8 @@ func TestSocialInsuranceXML_SupplementaryFilingType(t *testing.T) {
 	sio := &domain.SocialInsuranceOverview{
 		Year:                2025,
 		FilingType:          domain.FilingTypeSupplementary,
+		SumBase:             domain.NewAmount(154000, 0),
+		InsuredBase:         domain.NewAmount(154000, 0),
 		TotalRevenue:        domain.NewAmount(900000, 0),
 		TotalExpenses:       domain.NewAmount(620000, 0),
 		TaxBase:             domain.NewAmount(280000, 0),
@@ -116,11 +120,13 @@ func TestSocialInsuranceXML_Golden_Regular(t *testing.T) {
 		AssessmentBase:      domain.NewAmount(440000, 0),  // 55% of 800 000
 		MinAssessmentBase:   domain.NewAmount(131736, 0),  // minimum for 2025
 		FinalAssessmentBase: domain.NewAmount(440000, 0),  // max(440000, 131736)
-		InsuranceRate:       292,                          // 29.2%
-		TotalInsurance:      domain.NewAmount(128480, 0),  // 440000 * 0.292
-		Prepayments:         domain.NewAmount(38088, 0),   // 3174/month * 12
-		Difference:          domain.NewAmount(90392, 0),   // 128480 - 38088
-		NewMonthlyPrepay:    domain.NewAmount(10707, 0),   // new monthly prepayment
+		SumBase:             domain.NewAmount(440000, 0),
+		InsuredBase:         domain.NewAmount(440000, 0),
+		InsuranceRate:       292,                         // 29.2%
+		TotalInsurance:      domain.NewAmount(128480, 0), // 440000 * 0.292
+		Prepayments:         domain.NewAmount(38088, 0),  // 3174/month * 12
+		Difference:          domain.NewAmount(90392, 0),  // 128480 - 38088
+		NewMonthlyPrepay:    domain.NewAmount(10707, 0),  // new monthly prepayment
 		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 
@@ -159,11 +165,13 @@ func TestSocialInsuranceXML_Golden_ActualExpenses(t *testing.T) {
 		AssessmentBase:      domain.NewAmount(154000, 0), // 55% of 280 000
 		MinAssessmentBase:   domain.NewAmount(131736, 0), // minimum for 2025
 		FinalAssessmentBase: domain.NewAmount(154000, 0), // max(154000, 131736)
-		InsuranceRate:       292,                         // 29.2%
-		TotalInsurance:      domain.NewAmount(44968, 0),  // 154000 * 0.292
-		Prepayments:         domain.NewAmount(38088, 0),  // 3174/month * 12
-		Difference:          domain.NewAmount(6880, 0),   // 44968 - 38088
-		NewMonthlyPrepay:    domain.NewAmount(3748, 0),   // new monthly prepayment
+		SumBase:             domain.NewAmount(154000, 0),
+		InsuredBase:         domain.NewAmount(154000, 0),
+		InsuranceRate:       292,                        // 29.2%
+		TotalInsurance:      domain.NewAmount(44968, 0), // 154000 * 0.292
+		Prepayments:         domain.NewAmount(38088, 0), // 3174/month * 12
+		Difference:          domain.NewAmount(6880, 0),  // 44968 - 38088
+		NewMonthlyPrepay:    domain.NewAmount(3748, 0),  // new monthly prepayment
 		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 
@@ -192,6 +200,8 @@ func TestSocialInsuranceXML_Golden_ActualExpenses(t *testing.T) {
 
 func TestSocialInsuranceXML_SemanticFieldsFromCSSZSpec(t *testing.T) {
 	sio := &domain.SocialInsuranceOverview{
+		SumBase:             domain.NewAmount(341187, 0),
+		InsuredBase:         domain.NewAmount(341187, 0),
 		Year:                2025,
 		FilingType:          domain.FilingTypeRegular,
 		TaxBase:             domain.NewAmount(620339, 20),
@@ -272,6 +282,8 @@ func TestSocialInsuranceXML_ValidatesAgainstOSVC25XSD(t *testing.T) {
 	}
 
 	sio := &domain.SocialInsuranceOverview{
+		SumBase:             domain.NewAmount(341187, 0),
+		InsuredBase:         domain.NewAmount(341187, 0),
 		Year:                2025,
 		FilingType:          domain.FilingTypeRegular,
 		TaxBase:             domain.NewAmount(620339, 20),
@@ -312,6 +324,8 @@ func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.
 		Year:                2026,
 		FilingType:          domain.FilingTypeRegular,
 		FinalAssessmentBase: domain.NewAmount(205_668, 0),
+		SumBase:             domain.NewAmount(205_668, 0),
+		InsuredBase:         domain.NewAmount(205_668, 0),
 		TotalInsurance:      domain.NewAmount(60_056, 0),
 		Prepayments:         domain.NewAmount(60_000, 0),
 		Difference:          domain.NewAmount(56, 0),
@@ -386,6 +400,8 @@ func partialYearSocialInsuranceOverview() *domain.SocialInsuranceOverview {
 		AssessmentBase:      domain.NewAmount(55000, 0),
 		MinAssessmentBase:   domain.NewAmount(97770, 0),
 		FinalAssessmentBase: domain.NewAmount(97770, 0),
+		SumBase:             domain.NewAmount(97770, 0),
+		InsuredBase:         domain.NewAmount(97770, 0),
 		InsuranceRate:       292,
 		TotalInsurance:      domain.NewAmount(28549, 0),
 		Prepayments:         domain.NewAmount(0, 0),

@@ -214,6 +214,21 @@ describe('VAT return detail page', () => {
 		});
 	});
 
+	it('renders the EPO button enabled when has_xml is true and disabled otherwise', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(filedVatReturn));
+		const first = render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
+		});
+		first.unmount();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleVatReturn));
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeDisabled();
+		});
+	});
+
 	it('hides download XML button when has_xml is false', async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleVatReturn));
 

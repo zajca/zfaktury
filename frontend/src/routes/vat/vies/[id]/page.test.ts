@@ -146,6 +146,21 @@ describe('VIES Summary Detail', () => {
 		expect(screen.getByText('Smazat')).toBeInTheDocument();
 	});
 
+	it('renders the EPO button enabled when has_xml is true and disabled otherwise', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleSummary));
+		const first = render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
+		});
+		first.unmount();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleSummary, has_xml: false }));
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeDisabled();
+		});
+	});
+
 	it('disables buttons when status is filed', async () => {
 		const filedSummary = { ...sampleSummary, status: 'filed', filed_at: '2026-03-15T00:00:00Z' };
 		mockFetch.mockResolvedValueOnce(jsonResponse(filedSummary));

@@ -260,6 +260,38 @@ describe('Income tax return detail - §6 panel', () => {
 	});
 });
 
+describe('Income tax return detail - EPO button', () => {
+	function mockReturn(hasXml: boolean) {
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/income-tax-returns/')) {
+				return Promise.resolve(jsonResponse({ ...baseReturn, has_xml: hasXml }));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants));
+			}
+			return Promise.resolve(jsonResponse({}));
+		});
+	}
+
+	it('is enabled when the return has XML', async () => {
+		mockReturn(true);
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
+		});
+	});
+
+	it('is disabled when the return has no XML', async () => {
+		mockReturn(false);
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeDisabled();
+		});
+	});
+});
+
 describe('Income tax return detail - disability credit rows', () => {
 	function mockReturn(data: unknown) {
 		mockFetch.mockImplementation((url: string) => {

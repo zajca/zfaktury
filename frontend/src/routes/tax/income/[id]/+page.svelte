@@ -8,6 +8,7 @@
 	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
 	import Badge from '$lib/ui/Badge.svelte';
+	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -231,6 +232,13 @@
 						{actionLoading === 'bundle' ? 'Balím...' : 'Stáhnout ZIP s přílohami'}
 					</Button>
 				{/if}
+				<EPOOpenButton
+					kind="income-tax-return"
+					id={returnId}
+					hasXml={data.has_xml}
+					disabled={actionLoading !== null}
+					onMarkFiled={data.status !== 'filed' ? handleMarkFiled : undefined}
+				/>
 				{#if data.status !== 'filed'}
 					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit jako podané'}

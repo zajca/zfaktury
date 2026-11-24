@@ -11,6 +11,7 @@
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
+	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -194,6 +195,13 @@
 				<Button variant="secondary" onclick={handleDownloadXml} disabled={!statement.has_xml}>
 					Stáhnout XML
 				</Button>
+				<EPOOpenButton
+					kind="control-statement"
+					id={statementId}
+					hasXml={statement.has_xml}
+					disabled={actionLoading}
+					onMarkFiled={statement.status !== 'filed' ? handleMarkFiled : undefined}
+				/>
 				<Button
 					variant="success"
 					onclick={handleMarkFiled}

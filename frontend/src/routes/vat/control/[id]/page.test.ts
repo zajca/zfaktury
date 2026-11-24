@@ -217,6 +217,21 @@ describe('Control Statement Detail', () => {
 		expect(screen.getByText('Smazat')).toBeInTheDocument();
 	});
 
+	it('renders the EPO button enabled when has_xml is true and disabled otherwise', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleStatement));
+		const first = render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
+		});
+		first.unmount();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleStatement, has_xml: false }));
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeDisabled();
+		});
+	});
+
 	it('disables buttons when status is filed', async () => {
 		const filedStatement = {
 			...sampleStatement,

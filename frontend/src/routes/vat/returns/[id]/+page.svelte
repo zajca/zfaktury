@@ -6,6 +6,7 @@
 	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
+	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -177,6 +178,13 @@
 						{actionLoading === 'download' ? 'Stahuji...' : 'Stáhnout XML'}
 					</Button>
 				{/if}
+				<EPOOpenButton
+					kind="vat-return"
+					id={returnId}
+					hasXml={vatReturn.has_xml}
+					disabled={actionLoading !== null}
+					onMarkFiled={vatReturn.status !== 'filed' ? handleMarkFiled : undefined}
+				/>
 				{#if vatReturn.status !== 'filed'}
 					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit za podané'}

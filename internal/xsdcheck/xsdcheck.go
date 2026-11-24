@@ -116,14 +116,14 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 
 	workDir, err := filepath.Abs(c.cfg.WorkDir)
 	if err != nil {
-		return fmt.Errorf("%w: resolving work dir: %v", ErrExec, err)
+		return fmt.Errorf("%w: resolving work dir: %w", ErrExec, err)
 	}
 	if err := os.MkdirAll(workDir, 0o700); err != nil {
-		return fmt.Errorf("%w: creating work dir: %v", ErrExec, err)
+		return fmt.Errorf("%w: creating work dir: %w", ErrExec, err)
 	}
 	dir, err := os.MkdirTemp(workDir, "xsdcheck-")
 	if err != nil {
-		return fmt.Errorf("%w: creating temp dir: %v", ErrExec, err)
+		return fmt.Errorf("%w: creating temp dir: %w", ErrExec, err)
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
@@ -133,7 +133,7 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 	}
 	xmlPath := filepath.Join(dir, "document.xml")
 	if err := os.WriteFile(xmlPath, xml, 0o600); err != nil {
-		return fmt.Errorf("%w: writing XML: %v", ErrExec, err)
+		return fmt.Errorf("%w: writing XML: %w", ErrExec, err)
 	}
 
 	runCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
@@ -169,7 +169,7 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 		}
 		return fmt.Errorf("%w: exit code %d: %s", ErrExec, exitErr.ExitCode(), out.String())
 	}
-	return fmt.Errorf("%w: %v", ErrExec, runErr)
+	return fmt.Errorf("%w: %w", ErrExec, runErr)
 }
 
 // writeSchemas copies the embedded XSD files into dir, so imports resolve
@@ -177,16 +177,16 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 func writeSchemas(dir string, schema Schema) (string, error) {
 	entries, err := fs.ReadDir(csszschemas.Files, ".")
 	if err != nil {
-		return "", fmt.Errorf("%w: reading embedded schemas: %v", ErrExec, err)
+		return "", fmt.Errorf("%w: reading embedded schemas: %w", ErrExec, err)
 	}
 	found := false
 	for _, e := range entries {
 		data, err := csszschemas.Files.ReadFile(e.Name())
 		if err != nil {
-			return "", fmt.Errorf("%w: reading embedded %s: %v", ErrExec, e.Name(), err)
+			return "", fmt.Errorf("%w: reading embedded %s: %w", ErrExec, e.Name(), err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, e.Name()), data, 0o600); err != nil {
-			return "", fmt.Errorf("%w: writing schema %s: %v", ErrExec, e.Name(), err)
+			return "", fmt.Errorf("%w: writing schema %s: %w", ErrExec, e.Name(), err)
 		}
 		if e.Name() == schema.file {
 			found = true

@@ -36,7 +36,16 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
 		total_insurance: 2854900,
 		prepayments: 0,
 		difference: 2854900,
-		new_monthly_prepay: 475900,
+		new_monthly_prepay: 572000,
+		new_monthly_base: 1958700,
+		filing_method: 'standard',
+		advance_year: 2026,
+		advance_start_month: 6,
+		advance_periods: [
+			{ from_month: 6, monthly_base: 1958700, monthly_prepay: 572000 },
+			{ from_month: 7, monthly_base: 1713900, monthly_prepay: 500500 }
+		],
+		warnings: [],
 		has_xml: false,
 		status: 'draft',
 		filed_at: null,
@@ -51,6 +60,8 @@ interface MockOptions {
 	updateOverview?: Record<string, unknown>;
 	updateStatus?: number;
 	updateBody?: unknown;
+	generateStatus?: number;
+	generateBody?: unknown;
 }
 
 function mockApi(options: MockOptions = {}) {
@@ -59,6 +70,11 @@ function mockApi(options: MockOptions = {}) {
 	mockFetch.mockImplementation((url: string) => {
 		if (url.includes('/tax-constants')) {
 			return Promise.resolve(jsonResponse({ error: 'not found' }, 404));
+		}
+		if (url.includes('/generate-xml') && options.generateStatus) {
+			return Promise.resolve(
+				jsonResponse(options.generateBody ?? { error: 'error' }, options.generateStatus)
+			);
 		}
 		if (url.includes('/activity-months')) {
 			if (options.updateStatus && options.updateStatus !== 200) {
@@ -100,6 +116,16 @@ describe('social insurance overview detail page', () => {
 		expect(
 			screen.getByText('červenec, srpen, září, říjen, listopad, prosinec (6 měs.)')
 		).toBeInTheDocument();
+	});
+
+	it('renders the advance schedule with its start month and warnings', async () => {
+		mockApi({ overview: makeOverview({ warnings: ['filing_method_missing'] }) });
+
+		await renderPage();
+
+		expect(screen.getByText(/Nová záloha od:/)).toHaveTextContent('červen 2026');
+		expect(screen.getByText('od červenec 2026:')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Nastavit způsob podání' })).toBeInTheDocument();
 	});
 
 	it('saves the months through the activity-months endpoint', async () => {
@@ -153,6 +179,20 @@ describe('social insurance overview detail page', () => {
 			expect(toasts.some((t) => t.message === 'Pro rok 2019 zatím nejsou daňová pravidla.')).toBe(
 				true
 			);
+		});
+	});
+
+	it('shows the server message when the XML cannot be generated', async () => {
+		mockApi({
+			generateStatus: 400,
+			generateBody: { error: 'přehled je potřeba nejdřív přepočítat' }
+		});
+
+		await renderPage();
+		await fireEvent.click(screen.getByRole('button', { name: 'Generovat XML' }));
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message === 'přehled je potřeba nejdřív přepočítat')).toBe(true);
 		});
 	});
 

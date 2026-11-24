@@ -9,6 +9,7 @@
 		type TaxConstants
 	} from '$lib/api/client';
 	import { loadTaxConstants } from '$lib/data/tax-constants.svelte';
+	import AdvanceSchedule from '$lib/components/tax/AdvanceSchedule.svelte';
 	import ActivityMonthsPicker from '$lib/components/tax/ActivityMonthsPicker.svelte';
 	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
@@ -391,6 +392,13 @@
 						{formatCZK(data.new_monthly_prepay)}
 					</dd>
 				</div>
+				<AdvanceSchedule
+					overviewYear={data.year}
+					startMonth={data.advance_start_month}
+					periods={data.advance_periods}
+					warnings={data.warnings}
+					reportedPrepay={data.new_monthly_prepay}
+				/>
 			</Card>
 
 			<!-- Timestamps -->

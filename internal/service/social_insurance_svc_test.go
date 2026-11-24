@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/xml"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -521,7 +523,9 @@ func TestSocialInsuranceService_Recalculate_PartialYear(t *testing.T) {
 	if got, want := result.Difference, domain.NewAmount(28_549, 0); got != want {
 		t.Errorf("Difference = %d, want %d", got, want)
 	}
-	if got, want := result.NewMonthlyPrepay, domain.NewAmount(4_759, 0); got != want {
+	// The unset filing method starts the advance in June 2026, whose minimum
+	// base is 19 587 CZK.
+	if got, want := result.NewMonthlyPrepay, domain.NewAmount(5_720, 0); got != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d", got, want)
 	}
 }
@@ -552,7 +556,7 @@ func TestSocialInsuranceService_SetActivityMonths(t *testing.T) {
 	if got, want := updated.TotalInsurance, domain.NewAmount(28_549, 0); got != want {
 		t.Errorf("TotalInsurance = %d, want %d", got, want)
 	}
-	if got, want := updated.NewMonthlyPrepay, domain.NewAmount(4_759, 0); got != want {
+	if got, want := updated.NewMonthlyPrepay, domain.NewAmount(5_720, 0); got != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d", got, want)
 	}
 
@@ -690,11 +694,17 @@ func TestRecalculate_2024UsesPaymentYearBounds(t *testing.T) {
 	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
 	}
+	if result.AdvanceStartMonth != 6 {
+		t.Errorf("AdvanceStartMonth = %d, want 6", result.AdvanceStartMonth)
+	}
+	if want := []string{domain.WarningFilingMethodMissing}; !slices.Equal(result.Warnings, want) {
+		t.Errorf("Warnings = %v, want %v", result.Warnings, want)
+	}
 }
 
-// The 2026 minimum is split into two periods, so the start month of the new
-// advance is still open and the 2025 overview keeps the unbounded advance.
-func TestRecalculate_2025KeepsUnboundedAdvance_TwoMinimumPeriods(t *testing.T) {
+// Without a filing method the statutory deadline (filed by 1 April) applies:
+// overview due 4 May 2026, advance from June 2026 at the 19 587 CZK minimum.
+func TestRecalculate_2025UnsetFilingMethodUsesStatutoryDeadline(t *testing.T) {
 	svc, _ := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
 
@@ -707,8 +717,172 @@ func TestRecalculate_2025KeepsUnboundedAdvance_TwoMinimumPeriods(t *testing.T) {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
 
-	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
-		t.Errorf("NewMonthlyPrepay = %d, want %d (2025 base 16 295 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	if result.AdvanceStartMonth != 6 {
+		t.Errorf("AdvanceStartMonth = %d, want 6", result.AdvanceStartMonth)
+	}
+	if want := domain.NewAmount(5_720, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
+	}
+	if want := []string{domain.WarningFilingMethodMissing}; !slices.Equal(result.Warnings, want) {
+		t.Errorf("Warnings = %v, want %v", result.Warnings, want)
+	}
+}
+
+// saveFilingMethod stores the filing method of a tax year for the tests.
+func saveFilingMethod(t *testing.T, db *sql.DB, year int, method domain.FilingMethod) {
+	t.Helper()
+	repo := repository.NewTaxYearSettingsRepository(db)
+	if err := repo.Upsert(context.Background(), &domain.TaxYearSettings{Year: year, FilingMethod: method}); err != nil {
+		t.Fatalf("storing filing method: %v", err)
+	}
+}
+
+// recalculatedOverview creates a full-year overview without income and recalculates it.
+func recalculatedOverview(t *testing.T, svc *SocialInsuranceService, year int) *domain.SocialInsuranceOverview {
+	t.Helper()
+	ctx := context.Background()
+	sio := &domain.SocialInsuranceOverview{Year: year, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	return result
+}
+
+func period(from int, base, prepay int64) domain.AdvancePeriod {
+	return domain.AdvancePeriod{FromMonth: from, MonthlyBase: domain.NewAmount(base, 0), MonthlyPrepay: domain.NewAmount(prepay, 0)}
+}
+
+func TestRecalculate_2025StandardFilingSplitsAdvance(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodStandard)
+
+	result := recalculatedOverview(t, svc, 2025)
+
+	if result.AdvanceStartMonth != 6 {
+		t.Errorf("AdvanceStartMonth = %d, want 6", result.AdvanceStartMonth)
+	}
+	if want := []domain.AdvancePeriod{period(6, 19_587, 5_720), period(7, 17_139, 5_005)}; !slices.Equal(result.AdvancePeriods, want) {
+		t.Errorf("AdvancePeriods = %+v, want %+v", result.AdvancePeriods, want)
+	}
+	if result.NewMonthlyBase == nil || *result.NewMonthlyBase != domain.NewAmount(19_587, 0) {
+		t.Errorf("NewMonthlyBase = %v, want 19587 CZK", result.NewMonthlyBase)
+	}
+	if want := domain.NewAmount(5_720, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
+	}
+	if len(result.Warnings) != 0 {
+		t.Errorf("Warnings = %v, want none", result.Warnings)
+	}
+}
+
+func TestRecalculate_2025ElectronicFilingStartsInJuly(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodElectronic)
+
+	result := recalculatedOverview(t, svc, 2025)
+
+	if result.AdvanceStartMonth != 7 {
+		t.Errorf("AdvanceStartMonth = %d, want 7", result.AdvanceStartMonth)
+	}
+	if want := []domain.AdvancePeriod{period(7, 17_139, 5_005)}; !slices.Equal(result.AdvancePeriods, want) {
+		t.Errorf("AdvancePeriods = %+v, want %+v", result.AdvancePeriods, want)
+	}
+	if want := domain.NewAmount(5_005, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
+	}
+}
+
+func TestRecalculate_2025AdvisorFilingStartsInSeptember(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodAdvisor)
+
+	result := recalculatedOverview(t, svc, 2025)
+
+	if result.AdvanceStartMonth != 9 {
+		t.Errorf("AdvanceStartMonth = %d, want 9", result.AdvanceStartMonth)
+	}
+	if want := []domain.AdvancePeriod{period(9, 17_139, 5_005)}; !slices.Equal(result.AdvancePeriods, want) {
+		t.Errorf("AdvancePeriods = %+v, want %+v", result.AdvancePeriods, want)
+	}
+}
+
+func TestRecalculate_TaxYearSettingsErrorIsReturned(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP TABLE tax_year_settings`); err != nil {
+		t.Fatalf("dropping tax_year_settings: %v", err)
+	}
+
+	_, err := svc.Recalculate(ctx, sio.ID)
+	if err == nil || !strings.Contains(err.Error(), "tax year settings") {
+		t.Fatalf("Recalculate() error = %v, want it to mention tax year settings", err)
+	}
+
+	stored, err := svc.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if stored.AdvanceStartMonth != 0 || stored.NewMonthlyBase != nil {
+		t.Errorf("stored row changed: start %d, base %v", stored.AdvanceStartMonth, stored.NewMonthlyBase)
+	}
+}
+
+func TestMarkFiled_EarlyFilingMovesAdvanceStart(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodElectronic)
+	sio := recalculatedOverview(t, svc, 2025)
+	if sio.AdvanceStartMonth != 7 {
+		t.Fatalf("AdvanceStartMonth = %d, want 7", sio.AdvanceStartMonth)
+	}
+	svc.now = func() time.Time { return time.Date(2026, time.May, 20, 12, 0, 0, 0, time.UTC) }
+
+	filed, err := svc.MarkFiled(context.Background(), sio.ID)
+	if err != nil {
+		t.Fatalf("MarkFiled() error: %v", err)
+	}
+
+	if filed.AdvanceStartMonth != 6 {
+		t.Errorf("AdvanceStartMonth = %d, want 6", filed.AdvanceStartMonth)
+	}
+	if want := []domain.AdvancePeriod{period(6, 19_587, 5_720), period(7, 17_139, 5_005)}; !slices.Equal(filed.AdvancePeriods, want) {
+		t.Errorf("AdvancePeriods = %+v, want %+v", filed.AdvancePeriods, want)
+	}
+	if want := []string{domain.WarningAdvanceDiffersFromXML}; !slices.Equal(filed.Warnings, want) {
+		t.Errorf("Warnings = %v, want %v", filed.Warnings, want)
+	}
+	if filed.NewMonthlyBase == nil || *filed.NewMonthlyBase != domain.NewAmount(17_139, 0) {
+		t.Errorf("NewMonthlyBase = %v, want 17139 CZK", filed.NewMonthlyBase)
+	}
+	if want := domain.NewAmount(5_005, 0); filed.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", filed.NewMonthlyPrepay, want)
+	}
+}
+
+func TestMarkFiled_LateFilingKeepsDeadline(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodStandard)
+	sio := recalculatedOverview(t, svc, 2025)
+	svc.now = func() time.Time { return time.Date(2026, time.November, 24, 12, 0, 0, 0, time.UTC) }
+
+	filed, err := svc.MarkFiled(context.Background(), sio.ID)
+	if err != nil {
+		t.Fatalf("MarkFiled() error: %v", err)
+	}
+
+	if filed.AdvanceStartMonth != 6 {
+		t.Errorf("AdvanceStartMonth = %d, want 6", filed.AdvanceStartMonth)
+	}
+	if len(filed.Warnings) != 0 {
+		t.Errorf("Warnings = %v, want none", filed.Warnings)
 	}
 }
 
@@ -729,6 +903,99 @@ func TestRecalculate_2026KeepsUnboundedAdvance_NoNextYearRules(t *testing.T) {
 
 	if want := domain.NewAmount(5_005, 0); result.NewMonthlyPrepay != want {
 		t.Errorf("NewMonthlyPrepay = %d, want %d (2026 base 17 139 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	}
+	// The deadline of a 2026 overview with the default filing method is 3 May 2027.
+	if result.AdvanceStartMonth != 6 {
+		t.Errorf("AdvanceStartMonth = %d, want 6", result.AdvanceStartMonth)
+	}
+	want := []string{domain.WarningFilingMethodMissing, domain.WarningAdvanceMinimumMissing}
+	if !slices.Equal(result.Warnings, want) {
+		t.Errorf("Warnings = %v, want %v", result.Warnings, want)
+	}
+}
+
+func TestRecalculate_2026StandardFilingWarnsOnlyAboutMissingMinimum(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	saveFilingMethod(t, db, 2026, domain.FilingMethodStandard)
+
+	result := recalculatedOverview(t, svc, 2026)
+
+	if want := []string{domain.WarningAdvanceMinimumMissing}; !slices.Equal(result.Warnings, want) {
+		t.Errorf("Warnings = %v, want %v", result.Warnings, want)
+	}
+}
+
+func TestGenerateXML_FilingMethodChangedMessage(t *testing.T) {
+	tests := []struct {
+		name  string
+		filed bool
+		want  string
+	}{
+		{"draft asks for a recalculation", false, msgFilingMethodChanged},
+		{"filed keeps the stored XML", true, msgFilingMethodChangedFiled},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, db := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			tysRepo := repository.NewTaxYearSettingsRepository(db)
+			if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}); err != nil {
+				t.Fatalf("storing filing method: %v", err)
+			}
+			sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+			if err := svc.Create(ctx, sio); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			if _, err := svc.Recalculate(ctx, sio.ID); err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			if tt.filed {
+				if _, err := svc.MarkFiled(ctx, sio.ID); err != nil {
+					t.Fatalf("MarkFiled() error: %v", err)
+				}
+			}
+			if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}); err != nil {
+				t.Fatalf("changing filing method: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, sio.ID)
+			var userMessage *domain.UserMessageError
+			if !errors.Is(err, domain.ErrInvalidInput) || !errors.As(err, &userMessage) || userMessage.Message != tt.want {
+				t.Fatalf("error = %v, want ErrInvalidInput with user message %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateXML_NotCalculatedMessage(t *testing.T) {
+	tests := []struct {
+		name  string
+		filed bool
+		want  string
+	}{
+		{"draft asks for a calculation", false, msgOverviewNotCalculated},
+		{"filed keeps the stored XML", true, msgOverviewNotCalculatedFiled},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _ := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+			if tt.filed {
+				now := time.Now()
+				sio.Status = domain.FilingStatusFiled
+				sio.FiledAt = &now
+			}
+			if err := svc.Create(ctx, sio); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, sio.ID)
+			var userMessage *domain.UserMessageError
+			if !errors.Is(err, domain.ErrInvalidInput) || !errors.As(err, &userMessage) || userMessage.Message != tt.want {
+				t.Fatalf("error = %v, want ErrInvalidInput with user message %q", err, tt.want)
+			}
+		})
 	}
 }
 
@@ -784,9 +1051,65 @@ func TestGenerateXML_2024UsesStoredBoundedBase(t *testing.T) {
 	}
 }
 
-// Overviews stored before the base was kept have none; the base is then taken
-// as the final annual base over the months of activity, which matches their
-// stored advance only when both formulas agree.
+// The section H flags and the advance reported in the XML follow the filing
+// method stored with the overview.
+func TestGenerateXML_WritesFilingMethodFlags(t *testing.T) {
+	tests := []struct {
+		method                  domain.FilingMethod
+		elektr, por, vz, prepay string
+	}{
+		{domain.FilingMethodStandard, "N", "N", "19587", "5720"},
+		{domain.FilingMethodElectronic, "A", "N", "17139", "5005"},
+		{domain.FilingMethodAdvisor, "N", "A", "17139", "5005"},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.method), func(t *testing.T) {
+			svc, db := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			seedSocialInsuranceXMLSettings(t, db)
+			saveFilingMethod(t, db, 2025, tt.method)
+			sio := recalculatedOverview(t, svc, 2025)
+
+			generated, err := svc.GenerateXML(ctx, sio.ID)
+			if err != nil {
+				t.Fatalf("GenerateXML() error: %v", err)
+			}
+
+			var doc annualtaxxml.OSVC
+			if err := xml.Unmarshal(generated.XMLData, &doc); err != nil {
+				t.Fatalf("unmarshal generated XML: %v", err)
+			}
+			if doc.Prehled.Prizn.Elektr != tt.elektr {
+				t.Errorf("prizn/elektr = %q, want %q", doc.Prehled.Prizn.Elektr, tt.elektr)
+			}
+			if doc.Prehled.Prizn.Por != tt.por {
+				t.Errorf("prizn/por = %q, want %q", doc.Prehled.Prizn.Por, tt.por)
+			}
+			if doc.Prehled.Zal.VZ != tt.vz {
+				t.Errorf("zal@vz = %q, want %q", doc.Prehled.Zal.VZ, tt.vz)
+			}
+			if doc.Prehled.Zal.DP != tt.prepay {
+				t.Errorf("zal@dp = %q, want %q", doc.Prehled.Zal.DP, tt.prepay)
+			}
+		})
+	}
+}
+
+func TestGenerateXML_RejectsChangedFilingMethod(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	seedSocialInsuranceXMLSettings(t, db)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodStandard)
+	sio := recalculatedOverview(t, svc, 2025)
+	saveFilingMethod(t, db, 2025, domain.FilingMethodElectronic)
+
+	_, err := svc.GenerateXML(context.Background(), sio.ID)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+// Overviews stored before the advance start month was kept cannot be exported:
+// their filing method and advance period are unknown.
 func TestGenerateXML_LegacyRowWithoutStoredBase(t *testing.T) {
 	svc, db := setupSocialInsuranceSvc(t)
 	ctx := context.Background()
@@ -807,20 +1130,13 @@ func TestGenerateXML_LegacyRowWithoutStoredBase(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	generated, err := svc.GenerateXML(ctx, sio.ID)
-	if err != nil {
-		t.Fatalf("GenerateXML() error: %v", err)
+	_, err := svc.GenerateXML(ctx, sio.ID)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
 	}
-
-	var doc annualtaxxml.OSVC
-	if err := xml.Unmarshal(generated.XMLData, &doc); err != nil {
-		t.Fatalf("unmarshal generated XML: %v", err)
-	}
-	if doc.Prehled.Zal.VZ != "13191" {
-		t.Errorf("zal@vz = %q, want 13191 (the legacy base)", doc.Prehled.Zal.VZ)
-	}
-	if doc.Prehled.Zal.DP != "3852" {
-		t.Errorf("zal@dp = %q, want 3852", doc.Prehled.Zal.DP)
+	var userMessage *domain.UserMessageError
+	if !errors.As(err, &userMessage) || userMessage.Message != msgOverviewNotCalculated {
+		t.Errorf("GenerateXML() error = %v, want user message %q", err, msgOverviewNotCalculated)
 	}
 }
 
@@ -860,8 +1176,8 @@ func TestGenerateXML_LegacyProductionRowWithoutStoredBase(t *testing.T) {
 		filed       bool
 		wantMessage string
 	}{
-		{name: "not filed", status: domain.FilingStatusDraft, wantMessage: "uložená záloha neodpovídá měsíčnímu základu, přepočítejte přehled"},
-		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantMessage: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"},
+		{name: "not filed", status: domain.FilingStatusDraft, wantMessage: msgOverviewNotCalculated},
+		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantMessage: msgOverviewNotCalculatedFiled},
 	}
 
 	for _, tt := range tests {

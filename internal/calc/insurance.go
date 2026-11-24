@@ -61,19 +61,62 @@ func SocialAdvanceMonthlyBase(computedAnnualBase, finalAnnualBase domain.Amount,
 	return domain.Amount(base)
 }
 
-// SocialAdvanceBoundsFromRules derives the advance bounds from the rule set of
-// the year in which the advance is paid. Bounds are only defined when the year
-// has a single minimum period; a year split into periods leaves the start of
-// the new advance open.
-func SocialAdvanceBoundsFromRules(c TaxYearConstants) (*AdvanceBaseBounds, bool) {
-	if len(c.SocialMinAdvanceBases) != 1 {
-		return nil, false
+// SocialAdvanceBoundsForMonth returns the advance base bounds for an advance
+// paid in the given month of the rule-set year.
+func SocialAdvanceBoundsForMonth(c TaxYearConstants, month int) (*AdvanceBaseBounds, error) {
+	minimum, err := c.SocialMinAdvanceBaseFor(month)
+	if err != nil {
+		return nil, fmt.Errorf("social advance bounds: %w", err)
 	}
-	bounds := &AdvanceBaseBounds{MinMonthly: c.SocialMinAdvanceBases[0].Base}
+	bounds := &AdvanceBaseBounds{MinMonthly: minimum}
 	if c.SocialMaxAnnualBase > 0 {
 		bounds.MaxMonthly = domain.Amount(int64(c.SocialMaxAnnualBase) / 12)
 	}
-	return bounds, true
+	return bounds, nil
+}
+
+// SocialAdvancePeriods returns the social advances due in the payment year
+// from startMonth on, one per minimum period of the payment year (ř. 35-36);
+// consecutive periods with the same base are merged. Without payment-year
+// rules it returns a single unbounded period.
+func SocialAdvancePeriods(computedAnnualBase, finalAnnualBase domain.Amount, months, startMonth int, payment *TaxYearConstants, ratePermille int) ([]domain.AdvancePeriod, error) {
+	if startMonth < 1 || startMonth > 12 {
+		return nil, fmt.Errorf("advance start month %d out of range 1-12: %w", startMonth, domain.ErrInvalidInput)
+	}
+	if payment == nil {
+		base := SocialAdvanceMonthlyBase(computedAnnualBase, finalAnnualBase, months, nil)
+		return []domain.AdvancePeriod{{
+			FromMonth:     startMonth,
+			MonthlyBase:   base,
+			MonthlyPrepay: SocialAdvanceFromMonthlyBase(base, ratePermille),
+		}}, nil
+	}
+
+	var periods []domain.AdvancePeriod
+	for i, p := range payment.SocialMinAdvanceBases {
+		periodEnd := 12
+		if i+1 < len(payment.SocialMinAdvanceBases) {
+			periodEnd = payment.SocialMinAdvanceBases[i+1].FromMonth - 1
+		}
+		if periodEnd < startMonth {
+			continue
+		}
+		from := max(p.FromMonth, startMonth)
+		bounds, err := SocialAdvanceBoundsForMonth(*payment, from)
+		if err != nil {
+			return nil, err
+		}
+		base := SocialAdvanceMonthlyBase(computedAnnualBase, finalAnnualBase, months, bounds)
+		if n := len(periods); n > 0 && periods[n-1].MonthlyBase == base {
+			continue
+		}
+		periods = append(periods, domain.AdvancePeriod{
+			FromMonth:     from,
+			MonthlyBase:   base,
+			MonthlyPrepay: SocialAdvanceFromMonthlyBase(base, ratePermille),
+		})
+	}
+	return periods, nil
 }
 
 // InsuranceResult holds the computed insurance values.

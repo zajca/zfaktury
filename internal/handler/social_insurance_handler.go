@@ -55,31 +55,72 @@ type socialInsuranceActivityMonthsRequest struct {
 
 // socialInsuranceResponse is the JSON response for a social insurance overview.
 type socialInsuranceResponse struct {
-	ID                  int64   `json:"id"`
-	Year                int     `json:"year"`
-	FilingType          string  `json:"filing_type"`
-	ActivityMonths      []int   `json:"activity_months"`
-	TotalRevenue        int64   `json:"total_revenue"`
-	TotalExpenses       int64   `json:"total_expenses"`
-	TaxBase             int64   `json:"tax_base"`
-	AssessmentBase      int64   `json:"assessment_base"`
-	MinAssessmentBase   int64   `json:"min_assessment_base"`
-	FinalAssessmentBase int64   `json:"final_assessment_base"`
-	InsuranceRate       int     `json:"insurance_rate"`
-	TotalInsurance      int64   `json:"total_insurance"`
-	Prepayments         int64   `json:"prepayments"`
-	Difference          int64   `json:"difference"`
-	NewMonthlyPrepay    int64   `json:"new_monthly_prepay"`
-	HasXML              bool    `json:"has_xml"`
-	Status              string  `json:"status"`
-	FiledAt             *string `json:"filed_at,omitempty"`
-	CreatedAt           string  `json:"created_at"`
-	UpdatedAt           string  `json:"updated_at"`
+	ID                  int64              `json:"id"`
+	Year                int                `json:"year"`
+	FilingType          string             `json:"filing_type"`
+	ActivityMonths      []int              `json:"activity_months"`
+	TotalRevenue        int64              `json:"total_revenue"`
+	TotalExpenses       int64              `json:"total_expenses"`
+	TaxBase             int64              `json:"tax_base"`
+	AssessmentBase      int64              `json:"assessment_base"`
+	MinAssessmentBase   int64              `json:"min_assessment_base"`
+	FinalAssessmentBase int64              `json:"final_assessment_base"`
+	InsuranceRate       int                `json:"insurance_rate"`
+	TotalInsurance      int64              `json:"total_insurance"`
+	Prepayments         int64              `json:"prepayments"`
+	Difference          int64              `json:"difference"`
+	NewMonthlyPrepay    int64              `json:"new_monthly_prepay"`
+	NewMonthlyBase      *int64             `json:"new_monthly_base"`
+	FilingMethod        string             `json:"filing_method"`
+	AdvanceYear         int                `json:"advance_year"`
+	AdvanceStartMonth   int                `json:"advance_start_month"`
+	AdvancePeriods      []advancePeriodDTO `json:"advance_periods"`
+	Warnings            []string           `json:"warnings"`
+	HasXML              bool               `json:"has_xml"`
+	Status              string             `json:"status"`
+	FiledAt             *string            `json:"filed_at,omitempty"`
+	CreatedAt           string             `json:"created_at"`
+	UpdatedAt           string             `json:"updated_at"`
+}
+
+// advancePeriodDTO is the JSON form of a domain.AdvancePeriod.
+type advancePeriodDTO struct {
+	FromMonth     int   `json:"from_month"`
+	MonthlyBase   int64 `json:"monthly_base"`
+	MonthlyPrepay int64 `json:"monthly_prepay"`
+}
+
+// advancePeriodsToDTO converts periods to DTOs; no periods give an empty slice.
+func advancePeriodsToDTO(periods []domain.AdvancePeriod) []advancePeriodDTO {
+	dtos := make([]advancePeriodDTO, 0, len(periods))
+	for _, p := range periods {
+		dtos = append(dtos, advancePeriodDTO{
+			FromMonth:     p.FromMonth,
+			MonthlyBase:   int64(p.MonthlyBase),
+			MonthlyPrepay: int64(p.MonthlyPrepay),
+		})
+	}
+	return dtos
 }
 
 // socialInsuranceFromDomain converts a domain.SocialInsuranceOverview to a socialInsuranceResponse.
 func socialInsuranceFromDomain(sio *domain.SocialInsuranceOverview) socialInsuranceResponse {
+	var newMonthlyBase *int64
+	if sio.NewMonthlyBase != nil {
+		base := int64(*sio.NewMonthlyBase)
+		newMonthlyBase = &base
+	}
+	warnings := sio.Warnings
+	if warnings == nil {
+		warnings = []string{}
+	}
 	return socialInsuranceResponse{
+		NewMonthlyBase:      newMonthlyBase,
+		FilingMethod:        string(sio.FilingMethod),
+		AdvanceYear:         sio.Year + 1,
+		AdvanceStartMonth:   sio.AdvanceStartMonth,
+		AdvancePeriods:      advancePeriodsToDTO(sio.AdvancePeriods),
+		Warnings:            warnings,
 		ID:                  sio.ID,
 		Year:                sio.Year,
 		FilingType:          sio.FilingType,

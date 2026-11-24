@@ -138,6 +138,11 @@ type SocialInsuranceOverview struct {
 	NewMonthlyPrepay Amount  // nova mesicni zaloha
 	NewMonthlyBase   *Amount // mesicni vym. zaklad pro zalohy (ř. 35); nil = not stored
 
+	FilingMethod      FilingMethod    // filing method of the last recalculation; the XML section H is written from it
+	AdvanceStartMonth int             // month of Year+1 the new advance starts; 0 = not calculated
+	AdvancePeriods    []AdvancePeriod // advances due from the start month, one per minimum period
+	Warnings          []string        // Warning* tokens of the last calculation
+
 	XMLData   []byte
 	Status    string
 	FiledAt   *time.Time

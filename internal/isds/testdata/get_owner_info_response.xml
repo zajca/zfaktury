@@ -7,7 +7,7 @@
         <aifoIsds>false</aifoIsds>
         <dbType>FO</dbType>
         <ic xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
-        <pnFirstName>Jan</pnFirstName>
+        <pnGivenNames>Jan Karel</pnGivenNames>
         <pnLastName>Testovaci</pnLastName>
         <firmName xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
       </dbOwnerInfo>

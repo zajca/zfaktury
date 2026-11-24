@@ -121,14 +121,17 @@ type authenticator interface {
 	apply(req *http.Request)
 }
 
+// basicAuth is used through a pointer: fmt prints a nested pointer as an
+// address, so reflection-based printing of a Client (which cannot call methods
+// on unexported fields) never reaches the credentials.
 type basicAuth struct{ creds Credentials }
 
-func (a basicAuth) apply(req *http.Request) { req.SetBasicAuth(a.creds.Username, a.creds.Password) }
+func (a *basicAuth) apply(req *http.Request) {
+	req.SetBasicAuth(a.creds.Username, a.creds.Password)
+}
 
-// String and GoString keep the secrets out of reflection-based printing of a
-// client, which cannot call methods on unexported fields.
-func (basicAuth) String() string   { return "basicAuth(" + redacted + ")" }
-func (basicAuth) GoString() string { return "basicAuth(" + redacted + ")" }
+func (*basicAuth) String() string   { return "basicAuth(" + redacted + ")" }
+func (*basicAuth) GoString() string { return "basicAuth(" + redacted + ")" }
 
 // Client talks to the ISDS web services of one environment as one login.
 type Client struct {
@@ -138,18 +141,19 @@ type Client struct {
 	httpClient       *http.Client
 }
 
-// String implements fmt.Stringer without exposing the login.
-func (c *Client) String() string { return "isds.Client(" + c.baseURL + ")" }
+// String implements fmt.Stringer without exposing the login. The value
+// receiver also covers a dereferenced Client.
+func (c Client) String() string { return "isds.Client(" + c.baseURL + ")" }
 
 // GoString implements fmt.GoStringer without exposing the login.
-func (c *Client) GoString() string { return c.String() }
+func (c Client) GoString() string { return c.String() }
 
 // Option configures the Client.
 type Option func(*Client)
 
-// WithBaseURL overrides the environment's base URL, which is meant for tests
-// against a fake. Only https URLs (or http to a loopback host) are accepted.
-func WithBaseURL(baseURL string) Option {
+// withBaseURL overrides the environment's base URL for tests against a fake.
+// Only https URLs (or http to a loopback host) are accepted.
+func withBaseURL(baseURL string) Option {
 	return func(c *Client) {
 		if baseURL != "" {
 			c.baseURL = strings.TrimRight(baseURL, "/")
@@ -179,11 +183,15 @@ func WithMaxResponseBytes(n int64) Option {
 
 // WithHTTPClient replaces the HTTP client. The given client is copied and the
 // copy never follows redirects. Its transport must verify TLS certificates.
+// A client without a timeout inherits the timeout configured so far.
 func WithHTTPClient(hc *http.Client) Option {
 	return func(c *Client) {
 		if hc != nil {
 			cp := *hc
 			cp.CheckRedirect = noRedirect
+			if cp.Timeout == 0 {
+				cp.Timeout = c.httpClient.Timeout
+			}
 			c.httpClient = &cp
 		}
 	}
@@ -204,7 +212,7 @@ func NewClient(env Environment, creds Credentials, opts ...Option) (*Client, err
 
 	c := &Client{
 		baseURL:          base,
-		auth:             basicAuth{creds: creds},
+		auth:             &basicAuth{creds: creds},
 		maxResponseBytes: DefaultMaxResponseBytes,
 		httpClient: &http.Client{
 			Timeout:       DefaultTimeout,

@@ -111,7 +111,7 @@ func newFake(t *testing.T, status int, body []byte) (*httptest.Server, *recorded
 
 func newTestClient(t *testing.T, srv *httptest.Server, opts ...Option) *Client {
 	t.Helper()
-	all := append([]Option{WithBaseURL(srv.URL)}, opts...)
+	all := append([]Option{withBaseURL(srv.URL)}, opts...)
 	c, err := NewClient(EnvironmentTest, Credentials{Username: testUsername, Password: testPassword}, all...)
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
@@ -157,9 +157,9 @@ func TestNewClient_RequiresExplicitConfig(t *testing.T) {
 		{"no username", EnvironmentTest, Credentials{Password: "p"}, nil},
 		{"no password", EnvironmentTest, Credentials{Username: "u"}, nil},
 		{"colon in username", EnvironmentTest, Credentials{Username: "a:b", Password: "p"}, nil},
-		{"plain http to a remote host", EnvironmentTest, good, []Option{WithBaseURL("http://ws1.example.test")}},
-		{"credentials in the base URL", EnvironmentTest, good, []Option{WithBaseURL("https://user:pw@ws1.example.test")}},
-		{"query in the base URL", EnvironmentTest, good, []Option{WithBaseURL("https://ws1.example.test?x=1")}},
+		{"plain http to a remote host", EnvironmentTest, good, []Option{withBaseURL("http://ws1.example.test")}},
+		{"credentials in the base URL", EnvironmentTest, good, []Option{withBaseURL("https://user:pw@ws1.example.test")}},
+		{"query in the base URL", EnvironmentTest, good, []Option{withBaseURL("https://ws1.example.test?x=1")}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -365,6 +365,31 @@ func TestWithHTTPClient_RedirectsStayDisabledAndInputIsNotMutated(t *testing.T) 
 	}
 }
 
+func TestWithHTTPClient_KeepsConfiguredTimeoutWhenInjectedHasNone(t *testing.T) {
+	creds := Credentials{Username: "u", Password: "p"}
+	tests := []struct {
+		name string
+		opts []Option
+		want time.Duration
+	}{
+		{"default", []Option{WithHTTPClient(&http.Client{})}, DefaultTimeout},
+		{"timeout set before", []Option{WithTimeout(5 * time.Second), WithHTTPClient(&http.Client{})}, 5 * time.Second},
+		{"timeout set after", []Option{WithHTTPClient(&http.Client{}), WithTimeout(7 * time.Second)}, 7 * time.Second},
+		{"injected timeout wins", []Option{WithHTTPClient(&http.Client{Timeout: 3 * time.Second})}, 3 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(EnvironmentTest, creds, tt.opts...)
+			if err != nil {
+				t.Fatalf("NewClient: %v", err)
+			}
+			if got := c.httpClient.Timeout; got != tt.want {
+				t.Errorf("timeout = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResponseNamespacePrefixesAreTolerated(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, fixture(t, "get_owner_info_response_prefixed.xml"))
 	info, err := newTestClient(t, srv).GetOwnerInfo(context.Background())
@@ -430,7 +455,8 @@ func TestSecretsNeverLeak(t *testing.T) {
 	slog.New(slog.NewJSONHandler(&structLog, nil)).Info("login", "creds", creds)
 	seen = append(seen,
 		creds.String(), fmt.Sprintf("%v", creds), fmt.Sprintf("%+v", creds), fmt.Sprintf("%#v", creds),
-		fmt.Sprintf("%v", c), fmt.Sprintf("%+v", c),
+		fmt.Sprintf("%v", c), fmt.Sprintf("%+v", c), fmt.Sprintf("%#v", c),
+		fmt.Sprintf("%v", *c), fmt.Sprintf("%+v", *c), fmt.Sprintf("%#v", *c),
 		string(asJSON), structLog.String(), logs.String(),
 	)
 

@@ -31,7 +31,7 @@ func TestGetOwnerInfo(t *testing.T) {
 		t.Fatalf("GetOwnerInfo: %v", err)
 	}
 	assertRequest(t, rec, "/DS/DsManage", "get_owner_info_request.xml")
-	want := OwnerInfo{BoxID: "abc1234", BoxType: "FO", FirstName: "Jan", LastName: "Testovaci"}
+	want := OwnerInfo{BoxID: "abc1234", BoxType: "FO", GivenNames: "Jan Karel", LastName: "Testovaci"}
 	if *info != want {
 		t.Errorf("info = %+v, want %+v", *info, want)
 	}

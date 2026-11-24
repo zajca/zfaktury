@@ -3,7 +3,8 @@
   <soap:Body>
     <GetUserInfoFromLogin2Response xmlns="http://isds.czechpoint.cz/v20">
       <dbUserInfo>
-        <pnFirstName>Fake</pnFirstName>
+        <aifoIsds>false</aifoIsds>
+        <pnGivenNames>Fake</pnGivenNames>
         <pnLastName>Delegate</pnLastName>
         <userType>OFFICIAL</userType>
         <userPrivils>12</userPrivils>

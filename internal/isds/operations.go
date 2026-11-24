@@ -35,11 +35,11 @@ func (p Privileges) CanReadMessages() bool {
 
 // OwnerInfo describes the box the login belongs to.
 type OwnerInfo struct {
-	BoxID     string
-	BoxType   string
-	FirstName string
-	LastName  string
-	FirmName  string
+	BoxID      string
+	BoxType    string
+	GivenNames string
+	LastName   string
+	FirmName   string
 }
 
 // UserInfo describes the logged-in user of the box.
@@ -92,11 +92,11 @@ type signedSentMessageDownloadRequest struct {
 
 type ownerInfoResponse struct {
 	Owner struct {
-		BoxID     string `xml:"dbID"`
-		BoxType   string `xml:"dbType"`
-		FirstName string `xml:"pnFirstName"`
-		LastName  string `xml:"pnLastName"`
-		FirmName  string `xml:"firmName"`
+		BoxID      string `xml:"dbID"`
+		BoxType    string `xml:"dbType"`
+		GivenNames string `xml:"pnGivenNames"`
+		LastName   string `xml:"pnLastName"`
+		FirmName   string `xml:"firmName"`
 	} `xml:"dbOwnerInfo"`
 	Status *dbStatus `xml:"dbStatus"`
 }
@@ -146,11 +146,11 @@ func (c *Client) GetOwnerInfo(ctx context.Context) (*OwnerInfo, error) {
 		return nil, fmt.Errorf("GetOwnerInfoFromLogin2: %w", err)
 	}
 	return &OwnerInfo{
-		BoxID:     resp.Owner.BoxID,
-		BoxType:   resp.Owner.BoxType,
-		FirstName: resp.Owner.FirstName,
-		LastName:  resp.Owner.LastName,
-		FirmName:  resp.Owner.FirmName,
+		BoxID:      resp.Owner.BoxID,
+		BoxType:    resp.Owner.BoxType,
+		GivenNames: resp.Owner.GivenNames,
+		LastName:   resp.Owner.LastName,
+		FirmName:   resp.Owner.FirmName,
 	}, nil
 }
 

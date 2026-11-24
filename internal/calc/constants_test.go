@@ -171,28 +171,38 @@ func TestMinimumSocialAdvanceFromCatalog(t *testing.T) {
 	}
 }
 
-func TestSocialAdvanceBoundsFromRules(t *testing.T) {
-	rules2025, err := GetTaxConstants(2025)
+func TestSocialAdvanceBoundsForMonth(t *testing.T) {
+	tests := []struct {
+		year, month  int
+		wantMin, max domain.Amount
+	}{
+		{2026, 6, domain.NewAmount(19_587, 0), domain.NewAmount(195_868, 0)},
+		{2026, 7, domain.NewAmount(17_139, 0), domain.NewAmount(195_868, 0)},
+		{2025, 1, domain.NewAmount(16_295, 0), domain.NewAmount(186_228, 0)},
+	}
+	for _, tt := range tests {
+		c, err := GetTaxConstants(tt.year)
+		if err != nil {
+			t.Fatalf("GetTaxConstants(%d) error: %v", tt.year, err)
+		}
+		bounds, err := SocialAdvanceBoundsForMonth(c, tt.month)
+		if err != nil {
+			t.Fatalf("SocialAdvanceBoundsForMonth(%d, %d) error: %v", tt.year, tt.month, err)
+		}
+		if bounds.MinMonthly != tt.wantMin {
+			t.Errorf("%d/%d MinMonthly = %d, want %d", tt.year, tt.month, bounds.MinMonthly, tt.wantMin)
+		}
+		if bounds.MaxMonthly != tt.max {
+			t.Errorf("%d/%d MaxMonthly = %d, want %d", tt.year, tt.month, bounds.MaxMonthly, tt.max)
+		}
+	}
+
+	c2025, err := GetTaxConstants(2025)
 	if err != nil {
 		t.Fatalf("GetTaxConstants(2025) error: %v", err)
 	}
-	bounds, ok := SocialAdvanceBoundsFromRules(rules2025)
-	if !ok {
-		t.Fatal("SocialAdvanceBoundsFromRules(2025) ok = false, want true")
-	}
-	if want := domain.NewAmount(16_295, 0); bounds.MinMonthly != want {
-		t.Errorf("MinMonthly = %d, want %d", bounds.MinMonthly, want)
-	}
-	if want := domain.NewAmount(186_228, 0); bounds.MaxMonthly != want {
-		t.Errorf("MaxMonthly = %d, want %d", bounds.MaxMonthly, want)
-	}
-
-	rules2026, err := GetTaxConstants(2026)
-	if err != nil {
-		t.Fatalf("GetTaxConstants(2026) error: %v", err)
-	}
-	if _, ok := SocialAdvanceBoundsFromRules(rules2026); ok {
-		t.Error("SocialAdvanceBoundsFromRules(2026) ok = true, want false for two minimum periods")
+	if _, err := SocialAdvanceBoundsForMonth(c2025, 0); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("month 0 error = %v, want ErrInvalidInput", err)
 	}
 
 	for _, year := range []int{2024, 2025, 2026} {

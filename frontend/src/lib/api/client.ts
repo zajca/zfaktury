@@ -1084,6 +1084,12 @@ export interface IncomeTaxReturn {
 	updated_at: string;
 }
 
+export interface AdvancePeriod {
+	from_month: number;
+	monthly_base: number;
+	monthly_prepay: number;
+}
+
 export interface SocialInsuranceOverview {
 	id: number;
 	year: number;
@@ -1100,6 +1106,12 @@ export interface SocialInsuranceOverview {
 	prepayments: number;
 	difference: number;
 	new_monthly_prepay: number;
+	new_monthly_base: number | null;
+	filing_method: FilingMethod;
+	advance_year: number;
+	advance_start_month: number;
+	advance_periods: AdvancePeriod[];
+	warnings: string[];
 	has_xml: boolean;
 	status: string;
 	filed_at: string | null;

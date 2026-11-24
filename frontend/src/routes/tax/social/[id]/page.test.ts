@@ -36,7 +36,16 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
 		total_insurance: 2854900,
 		prepayments: 0,
 		difference: 2854900,
-		new_monthly_prepay: 475900,
+		new_monthly_prepay: 572000,
+		new_monthly_base: 1958700,
+		filing_method: 'standard',
+		advance_year: 2026,
+		advance_start_month: 6,
+		advance_periods: [
+			{ from_month: 6, monthly_base: 1958700, monthly_prepay: 572000 },
+			{ from_month: 7, monthly_base: 1713900, monthly_prepay: 500500 }
+		],
+		warnings: [],
 		has_xml: false,
 		status: 'draft',
 		filed_at: null,
@@ -100,6 +109,16 @@ describe('social insurance overview detail page', () => {
 		expect(
 			screen.getByText('červenec, srpen, září, říjen, listopad, prosinec (6 měs.)')
 		).toBeInTheDocument();
+	});
+
+	it('renders the advance schedule with its start month and warnings', async () => {
+		mockApi({ overview: makeOverview({ warnings: ['filing_method_missing'] }) });
+
+		await renderPage();
+
+		expect(screen.getByText(/Nová záloha od:/)).toHaveTextContent('červen 2026');
+		expect(screen.getByText('od červenec 2026:')).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Nastavit způsob podání' })).toBeInTheDocument();
 	});
 
 	it('saves the months through the activity-months endpoint', async () => {

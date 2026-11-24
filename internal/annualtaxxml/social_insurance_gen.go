@@ -28,6 +28,9 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	if err := sio.ActivityMonths.Validate(); err != nil {
 		return nil, fmt.Errorf("social insurance overview activity months: %w", err)
 	}
+	if err := sio.FilingMethod.Validate(); err != nil {
+		return nil, fmt.Errorf("social insurance overview filing method: %w", err)
+	}
 
 	rok := strconv.Itoa(sio.Year)
 
@@ -41,9 +44,13 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	// ř. 35: the monthly advance base of the stored calculation.
 	monthlyAssessmentBase := ToWholeCZK(advanceMonthlyBase)
 
-	priznElektr := "A"
-	if v := strings.TrimSpace(settings["tax_return_filed_electronically"]); v != "" {
-		priznElektr = v
+	// ř. 40 and ř. 41: how the income-tax return was filed after 1 April.
+	priznElektr, priznPor := "N", "N"
+	switch sio.FilingMethod {
+	case domain.FilingMethodElectronic:
+		priznElektr = "A"
+	case domain.FilingMethodAdvisor:
+		priznPor = "A"
 	}
 
 	doc := &OSVC{
@@ -135,7 +142,7 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 				Pau:    settings["flat_tax_regime_reason"],
 				Pov:    "A",
 				Elektr: priznElektr,
-				Por:    settings["tax_advisor_after_april"],
+				Por:    priznPor,
 			},
 
 			Spo: Spo{

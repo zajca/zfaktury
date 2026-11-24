@@ -501,6 +501,65 @@ func validSocialInsuranceSettings() map[string]string {
 
 // testAdvanceBase returns the ř. 35 base the fixtures are calculated with: the
 // final annual base spread over the months of activity, rounded up.
+func TestSocialInsuranceXML_FilingMethodFlags(t *testing.T) {
+	tests := []struct {
+		method      domain.FilingMethod
+		elektr, por string
+	}{
+		{domain.FilingMethodUnset, "N", "N"},
+		{domain.FilingMethodStandard, "N", "N"},
+		{domain.FilingMethodElectronic, "A", "N"},
+		{domain.FilingMethodAdvisor, "N", "A"},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.method), func(t *testing.T) {
+			sio := &domain.SocialInsuranceOverview{
+				Year:                2025,
+				FilingType:          domain.FilingTypeRegular,
+				ActivityMonths:      domain.FullYearActivityMonths,
+				FinalAssessmentBase: domain.NewAmount(195_540, 0),
+				InsuranceRate:       292,
+				FilingMethod:        tt.method,
+			}
+			settings := map[string]string{
+				"cssz_code":             "775",
+				"taxpayer_first_name":   "Jan",
+				"taxpayer_last_name":    "Novak",
+				"taxpayer_birth_number": "8001011234",
+				"taxpayer_birth_date":   "1980-01-01",
+				"taxpayer_street":       "Hlavni",
+				"taxpayer_house_number": "42",
+				"taxpayer_postal_code":  "11000",
+				"taxpayer_city":         "Praha",
+			}
+			xmlData, err := GenerateSocialInsuranceXML(sio, settings, testAdvanceBase(sio))
+			if err != nil {
+				t.Fatalf("GenerateSocialInsuranceXML: %v", err)
+			}
+			var doc OSVC
+			if err := xml.Unmarshal(xmlData, &doc); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if doc.Prehled.Prizn.Elektr != tt.elektr || doc.Prehled.Prizn.Por != tt.por {
+				t.Errorf("elektr/por = %q/%q, want %q/%q", doc.Prehled.Prizn.Elektr, doc.Prehled.Prizn.Por, tt.elektr, tt.por)
+			}
+		})
+	}
+}
+
+func TestSocialInsuranceXML_InvalidFilingMethod(t *testing.T) {
+	sio := &domain.SocialInsuranceOverview{
+		Year:           2025,
+		FilingType:     domain.FilingTypeRegular,
+		ActivityMonths: domain.FullYearActivityMonths,
+		FilingMethod:   domain.FilingMethod("paper"),
+	}
+	_, err := GenerateSocialInsuranceXML(sio, map[string]string{}, 0)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+}
+
 func testAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
 	months := int64(sio.ActivityMonths.Count())
 	if months <= 0 {

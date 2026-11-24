@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -23,6 +24,7 @@ type SocialInsuranceService struct {
 	taxYearSettingsRepo repository.TaxYearSettingsRepo
 	taxPrepaymentRepo   repository.TaxPrepaymentRepo
 	audit               *AuditService
+	now                 func() time.Time
 }
 
 // NewSocialInsuranceService creates a new SocialInsuranceService.
@@ -43,6 +45,7 @@ func NewSocialInsuranceService(
 		taxYearSettingsRepo: taxYearSettingsRepo,
 		taxPrepaymentRepo:   taxPrepaymentRepo,
 		audit:               audit,
+		now:                 time.Now,
 	}
 }
 
@@ -164,10 +167,9 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	return sio, nil
 }
 
-// advanceBounds returns the bounds of the monthly advance base for advances
-// paid after the overview year, or nil when the following year has no rule set
-// yet or its minimum is split into periods.
-func (s *SocialInsuranceService) advanceBounds(year int) (*calc.AdvanceBaseBounds, error) {
+// paymentYearConstants returns the rule set of the year after the overview
+// year, in which the new advance is paid, or nil when that year has no rule set.
+func (s *SocialInsuranceService) paymentYearConstants(year int) (*calc.TaxYearConstants, error) {
 	constants, err := calc.GetTaxConstants(year + 1)
 	if err != nil {
 		var noRules *taxrules.NoRuleSetError
@@ -176,22 +178,20 @@ func (s *SocialInsuranceService) advanceBounds(year int) (*calc.AdvanceBaseBound
 		}
 		return nil, fmt.Errorf("getting tax constants for advances paid after %d: %w", year, err)
 	}
-	bounds, ok := calc.SocialAdvanceBoundsFromRules(constants)
-	if !ok {
-		return nil, nil
-	}
-	return bounds, nil
+	return &constants, nil
 }
 
-// storedAdvanceBase returns the monthly advance base stored with the overview.
-// Overviews stored before the base was kept have none, so their base is taken as
-// the final annual base over the months of activity and their stored advance may
-// not follow from it; such an overview has to be recalculated.
-func (s *SocialInsuranceService) storedAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
-	if sio.NewMonthlyBase != nil {
-		return *sio.NewMonthlyBase
+// taxYearSettingsFor returns the settings stored for the tax year; a year
+// without settings gets empty ones (flat rate 0, filing method unset).
+func (s *SocialInsuranceService) taxYearSettingsFor(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, year)
+	if errors.Is(err, domain.ErrNotFound) {
+		return &domain.TaxYearSettings{Year: year}, nil
 	}
-	return calc.SocialAdvanceMonthlyBase(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("fetching tax year settings for social insurance: %w", err)
+	}
+	return tys, nil
 }
 
 // applyRecalculatedAmounts fills the calculated amounts of the overview in memory
@@ -208,10 +208,18 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	}
 
 	// Get flat_rate_percent from tax year settings.
-	flatRatePercent := 0
-	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, sio.Year)
-	if err == nil {
-		flatRatePercent = tys.FlatRatePercent
+	tys, err := s.taxYearSettingsFor(ctx, sio.Year)
+	if err != nil {
+		return err
+	}
+	flatRatePercent := tys.FlatRatePercent
+	deadline, err := OverviewDeadline(sio.Year, tys.FilingMethod)
+	if err != nil {
+		return fmt.Errorf("computing overview deadline for social insurance: %w", err)
+	}
+	startMonth, err := SocialAdvanceStartMonth(sio.Year, deadline, sio.FiledAt)
+	if err != nil {
+		return fmt.Errorf("computing social advance start month: %w", err)
 	}
 
 	// Get tax constants for the year.
@@ -233,9 +241,16 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	}
 
 	// Pure calculation.
-	bounds, err := s.advanceBounds(sio.Year)
+	payment, err := s.paymentYearConstants(sio.Year)
 	if err != nil {
 		return err
+	}
+	var bounds *calc.AdvanceBaseBounds
+	if payment != nil {
+		bounds, err = calc.SocialAdvanceBoundsForMonth(*payment, startMonth)
+		if err != nil {
+			return fmt.Errorf("getting advance bounds for social insurance: %w", err)
+		}
 	}
 	insResult, err := calc.CalculateInsurance(calc.InsuranceInput{
 		Revenue:                annualBase.Revenue,
@@ -252,6 +267,22 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 		return fmt.Errorf("calculating social insurance: %w", err)
 	}
 
+	periods, err := calc.SocialAdvancePeriods(insResult.AssessmentBase, insResult.FinalAssessmentBase, sio.ActivityMonths.Count(), startMonth, payment, constants.SocialRate)
+	if err != nil {
+		return fmt.Errorf("calculating social advance periods: %w", err)
+	}
+	var warnings []string
+	if tys.FilingMethod == domain.FilingMethodUnset {
+		warnings = append(warnings, domain.WarningFilingMethodMissing)
+	}
+	if payment == nil {
+		warnings = append(warnings, domain.WarningAdvanceMinimumMissing)
+	}
+
+	sio.FilingMethod = tys.FilingMethod
+	sio.AdvanceStartMonth = startMonth
+	sio.AdvancePeriods = periods
+	sio.Warnings = warnings
 	sio.TaxBase = insResult.TaxBase
 	sio.AssessmentBase = insResult.AssessmentBase
 	sio.MinAssessmentBase = insResult.MinAssessmentBase
@@ -316,6 +347,12 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	if err != nil {
 		return nil, fmt.Errorf("fetching social_insurance_overview for XML generation: %w", err)
 	}
+	if sio.AdvanceStartMonth == 0 || sio.NewMonthlyBase == nil {
+		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
+			return nil, fmt.Errorf("přehled %d byl spočítán starší verzí aplikace a je už podaný, uložené XML zůstává beze změny: %w", sio.ID, domain.ErrInvalidInput)
+		}
+		return nil, fmt.Errorf("přehled %d byl spočítán starší verzí aplikace, přepočítejte ho: %w", sio.ID, domain.ErrInvalidInput)
+	}
 
 	// Load settings for taxpayer info.
 	// The XML generator expects taxpayer_* prefixed keys, but the actual settings
@@ -347,13 +384,19 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		settings["cssz_variable_symbol"] = val
 	}
 	// Read flat_rate_percent from tax year settings for XML generation.
-	tys, tysErr := s.taxYearSettingsRepo.GetByYear(ctx, sio.Year)
-	if tysErr == nil && tys.FlatRatePercent > 0 {
+	tys, err := s.taxYearSettingsFor(ctx, sio.Year)
+	if err != nil {
+		return nil, err
+	}
+	if tys.FlatRatePercent > 0 {
 		settings["flat_rate_percent"] = strconv.Itoa(tys.FlatRatePercent)
 		settings["flat_rate_expenses"] = "true"
 	}
+	if tys.FilingMethod != sio.FilingMethod {
+		return nil, fmt.Errorf("přehled %d: způsob podání daňového přiznání se od výpočtu změnil, přepočítejte přehled: %w", sio.ID, domain.ErrInvalidInput)
+	}
 
-	advanceBase := s.storedAdvanceBase(sio)
+	advanceBase := *sio.NewMonthlyBase
 	if want := calc.SocialAdvanceFromMonthlyBase(advanceBase, sio.InsuranceRate); want != sio.NewMonthlyPrepay {
 		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
 			return nil, &domain.UserMessageError{Message: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"}
@@ -388,6 +431,38 @@ func (s *SocialInsuranceService) GetXMLData(ctx context.Context, id int64) ([]by
 	return sio.XMLData, nil
 }
 
+// moveAdvanceStart recomputes the start month and the advance periods from the
+// filing date, which moves the start earlier when the overview was filed before
+// its deadline. The advance reported in the XML stays as filed; a warning says
+// when the first period then differs from it.
+func (s *SocialInsuranceService) moveAdvanceStart(sio *domain.SocialInsuranceOverview) error {
+	deadline, err := OverviewDeadline(sio.Year, sio.FilingMethod)
+	if err != nil {
+		return fmt.Errorf("computing overview deadline for social insurance: %w", err)
+	}
+	start, err := SocialAdvanceStartMonth(sio.Year, deadline, sio.FiledAt)
+	if err != nil {
+		return fmt.Errorf("computing social advance start month: %w", err)
+	}
+	if start == sio.AdvanceStartMonth {
+		return nil
+	}
+	payment, err := s.paymentYearConstants(sio.Year)
+	if err != nil {
+		return err
+	}
+	periods, err := calc.SocialAdvancePeriods(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), start, payment, sio.InsuranceRate)
+	if err != nil {
+		return fmt.Errorf("calculating social advance periods: %w", err)
+	}
+	sio.AdvanceStartMonth = start
+	sio.AdvancePeriods = periods
+	if sio.NewMonthlyBase != nil && periods[0].MonthlyBase != *sio.NewMonthlyBase && !slices.Contains(sio.Warnings, domain.WarningAdvanceDiffersFromXML) {
+		sio.Warnings = append(sio.Warnings, domain.WarningAdvanceDiffersFromXML)
+	}
+	return nil
+}
+
 // MarkFiled marks a social insurance overview as filed and records the timestamp.
 func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
@@ -402,9 +477,15 @@ func (s *SocialInsuranceService) MarkFiled(ctx context.Context, id int64) (*doma
 		return nil, domain.ErrFilingAlreadyFiled
 	}
 
-	now := time.Now()
+	now := s.now()
 	sio.Status = domain.FilingStatusFiled
 	sio.FiledAt = &now
+
+	if sio.AdvanceStartMonth != 0 {
+		if err := s.moveAdvanceStart(sio); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := s.repo.Update(ctx, sio); err != nil {
 		return nil, fmt.Errorf("marking social_insurance_overview as filed: %w", err)

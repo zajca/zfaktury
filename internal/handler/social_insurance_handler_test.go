@@ -219,6 +219,58 @@ func TestSocialInsurance_List_InvalidYear(t *testing.T) {
 	}
 }
 
+// recalculateSocialInsurance recalculates the overview, which stores the advance
+// start month the XML export requires.
+func recalculateSocialInsurance(t *testing.T, r *chi.Mux, id int64) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/social-insurance/%d/recalculate", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("recalculate: status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+}
+
+func TestSocialInsurance_GetByID_AdvanceFields(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+	recalculateSocialInsurance(t, r, id)
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/social-insurance/%d", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	for _, key := range []string{"advance_year", "advance_start_month", "advance_periods", "warnings", "filing_method", "new_monthly_base"} {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("response has no %q: %s", key, w.Body.String())
+		}
+	}
+
+	var resp socialInsuranceResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if resp.AdvanceYear != 2026 || resp.AdvanceStartMonth != 6 {
+		t.Errorf("advance year/start = %d/%d, want 2026/6", resp.AdvanceYear, resp.AdvanceStartMonth)
+	}
+	if len(resp.AdvancePeriods) != 2 {
+		t.Errorf("AdvancePeriods = %+v, want 2 periods", resp.AdvancePeriods)
+	}
+	if resp.NewMonthlyBase == nil || *resp.NewMonthlyBase != 1_958_700 {
+		t.Errorf("NewMonthlyBase = %v, want 1958700 halere", resp.NewMonthlyBase)
+	}
+	if string(raw["warnings"]) != `["filing_method_missing"]` {
+		t.Errorf("warnings = %s, want [\"filing_method_missing\"]", raw["warnings"])
+	}
+}
+
 func TestSocialInsurance_GetByID(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 	id := createSocialInsurance(t, r, 2025)
@@ -442,6 +494,7 @@ func TestSocialInsurance_MarkFiled_NotFound(t *testing.T) {
 func TestSocialInsurance_GenerateXML(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 	id := createSocialInsurance(t, r, 2025)
+	recalculateSocialInsurance(t, r, id)
 
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/social-insurance/%d/generate-xml", id), nil)
 	w := httptest.NewRecorder()
@@ -476,6 +529,7 @@ func TestSocialInsurance_GenerateXML_NotFound(t *testing.T) {
 func TestSocialInsurance_DownloadXML(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 	id := createSocialInsurance(t, r, 2025)
+	recalculateSocialInsurance(t, r, id)
 
 	// Generate XML first.
 	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/social-insurance/%d/generate-xml", id), nil)

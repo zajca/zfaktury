@@ -634,6 +634,61 @@ func TestSocialAdvanceMonthlyBase(t *testing.T) {
 	}
 }
 
+func TestSocialAdvancePeriods(t *testing.T) {
+	czk := func(v int64) domain.Amount { return domain.NewAmount(v, 0) }
+	period := func(from int, base, prepay int64) domain.AdvancePeriod {
+		return domain.AdvancePeriod{FromMonth: from, MonthlyBase: czk(base), MonthlyPrepay: czk(prepay)}
+	}
+	rules := func(year int) *TaxYearConstants {
+		c, err := GetTaxConstants(year)
+		if err != nil {
+			t.Fatalf("GetTaxConstants(%d) error: %v", year, err)
+		}
+		return &c
+	}
+
+	tests := []struct {
+		name     string
+		computed domain.Amount
+		final    domain.Amount
+		start    int
+		payment  *TaxYearConstants
+		want     []domain.AdvancePeriod
+	}{
+		{"minimum split from June", 0, czk(195_540), 6, rules(2026), []domain.AdvancePeriod{period(6, 19_587, 5_720), period(7, 17_139, 5_005)}},
+		{"start in July", 0, czk(195_540), 7, rules(2026), []domain.AdvancePeriod{period(7, 17_139, 5_005)}},
+		{"start in January", 0, czk(195_540), 1, rules(2026), []domain.AdvancePeriod{period(1, 19_587, 5_720), period(7, 17_139, 5_005)}},
+		{"base between the minima", czk(216_000), czk(216_000), 6, rules(2026), []domain.AdvancePeriod{period(6, 19_587, 5_720), period(7, 18_000, 5_256)}},
+		{"base between the minima, late start", czk(216_000), czk(216_000), 9, rules(2026), []domain.AdvancePeriod{period(9, 18_000, 5_256)}},
+		{"above both minima merges", czk(300_000), czk(300_000), 6, rules(2026), []domain.AdvancePeriod{period(6, 25_000, 7_300)}},
+		{"capped at the maximum", czk(3_000_000), czk(2_234_736), 6, rules(2026), []domain.AdvancePeriod{period(6, 195_868, 57_194)}},
+		{"no payment-year rules", 0, czk(205_668), 6, nil, []domain.AdvancePeriod{period(6, 17_139, 5_005)}},
+		{"single-period year", 0, czk(158_292), 6, rules(2025), []domain.AdvancePeriod{period(6, 16_295, 4_759)}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := SocialAdvancePeriods(tt.computed, tt.final, 12, tt.start, tt.payment, 292)
+			if err != nil {
+				t.Fatalf("SocialAdvancePeriods error: %v", err)
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("periods = %+v, want %+v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("period %d = %+v, want %+v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+
+	for _, start := range []int{0, 13} {
+		if _, err := SocialAdvancePeriods(0, czk(195_540), 12, start, rules(2026), 292); !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("start %d error = %v, want ErrInvalidInput", start, err)
+		}
+	}
+}
+
 func TestCalculateInsuranceWithPaymentYearBounds(t *testing.T) {
 	result, err := CalculateInsurance(InsuranceInput{
 		Revenue:                domain.NewAmount(100_000, 0),

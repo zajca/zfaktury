@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -25,7 +26,62 @@ const socialInsuranceColumns = `id, year, filing_type, activity_months,
 	total_revenue, total_expenses, tax_base,
 	assessment_base, min_assessment_base, final_assessment_base,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
-	new_monthly_base, xml_data, status, filed_at, created_at, updated_at`
+	new_monthly_base, filing_method, advance_start_month, advance_periods, warnings,
+	xml_data, status, filed_at, created_at, updated_at`
+
+// advancePeriodRow is the JSON form of a domain.AdvancePeriod in the
+// advance_periods column; amounts are in halere.
+type advancePeriodRow struct {
+	FromMonth     int   `json:"from_month"`
+	MonthlyBase   int64 `json:"monthly_base"`
+	MonthlyPrepay int64 `json:"monthly_prepay"`
+}
+
+// encodeAdvancePeriods serialises the periods for storage; no periods give "".
+func encodeAdvancePeriods(periods []domain.AdvancePeriod) (string, error) {
+	if len(periods) == 0 {
+		return "", nil
+	}
+	rows := make([]advancePeriodRow, 0, len(periods))
+	for _, p := range periods {
+		rows = append(rows, advancePeriodRow{
+			FromMonth:     p.FromMonth,
+			MonthlyBase:   int64(p.MonthlyBase),
+			MonthlyPrepay: int64(p.MonthlyPrepay),
+		})
+	}
+	data, err := json.Marshal(rows)
+	if err != nil {
+		return "", fmt.Errorf("encoding advance periods: %w", err)
+	}
+	return string(data), nil
+}
+
+// decodeAdvancePeriods parses the stored periods. They must start in months
+// 1-12 in strictly increasing order.
+func decodeAdvancePeriods(value string) ([]domain.AdvancePeriod, error) {
+	if value == "" {
+		return nil, nil
+	}
+	var rows []advancePeriodRow
+	if err := json.Unmarshal([]byte(value), &rows); err != nil {
+		return nil, fmt.Errorf("decoding advance periods: %w", err)
+	}
+	periods := make([]domain.AdvancePeriod, 0, len(rows))
+	previous := 0
+	for _, row := range rows {
+		if row.FromMonth < 1 || row.FromMonth > 12 || row.FromMonth <= previous {
+			return nil, fmt.Errorf("advance period from_month %d is out of range or not increasing", row.FromMonth)
+		}
+		previous = row.FromMonth
+		periods = append(periods, domain.AdvancePeriod{
+			FromMonth:     row.FromMonth,
+			MonthlyBase:   domain.Amount(row.MonthlyBase),
+			MonthlyPrepay: domain.Amount(row.MonthlyPrepay),
+		})
+	}
+	return periods, nil
+}
 
 // activityMonthsFromDB converts the stored activity_months integer into a mask.
 // Values that cannot be a January-December mask are reported as a plain error,
@@ -54,18 +110,27 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 	var xmlData []byte
 	var activityMonths int64
 	var newMonthlyBase sql.NullInt64
+	var filingMethod, advancePeriods, warnings string
 
 	err := s.Scan(
 		&sio.ID, &sio.Year, &sio.FilingType, &activityMonths,
 		&sio.TotalRevenue, &sio.TotalExpenses, &sio.TaxBase,
 		&sio.AssessmentBase, &sio.MinAssessmentBase, &sio.FinalAssessmentBase,
 		&sio.InsuranceRate, &sio.TotalInsurance, &sio.Prepayments, &sio.Difference, &sio.NewMonthlyPrepay,
-		&newMonthlyBase, &xmlData, &sio.Status, &filedAtStr,
+		&newMonthlyBase, &filingMethod, &sio.AdvanceStartMonth, &advancePeriods, &warnings,
+		&xmlData, &sio.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	sio.FilingMethod = domain.FilingMethod(filingMethod)
+	sio.AdvancePeriods, err = decodeAdvancePeriods(advancePeriods)
+	if err != nil {
+		return nil, fmt.Errorf("scanning social_insurance_overview %d advance_periods: %w", sio.ID, err)
+	}
+	sio.Warnings = splitWarnings(warnings)
 
 	months, err := activityMonthsFromDB(activityMonths)
 	if err != nil {
@@ -102,6 +167,10 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 	if sio.Status == "" {
 		sio.Status = domain.FilingStatusDraft
 	}
+	advancePeriods, err := encodeAdvancePeriods(sio.AdvancePeriods)
+	if err != nil {
+		return fmt.Errorf("inserting social_insurance_overview: %w", err)
+	}
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO social_insurance_overviews (
@@ -109,13 +178,15 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 			total_revenue, total_expenses, tax_base,
 			assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
-			new_monthly_base, xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			new_monthly_base, filing_method, advance_start_month, advance_periods, warnings,
+			xml_data, status, filed_at, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
-		nullableAmount(sio.NewMonthlyBase), nil, sio.Status, nil,
+		nullableAmount(sio.NewMonthlyBase), string(sio.FilingMethod), sio.AdvanceStartMonth, advancePeriods, joinWarnings(sio.Warnings),
+		nil, sio.Status, nil,
 		sio.CreatedAt.Format(time.RFC3339), sio.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -138,20 +209,26 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 	if sio.FiledAt != nil {
 		filedAt = sio.FiledAt.Format(time.RFC3339)
 	}
+	advancePeriods, err := encodeAdvancePeriods(sio.AdvancePeriods)
+	if err != nil {
+		return fmt.Errorf("updating social_insurance_overview %d: %w", sio.ID, err)
+	}
 
-	_, err := r.db.ExecContext(ctx, `
+	_, err = r.db.ExecContext(ctx, `
 		UPDATE social_insurance_overviews SET
 			year = ?, filing_type = ?, activity_months = ?,
 			total_revenue = ?, total_expenses = ?, tax_base = ?,
 			assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
-			new_monthly_base = ?, xml_data = ?, status = ?, filed_at = ?, updated_at = ?
+			new_monthly_base = ?, filing_method = ?, advance_start_month = ?, advance_periods = ?, warnings = ?,
+			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
-		nullableAmount(sio.NewMonthlyBase), sio.XMLData, sio.Status, filedAt,
+		nullableAmount(sio.NewMonthlyBase), string(sio.FilingMethod), sio.AdvanceStartMonth, advancePeriods, joinWarnings(sio.Warnings),
+		sio.XMLData, sio.Status, filedAt,
 		sio.UpdatedAt.Format(time.RFC3339), sio.ID,
 	)
 	if err != nil {

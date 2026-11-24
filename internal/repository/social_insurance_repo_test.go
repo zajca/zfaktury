@@ -69,6 +69,81 @@ func TestSocialInsuranceOverviewRepository_GetByID(t *testing.T) {
 	}
 }
 
+func TestSocialInsuranceOverviewRepository_AdvanceFieldsRoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{
+		Year:              2025,
+		FilingType:        domain.FilingTypeRegular,
+		ActivityMonths:    domain.FullYearActivityMonths,
+		FilingMethod:      domain.FilingMethodElectronic,
+		AdvanceStartMonth: 6,
+		AdvancePeriods: []domain.AdvancePeriod{
+			{FromMonth: 6, MonthlyBase: domain.NewAmount(19_587, 0), MonthlyPrepay: domain.NewAmount(5_720, 0)},
+			{FromMonth: 7, MonthlyBase: domain.NewAmount(17_139, 0), MonthlyPrepay: domain.NewAmount(5_005, 0)},
+		},
+		Warnings: []string{domain.WarningFilingMethodMissing, domain.WarningAdvanceMinimumMissing},
+	}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if got.FilingMethod != domain.FilingMethodElectronic || got.AdvanceStartMonth != 6 {
+		t.Errorf("method/start = %q/%d, want electronic/6", got.FilingMethod, got.AdvanceStartMonth)
+	}
+	if len(got.AdvancePeriods) != 2 || got.AdvancePeriods[0] != sio.AdvancePeriods[0] || got.AdvancePeriods[1] != sio.AdvancePeriods[1] {
+		t.Errorf("AdvancePeriods = %+v, want %+v", got.AdvancePeriods, sio.AdvancePeriods)
+	}
+	if len(got.Warnings) != 2 || got.Warnings[0] != domain.WarningFilingMethodMissing || got.Warnings[1] != domain.WarningAdvanceMinimumMissing {
+		t.Errorf("Warnings = %v", got.Warnings)
+	}
+
+	got.AdvancePeriods = nil
+	got.Warnings = nil
+	if err := repo.Update(ctx, got); err != nil {
+		t.Fatalf("Update() error: %v", err)
+	}
+	var storedPeriods, storedWarnings string
+	if err := db.QueryRowContext(ctx, `SELECT advance_periods, warnings FROM social_insurance_overviews WHERE id = ?`, sio.ID).Scan(&storedPeriods, &storedWarnings); err != nil {
+		t.Fatalf("reading stored columns: %v", err)
+	}
+	if storedPeriods != "" || storedWarnings != "" {
+		t.Errorf("empty periods/warnings stored as %q/%q, want empty strings", storedPeriods, storedWarnings)
+	}
+	again, err := repo.GetByID(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after clearing: %v", err)
+	}
+	if again.AdvancePeriods != nil || again.Warnings != nil {
+		t.Errorf("periods/warnings = %v/%v, want nil", again.AdvancePeriods, again.Warnings)
+	}
+}
+
+func TestSocialInsuranceOverviewRepository_RejectsUnorderedAdvancePeriods(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewSocialInsuranceOverviewRepository(db)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := repo.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	stored := `[{"from_month":7,"monthly_base":1,"monthly_prepay":1},{"from_month":6,"monthly_base":1,"monthly_prepay":1}]`
+	if _, err := db.ExecContext(ctx, `UPDATE social_insurance_overviews SET advance_periods = ? WHERE id = ?`, stored, sio.ID); err != nil {
+		t.Fatalf("storing periods: %v", err)
+	}
+
+	if _, err := repo.GetByID(ctx, sio.ID); err == nil {
+		t.Fatal("GetByID() error = nil, want an error for unordered periods")
+	}
+}
+
 func TestSocialInsuranceOverviewRepository_GetByID_NotFound(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewSocialInsuranceOverviewRepository(db)

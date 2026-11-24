@@ -193,7 +193,9 @@ xsd_check_max_output_bytes = 4096
 	}
 }
 
-func TestLoad_ISDSSectionHasNoDefaults(t *testing.T) {
+// An absent [isds] section stays zero: no test boxes are invented, and zero
+// XSD check limits mean the xsdcheck package defaults apply.
+func TestLoad_ISDSSectionOptional(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.toml")
 	if err := os.WriteFile(cfgPath, []byte(`data_dir = "`+dir+`"`), 0o644); err != nil {

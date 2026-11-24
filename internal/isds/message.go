@@ -26,7 +26,9 @@ const (
 )
 
 var (
-	boxIDPattern     = regexp.MustCompile(`^[A-Za-z0-9]{7}$`)
+	// boxIDPattern is the data box id format (7 characters [a-z0-9]), shared
+	// by message validation and the recipient lookup.
+	boxIDPattern     = regexp.MustCompile(`^[a-z0-9]{7}$`)
 	messageIDPattern = regexp.MustCompile(`^[0-9]{1,20}$`)
 )
 
@@ -82,7 +84,7 @@ type MessageInput struct {
 // before sending anything.
 func (m MessageInput) Validate() error {
 	if !boxIDPattern.MatchString(m.RecipientBoxID) {
-		return invalidInput("recipient box id must be 7 letters or digits")
+		return invalidInput("recipient box id must be 7 lowercase letters or digits")
 	}
 	for _, f := range []struct {
 		name  string

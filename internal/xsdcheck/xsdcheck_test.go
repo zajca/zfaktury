@@ -69,15 +69,16 @@ func assertWorkDirEmpty(t *testing.T, workDir string) {
 	}
 }
 
-func TestNew_RequiresEverySetting(t *testing.T) {
-	good := Config{WorkDir: t.TempDir(), Timeout: time.Second, MaxOutputBytes: 10}
+func TestNew_ConfigValidation(t *testing.T) {
+	good := Config{WorkDir: t.TempDir(), Timeout: time.Second, MaxOutputBytes: 10, WaitDelay: time.Second}
 	if _, err := New(good); err != nil {
 		t.Fatalf("valid config: %v", err)
 	}
 	cases := map[string]func(*Config){
 		"work dir":   func(c *Config) { c.WorkDir = "" },
-		"timeout":    func(c *Config) { c.Timeout = 0 },
-		"max output": func(c *Config) { c.MaxOutputBytes = 0 },
+		"timeout":    func(c *Config) { c.Timeout = -1 },
+		"max output": func(c *Config) { c.MaxOutputBytes = -1 },
+		"wait delay": func(c *Config) { c.WaitDelay = -1 },
 	}
 	for name, mutate := range cases {
 		cfg := good
@@ -85,6 +86,93 @@ func TestNew_RequiresEverySetting(t *testing.T) {
 		if _, err := New(cfg); !errors.Is(err, ErrInvalidConfig) {
 			t.Errorf("%s: err = %v, want ErrInvalidConfig", name, err)
 		}
+	}
+}
+
+func TestNew_ZeroValuesKeepDefaults(t *testing.T) {
+	c, err := New(Config{WorkDir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if c.cfg.Timeout != DefaultTimeout || c.cfg.MaxOutputBytes != DefaultMaxOutputBytes || c.cfg.WaitDelay != DefaultWaitDelay {
+		t.Errorf("defaults not applied: %+v", c.cfg)
+	}
+
+	c, err = New(Config{WorkDir: t.TempDir(), Timeout: 3 * time.Second, MaxOutputBytes: 77, WaitDelay: 5 * time.Second})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if c.cfg.Timeout != 3*time.Second || c.cfg.MaxOutputBytes != 77 || c.cfg.WaitDelay != 5*time.Second {
+		t.Errorf("explicit values overridden: %+v", c.cfg)
+	}
+}
+
+func TestCheck_WorksWithDefaults(t *testing.T) {
+	requireXmllint(t)
+	c, err := New(Config{WorkDir: filepath.Join(t.TempDir(), "work")})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if err := c.Check(context.Background(), SchemaOSVC25, readGolden(t)); err != nil {
+		t.Fatalf("Check with default limits: %v", err)
+	}
+}
+
+// Exit code 4 with a "failed to load" or "Can't open" message is an unreadable
+// input, not an invalid document.
+func TestCheck_UnreadableInputIsExecError(t *testing.T) {
+	for _, msg := range []string{"I/O warning : failed to load external entity", "Can't open file"} {
+		fakeXmllint(t, `echo "`+msg+`" 1>&2; exit 4`)
+		c, _ := newTestChecker(t, 30*time.Second, 500)
+		err := c.Check(context.Background(), SchemaOSVC25, []byte("<a/>"))
+		if !errors.Is(err, ErrExec) || errors.Is(err, ErrInvalid) {
+			t.Errorf("%q: err = %v, want ErrExec and not ErrInvalid", msg, err)
+		}
+	}
+}
+
+func TestCheck_NoLocalPathsInMessages(t *testing.T) {
+	// The stand-in echoes the paths it was given, as xmllint does.
+	fakeXmllint(t, `echo "$5:1: parser error" 1>&2; echo "$4 $5" 1>&2; exit 3`)
+	c, workDir := newTestChecker(t, 30*time.Second, 2000)
+	err := c.Check(context.Background(), SchemaOSVC25, []byte("<a/>"))
+	var invalid *InvalidError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("err = %v, want *InvalidError", err)
+	}
+	if strings.Contains(invalid.Messages, workDir) || strings.Contains(invalid.Messages, string(os.PathSeparator)) {
+		t.Errorf("messages leak a local path: %q", invalid.Messages)
+	}
+	if !strings.Contains(invalid.Messages, "document.xml:1: parser error") {
+		t.Errorf("messages lost the file name: %q", invalid.Messages)
+	}
+
+	fakeXmllint(t, `echo "$5 broke" 1>&2; exit 5`)
+	err = c.Check(context.Background(), SchemaOSVC25, []byte("<a/>"))
+	if !errors.Is(err, ErrExec) {
+		t.Fatalf("err = %v, want ErrExec", err)
+	}
+	if strings.Contains(err.Error(), workDir) {
+		t.Errorf("ErrExec text leaks a local path: %v", err)
+	}
+}
+
+func TestCheck_WorkDirErrorHasNoPath(t *testing.T) {
+	blocker := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fakeXmllint(t, "exit 0")
+	c, err := New(Config{WorkDir: filepath.Join(blocker, "sub")})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	err = c.Check(context.Background(), SchemaOSVC25, []byte("<a/>"))
+	if !errors.Is(err, ErrExec) {
+		t.Fatalf("err = %v, want ErrExec", err)
+	}
+	if strings.Contains(err.Error(), blocker) {
+		t.Errorf("error leaks a local path: %v", err)
 	}
 }
 

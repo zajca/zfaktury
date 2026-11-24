@@ -15,10 +15,10 @@
 # max_request_bytes = 5242880
 # max_response_bytes = 1048576
 
-# [isds]                           # Data box recipients and the xmllint XSD check; no key has a default
-# test_cssz_box = ""               # ISDS test box standing in for the ČSSZ e-Podání box (documented as 9tsaf6s)
-# xsd_check_timeout = "30s"
-# xsd_check_max_output_bytes = 65536
+# [isds]                           # Data box recipients and the xmllint XSD check
+# test_cssz_box = ""               # ISDS test box standing in for the ČSSZ e-Podání box (documented as 9tsaf6s); no default
+# xsd_check_timeout = "30s"        # Optional, default 30s
+# xsd_check_max_output_bytes = 65536  # Optional, default 65536
 # [isds.test_tax_office_boxes]     # c_ufo code = ISDS test box of that regional tax office
 # 451 = ""
 

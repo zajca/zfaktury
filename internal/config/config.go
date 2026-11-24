@@ -60,10 +60,10 @@ const configTemplate = `# ZFaktury configuration
 # max_request_bytes = 5242880
 # max_response_bytes = 1048576
 
-# [isds]                          # Data box recipients and the xmllint XSD check; no key has a default
-# test_cssz_box = ""              # ISDS test box standing in for the ČSSZ e-Podání box (documented as 9tsaf6s)
-# xsd_check_timeout = "30s"
-# xsd_check_max_output_bytes = 65536
+# [isds]                          # Data box recipients and the xmllint XSD check
+# test_cssz_box = ""              # ISDS test box standing in for the ČSSZ e-Podání box (documented as 9tsaf6s); no default
+# xsd_check_timeout = "30s"       # Optional, default 30s
+# xsd_check_max_output_bytes = 65536  # Optional, default 65536
 # [isds.test_tax_office_boxes]    # c_ufo code = ISDS test box of that regional tax office
 # 451 = ""
 `
@@ -82,10 +82,9 @@ type Config struct {
 	ISDS     ISDSConfig     `toml:"isds"`
 }
 
-// ISDSConfig holds the data box recipient and XSD check settings. Nothing
-// has a default: the test boxes and the XSD check limits must be set
-// explicitly before they are used, and the consumer fails when they are
-// missing.
+// ISDSConfig holds the data box recipient and XSD check settings. The test
+// boxes have no built-in values and the consumer fails when one it needs is
+// missing; zero XSD check limits keep the defaults of the xsdcheck package.
 type ISDSConfig struct {
 	// TestCSSZBox is the ISDS test box standing in for the ČSSZ e-Podání box
 	// (documented as 9tsaf6s, but it still has to be set here).
@@ -93,9 +92,10 @@ type ISDSConfig struct {
 	// TestTaxOfficeBoxes maps a c_ufo code (as a string key) to the ISDS test
 	// box standing in for that regional tax office.
 	TestTaxOfficeBoxes map[string]string `toml:"test_tax_office_boxes"`
-	// XSDCheckTimeout bounds one xmllint run.
+	// XSDCheckTimeout bounds one xmllint run; zero keeps xsdcheck.DefaultTimeout.
 	XSDCheckTimeout time.Duration `toml:"xsd_check_timeout"`
-	// XSDCheckMaxOutputBytes caps the captured xmllint output.
+	// XSDCheckMaxOutputBytes caps the captured xmllint output; zero keeps
+	// xsdcheck.DefaultMaxOutputBytes.
 	XSDCheckMaxOutputBytes int `toml:"xsd_check_max_output_bytes"`
 }
 

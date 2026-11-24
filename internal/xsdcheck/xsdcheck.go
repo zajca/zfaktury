@@ -61,8 +61,19 @@ func (e *InvalidError) Error() string { return ErrInvalid.Error() + ": " + e.Mes
 // Is makes errors.Is(err, ErrInvalid) true.
 func (e *InvalidError) Is(target error) bool { return target == ErrInvalid }
 
-// Config holds the required settings of a Checker. There are no defaults:
-// every field must be set.
+// Defaults used for the Config fields left at zero.
+const (
+	// DefaultTimeout is the longest a single xmllint run may take.
+	DefaultTimeout = 30 * time.Second
+	// DefaultMaxOutputBytes caps the captured xmllint output.
+	DefaultMaxOutputBytes = 64 << 10
+	// DefaultWaitDelay bounds the wait for output pipes after xmllint exited
+	// or was killed.
+	DefaultWaitDelay = time.Second
+)
+
+// Config holds the settings of a Checker. Zero values keep the Default*
+// constants; WorkDir is required.
 type Config struct {
 	// WorkDir is the parent of the per-call temporary directories, for
 	// example a directory under the data dir.
@@ -72,6 +83,9 @@ type Config struct {
 	Timeout time.Duration
 	// MaxOutputBytes caps the captured xmllint output.
 	MaxOutputBytes int
+	// WaitDelay bounds the wait for output pipes held open by an orphaned
+	// child after xmllint exited or was killed.
+	WaitDelay time.Duration
 }
 
 // Checker runs xmllint against embedded schemas.
@@ -79,27 +93,39 @@ type Checker struct {
 	cfg Config
 }
 
-// New validates cfg and returns a Checker.
+// New validates cfg, applies the defaults and returns a Checker. A negative
+// value is rejected.
 func New(cfg Config) (*Checker, error) {
 	if strings.TrimSpace(cfg.WorkDir) == "" {
 		return nil, fmt.Errorf("%w: work dir is required", ErrInvalidConfig)
 	}
-	if cfg.Timeout <= 0 {
-		return nil, fmt.Errorf("%w: timeout must be positive", ErrInvalidConfig)
+	if cfg.Timeout < 0 || cfg.MaxOutputBytes < 0 || cfg.WaitDelay < 0 {
+		return nil, fmt.Errorf("%w: timeout, max output bytes and wait delay must not be negative", ErrInvalidConfig)
 	}
-	if cfg.MaxOutputBytes <= 0 {
-		return nil, fmt.Errorf("%w: max output bytes must be positive", ErrInvalidConfig)
+	if cfg.Timeout == 0 {
+		cfg.Timeout = DefaultTimeout
+	}
+	if cfg.MaxOutputBytes == 0 {
+		cfg.MaxOutputBytes = DefaultMaxOutputBytes
+	}
+	if cfg.WaitDelay == 0 {
+		cfg.WaitDelay = DefaultWaitDelay
 	}
 	return &Checker{cfg: cfg}, nil
 }
 
-// xmllint exit codes that mean "the document is bad" (libxml2 2.9 and later):
-// 3 is a schema validation error, 4 is a document that cannot be parsed. Every
-// other code (for example 5, schema compilation) is a failure of the check.
+// xmllint exit codes: 3 is a schema validation error. 4 covers a document
+// that cannot be parsed but also an input or schema file that cannot be
+// opened, so its output decides (see unloadableMarkers). Every other code (for
+// example 5, schema compilation) is a failure of the check itself.
 const (
 	exitValidation = 3
-	exitUnreadable = 4
+	exitReadError  = 4
 )
+
+// unloadableMarkers in the xmllint output mean it could not read one of its
+// own input files, which is a failure of the check and not a bad document.
+var unloadableMarkers = []string{"failed to load", "Can't open", "Failed to locate"}
 
 // Check validates xml against schema. It returns nil for a conforming
 // document, *InvalidError (matching ErrInvalid) for a non-conforming one,
@@ -116,14 +142,14 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 
 	workDir, err := filepath.Abs(c.cfg.WorkDir)
 	if err != nil {
-		return fmt.Errorf("%w: resolving work dir: %w", ErrExec, err)
+		return fmt.Errorf("%w: resolving work dir: %w", ErrExec, pathless(err))
 	}
 	if err := os.MkdirAll(workDir, 0o700); err != nil {
-		return fmt.Errorf("%w: creating work dir: %w", ErrExec, err)
+		return fmt.Errorf("%w: creating work dir: %w", ErrExec, pathless(err))
 	}
 	dir, err := os.MkdirTemp(workDir, "xsdcheck-")
 	if err != nil {
-		return fmt.Errorf("%w: creating temp dir: %w", ErrExec, err)
+		return fmt.Errorf("%w: creating temp dir: %w", ErrExec, pathless(err))
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
@@ -133,7 +159,7 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 	}
 	xmlPath := filepath.Join(dir, "document.xml")
 	if err := os.WriteFile(xmlPath, xml, 0o600); err != nil {
-		return fmt.Errorf("%w: writing XML: %w", ErrExec, err)
+		return fmt.Errorf("%w: writing XML: %w", ErrExec, pathless(err))
 	}
 
 	runCtx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
@@ -146,8 +172,7 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 	cmd.Stdout = out
 	cmd.Stderr = out
 	cmd.Dir = dir
-	// Bounds the wait for output pipes held open by an orphaned child.
-	cmd.WaitDelay = time.Second
+	cmd.WaitDelay = c.cfg.WaitDelay
 
 	runErr := cmd.Run()
 	if runErr == nil {
@@ -164,12 +189,43 @@ func (c *Checker) Check(ctx context.Context, schema Schema, xml []byte) error {
 	}
 	var exitErr *exec.ExitError
 	if errors.As(runErr, &exitErr) {
-		if code := exitErr.ExitCode(); code == exitValidation || code == exitUnreadable {
-			return &InvalidError{Messages: out.String(), Truncated: out.truncated}
+		messages := scrubPaths(out.String(), dir, workDir)
+		code := exitErr.ExitCode()
+		if code == exitValidation || (code == exitReadError && !containsAny(messages, unloadableMarkers)) {
+			return &InvalidError{Messages: messages, Truncated: out.truncated}
 		}
-		return fmt.Errorf("%w: exit code %d: %s", ErrExec, exitErr.ExitCode(), out.String())
+		return fmt.Errorf("%w: exit code %d: %s", ErrExec, code, messages)
 	}
-	return fmt.Errorf("%w: %w", ErrExec, runErr)
+	return fmt.Errorf("%w: %w", ErrExec, pathless(runErr))
+}
+
+// scrubPaths removes the temp and work directory prefixes from xmllint output,
+// so no absolute local path reaches the UI.
+func scrubPaths(s string, dirs ...string) string {
+	for _, d := range dirs {
+		s = strings.ReplaceAll(s, d+string(os.PathSeparator), "")
+		s = strings.ReplaceAll(s, d, "")
+	}
+	return s
+}
+
+func containsAny(s string, subs []string) bool {
+	for _, sub := range subs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
+}
+
+// pathless returns the underlying error of a *fs.PathError, whose text would
+// carry an absolute local path.
+func pathless(err error) error {
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Err
+	}
+	return err
 }
 
 // writeSchemas copies the embedded XSD files into dir, so imports resolve
@@ -186,7 +242,7 @@ func writeSchemas(dir string, schema Schema) (string, error) {
 			return "", fmt.Errorf("%w: reading embedded %s: %w", ErrExec, e.Name(), err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, e.Name()), data, 0o600); err != nil {
-			return "", fmt.Errorf("%w: writing schema %s: %w", ErrExec, e.Name(), err)
+			return "", fmt.Errorf("%w: writing schema %s: %w", ErrExec, e.Name(), pathless(err))
 		}
 		if e.Name() == schema.file {
 			found = true

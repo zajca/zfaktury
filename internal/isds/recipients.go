@@ -2,7 +2,6 @@ package isds
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -88,13 +87,10 @@ const (
 	testNameSuffix = " (testovací schránka)"
 )
 
-// recipientBoxIDPattern is the format of a configured recipient box id: 7
-// characters [a-z0-9].
-var recipientBoxIDPattern = regexp.MustCompile(`^[a-z0-9]{7}$`)
-
-// ValidateBoxID reports whether id is a well-formed data box id.
+// ValidateBoxID reports whether id is a well-formed data box id (the pattern
+// CreateMessage uses as well).
 func ValidateBoxID(id string) error {
-	if !recipientBoxIDPattern.MatchString(id) {
+	if !boxIDPattern.MatchString(id) {
 		return fmt.Errorf("%w: data box id must be 7 characters [a-z0-9]", domain.ErrInvalidInput)
 	}
 	return nil

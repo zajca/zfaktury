@@ -32,13 +32,23 @@ type TaxChildCredit struct {
 	UpdatedAt     time.Time
 }
 
+// Disability degree values of TaxPersonalCredits.DisabilityLevel. They select the
+// invalidity credit only; ZTP/P is the separate TaxPersonalCredits.ZTPP flag.
+const (
+	DisabilityLevelNone    = 0 // no invalidity credit
+	DisabilityLevel1And2   = 1 // 1st or 2nd degree (EPO row 66)
+	DisabilityLevel3       = 2 // 3rd degree (EPO row 67)
+	DisabilityLevelMaximum = DisabilityLevel3
+)
+
 // TaxPersonalCredits represents personal tax credits (student, disability) for a year.
 // At most one record per year.
 type TaxPersonalCredits struct {
 	Year             int
 	IsStudent        bool
 	StudentMonths    int    // 1-12
-	DisabilityLevel  int    // 0=none, 1=1st/2nd degree, 2=3rd degree, 3=ZTP/P holder
+	DisabilityLevel  int    // one of the DisabilityLevel* constants
+	ZTPP             bool   // ZTP/P holder (EPO row 68), claimed on top of the degree credit
 	CreditStudent    Amount // computed by service
 	CreditDisability Amount // computed by service
 	CreatedAt        time.Time

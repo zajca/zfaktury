@@ -10,6 +10,7 @@
 		isStudent = $bindable(),
 		studentMonths = $bindable(),
 		disabilityLevel = $bindable(),
+		ztpp = $bindable(),
 		summary,
 		taxConstants,
 		saving,
@@ -18,6 +19,7 @@
 		isStudent: boolean;
 		studentMonths: number;
 		disabilityLevel: number;
+		ztpp: boolean;
 		summary: TaxCreditsSummary | null;
 		taxConstants: TaxConstants | null;
 		saving: boolean;
@@ -63,9 +65,12 @@
 				<option value={0}>Žádná</option>
 				<option value={1}>1. a 2. stupeň</option>
 				<option value={2}>3. stupeň</option>
-				<option value={3}>Držitel ZTP/P</option>
 			</Select>
 		</div>
+		<label class="flex items-center gap-2 text-sm text-primary">
+			<input type="checkbox" bind:checked={ztpp} class="rounded border-border" />
+			Držitel průkazu ZTP/P
+		</label>
 	</div>
 	{#if summary?.personal}
 		<div class="mt-3 flex gap-6 text-sm text-tertiary">

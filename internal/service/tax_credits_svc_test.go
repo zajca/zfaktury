@@ -229,7 +229,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseProportionalMonths(t *testing.T)
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseFullYear(t *testing.T) {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -281,7 +281,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseIncomeAboveThreshold(t *testing.
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPDoubling(t *testing.T) {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -333,7 +333,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPPartialMonths(t *testing.T) {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	spouseCredit, _, _, err := svc.ComputeCredits(ctx, 2025)
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestTaxCreditsService_ComputeCredits_StudentProportional(t *testing.T) {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, _, studentCredit, err := svc.ComputeCredits(ctx, 2025)
+	_, _, studentCredit, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestTaxCreditsService_ComputeCredits_StudentFullYear(t *testing.T) {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, _, studentCredit, err := svc.ComputeCredits(ctx, 2025)
+	_, _, studentCredit, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestTaxCreditsService_ComputeCredits_StudentNotFlagged(t *testing.T) {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, _, studentCredit, err := svc.ComputeCredits(ctx, 2025)
+	_, _, studentCredit, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel1(t *testing.T) {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 2025)
+	_, disabilityCredit, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -454,7 +454,7 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel2(t *testing.T) {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 2025)
+	_, disabilityCredit, _, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -465,26 +465,56 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel2(t *testing.T) {
 	}
 }
 
-func TestTaxCreditsService_ComputeCredits_DisabilityLevel3_ZTPP(t *testing.T) {
+// computeCreditsFlat unpacks ComputeCredits into spouse, total disability and student amounts.
+func computeCreditsFlat(svc *TaxCreditsService, ctx context.Context, year int) (spouse, disability, student domain.Amount, err error) {
+	spouse, personal, err := svc.ComputeCredits(ctx, year)
+	return spouse, personal.Disability(), personal.Student, err
+}
+
+func TestTaxCreditsService_ComputeCredits_ZTPPOnly(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
-	personal := &domain.TaxPersonalCredits{
-		Year:            2025,
-		DisabilityLevel: 3,
-	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
+	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{Year: 2025, ZTPP: true}); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	_, disabilityCredit, _, err := svc.ComputeCredits(ctx, 2025)
+	_, personal, err := svc.ComputeCredits(ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
 
 	constants, _ := calc.GetTaxConstants(2025)
-	if disabilityCredit != constants.DisabilityZTPP {
-		t.Errorf("disabilityCredit = %d, want %d (level 3 -> ZTP/P)", disabilityCredit, constants.DisabilityZTPP)
+	if personal.DisabilityZTPP != constants.DisabilityZTPP || personal.Disability12 != 0 || personal.Disability3 != 0 {
+		t.Errorf("rows = %d/%d/%d, want 0/0/%d", personal.Disability12, personal.Disability3, personal.DisabilityZTPP, constants.DisabilityZTPP)
+	}
+}
+
+func TestTaxCreditsService_ComputeCredits_Level2WithZTPP(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel3, ZTPP: true}); err != nil {
+		t.Fatalf("UpsertPersonal() error: %v", err)
+	}
+
+	_, personal, err := svc.ComputeCredits(ctx, 2025)
+	if err != nil {
+		t.Fatalf("ComputeCredits() error: %v", err)
+	}
+
+	want := domain.NewAmount(21_180, 0)
+	if personal.Disability() != want {
+		t.Errorf("Disability() = %d, want %d", personal.Disability(), want)
+	}
+}
+
+func TestTaxCreditsService_UpsertPersonal_RejectsLevel3(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+
+	err := svc.UpsertPersonal(context.Background(), &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: 3})
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
 	}
 }
 
@@ -493,7 +523,7 @@ func TestTaxCreditsService_ComputeCredits_NoData(t *testing.T) {
 	ctx := context.Background()
 
 	// No spouse, no personal credits -> all zeros.
-	spouse, disability, student, err := svc.ComputeCredits(ctx, 2025)
+	spouse, disability, student, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -529,7 +559,7 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
-	spouseAmt, disabilityAmt, studentAmt, err := svc.ComputeCredits(ctx, 2025)
+	spouseAmt, disabilityAmt, studentAmt, err := computeCreditsFlat(svc, ctx, 2025)
 	if err != nil {
 		t.Fatalf("ComputeCredits() error: %v", err)
 	}
@@ -1169,6 +1199,7 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 		IsStudent:       true,
 		StudentMonths:   6,
 		DisabilityLevel: 2,
+		ZTPP:            true,
 		CreditStudent:   domain.NewAmount(77777, 0),
 	}
 	if err := svc.UpsertPersonal(ctx, personal); err != nil {
@@ -1236,6 +1267,9 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	}
 	if !copiedPersonal.IsStudent {
 		t.Error("expected IsStudent=true preserved")
+	}
+	if !copiedPersonal.ZTPP || copiedPersonal.DisabilityLevel != domain.DisabilityLevel3 {
+		t.Errorf("ZTPP=%v level=%d, want true/%d preserved", copiedPersonal.ZTPP, copiedPersonal.DisabilityLevel, domain.DisabilityLevel3)
 	}
 	if copiedPersonal.CreditStudent != 0 {
 		t.Errorf("CreditStudent = %d, want 0 (zeroed)", copiedPersonal.CreditStudent)

@@ -40,6 +40,9 @@ const baseReturn = {
 	credit_basic: 3084000,
 	credit_spouse: 0,
 	credit_disability: 0,
+	credit_disability_12: 0,
+	credit_disability_3: 0,
+	credit_disability_ztpp: 0,
 	credit_student: 0,
 	total_credits: 3084000,
 	tax_after_credits: 0,
@@ -254,5 +257,50 @@ describe('Income tax return detail - §6 panel', () => {
 		await waitFor(() => {
 			expect(screen.getByText(/ř\. 89 Vyplacené měsíční bonusy/)).toBeInTheDocument();
 		});
+	});
+});
+
+describe('Income tax return detail - disability credit rows', () => {
+	function mockReturn(data: unknown) {
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/income-tax-returns/')) {
+				return Promise.resolve(jsonResponse(data));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants));
+			}
+			return Promise.resolve(jsonResponse({}));
+		});
+	}
+
+	it('renders the three disability rows for non-zero amounts', async () => {
+		mockReturn({
+			...baseReturn,
+			credit_disability: 2166000,
+			credit_disability_12: 252000,
+			credit_disability_3: 504000,
+			credit_disability_ztpp: 1410000
+		});
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Sleva na invaliditu 1. a 2. stupně')).toBeInTheDocument();
+		});
+		expect(screen.getByText('Sleva na invaliditu 3. stupně')).toBeInTheDocument();
+		expect(screen.getByText('Sleva pro držitele ZTP/P')).toBeInTheDocument();
+	});
+
+	it('hides the disability rows when the amounts are 0', async () => {
+		mockReturn(baseReturn);
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByText('Daň z příjmů - 2025')).toBeInTheDocument();
+		});
+		expect(screen.queryByText('Sleva na invaliditu 1. a 2. stupně')).not.toBeInTheDocument();
+		expect(screen.queryByText('Sleva na invaliditu 3. stupně')).not.toBeInTheDocument();
+		expect(screen.queryByText('Sleva pro držitele ZTP/P')).not.toBeInTheDocument();
 	});
 });

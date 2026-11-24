@@ -95,6 +95,7 @@ type taxPersonalCreditsRequest struct {
 	IsStudent       bool `json:"is_student"`
 	StudentMonths   int  `json:"student_months"`
 	DisabilityLevel int  `json:"disability_level"`
+	ZTPP            bool `json:"ztpp"`
 }
 
 type taxPersonalCreditsResponse struct {
@@ -102,6 +103,7 @@ type taxPersonalCreditsResponse struct {
 	IsStudent        bool   `json:"is_student"`
 	StudentMonths    int    `json:"student_months"`
 	DisabilityLevel  int    `json:"disability_level"`
+	ZTPP             bool   `json:"ztpp"`
 	CreditStudent    int64  `json:"credit_student"`
 	CreditDisability int64  `json:"credit_disability"`
 	CreatedAt        string `json:"created_at"`
@@ -146,6 +148,7 @@ func personalCreditsFromDomain(pc *domain.TaxPersonalCredits) taxPersonalCredits
 		IsStudent:        pc.IsStudent,
 		StudentMonths:    pc.StudentMonths,
 		DisabilityLevel:  pc.DisabilityLevel,
+		ZTPP:             pc.ZTPP,
 		CreditStudent:    int64(pc.CreditStudent),
 		CreditDisability: int64(pc.CreditDisability),
 		CreatedAt:        pc.CreatedAt.Format(time.RFC3339),
@@ -190,12 +193,14 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compute totals.
-	spouseCredit, disabilityCredit, studentCredit, credErr := h.svc.ComputeCredits(ctx, year)
+	spouseCredit, personalCredits, credErr := h.svc.ComputeCredits(ctx, year)
 	if credErr != nil {
 		slog.Error("failed to compute credits", "error", credErr, "year", year)
 		mapDomainError(w, credErr)
 		return
 	}
+	disabilityCredit := personalCredits.Disability()
+	studentCredit := personalCredits.Student
 	totalCredits := spouseCredit + disabilityCredit + studentCredit
 
 	totalChildBenefit, err := h.svc.ComputeChildBenefit(ctx, year)
@@ -409,6 +414,7 @@ func (h *TaxCreditsHandler) UpsertPersonal(w http.ResponseWriter, r *http.Reques
 		IsStudent:       req.IsStudent,
 		StudentMonths:   req.StudentMonths,
 		DisabilityLevel: req.DisabilityLevel,
+		ZTPP:            req.ZTPP,
 	}
 
 	if err := h.svc.UpsertPersonal(r.Context(), pc); err != nil {

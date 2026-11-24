@@ -21,16 +21,16 @@ func NewTaxPersonalCreditsRepository(db *sql.DB) *TaxPersonalCreditsRepository {
 }
 
 // taxPersonalCreditsColumns is the list of columns to select for a TaxPersonalCredits row.
-const taxPersonalCreditsColumns = `year, is_student, student_months, disability_level, credit_student, credit_disability, created_at, updated_at`
+const taxPersonalCreditsColumns = `year, is_student, student_months, disability_level, ztpp, credit_student, credit_disability, created_at, updated_at`
 
 // scanTaxPersonalCredits scans a TaxPersonalCredits from a row.
 func scanTaxPersonalCredits(s scanner) (*domain.TaxPersonalCredits, error) {
 	c := &domain.TaxPersonalCredits{}
 	var createdAtStr, updatedAtStr string
-	var isStudent int
+	var isStudent, ztpp int
 
 	err := s.Scan(
-		&c.Year, &isStudent, &c.StudentMonths, &c.DisabilityLevel,
+		&c.Year, &isStudent, &c.StudentMonths, &c.DisabilityLevel, &ztpp,
 		&c.CreditStudent, &c.CreditDisability,
 		&createdAtStr, &updatedAtStr,
 	)
@@ -39,6 +39,7 @@ func scanTaxPersonalCredits(s scanner) (*domain.TaxPersonalCredits, error) {
 	}
 
 	c.IsStudent = isStudent != 0
+	c.ZTPP = ztpp != 0
 
 	c.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
 	if err != nil {
@@ -63,10 +64,15 @@ func (r *TaxPersonalCreditsRepository) Upsert(ctx context.Context, credits *doma
 		isStudent = 1
 	}
 
+	var ztpp int
+	if credits.ZTPP {
+		ztpp = 1
+	}
+
 	_, err := r.db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO tax_personal_credits (year, is_student, student_months, disability_level, credit_student, credit_disability, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		credits.Year, isStudent, credits.StudentMonths, credits.DisabilityLevel,
+		INSERT OR REPLACE INTO tax_personal_credits (year, is_student, student_months, disability_level, ztpp, credit_student, credit_disability, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		credits.Year, isStudent, credits.StudentMonths, credits.DisabilityLevel, ztpp,
 		credits.CreditStudent, credits.CreditDisability,
 		credits.CreatedAt.Format(time.RFC3339), credits.UpdatedAt.Format(time.RFC3339),
 	)

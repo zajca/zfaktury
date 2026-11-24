@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost nazevSW="ZFaktury" verzeSW="1.0">
   <DPFDP7 verzePis="01.01.02">
-    <VetaD dokument="DP7" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="451" pln_moc="N" audit="N" zdobd_od="1.1.2025" zdobd_do="31.12.2025" kc_dztrata="0" da_slezap="120000.00" da_celod13="120000" kc_op15_1a="30840" uhrn_slevy35ba="62220" da_slevy35ba="57780" kc_dazvyhod="15204" kc_slevy35c="15204" da_slevy35c="42576" kc_dan_celk="42576" kc_danbonus="0" kc_dan_po_db="42576" kc_db_po_odpd="0" kc_zalpred="36000" kc_zbyvpred="6576"></VetaD>
-    <VetaP jmeno="Jan" prijmeni="Novak" rod_c="8001011234" dic="8001011234" ulice="Hlavni" c_pop="42" naz_obce="Praha" psc="11000" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
+    <VetaD dokument="DP7" k_uladis="DPF" rok="2025" dap_typ="B" c_ufo_cil="451" pln_moc="N" audit="N" zdobd_od="1.1.2025" zdobd_do="31.12.2025" kc_dztrata="0" da_slezap="120000.00" da_celod13="120000" kc_op15_1a="30840" manz_jmeno="Marie" manz_prijmeni="Novakova" manz_r_cislo="8551010006" kc_op15_1c="24840" m_vyzmanzl="12" kc_op15_1d="2520" m_cinvduch="12" uhrn_slevy35ba="58200" da_slevy35ba="61800" m_deti="12" m_deti2="12" kc_dazvyhod="37524" kc_slevy35c="37524" da_slevy35c="24276" kc_dan_celk="24276" kc_danbonus="0" kc_dan_po_db="24276" kc_db_po_odpd="0" kc_zalpred="12000" kc_zbyvpred="12276"></VetaD>
+    <VetaP jmeno="Jan" prijmeni="Novak" rod_c="8001010006" dic="8001010006" ulice="Hlavni" c_pop="42" naz_obce="Praha" psc="11000" k_stat="CZ" stat="ČESKÁ REPUBLIKA"></VetaP>
     <VetaO kc_zd7="800000" kc_uhrn="800000" kc_zakldan23="800000" kc_zakldan="800000"></VetaO>
-    <VetaS kc_odcelk="0" kc_zdsniz="800000" kc_zdzaokr="800000" da_dan16="120000"></VetaS>
+    <VetaS kc_zdsniz="800000" kc_zdzaokr="800000" da_dan16="120000"></VetaS>
+    <VetaA vyzdite_jmeno="Petr" vyzdite_prijmeni="Novak" vyzdite_r_cislo="1503100005" vyzdite_pocmes="12"></VetaA>
+    <VetaA vyzdite_jmeno="Anna" vyzdite_prijmeni="Novakova" vyzdite_r_cislo="2306150110" vyzdite_pocmes2="12"></VetaA>
     <VetaB priloha1="1"></VetaB>
-    <VetaT m_podnik="12" kc_prij7="2000000" kc_vyd7="1200000" pr_prij7="2000000" pr_vyd7="1200000" vyd7proc="A" pr_sazba="60" celk_pr_prij7="2000000" celk_pr_vyd7="1200000" kc_hosp_rozd="800000" kc_zd7p="800000"></VetaT>
+    <VetaT c_nace="621090" m_podnik="12" kc_prij7="2000000" kc_vyd7="1200000" pr_prij7="2000000" pr_vyd7="1200000" vyd7proc="A" pr_sazba="60" celk_pr_prij7="2000000" celk_pr_vyd7="1200000" kc_hosp_rozd="800000" kc_zd7p="800000"></VetaT>
   </DPFDP7>
 </Pisemnost>

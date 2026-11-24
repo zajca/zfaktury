@@ -75,8 +75,12 @@ type incomeTaxResponse struct {
 	CreditBasic      int64 `json:"credit_basic"`
 	CreditSpouse     int64 `json:"credit_spouse"`
 	CreditDisability int64 `json:"credit_disability"`
-	CreditStudent    int64 `json:"credit_student"`
-	TotalCredits     int64 `json:"total_credits"`
+	// Per-row snapshot of the disability credit (EPO rows 66, 67, 68).
+	CreditDisability12   int64 `json:"credit_disability_12"`
+	CreditDisability3    int64 `json:"credit_disability_3"`
+	CreditDisabilityZTPP int64 `json:"credit_disability_ztpp"`
+	CreditStudent        int64 `json:"credit_student"`
+	TotalCredits         int64 `json:"total_credits"`
 
 	TaxAfterCredits int64 `json:"tax_after_credits"`
 	ChildBenefit    int64 `json:"child_benefit"`
@@ -135,8 +139,12 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 		CreditBasic:      int64(itr.CreditBasic),
 		CreditSpouse:     int64(itr.CreditSpouse),
 		CreditDisability: int64(itr.CreditDisability),
-		CreditStudent:    int64(itr.CreditStudent),
-		TotalCredits:     int64(itr.TotalCredits),
+
+		CreditDisability12:   int64(itr.CreditDisability12),
+		CreditDisability3:    int64(itr.CreditDisability3),
+		CreditDisabilityZTPP: int64(itr.CreditDisabilityZTPP),
+		CreditStudent:        int64(itr.CreditStudent),
+		TotalCredits:         int64(itr.TotalCredits),
 
 		TaxAfterCredits: int64(itr.TaxAfterCredits),
 		ChildBenefit:    int64(itr.ChildBenefit),

@@ -171,8 +171,8 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 	if credits.StudentMonths < 0 || credits.StudentMonths > 12 {
 		return fmt.Errorf("student months must be 0-12: %w", domain.ErrInvalidInput)
 	}
-	if credits.DisabilityLevel < 0 || credits.DisabilityLevel > 3 {
-		return fmt.Errorf("disability level must be 0-3: %w", domain.ErrInvalidInput)
+	if credits.DisabilityLevel < domain.DisabilityLevelNone || credits.DisabilityLevel > domain.DisabilityLevelMaximum {
+		return fmt.Errorf("disability level must be 0-2: %w", domain.ErrInvalidInput)
 	}
 	var existing *domain.TaxPersonalCredits
 	if s.audit != nil {
@@ -286,23 +286,23 @@ func (s *TaxCreditsService) ListDeductions(ctx context.Context, year int) ([]dom
 
 // --- Computation methods ---
 
-// ComputeCredits computes the spouse, disability, and student credit amounts for the given year.
-// Returns zero amounts for credits that have no data (ErrNotFound).
-func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spouseCredit, disabilityCredit, studentCredit domain.Amount, err error) {
+// ComputeCredits computes the spouse credit and the personal (disability per EPO row, student)
+// credits for the given year. Returns zero amounts for credits that have no data (ErrNotFound).
+func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spouseCredit domain.Amount, personal calc.PersonalCreditsResult, err error) {
 	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("getting tax constants for credits: %w", err)
+		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("getting tax constants for credits: %w", err)
 	}
 	return s.ComputeCreditsWithConstants(ctx, year, constants)
 }
 
 // ComputeCreditsWithConstants computes credits using an already resolved rule
 // set, keeping an income-tax recalculation on one consistent constants snapshot.
-func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, year int, constants calc.TaxYearConstants) (spouseCredit, disabilityCredit, studentCredit domain.Amount, err error) {
+func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, year int, constants calc.TaxYearConstants) (spouseCredit domain.Amount, personalResult calc.PersonalCreditsResult, err error) {
 	// Spouse credit.
 	spouse, err := s.spouseRepo.GetByYear(ctx, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return 0, 0, 0, fmt.Errorf("fetching spouse credit for compute: %w", err)
+		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("fetching spouse credit for compute: %w", err)
 	}
 	if spouse != nil {
 		spouseCredit = calc.ComputeSpouseCredit(spouse.SpouseIncome, spouse.MonthsClaimed, spouse.SpouseZTP, constants)
@@ -311,13 +311,13 @@ func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, yea
 	// Personal credits (student + disability).
 	personal, err := s.personalRepo.GetByYear(ctx, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return 0, 0, 0, fmt.Errorf("fetching personal credits for compute: %w", err)
+		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("fetching personal credits for compute: %w", err)
 	}
 	if personal != nil {
-		disabilityCredit, studentCredit = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.IsStudent, personal.StudentMonths, constants)
+		personalResult = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.ZTPP, personal.IsStudent, personal.StudentMonths, constants)
 	}
 
-	return spouseCredit, disabilityCredit, studentCredit, nil
+	return spouseCredit, personalResult, nil
 }
 
 // ComputeChildBenefit computes the total child benefit amount for the given year.

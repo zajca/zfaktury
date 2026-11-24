@@ -2,6 +2,17 @@ package domain
 
 import "errors"
 
+// UserMessageError is invalid input explained by a sentence meant for the
+// user. It matches ErrInvalidInput through errors.Is; the HTTP layer returns
+// Message alone, without the wrapping context of the services.
+type UserMessageError struct {
+	Message string
+}
+
+func (e *UserMessageError) Error() string { return e.Message + ": " + ErrInvalidInput.Error() }
+
+func (e *UserMessageError) Unwrap() error { return ErrInvalidInput }
+
 var (
 	ErrNotFound        = errors.New("not found")
 	ErrInvalidInput    = errors.New("invalid input")

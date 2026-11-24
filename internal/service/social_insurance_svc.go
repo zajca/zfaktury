@@ -11,6 +11,7 @@ import (
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 // SocialInsuranceService provides business logic for social insurance overview management.
@@ -163,6 +164,36 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	return sio, nil
 }
 
+// advanceBounds returns the bounds of the monthly advance base for advances
+// paid after the overview year, or nil when the following year has no rule set
+// yet or its minimum is split into periods.
+func (s *SocialInsuranceService) advanceBounds(year int) (*calc.AdvanceBaseBounds, error) {
+	constants, err := calc.GetTaxConstants(year + 1)
+	if err != nil {
+		var noRules *taxrules.NoRuleSetError
+		if errors.As(err, &noRules) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("getting tax constants for advances paid after %d: %w", year, err)
+	}
+	bounds, ok := calc.SocialAdvanceBoundsFromRules(constants)
+	if !ok {
+		return nil, nil
+	}
+	return bounds, nil
+}
+
+// storedAdvanceBase returns the monthly advance base stored with the overview.
+// Overviews stored before the base was kept have none, so their base is taken as
+// the final annual base over the months of activity and their stored advance may
+// not follow from it; such an overview has to be recalculated.
+func (s *SocialInsuranceService) storedAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
+	if sio.NewMonthlyBase != nil {
+		return *sio.NewMonthlyBase
+	}
+	return calc.SocialAdvanceMonthlyBase(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), nil)
+}
+
 // applyRecalculatedAmounts fills the calculated amounts of the overview in memory
 // from its activity months, without persisting anything.
 func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, sio *domain.SocialInsuranceOverview) error {
@@ -202,6 +233,10 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	}
 
 	// Pure calculation.
+	bounds, err := s.advanceBounds(sio.Year)
+	if err != nil {
+		return err
+	}
 	insResult, err := calc.CalculateInsurance(calc.InsuranceInput{
 		Revenue:                annualBase.Revenue,
 		UsedExpenses:           usedExpenses,
@@ -211,6 +246,7 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 		RatePermille:           constants.SocialRate,
 		Prepayments:            socialTotal,
 		ActivityMonths:         sio.ActivityMonths.Count(),
+		AdvanceBounds:          bounds,
 	})
 	if err != nil {
 		return fmt.Errorf("calculating social insurance: %w", err)
@@ -225,6 +261,10 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	sio.Prepayments = socialTotal
 	sio.Difference = insResult.Difference
 	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
+	newMonthlyBase := insResult.NewMonthlyBase
+	// The base is stored with the amounts it produced, so a later export reports
+	// ř. 35 and ř. 36 from the same calculation.
+	sio.NewMonthlyBase = &newMonthlyBase
 	// A stored XML describes the previous amounts and months, so it is dropped
 	// and has to be generated again.
 	sio.XMLData = nil
@@ -313,7 +353,14 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		settings["flat_rate_expenses"] = "true"
 	}
 
-	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings)
+	advanceBase := s.storedAdvanceBase(sio)
+	if want := calc.SocialAdvanceFromMonthlyBase(advanceBase, sio.InsuranceRate); want != sio.NewMonthlyPrepay {
+		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
+			return nil, &domain.UserMessageError{Message: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"}
+		}
+		return nil, &domain.UserMessageError{Message: "uložená záloha neodpovídá měsíčnímu základu, přepočítejte přehled"}
+	}
+	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings, advanceBase)
 	if err != nil {
 		return nil, fmt.Errorf("generating social_insurance_overview XML: %w", err)
 	}

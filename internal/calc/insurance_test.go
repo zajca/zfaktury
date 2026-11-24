@@ -559,3 +559,100 @@ func TestCalculateInsuranceActivityMonthsInvalid(t *testing.T) {
 		}
 	}
 }
+
+func TestSocialAdvanceMonthlyBase(t *testing.T) {
+	bounds2025 := &AdvanceBaseBounds{
+		MinMonthly: domain.NewAmount(16_295, 0),
+		MaxMonthly: domain.NewAmount(186_228, 0),
+	}
+	tests := []struct {
+		name      string
+		computed  domain.Amount
+		final     domain.Amount
+		months    int
+		bounds    *AdvanceBaseBounds
+		wantInCZK int64
+	}{
+		{
+			name:      "no bounds spreads the final base",
+			computed:  domain.NewAmount(500_000, 0),
+			final:     domain.NewAmount(97_770, 0),
+			months:    6,
+			bounds:    nil,
+			wantInCZK: 16_295,
+		},
+		{
+			name:      "below the payment-year minimum is raised",
+			computed:  domain.NewAmount(100_000, 0),
+			final:     domain.NewAmount(158_292, 0),
+			months:    12,
+			bounds:    bounds2025,
+			wantInCZK: 16_295,
+		},
+		{
+			name:      "above the payment-year maximum is capped",
+			computed:  domain.NewAmount(3_000_000, 0),
+			final:     domain.NewAmount(3_000_000, 0),
+			months:    12,
+			bounds:    bounds2025,
+			wantInCZK: 186_228,
+		},
+		{
+			name:      "inside the bounds stays unchanged",
+			computed:  domain.NewAmount(600_000, 0),
+			final:     domain.NewAmount(600_000, 0),
+			months:    12,
+			bounds:    bounds2025,
+			wantInCZK: 50_000,
+		},
+		{
+			name:      "uses the computed base, not the current-year minimum",
+			computed:  domain.NewAmount(200_000, 0),
+			final:     domain.NewAmount(195_540, 0),
+			months:    12,
+			bounds:    bounds2025,
+			wantInCZK: 16_667,
+		},
+		{
+			name:      "no months",
+			computed:  domain.NewAmount(200_000, 0),
+			final:     domain.NewAmount(200_000, 0),
+			months:    0,
+			bounds:    bounds2025,
+			wantInCZK: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SocialAdvanceMonthlyBase(tt.computed, tt.final, tt.months, tt.bounds)
+			want := domain.NewAmount(tt.wantInCZK, 0)
+			if got != want {
+				t.Errorf("SocialAdvanceMonthlyBase = %d, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestCalculateInsuranceWithPaymentYearBounds(t *testing.T) {
+	result, err := CalculateInsurance(InsuranceInput{
+		Revenue:                domain.NewAmount(100_000, 0),
+		UsedExpenses:           domain.NewAmount(0, 0),
+		MinMonthlyBase:         domain.NewAmount(16_295, 0),
+		MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
+		AssessmentBasePermille: 550,
+		RatePermille:           292,
+		ActivityMonths:         12,
+		AdvanceBounds: &AdvanceBaseBounds{
+			MinMonthly: domain.NewAmount(16_295, 0),
+			MaxMonthly: domain.NewAmount(186_228, 0),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CalculateInsurance error: %v", err)
+	}
+
+	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
+	}
+}

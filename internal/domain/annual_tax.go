@@ -131,11 +131,12 @@ type SocialInsuranceOverview struct {
 	MinAssessmentBase   Amount // minimum for the year
 	FinalAssessmentBase Amount // min(max(AssessmentBase, MinAssessmentBase), max annual base)
 
-	InsuranceRate    int    // 292 = 29.2% (permille*10)
-	TotalInsurance   Amount // pojistne
-	Prepayments      Amount // zaplacene zalohy za rok
-	Difference       Amount // doplatek/preplatek
-	NewMonthlyPrepay Amount // nova mesicni zaloha
+	InsuranceRate    int     // 292 = 29.2% (permille*10)
+	TotalInsurance   Amount  // pojistne
+	Prepayments      Amount  // zaplacene zalohy za rok
+	Difference       Amount  // doplatek/preplatek
+	NewMonthlyPrepay Amount  // nova mesicni zaloha
+	NewMonthlyBase   *Amount // mesicni vym. zaklad pro zalohy (ř. 35); nil = not stored
 
 	XMLData   []byte
 	Status    string

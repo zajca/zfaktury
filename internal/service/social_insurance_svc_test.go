@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/xml"
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/annualtaxxml"
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -664,5 +666,241 @@ func TestSocialInsuranceService_SetActivityMonths_InvalidInput(t *testing.T) {
 	}
 	if _, err := svc.SetActivityMonths(ctx, 0, domain.FullYearActivityMonths); !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("SetActivityMonths(id 0) error = %v, want ErrInvalidInput", err)
+	}
+}
+
+// The advance is bounded by the minimum and maximum of the year it is paid in,
+// so a 2024 overview uses the 2025 bounds (minimum 16 295 CZK monthly).
+func TestRecalculate_2024UsesPaymentYearBounds(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2024, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// The 2024 overview year gives a 13 191 CZK monthly base, which would be
+	// 3 852 CZK unbounded; the 2025 payment-year minimum (16 295 CZK) lifts the
+	// advance to 4 759 CZK.
+	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, want)
+	}
+}
+
+// The 2026 minimum is split into two periods, so the start month of the new
+// advance is still open and the 2025 overview keeps the unbounded advance.
+func TestRecalculate_2025KeepsUnboundedAdvance_TwoMinimumPeriods(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if want := domain.NewAmount(4_759, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d (2025 base 16 295 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	}
+}
+
+// There is no rule set for 2027 yet, so the 2026 overview keeps the unbounded
+// advance instead of failing.
+func TestRecalculate_2026KeepsUnboundedAdvance_NoNextYearRules(t *testing.T) {
+	svc, _ := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	sio := &domain.SocialInsuranceOverview{Year: 2026, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if want := domain.NewAmount(5_005, 0); result.NewMonthlyPrepay != want {
+		t.Errorf("NewMonthlyPrepay = %d, want %d (2026 base 17 139 CZK, unbounded)", result.NewMonthlyPrepay, want)
+	}
+}
+
+// seedSocialInsuranceXMLSettings stores the taxpayer data the CSSZ XML needs.
+func seedSocialInsuranceXMLSettings(t *testing.T, db *sql.DB) {
+	t.Helper()
+	settingsRepo := repository.NewSettingsRepository(db)
+	settings := map[string]string{
+		"cssz_code":    "775",
+		"first_name":   "Jan",
+		"last_name":    "Testovaci",
+		"birth_number": "8001010006",
+		"birth_date":   "1980-01-01",
+		"street":       "Testovaci",
+		"house_number": "1",
+		"zip":          "11000",
+		"city":         "Praha",
+	}
+	if err := settingsRepo.SetBulk(context.Background(), settings); err != nil {
+		t.Fatalf("storing settings: %v", err)
+	}
+}
+
+// The XML must report the base and the advance from one stored recalculation,
+// so the 2024 overview keeps the 2025 payment-year bounds.
+func TestGenerateXML_2024UsesStoredBoundedBase(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+	seedSocialInsuranceXMLSettings(t, db)
+
+	sio := &domain.SocialInsuranceOverview{Year: 2024, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, sio.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	generated, err := svc.GenerateXML(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+
+	var doc annualtaxxml.OSVC
+	if err := xml.Unmarshal(generated.XMLData, &doc); err != nil {
+		t.Fatalf("unmarshal generated XML: %v", err)
+	}
+	if doc.Prehled.Zal.VZ != "16295" {
+		t.Errorf("zal@vz = %q, want 16295", doc.Prehled.Zal.VZ)
+	}
+	if doc.Prehled.Zal.DP != "4759" {
+		t.Errorf("zal@dp = %q, want 4759", doc.Prehled.Zal.DP)
+	}
+}
+
+// Overviews stored before the base was kept have none; the base is then taken
+// as the final annual base over the months of activity, which matches their
+// stored advance only when both formulas agree.
+func TestGenerateXML_LegacyRowWithoutStoredBase(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+	seedSocialInsuranceXMLSettings(t, db)
+
+	sio := &domain.SocialInsuranceOverview{
+		Year:                2024,
+		FilingType:          domain.FilingTypeRegular,
+		ActivityMonths:      domain.FullYearActivityMonths,
+		AssessmentBase:      domain.NewAmount(55_000, 0),
+		MinAssessmentBase:   domain.NewAmount(158_292, 0),
+		FinalAssessmentBase: domain.NewAmount(158_292, 0),
+		InsuranceRate:       292,
+		TotalInsurance:      domain.NewAmount(46_221, 0),
+		NewMonthlyPrepay:    domain.NewAmount(3_852, 0),
+	}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	generated, err := svc.GenerateXML(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+
+	var doc annualtaxxml.OSVC
+	if err := xml.Unmarshal(generated.XMLData, &doc); err != nil {
+		t.Fatalf("unmarshal generated XML: %v", err)
+	}
+	if doc.Prehled.Zal.VZ != "13191" {
+		t.Errorf("zal@vz = %q, want 13191 (the legacy base)", doc.Prehled.Zal.VZ)
+	}
+	if doc.Prehled.Zal.DP != "3852" {
+		t.Errorf("zal@dp = %q, want 3852", doc.Prehled.Zal.DP)
+	}
+}
+
+func TestGenerateXML_RejectsInconsistentStoredAdvance(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+	seedSocialInsuranceXMLSettings(t, db)
+
+	sio := &domain.SocialInsuranceOverview{Year: 2024, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, sio.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `UPDATE social_insurance_overviews SET new_monthly_prepay = ? WHERE id = ?`, domain.NewAmount(9_999, 0), sio.ID); err != nil {
+		t.Fatalf("updating stored advance: %v", err)
+	}
+
+	_, err := svc.GenerateXML(ctx, sio.ID)
+	if err == nil {
+		t.Fatal("GenerateXML() error = nil, want ErrInvalidInput")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+// Overviews stored by the release before the base was kept computed the advance
+// as the annual premium divided by 12, rounded up to whole CZK, so for some
+// final bases their stored advance does not follow from the monthly base.
+// final base 158 293 CZK: base 13 192, expected advance 3 853, stored 3 852.
+func TestGenerateXML_LegacyProductionRowWithoutStoredBase(t *testing.T) {
+	tests := []struct {
+		name        string
+		status      string
+		filed       bool
+		wantMessage string
+	}{
+		{name: "not filed", status: domain.FilingStatusDraft, wantMessage: "uložená záloha neodpovídá měsíčnímu základu, přepočítejte přehled"},
+		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantMessage: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, db := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			seedSocialInsuranceXMLSettings(t, db)
+
+			sio := &domain.SocialInsuranceOverview{
+				Year:                2024,
+				FilingType:          domain.FilingTypeRegular,
+				ActivityMonths:      domain.FullYearActivityMonths,
+				AssessmentBase:      domain.NewAmount(87_062, 0),
+				MinAssessmentBase:   domain.NewAmount(158_292, 0),
+				FinalAssessmentBase: domain.NewAmount(158_293, 0),
+				InsuranceRate:       292,
+				TotalInsurance:      domain.NewAmount(46_221, 0),
+				NewMonthlyPrepay:    domain.NewAmount(3_852, 0),
+				Status:              tt.status,
+			}
+			if tt.filed {
+				now := time.Now()
+				sio.FiledAt = &now
+			}
+			if err := svc.Create(ctx, sio); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, sio.ID)
+			if err == nil {
+				t.Fatal("GenerateXML() error = nil, want ErrInvalidInput")
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			var userMessage *domain.UserMessageError
+			if !errors.As(err, &userMessage) || userMessage.Message != tt.wantMessage {
+				t.Errorf("GenerateXML() error = %v, want user message %q", err, tt.wantMessage)
+			}
+		})
 	}
 }

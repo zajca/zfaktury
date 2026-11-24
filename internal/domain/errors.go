@@ -54,8 +54,9 @@ var (
 	// ErrISDSCredentialsMissing means no data-box login is stored for the
 	// requested environment.
 	ErrISDSCredentialsMissing = errors.New("data box credentials not configured")
-	// ErrSubmissionNotDelivered means an action needs a delivered submission.
-	ErrSubmissionNotDelivered = errors.New("submission not delivered")
+	// ErrFilingRecordFailed means the message was accepted by ISDS but the
+	// local record of it could not be written.
+	ErrFilingRecordFailed = errors.New("filing sent but its record could not be stored")
 
 	// Reminder errors
 	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")

@@ -40,9 +40,9 @@ func TestGetTaxConstants_2024Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(13_191, 0) {
 		t.Errorf("2024 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(13_191, 0))
 	}
-	// ZP 2024: 50 % × 43 967 = 21 983,50 → 21 984 Kč.
-	if c.HealthMinMonthly != domain.NewAmount(21_984, 0) {
-		t.Errorf("2024 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(21_984, 0))
+	// ZP 2024: 50 % × 43 967 = 21 983,50 Kč (stored in halere).
+	if c.HealthMinMonthly != domain.NewAmount(21_983, 50) {
+		t.Errorf("2024 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(21_983, 50))
 	}
 	// Sleva na studenta zrušena konsolidačním balíčkem od 1. 1. 2024.
 	if c.StudentCredit != 0 {
@@ -62,26 +62,31 @@ func TestGetTaxConstants_2025Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(16_295, 0) {
 		t.Errorf("2025 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(16_295, 0))
 	}
-	// ZP 2025: 50 % × 46 557 = 23 278,50 → 23 279 Kč.
-	if c.HealthMinMonthly != domain.NewAmount(23_279, 0) {
-		t.Errorf("2025 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(23_279, 0))
+	// ZP 2025: 50 % × 46 557 = 23 278,50 Kč (stored in halere).
+	if c.HealthMinMonthly != domain.NewAmount(23_278, 50) {
+		t.Errorf("2025 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(23_278, 50))
 	}
 	if c.StudentCredit != 0 {
 		t.Errorf("2025 StudentCredit = %d, want 0 (zrušena od 2024)", c.StudentCredit)
 	}
-	if c.SecurityExemptionLimit != domain.NewAmount(100_000_000, 0) {
-		t.Errorf("2025 SecurityExemptionLimit = %d, want %d", c.SecurityExemptionLimit, domain.NewAmount(100_000_000, 0))
+	if c.SecurityExemptionLimit != domain.NewAmount(40_000_000, 0) {
+		t.Errorf("2025 SecurityExemptionLimit = %d, want %d", c.SecurityExemptionLimit, domain.NewAmount(40_000_000, 0))
 	}
 }
 
 func TestGetTaxConstants_2026Values(t *testing.T) {
 	c, _ := GetTaxConstants(2026)
-	// 2026: placeholder hodnoty -- aktualizovat až vyjde nařízení vlády.
-	if c.SocialMinMonthly == 0 {
-		t.Errorf("2026 SocialMinMonthly should be set (placeholder OK)")
+	if c.ProgressiveThreshold != domain.NewAmount(1_762_812, 0) {
+		t.Errorf("2026 ProgressiveThreshold = %d, want %d", c.ProgressiveThreshold, domain.NewAmount(1_762_812, 0))
 	}
-	if c.HealthMinMonthly == 0 {
-		t.Errorf("2026 HealthMinMonthly should be set (placeholder OK)")
+	// Annual overview minimum: 35 % × 48 967 = 17 138,45 → 17 139 Kč for all
+	// twelve months (CSSZ recalculates January-June).
+	if c.SocialMinMonthly != domain.NewAmount(17_139, 0) {
+		t.Errorf("2026 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(17_139, 0))
+	}
+	// ZP 2026: 50 % × 48 967 = 24 483,50 Kč (stored in halere).
+	if c.HealthMinMonthly != domain.NewAmount(24_483, 50) {
+		t.Errorf("2026 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(24_483, 50))
 	}
 	if c.StudentCredit != 0 {
 		t.Errorf("2026 StudentCredit = %d, want 0 (zrušena od 2024)", c.StudentCredit)

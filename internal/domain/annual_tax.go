@@ -16,6 +16,11 @@ const (
 	// enforcement (out of scope for current MVP — left here so future
 	// implementations can adopt the same identifier).
 	WarningWithholdingPartialInclude = "withholding_partial_include"
+
+	// WarningTaxRuleSetProvisional signals that the return was calculated with
+	// a provisional rule set. This is acceptable for drafts but should be
+	// reviewed before final filing/XML submission.
+	WarningTaxRuleSetProvisional = "tax_ruleset_provisional"
 )
 
 // IncomeTaxReturn represents DPFO (danove priznani fyzickych osob).
@@ -93,6 +98,14 @@ type IncomeTaxReturn struct {
 	// (e.g. progressive 23% rate review for §16 odst. 1 ZDP). Persisted as a
 	// comma-separated string in the warnings column. Empty slice = no warnings.
 	Warnings []string
+
+	// Tax rule-set metadata pins the versioned rules used for the latest
+	// calculation. Empty values identify legacy rows that have not been
+	// recalculated since rule-set pinning was introduced.
+	TaxRuleSetID     string
+	TaxRuleSetStatus string
+	TaxRuleSetHash   string
+	CalculatedAt     *time.Time
 
 	Status    string // draft, ready, filed
 	FiledAt   *time.Time

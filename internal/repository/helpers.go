@@ -55,3 +55,10 @@ func parseDatePtr(layout string, ns sql.NullString) (*time.Time, error) {
 	}
 	return &t, nil
 }
+
+func formatTimePtr(layout string, t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return t.Format(layout)
+}

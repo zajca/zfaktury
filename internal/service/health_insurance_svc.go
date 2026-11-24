@@ -176,6 +176,7 @@ func (s *HealthInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		MinMonthlyBase: constants.HealthMinMonthly,
 		RatePermille:   constants.HealthRate,
 		Prepayments:    healthTotal,
+		RoundPremiumUp: true,
 	})
 
 	hi.TaxBase = insResult.TaxBase

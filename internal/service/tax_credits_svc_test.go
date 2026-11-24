@@ -897,6 +897,14 @@ func TestTaxCreditsService_ComputeDeductions_AboveCap(t *testing.T) {
 	if total != domain.NewAmount(48_000, 0) {
 		t.Errorf("total = %d, want %d (capped at combined savings pool)", total, domain.NewAmount(48_000, 0))
 	}
+
+	deductions, _ := svc.ListDeductions(ctx, 2025)
+	if len(deductions) != 1 {
+		t.Fatalf("expected 1 deduction, got %d", len(deductions))
+	}
+	if deductions[0].MaxAmount != domain.NewAmount(48_000, 0) {
+		t.Errorf("MaxAmount = %d, want %d", deductions[0].MaxAmount, domain.NewAmount(48_000, 0))
+	}
 }
 
 func TestTaxCreditsService_ComputeDeductions_MultipleSameCategory(t *testing.T) {

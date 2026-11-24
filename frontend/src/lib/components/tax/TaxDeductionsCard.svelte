@@ -45,6 +45,15 @@
 		onDeleteDocument: (docId: number) => void;
 		onUploadWithOCR: () => void;
 	} = $props();
+
+	let isPensionDeduction = $derived(deductionCategory === 'pension');
+	let isSavingsDeduction = $derived(
+		deductionCategory === 'pension' || deductionCategory === 'life_insurance'
+	);
+	let savingsCap = $derived(
+		taxConstants?.deduction_cap_savings_combined ||
+			(taxConstants?.deduction_cap_pension ?? 0) + (taxConstants?.deduction_cap_life_insurance ?? 0)
+	);
 </script>
 
 <Card>
@@ -90,7 +99,14 @@
 							></span
 						>
 						{#if ded.max_amount > 0}
-							<span class="text-tertiary">Max: {formatCZK(ded.max_amount)}</span>
+							{#if ded.category === 'pension' || ded.category === 'life_insurance'}
+								<span class="text-tertiary"
+									>Společný limit (penzijní produkty, životní pojištění, DIP, pojištění dlouhodobé
+									péče): {formatCZK(ded.max_amount)}</span
+								>
+							{:else}
+								<span class="text-tertiary">Max: {formatCZK(ded.max_amount)}</span>
+							{/if}
 						{/if}
 						<span class="text-tertiary"
 							>Uznáno: <strong class="text-primary">{formatCZK(ded.allowed_amount)}</strong></span
@@ -158,7 +174,7 @@
 							deductionCategory = (e.currentTarget as HTMLSelectElement).value;
 						}}
 					>
-						{#each Object.entries(categoryLabels) as [key, label]}
+						{#each Object.entries(categoryLabels) as [key, label] (key)}
 							<option value={key}>{label}</option>
 						{/each}
 					</Select>
@@ -174,7 +190,9 @@
 					/>
 				</div>
 				<div>
-					<span class="text-xs text-tertiary">Částka (CZK)</span>
+					<span class="text-xs text-tertiary">
+						{isPensionDeduction ? 'Daňově uznatelná částka z potvrzení (CZK)' : 'Částka (CZK)'}
+					</span>
 					<Input
 						type="number"
 						value={deductionAmount}
@@ -185,6 +203,25 @@
 					/>
 				</div>
 			</div>
+			{#if isPensionDeduction}
+				<div
+					class="mt-3 rounded-lg border border-warning/30 bg-warning-bg px-3 py-2 text-sm text-warning"
+				>
+					Zadejte částku z potvrzení penzijní společnosti, ne celkově zaplacený příspěvek. Tato
+					částka se počítá do společného limitu{savingsCap > 0
+						? ` ${formatCZK(savingsCap * 100)}`
+						: ''} s ostatními produkty spoření na stáří a dlouhodobé péče. Příjemci starobního důchodu
+					odečítají příspěvky od první koruny od 1. 7. 2024; dříve platila hranice podle § 15 odst. 7
+					ZDP.
+				</div>
+			{:else if isSavingsDeduction && savingsCap > 0}
+				<div
+					class="mt-3 rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-tertiary"
+				>
+					Tato kategorie sdílí roční limit {formatCZK(savingsCap * 100)} s ostatními daňově podporovanými
+					produkty spoření na stáří a dlouhodobé péče.
+				</div>
+			{/if}
 			<div class="mt-3 flex gap-2">
 				<Button variant="primary" size="sm" onclick={onSave} disabled={saving}>Uložit</Button>
 				<Button variant="ghost" size="sm" onclick={onReset}>Zrušit</Button>

@@ -2,13 +2,14 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 func TestToCZK(t *testing.T) {
@@ -29,14 +30,32 @@ func TestToCZK(t *testing.T) {
 	}
 }
 
-func TestTaxConstantsFromService(t *testing.T) {
-	c := calc.TaxYearConstants{
-		BasicCredit:   3083400,
-		SpouseCredit:  2477000,
-		FlatRateCaps:  map[int]domain.Amount{60: 200000000},
-		TimeTestYears: 3,
+func TestTaxConstantsFromRuleSet(t *testing.T) {
+	rules := taxrules.RuleSet{
+		ID:     "test-2025.v1",
+		Year:   2025,
+		Status: taxrules.RuleStatusFinal,
+		Constants: taxrules.TaxYearConstants{
+			BasicCredit:                 3083400,
+			SpouseCredit:                2477000,
+			FlatRateCaps:                map[int]domain.Amount{60: 200000000},
+			DeductionCapSavingsCombined: 4800000,
+			TimeTestYears:               3,
+		},
 	}
-	resp := taxConstantsFromService(2025, c)
+	resp, err := taxConstantsFromRuleSet(rules)
+	if err != nil {
+		t.Fatalf("taxConstantsFromRuleSet() error: %v", err)
+	}
+	if resp.RuleSetID != "test-2025.v1" {
+		t.Errorf("RuleSetID = %q, want test-2025.v1", resp.RuleSetID)
+	}
+	if resp.RuleSetStatus != "final" {
+		t.Errorf("RuleSetStatus = %q, want final", resp.RuleSetStatus)
+	}
+	if resp.RuleSetHash == "" {
+		t.Error("RuleSetHash should not be empty")
+	}
 	if resp.Year != 2025 {
 		t.Errorf("Year = %d, want 2025", resp.Year)
 	}
@@ -48,6 +67,9 @@ func TestTaxConstantsFromService(t *testing.T) {
 	}
 	if resp.TimeTestYears != 3 {
 		t.Errorf("TimeTestYears = %d, want 3", resp.TimeTestYears)
+	}
+	if resp.DeductionCapSavings != 48000 {
+		t.Errorf("DeductionCapSavings = %d, want 48000", resp.DeductionCapSavings)
 	}
 }
 
@@ -69,6 +91,15 @@ func TestHandleGetTaxConstants(t *testing.T) {
 		if resp.Year != 2025 {
 			t.Errorf("Year = %d, want 2025", resp.Year)
 		}
+		if resp.RuleSetID != "cz-dpfo-2025.v1" {
+			t.Errorf("RuleSetID = %q, want cz-dpfo-2025.v1", resp.RuleSetID)
+		}
+		if resp.RuleSetStatus != "final" {
+			t.Errorf("RuleSetStatus = %q, want final", resp.RuleSetStatus)
+		}
+		if resp.RuleSetHash == "" {
+			t.Error("RuleSetHash should not be empty")
+		}
 	})
 
 	t.Run("invalid year", func(t *testing.T) {
@@ -87,5 +118,30 @@ func TestHandleGetTaxConstants(t *testing.T) {
 		if rr.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", rr.Code)
 		}
+		var resp errorResponse
+		if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if want := "Pro rok 1990 zatím nejsou daňová pravidla."; resp.Error != want {
+			t.Errorf("error = %q, want %q", resp.Error, want)
+		}
 	})
+}
+
+func TestMapDomainError_NoRuleSetIsCzech(t *testing.T) {
+	_, err := taxrules.GetRuleSet(2099)
+	wrapped := fmt.Errorf("calculating income tax return: %w", err)
+
+	rr := httptest.NewRecorder()
+	mapDomainError(rr, wrapped)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+	var resp errorResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if want := "Pro rok 2099 zatím nejsou daňová pravidla."; resp.Error != want {
+		t.Errorf("error = %q, want %q", resp.Error, want)
+	}
 }

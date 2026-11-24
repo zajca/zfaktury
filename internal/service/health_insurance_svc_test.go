@@ -374,7 +374,9 @@ func TestHealthInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 		t.Errorf("FinalAssessmentBase = %d, want %d (should use minimum)", result.FinalAssessmentBase, expectedMinBase)
 	}
 
-	expectedInsurance := domain.Amount(int64(expectedMinBase) * int64(constants.HealthRate) / 1000)
+	// 13,5 % of 279 342 CZK is 37 711,17 CZK, rounded up to whole CZK
+	// (§ 2 odst. 2 zakona c. 592/1992 Sb.).
+	expectedInsurance := domain.NewAmount(37_712, 0)
 	if result.TotalInsurance != expectedInsurance {
 		t.Errorf("TotalInsurance = %d, want %d", result.TotalInsurance, expectedInsurance)
 	}

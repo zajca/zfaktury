@@ -101,6 +101,11 @@ type incomeTaxResponse struct {
 	// localised copy.
 	Warnings []string `json:"warnings"`
 
+	TaxRuleSetID     string  `json:"tax_ruleset_id"`
+	TaxRuleSetStatus string  `json:"tax_ruleset_status"`
+	TaxRuleSetHash   string  `json:"tax_ruleset_hash"`
+	CalculatedAt     *string `json:"calculated_at,omitempty"`
+
 	Status    string  `json:"status"`
 	FiledAt   *string `json:"filed_at,omitempty"`
 	CreatedAt string  `json:"created_at"`
@@ -149,12 +154,16 @@ func incomeTaxFromDomain(itr *domain.IncomeTaxReturn) incomeTaxResponse {
 		OtherIncomeExempt:   int64(itr.OtherIncomeExempt),
 		OtherIncomeNet:      int64(itr.OtherIncomeNet),
 
-		HasXML:    len(itr.XMLData) > 0,
-		Warnings:  itr.Warnings,
-		Status:    itr.Status,
-		FiledAt:   formatOptionalTime(itr.FiledAt),
-		CreatedAt: itr.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: itr.UpdatedAt.Format(time.RFC3339),
+		HasXML:           len(itr.XMLData) > 0,
+		Warnings:         itr.Warnings,
+		TaxRuleSetID:     itr.TaxRuleSetID,
+		TaxRuleSetStatus: itr.TaxRuleSetStatus,
+		TaxRuleSetHash:   itr.TaxRuleSetHash,
+		CalculatedAt:     formatOptionalTime(itr.CalculatedAt),
+		Status:           itr.Status,
+		FiledAt:          formatOptionalTime(itr.FiledAt),
+		CreatedAt:        itr.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        itr.UpdatedAt.Format(time.RFC3339),
 	}
 }
 

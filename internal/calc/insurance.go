@@ -11,7 +11,10 @@ type InsuranceInput struct {
 	// base. Zero keeps the historical/default 50% behavior.
 	AssessmentBasePermille int
 	RatePermille           int // 292 for social, 135 for health
-	Prepayments            domain.Amount
+	// RoundPremiumUp rounds the total premium up to whole CZK regardless of
+	// AssessmentBasePermille (health insurance, § 2 odst. 2 zakona c. 592/1992 Sb.).
+	RoundPremiumUp bool
+	Prepayments    domain.Amount
 }
 
 // InsuranceResult holds the computed insurance values.
@@ -54,8 +57,9 @@ func CalculateInsurance(input InsuranceInput) InsuranceResult {
 	}
 
 	totalInsurance := finalBase * int64(input.RatePermille) / 1000
-	if input.AssessmentBasePermille != 0 {
-		// CSSZ form line D32.1 is rounded up to whole CZK.
+	if input.AssessmentBasePermille != 0 || input.RoundPremiumUp {
+		// The premium is rounded up to whole CZK: CSSZ form line D32.1 (social)
+		// and § 2 odst. 2 zakona c. 592/1992 Sb. (health).
 		totalInsurance = ceilToWholeCZK(totalInsurance)
 	}
 

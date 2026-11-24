@@ -665,10 +665,10 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 		'dan-15-23': {
 			title: 'Sazba daně 15 % a 23 %',
 			simple: tc
-				? `Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z části základu daně nad ${fmtCZK(tc.progressive_threshold)}\n\nPráh ${fmtCZK(tc.progressive_threshold)} odpovídá 48násobku průměrné mzdy pro rok ${tc.year}. Většina OSVČ se vejde do 15% pásma.`
-				: 'Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do zákonem stanoveného prahu\n- 23 % z části základu daně nad tento práh\n\nPráh odpovídá 48násobku průměrné mzdy a mění se každý rok. Většina OSVČ se vejde do 15% pásma.',
+				? `Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do ${fmtCZK(tc.progressive_threshold)}\n- 23 % z části základu daně nad ${fmtCZK(tc.progressive_threshold)}\n\nPráh ${fmtCZK(tc.progressive_threshold)} odpovídá 36násobku průměrné mzdy pro rok ${tc.year}. Většina OSVČ se vejde do 15% pásma.`
+				: 'Daň z příjmů fyzických osob má dvě sazby:\n\n- 15 % ze základu daně do zákonem stanoveného prahu\n- 23 % z části základu daně nad tento práh\n\nPráh odpovídá 36násobku průměrné mzdy a mění se každý rok. Většina OSVČ se vejde do 15% pásma.',
 			legal:
-				'Sazby daně z příjmů fyzických osob upravuje § 16 zákona č. 586/1992 Sb. Základní sazba 15 % a solidární sazba 23 % z části základu daně přesahující 48násobek průměrné mzdy (§ 16 odst. 2). Průměrná mzda se stanoví dle § 21g.'
+				'Sazby daně z příjmů fyzických osob upravuje § 16 zákona č. 586/1992 Sb. Základní sazba 15 % a sazba 23 % se použije na část základu daně přesahující 36násobek průměrné mzdy. Průměrná mzda se stanoví dle § 21g.'
 		},
 
 		'sleva-na-poplatnika': {
@@ -683,19 +683,19 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 		'zvyhodneni-na-deti': {
 			title: 'Daňové zvýhodnění na děti',
 			simple: tc
-				? `Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Roční částky (${tc.year}):\n\n- 1. dítě: ${fmtCZK(tc.child_benefit_1)}\n- 2. dítě: ${fmtCZK(tc.child_benefit_2)}\n- 3. a další: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí (max ${fmtCZK(tc.max_child_bonus)}/rok).`
+				? `Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Roční částky (${tc.year}):\n\n- 1. dítě: ${fmtCZK(tc.child_benefit_1)}\n- 2. dítě: ${fmtCZK(tc.child_benefit_2)}\n- 3. a další: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí (od roku 2021 bez ročního stropu).`
 				: 'Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Konkrétní výše se liší podle pořadí dítěte a zdaňovacího období.\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí.',
 			legal:
-				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Maximální roční daňový bonus je stanoven v § 35c odst. 3. Zvýhodnění nelze uplatnit při paušálních výdajích (§ 35c odst. 9).'
+				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Roční strop daňového bonusu byl od roku 2021 zrušen. Zvýhodnění nelze uplatnit při paušálních výdajích (§ 35c odst. 9).'
 		},
 
 		'nezdanitelne-odpocty': {
 			title: 'Odpočty ze základu daně',
 			simple: tc
-				? `Nezdanitelné části základu daně jsou částky, které si odečtete od základu daně PŘED výpočtem daně (na rozdíl od slev, které se odečítají od daně samotné). Patří sem:\n\n- Úroky z hypotéky (max ${fmtCZK(tc.deduction_cap_mortgage)}/rok)\n- Penzijní spoření (max ${fmtCZK(tc.deduction_cap_pension)}/rok)\n- Životní pojištění (max ${fmtCZK(tc.deduction_cap_life_insurance)}/rok)\n- Dary (max 15 % základu daně)\n- Odborové příspěvky (max ${fmtCZK(tc.deduction_cap_union)}/rok)`
-				: 'Nezdanitelné části základu daně jsou částky, které si odečtete od základu daně PŘED výpočtem daně (na rozdíl od slev, které se odečítají od daně samotné). Patří sem úroky z hypotéky, penzijní spoření, životní pojištění, dary a odborové příspěvky. Konkrétní stropy závisí na zdaňovacím období.',
+				? `Nezdanitelné části základu daně jsou částky, které si odečtete od základu daně PŘED výpočtem daně (na rozdíl od slev, které se odečítají od daně samotné). Patří sem:\n\n- Úroky z hypotéky (max ${fmtCZK(tc.deduction_cap_mortgage)}/rok)\n- Produkty spoření na stáří a dlouhodobá péče (společně max ${fmtCZK(tc.deduction_cap_savings_combined || tc.deduction_cap_pension + tc.deduction_cap_life_insurance)}/rok)\n- Dary (max 15 % základu daně)\n- Odborové příspěvky (max ${fmtCZK(tc.deduction_cap_union)}/rok)\n\nU penzijního připojištění a doplňkového penzijního spoření se nezadávají celkové zaplacené příspěvky, ale daňově uznatelná částka z potvrzení penzijní společnosti. Tato částka se počítá do stejného společného limitu jako ostatní produkty spoření na stáří. Příjemci starobního důchodu odečítají příspěvky od první koruny od 1. 7. 2024; dříve platila hranice podle § 15 odst. 7 zákona o daních z příjmů.`
+				: 'Nezdanitelné části základu daně jsou částky, které si odečtete od základu daně PŘED výpočtem daně (na rozdíl od slev, které se odečítají od daně samotné). Patří sem úroky z hypotéky, produkty spoření na stáří a dlouhodobá péče, dary a odborové příspěvky. U penzijního připojištění a doplňkového penzijního spoření se zadává daňově uznatelná částka z potvrzení penzijní společnosti, ne celkově zaplacené příspěvky; počítá se do společného limitu s ostatními produkty. Příjemci starobního důchodu odečítají příspěvky od první koruny od 1. 7. 2024; dříve platila hranice podle § 15 odst. 7 ZDP.',
 			legal:
-				'Nezdanitelné části základu daně upravuje § 15 zákona č. 586/1992 Sb. Úroky z úvěru na bydlení (§ 15 odst. 3). Penzijní připojištění/spoření (§ 15 odst. 5): částka nad 12 000 Kč. Soukromé životní pojištění (§ 15 odst. 6). Dary na veřejně prospěšné účely (§ 15 odst. 1): min 2 % základu daně nebo 1 000 Kč, max 15 %. Stropy se mění podle roku.'
+				'Nezdanitelné části základu daně upravuje § 15 zákona č. 586/1992 Sb. Od roku 2024 lze u daňově podporovaných produktů spoření na stáří a pojištění dlouhodobé péče odečíst společně nejvýše 48 000 Kč ročně. U penzijního připojištění a doplňkového penzijního spoření se uplatňuje částka uvedená v potvrzení penzijní společnosti; příjemci starobního důchodu odečítají příspěvky od první koruny od 1. 7. 2024 (zákon č. 462/2023 Sb.); dříve platila hranice podle § 15 odst. 7. Dary na veřejně prospěšné účely (§ 15 odst. 1): min 2 % základu daně nebo 1 000 Kč, max 15 %. Stropy se mění podle roku.'
 		},
 
 		ztpp: {

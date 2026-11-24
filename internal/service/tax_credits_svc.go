@@ -293,7 +293,12 @@ func (s *TaxCreditsService) ComputeCredits(ctx context.Context, year int) (spous
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("getting tax constants for credits: %w", err)
 	}
+	return s.ComputeCreditsWithConstants(ctx, year, constants)
+}
 
+// ComputeCreditsWithConstants computes credits using an already resolved rule
+// set, keeping an income-tax recalculation on one consistent constants snapshot.
+func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, year int, constants calc.TaxYearConstants) (spouseCredit, disabilityCredit, studentCredit domain.Amount, err error) {
 	// Spouse credit.
 	spouse, err := s.spouseRepo.GetByYear(ctx, year)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
@@ -321,7 +326,12 @@ func (s *TaxCreditsService) ComputeChildBenefit(ctx context.Context, year int) (
 	if err != nil {
 		return 0, fmt.Errorf("getting tax constants for child benefit: %w", err)
 	}
+	return s.ComputeChildBenefitWithConstants(ctx, year, constants)
+}
 
+// ComputeChildBenefitWithConstants computes child benefit using an already
+// resolved rule-set constants snapshot.
+func (s *TaxCreditsService) ComputeChildBenefitWithConstants(ctx context.Context, year int, constants calc.TaxYearConstants) (domain.Amount, error) {
 	children, err := s.childRepo.ListByYear(ctx, year)
 	if err != nil {
 		return 0, fmt.Errorf("listing children for benefit compute: %w", err)
@@ -348,7 +358,12 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 	if err != nil {
 		return 0, fmt.Errorf("getting tax constants for deductions: %w", err)
 	}
+	return s.ComputeDeductionsWithConstants(ctx, year, taxBase, constants)
+}
 
+// ComputeDeductionsWithConstants computes allowed deductions using an already
+// resolved rule-set constants snapshot.
+func (s *TaxCreditsService) ComputeDeductionsWithConstants(ctx context.Context, year int, taxBase domain.Amount, constants calc.TaxYearConstants) (domain.Amount, error) {
 	deductions, err := s.deductionRepo.ListByYear(ctx, year)
 	if err != nil {
 		return 0, fmt.Errorf("listing deductions for compute: %w", err)
@@ -373,6 +388,10 @@ func (s *TaxCreditsService) ComputeDeductions(ctx context.Context, year int, tax
 		domain.DeductionPension:       constants.DeductionCapPension,
 		domain.DeductionUnionDues:     constants.DeductionCapUnionDues,
 		domain.DeductionDonation:      taxBase.Multiply(0.15),
+	}
+	if constants.DeductionCapSavingsCombined > 0 {
+		categoryCaps[domain.DeductionLifeInsurance] = constants.DeductionCapSavingsCombined
+		categoryCaps[domain.DeductionPension] = constants.DeductionCapSavingsCombined
 	}
 
 	for i := range deductions {

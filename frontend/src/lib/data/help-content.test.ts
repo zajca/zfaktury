@@ -116,6 +116,9 @@ describe('help-content', () => {
 
 	describe('getHelpTopics with TaxConstants', () => {
 		const mockConstants: TaxConstants = {
+			rule_set_id: 'cz-dpfo-2024.v1',
+			rule_set_status: 'final',
+			rule_set_hash: 'abc123',
 			year: 2024,
 			basic_credit: 30840,
 			spouse_credit: 24840,
@@ -127,12 +130,12 @@ describe('help-content', () => {
 			child_benefit_1: 15204,
 			child_benefit_2: 22320,
 			child_benefit_3_plus: 27840,
-			max_child_bonus: 60300,
-			progressive_threshold: 1935552,
+			progressive_threshold: 1582812,
 			flat_rate_caps: { '80': 1600000, '60': 1200000, '40': 800000, '30': 600000 },
 			deduction_cap_mortgage: 150000,
-			deduction_cap_pension: 24000,
-			deduction_cap_life_insurance: 24000,
+			deduction_cap_pension: 0,
+			deduction_cap_life_insurance: 0,
+			deduction_cap_savings_combined: 48000,
 			deduction_cap_union: 3000,
 			time_test_years: 3,
 			security_exemption_limit: 100000
@@ -151,12 +154,18 @@ describe('help-content', () => {
 			expect(topics['pausalni-vydaje'].simple).toContain('2024');
 		});
 
+		it('states that the child tax bonus has no annual cap', () => {
+			const topic = getHelpTopics(mockConstants)['zvyhodneni-na-deti'];
+			expect(topic.simple).toContain('bez ročního stropu');
+			expect(topic.legal).toContain('zrušen');
+		});
+
 		it('returns generic text without constants', () => {
 			const topics = getHelpTopics(null);
 			expect(topics['sleva-na-poplatnika'].simple).not.toContain('2024');
 			expect(topics['sleva-na-poplatnika'].simple).toContain('zdaňovacím období');
 			expect(topics['zvyhodneni-na-deti'].simple).not.toContain('15 204');
-			expect(topics['dan-15-23'].simple).toContain('48násobku');
+			expect(topics['dan-15-23'].simple).toContain('36násobku');
 		});
 
 		it('returns same topics with and without constants', () => {

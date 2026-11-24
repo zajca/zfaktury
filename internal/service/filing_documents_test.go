@@ -19,6 +19,7 @@ type markFiledAtCase struct {
 	markNow    func(ctx context.Context, id int64) error
 	filedAt    func(ctx context.Context, id int64) (*time.Time, string)
 	reMarkable bool // MarkFiled (without a time) of a filed document is not an error
+	doc        FilingDocument
 }
 
 func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
@@ -28,6 +29,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"vat return": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupVATReturnSvc(t)
 			return markFiledAtCase{
+				doc: NewFilingDocuments(svc, nil, nil, nil, nil, nil)[domain.FilingKindVATReturn],
 				create: func(t *testing.T) int64 {
 					vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
 					if err := svc.Create(ctx, vr); err != nil {
@@ -49,6 +51,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"control statement": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupVATControlSvc(t)
 			return markFiledAtCase{
+				doc: NewFilingDocuments(nil, svc, nil, nil, nil, nil)[domain.FilingKindControlStatement],
 				create: func(t *testing.T) int64 {
 					cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
 					if err := svc.Create(ctx, cs); err != nil {
@@ -68,6 +71,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"VIES summary": func(t *testing.T) markFiledAtCase {
 			svc, _ := newVIESSvc(t)
 			return markFiledAtCase{
+				doc: NewFilingDocuments(nil, nil, svc, nil, nil, nil)[domain.FilingKindVIESSummary],
 				create: func(t *testing.T) int64 {
 					vs := validVIESSummary()
 					if err := svc.Create(ctx, vs); err != nil {
@@ -86,6 +90,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"income tax return": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupIncomeTaxSvc(t)
 			return markFiledAtCase{
+				doc: NewFilingDocuments(nil, nil, nil, svc, nil, nil)[domain.FilingKindIncomeTax],
 				create: func(t *testing.T) int64 {
 					itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
 					if err := svc.Create(ctx, itr); err != nil {
@@ -107,6 +112,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"social insurance": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupSocialInsuranceSvc(t)
 			return markFiledAtCase{
+				doc: NewFilingDocuments(nil, nil, nil, nil, svc, nil)[domain.FilingKindSocialInsurance],
 				create: func(t *testing.T) int64 {
 					sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 					if err := svc.Create(ctx, sio); err != nil {
@@ -132,12 +138,22 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 			c := build(t)
 			id := c.create(t)
 
+			if filed, err := c.doc.IsFiled(ctx, id); err != nil || filed {
+				t.Fatalf("IsFiled of a draft = %v, %v, want false", filed, err)
+			}
+			if _, err := c.doc.IsFiled(ctx, id+1000); err == nil {
+				t.Error("IsFiled of a missing document returned no error")
+			}
 			if err := c.markFiled(ctx, id, filedAtDelivery); err != nil {
 				t.Fatalf("MarkFiledAt: %v", err)
 			}
 			at, status := c.filedAt(ctx, id)
 			if status != domain.FilingStatusFiled || at == nil || !at.Equal(filedAtDelivery) {
 				t.Fatalf("filed state = %q at %v, want filed at %v", status, at, filedAtDelivery)
+			}
+
+			if filed, err := c.doc.IsFiled(ctx, id); err != nil || !filed {
+				t.Errorf("IsFiled after MarkFiledAt = %v, %v, want true", filed, err)
 			}
 
 			// A second mark reports ErrFilingAlreadyFiled and keeps the first time.

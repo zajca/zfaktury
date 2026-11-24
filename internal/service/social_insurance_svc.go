@@ -13,6 +13,11 @@ import (
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
+// fullYearActivityMonths is the months of activity the insurance overviews
+// assume. Overviews model a full year of activity; months of activity are not
+// stored yet.
+const fullYearActivityMonths = 12
+
 // SocialInsuranceService provides business logic for social insurance overview management.
 type SocialInsuranceService struct {
 	repo                repository.SocialInsuranceOverviewRepo
@@ -178,7 +183,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 	}
 
 	// Pure calculation.
-	insResult := calc.CalculateInsurance(calc.InsuranceInput{
+	insResult, err := calc.CalculateInsurance(calc.InsuranceInput{
 		Revenue:                annualBase.Revenue,
 		UsedExpenses:           usedExpenses,
 		MinMonthlyBase:         constants.SocialMinMonthly,
@@ -186,7 +191,11 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		AssessmentBasePermille: 550,
 		RatePermille:           constants.SocialRate,
 		Prepayments:            socialTotal,
+		ActivityMonths:         fullYearActivityMonths,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("calculating social insurance: %w", err)
+	}
 
 	sio.TaxBase = insResult.TaxBase
 	sio.AssessmentBase = insResult.AssessmentBase

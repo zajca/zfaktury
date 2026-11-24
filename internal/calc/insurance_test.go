@@ -1,6 +1,7 @@
 package calc
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -19,6 +20,7 @@ func TestCalculateInsurance(t *testing.T) {
 				UsedExpenses:   domain.NewAmount(600_000, 0),   // 600k CZK
 				MinMonthlyBase: domain.NewAmount(11_024, 0),    // 2024 social min
 				RatePermille:   292,
+				ActivityMonths: 12,
 				Prepayments:    domain.NewAmount(40_000, 0), // 40k CZK
 			},
 			// taxBase = 100000000 - 60000000 = 40000000
@@ -45,6 +47,7 @@ func TestCalculateInsurance(t *testing.T) {
 				UsedExpenses:   domain.NewAmount(600_000, 0),
 				MinMonthlyBase: domain.NewAmount(10_081, 0), // 2024 health min
 				RatePermille:   135,
+				ActivityMonths: 12,
 				Prepayments:    domain.NewAmount(20_000, 0),
 			},
 			// taxBase = 40000000, assessment = 20000000
@@ -70,6 +73,7 @@ func TestCalculateInsurance(t *testing.T) {
 				UsedExpenses:   domain.NewAmount(80_000, 0),
 				MinMonthlyBase: domain.NewAmount(11_024, 0),
 				RatePermille:   292,
+				ActivityMonths: 12,
 				Prepayments:    0,
 			},
 			// taxBase = 10000000 - 8000000 = 2000000
@@ -96,6 +100,7 @@ func TestCalculateInsurance(t *testing.T) {
 				UsedExpenses:   0,
 				MinMonthlyBase: domain.NewAmount(11_024, 0),
 				RatePermille:   292,
+				ActivityMonths: 12,
 				Prepayments:    0,
 			},
 			// taxBase = 0, assessment = 0
@@ -119,6 +124,7 @@ func TestCalculateInsurance(t *testing.T) {
 				UsedExpenses:   domain.NewAmount(200_000, 0),
 				MinMonthlyBase: domain.NewAmount(11_024, 0),
 				RatePermille:   292,
+				ActivityMonths: 12,
 				Prepayments:    0,
 			},
 			// taxBase = 10000000 - 20000000 = -10000000 -> clamped to 0
@@ -144,6 +150,7 @@ func TestCalculateInsurance(t *testing.T) {
 				MinMonthlyBase: domain.NewAmount(11_024, 0),
 				RatePermille:   292,
 				Prepayments:    domain.NewAmount(500_000, 0), // 50000000 > total
+				ActivityMonths: 12,
 			},
 			// taxBase = 20000000 - 10000000 = 10000000
 			// assessment = 5000000
@@ -167,6 +174,7 @@ func TestCalculateInsurance(t *testing.T) {
 				UsedExpenses:   domain.NewAmount(200_000, 0),
 				MinMonthlyBase: domain.NewAmount(11_024, 0),
 				RatePermille:   292,
+				ActivityMonths: 12,
 				Prepayments:    0,
 			},
 			// taxBase = 50000000 - 20000000 = 30000000
@@ -189,7 +197,10 @@ func TestCalculateInsurance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CalculateInsurance(tt.input)
+			got, err := CalculateInsurance(tt.input)
+			if err != nil {
+				t.Fatalf("CalculateInsurance() error: %v", err)
+			}
 
 			if got.TaxBase != tt.expect.TaxBase {
 				t.Errorf("TaxBase = %d, want %d", got.TaxBase, tt.expect.TaxBase)
@@ -252,8 +263,12 @@ func TestCalculateInsuranceMonthlyRounding(t *testing.T) {
 				MinMonthlyBase: 0,
 				RatePermille:   1000,
 				Prepayments:    0,
+				ActivityMonths: 12,
 			}
-			got := CalculateInsurance(input)
+			got, err := CalculateInsurance(input)
+			if err != nil {
+				t.Fatalf("CalculateInsurance() error: %v", err)
+			}
 			if got.NewMonthlyPrepay != tt.expectedMonthly {
 				t.Errorf("NewMonthlyPrepay = %d, want %d", got.NewMonthlyPrepay, tt.expectedMonthly)
 			}
@@ -269,11 +284,15 @@ func TestCalculateInsuranceHealthMinimum2026Halere(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTaxConstants(2026) error: %v", err)
 	}
-	got := CalculateInsurance(InsuranceInput{
+	got, err := CalculateInsurance(InsuranceInput{
 		MinMonthlyBase: c.HealthMinMonthly,
 		RatePermille:   c.HealthRate,
 		RoundPremiumUp: true,
+		ActivityMonths: 12,
 	})
+	if err != nil {
+		t.Fatalf("CalculateInsurance() error: %v", err)
+	}
 	if got.MinAssessmentBase != domain.NewAmount(293_802, 0) {
 		t.Errorf("MinAssessmentBase = %s, want 293802.00", got.MinAssessmentBase)
 	}
@@ -283,14 +302,18 @@ func TestCalculateInsuranceHealthMinimum2026Halere(t *testing.T) {
 }
 
 func TestCalculateInsuranceSocialAssessmentBase55Percent(t *testing.T) {
-	got := CalculateInsurance(InsuranceInput{
+	got, err := CalculateInsurance(InsuranceInput{
 		Revenue:                domain.NewAmount(1_550_848, 0),
 		UsedExpenses:           domain.NewAmount(930_508, 80),
 		MinMonthlyBase:         domain.NewAmount(16_295, 0),
 		AssessmentBasePermille: 550,
 		RatePermille:           292,
 		Prepayments:            domain.NewAmount(86_991, 0),
+		ActivityMonths:         12,
 	})
+	if err != nil {
+		t.Fatalf("CalculateInsurance() error: %v", err)
+	}
 
 	if got.TaxBase != domain.NewAmount(620_339, 20) {
 		t.Errorf("TaxBase = %s, want 620339.20", got.TaxBase)
@@ -329,6 +352,7 @@ func TestCalculateInsuranceSocialMaxBase(t *testing.T) {
 				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
 				AssessmentBasePermille: 550,
 				RatePermille:           292,
+				ActivityMonths:         12,
 			},
 			wantAssessmentBase:   domain.NewAmount(2_750_000, 0),
 			wantFinalBase:        domain.NewAmount(2_234_736, 0),
@@ -344,6 +368,7 @@ func TestCalculateInsuranceSocialMaxBase(t *testing.T) {
 				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
 				AssessmentBasePermille: 550,
 				RatePermille:           292,
+				ActivityMonths:         12,
 			},
 			wantAssessmentBase:   domain.NewAmount(550_000, 0),
 			wantFinalBase:        domain.NewAmount(550_000, 0),
@@ -359,6 +384,7 @@ func TestCalculateInsuranceSocialMaxBase(t *testing.T) {
 				MaxAnnualBase:          domain.NewAmount(0, 0),
 				AssessmentBasePermille: 550,
 				RatePermille:           292,
+				ActivityMonths:         12,
 			},
 			wantAssessmentBase:   domain.NewAmount(2_750_000, 0),
 			wantFinalBase:        domain.NewAmount(2_750_000, 0),
@@ -369,7 +395,10 @@ func TestCalculateInsuranceSocialMaxBase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CalculateInsurance(tt.input)
+			got, err := CalculateInsurance(tt.input)
+			if err != nil {
+				t.Fatalf("CalculateInsurance() error: %v", err)
+			}
 			if got.AssessmentBase != tt.wantAssessmentBase {
 				t.Errorf("AssessmentBase = %s, want %s", got.AssessmentBase, tt.wantAssessmentBase)
 			}
@@ -383,5 +412,150 @@ func TestCalculateInsuranceSocialMaxBase(t *testing.T) {
 				t.Errorf("NewMonthlyPrepay = %s, want %s", got.NewMonthlyPrepay, tt.wantNewMonthlyPrepay)
 			}
 		})
+	}
+}
+
+// The minimum annual base is the minimum monthly base times the months of
+// activity, and the advance spreads the annual premium over those months. CSSZ
+// rounds the monthly base up to whole CZK before applying the rate (§ 14 odst.
+// 13 zakona c. 589/1992 Sb.); health insurance divides the annual premium over
+// the months of activity in one step.
+func TestCalculateInsuranceActivityMonths(t *testing.T) {
+	tests := []struct {
+		name                 string
+		input                InsuranceInput
+		wantAssessmentBase   domain.Amount
+		wantMinBase          domain.Amount
+		wantFinalBase        domain.Amount
+		wantTotalInsurance   domain.Amount
+		wantNewMonthlyPrepay domain.Amount
+	}{
+		{
+			name: "social full year",
+			input: InsuranceInput{
+				Revenue:                domain.NewAmount(1_000_000, 0),
+				UsedExpenses:           domain.NewAmount(0, 0),
+				MinMonthlyBase:         domain.NewAmount(16_295, 0),
+				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
+				AssessmentBasePermille: 550,
+				RatePermille:           292,
+				ActivityMonths:         12,
+			},
+			wantAssessmentBase:   domain.NewAmount(550_000, 0),
+			wantMinBase:          domain.NewAmount(195_540, 0),
+			wantFinalBase:        domain.NewAmount(550_000, 0),
+			wantTotalInsurance:   domain.NewAmount(160_600, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(13_384, 0),
+		},
+		{
+			name: "social six months spreads the same premium over six advances",
+			input: InsuranceInput{
+				Revenue:                domain.NewAmount(1_000_000, 0),
+				UsedExpenses:           domain.NewAmount(0, 0),
+				MinMonthlyBase:         domain.NewAmount(16_295, 0),
+				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
+				AssessmentBasePermille: 550,
+				RatePermille:           292,
+				ActivityMonths:         6,
+			},
+			wantAssessmentBase:   domain.NewAmount(550_000, 0),
+			wantMinBase:          domain.NewAmount(97_770, 0),
+			wantFinalBase:        domain.NewAmount(550_000, 0),
+			wantTotalInsurance:   domain.NewAmount(160_600, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(26_767, 0),
+		},
+		{
+			name: "social six months below the six-month minimum uses the minimum",
+			input: InsuranceInput{
+				Revenue:                domain.NewAmount(100_000, 0),
+				UsedExpenses:           domain.NewAmount(0, 0),
+				MinMonthlyBase:         domain.NewAmount(16_295, 0),
+				MaxAnnualBase:          domain.NewAmount(2_234_736, 0),
+				AssessmentBasePermille: 550,
+				RatePermille:           292,
+				ActivityMonths:         6,
+			},
+			wantAssessmentBase:   domain.NewAmount(55_000, 0),
+			wantMinBase:          domain.NewAmount(97_770, 0),
+			wantFinalBase:        domain.NewAmount(97_770, 0),
+			wantTotalInsurance:   domain.NewAmount(28_549, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(4_759, 0),
+		},
+		{
+			name: "health full year",
+			input: InsuranceInput{
+				Revenue:        domain.NewAmount(1_000_000, 0),
+				UsedExpenses:   domain.NewAmount(0, 0),
+				MinMonthlyBase: domain.NewAmount(24_483, 50),
+				RatePermille:   135,
+				RoundPremiumUp: true,
+				ActivityMonths: 12,
+			},
+			wantAssessmentBase:   domain.NewAmount(500_000, 0),
+			wantMinBase:          domain.NewAmount(293_802, 0),
+			wantFinalBase:        domain.NewAmount(500_000, 0),
+			wantTotalInsurance:   domain.NewAmount(67_500, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(5_625, 0),
+		},
+		{
+			name: "health six months",
+			input: InsuranceInput{
+				Revenue:        domain.NewAmount(1_000_000, 0),
+				UsedExpenses:   domain.NewAmount(0, 0),
+				MinMonthlyBase: domain.NewAmount(24_483, 50),
+				RatePermille:   135,
+				RoundPremiumUp: true,
+				ActivityMonths: 6,
+			},
+			wantAssessmentBase:   domain.NewAmount(500_000, 0),
+			wantMinBase:          domain.NewAmount(146_901, 0),
+			wantFinalBase:        domain.NewAmount(500_000, 0),
+			wantTotalInsurance:   domain.NewAmount(67_500, 0),
+			wantNewMonthlyPrepay: domain.NewAmount(11_250, 0),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := CalculateInsurance(tt.input)
+			if err != nil {
+				t.Fatalf("CalculateInsurance() error: %v", err)
+			}
+			if got.AssessmentBase != tt.wantAssessmentBase {
+				t.Errorf("AssessmentBase = %s, want %s", got.AssessmentBase, tt.wantAssessmentBase)
+			}
+			if got.MinAssessmentBase != tt.wantMinBase {
+				t.Errorf("MinAssessmentBase = %s, want %s", got.MinAssessmentBase, tt.wantMinBase)
+			}
+			if got.FinalAssessmentBase != tt.wantFinalBase {
+				t.Errorf("FinalAssessmentBase = %s, want %s", got.FinalAssessmentBase, tt.wantFinalBase)
+			}
+			if got.TotalInsurance != tt.wantTotalInsurance {
+				t.Errorf("TotalInsurance = %s, want %s", got.TotalInsurance, tt.wantTotalInsurance)
+			}
+			if got.NewMonthlyPrepay != tt.wantNewMonthlyPrepay {
+				t.Errorf("NewMonthlyPrepay = %s, want %s", got.NewMonthlyPrepay, tt.wantNewMonthlyPrepay)
+			}
+		})
+	}
+}
+
+func TestCalculateInsuranceActivityMonthsInvalid(t *testing.T) {
+	for _, months := range []int{0, 13} {
+		_, err := CalculateInsurance(InsuranceInput{
+			Revenue:                domain.NewAmount(1_000_000, 0),
+			UsedExpenses:           domain.NewAmount(0, 0),
+			MinMonthlyBase:         domain.NewAmount(16_295, 0),
+			AssessmentBasePermille: 550,
+			RatePermille:           292,
+			ActivityMonths:         months,
+		})
+		if err == nil {
+			t.Errorf("CalculateInsurance(months=%d) error = nil, want ErrInvalidInput", months)
+			continue
+		}
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("CalculateInsurance(months=%d) error = %v, want ErrInvalidInput", months, err)
+		}
 	}
 }

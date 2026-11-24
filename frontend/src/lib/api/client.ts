@@ -636,6 +636,43 @@ export const settingsApi = {
 	}
 };
 
+// --- Data box (ISDS) credentials API ---
+
+export type ISDSEnvironment = 'test' | 'production';
+
+/** What is stored for one environment. The password is never returned. */
+export interface ISDSCredentialsStatus {
+	configured: boolean;
+	username: string;
+}
+
+export type ISDSCredentialsOverview = Record<ISDSEnvironment, ISDSCredentialsStatus>;
+
+// State-changing calls carry this header; the server rejects them without it.
+const ISDS_CONFIRM_HEADERS = { 'X-ZFaktury-Confirm': '1' };
+
+export const isdsCredentialsApi = {
+	get() {
+		return get<ISDSCredentialsOverview>('/settings/isds-credentials');
+	},
+
+	save(data: { environment: ISDSEnvironment; username: string; password: string }) {
+		return request<ISDSCredentialsStatus>('/settings/isds-credentials', {
+			method: 'PUT',
+			body: JSON.stringify(data),
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	},
+
+	remove(environment: ISDSEnvironment) {
+		const query = new URLSearchParams({ environment });
+		return request<void>(`/settings/isds-credentials?${query.toString()}`, {
+			method: 'DELETE',
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	}
+};
+
 // --- Codebooks (static EPO reference data) ---
 
 export interface FinancialOffice {

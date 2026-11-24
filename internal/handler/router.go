@@ -21,6 +21,9 @@ type RouterConfig struct {
 	DevMode bool
 	// DataDir is the application data directory for file storage.
 	DataDir string
+	// BindHost is the address the HTTP server listens on. The ISDS credentials
+	// API only works when it is a loopback address.
+	BindHost string
 }
 
 // NewRouter creates a chi router with all API routes mounted.
@@ -65,6 +68,7 @@ func NewRouter(
 	auditSvc *service.AuditService,
 	backupSvc *service.BackupService,
 	epoSvc *service.EPOService,
+	isdsCredentialsSvc *service.ISDSCredentialsService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -180,6 +184,9 @@ func NewRouter(
 			sr.Get("/logo", pdfSettingsHandler.GetLogo)
 			sr.Delete("/logo", pdfSettingsHandler.DeleteLogo)
 			sr.Get("/pdf-preview", pdfSettingsHandler.PreviewPDF)
+			if isdsCredentialsSvc != nil {
+				sr.Mount("/isds-credentials", NewISDSCredentialsHandler(isdsCredentialsSvc, cfg.BindHost).Routes())
+			}
 		})
 
 		api.Mount("/invoice-sequences", sequenceHandler.Routes())
@@ -357,6 +364,12 @@ func isLongRunningPath(path string) bool {
 // corsMiddleware adds permissive CORS headers for development.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The credentials API is never opened to other origins, not even in dev.
+		if strings.HasPrefix(r.URL.Path, isdsCredentialsPath) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")

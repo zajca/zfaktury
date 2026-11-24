@@ -670,6 +670,122 @@ export const isdsCredentialsApi = {
 			method: 'DELETE',
 			headers: ISDS_CONFIRM_HEADERS
 		});
+	},
+
+	/** Logs in to the data box once and reports the box and the rights of the stored login. */
+	test(environment: ISDSEnvironment) {
+		return request<ISDSLoginTestResult>('/settings/isds-credentials/test', {
+			method: 'POST',
+			body: JSON.stringify({ environment }),
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	}
+};
+
+/** Result of a login test. It carries no username and no password. */
+export interface ISDSLoginTestResult {
+	boxId: string;
+	boxType: string;
+	ownerName: string;
+	canCreateAndSend: boolean;
+	/** True when the login may read delivered messages (delivery by login). */
+	canReadMessages: boolean;
+	/** Czech warning, set when the login may read messages or may not send. */
+	warning?: string;
+}
+
+// --- Data-box filing ---
+
+export type FilingKind = 'vat-return' | 'control-statement' | 'vies-summary' | 'income-tax-return' | 'social-insurance';
+
+export type FilingSubmissionStatus =
+	| 'sending'
+	| 'unknown'
+	| 'sent'
+	| 'delivered'
+	| 'undeliverable'
+	| 'failed';
+
+/** What the user confirms before a send. The token is single use and expires. */
+export interface FilingPreview {
+	kind: FilingKind;
+	documentId: number;
+	environment: ISDSEnvironment;
+	recipientBoxId: string;
+	recipientName: string;
+	fileName: string;
+	annotation: string;
+	sizeBytes: number;
+	sha256: string;
+	/** Passable and non-critical findings of the pre-send check. */
+	findings: EPOFinding[];
+	requiresAcceptWarnings: boolean;
+	confirmToken: string;
+	expiresAt: string;
+}
+
+export interface FilingSubmission {
+	id: number;
+	kind: FilingKind;
+	documentId: number;
+	channel: string;
+	environment: ISDSEnvironment;
+	recipientBoxId: string;
+	recipientName: string;
+	dmId: string;
+	annotation: string;
+	fileName: string;
+	xmlSha256: string;
+	status: FilingSubmissionStatus;
+	dmMessageStatus: number | null;
+	sentAt: string | null;
+	deliveredAt: string | null;
+	hasReceipt: boolean;
+	createdAt: string;
+}
+
+export interface FilingRefreshResult {
+	submission: FilingSubmission;
+	/** False when the message is delivered but the document could not be marked filed. */
+	documentFiled: boolean;
+}
+
+export const filingApi = {
+	preview(kind: FilingKind, id: number, environment: ISDSEnvironment) {
+		return request<FilingPreview>(`/filings/${kind}/${id}/isds/preview`, {
+			method: 'POST',
+			body: JSON.stringify({ environment }),
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	},
+
+	send(
+		kind: FilingKind,
+		id: number,
+		data: { environment: ISDSEnvironment; confirmToken: string; acceptWarnings: boolean }
+	) {
+		return request<FilingSubmission>(`/filings/${kind}/${id}/isds/send`, {
+			method: 'POST',
+			body: JSON.stringify(data),
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	},
+
+	submissions(kind: FilingKind, id: number) {
+		return get<FilingSubmission[]>(`/filings/${kind}/${id}/isds/submissions`);
+	},
+
+	/** Asks ISDS for the delivery state. Runs only when the user clicks. */
+	refresh(submissionId: number) {
+		return request<FilingRefreshResult>(`/filings/submissions/${submissionId}/refresh`, {
+			method: 'POST',
+			body: JSON.stringify({}),
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	},
+
+	receiptUrl(submissionId: number): string {
+		return `${API_BASE}/filings/submissions/${submissionId}/receipt.zfo`;
 	}
 };
 

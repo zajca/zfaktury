@@ -41,7 +41,7 @@ func newISDSRouter(t *testing.T, devMode bool, bindHost string) *chi.Mux {
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-		svc,
+		svc, nil,
 		RouterConfig{DevMode: devMode, DataDir: t.TempDir(), BindHost: bindHost},
 	)
 }

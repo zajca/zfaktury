@@ -1,4 +1,5 @@
-ISDS web service definitions (v2.0), unmodified copies of the public files.
+ISDS web service definitions (v2.0), copies of the public files. The content is
+unchanged; git normalized the CRLF line endings of the downloads to LF.
 
 Source:        https://www.datovka.gov.cz/static/wsdl/v20/
 Downloaded:    2026-11-24

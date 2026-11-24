@@ -278,7 +278,7 @@ func TestCreateMessage_LimitsAreInclusive(t *testing.T) {
 	}
 }
 
-func TestCreateMessage_OptionalFieldsAreOmitted(t *testing.T) {
+func TestCreateMessage_UnsetFieldsAreNil(t *testing.T) {
 	srv, rec := newFake(t, http.StatusOK, fixture(t, "create_message_response_ok.xml"))
 	m := MessageInput{
 		RecipientBoxID: "abc1234",
@@ -288,10 +288,13 @@ func TestCreateMessage_OptionalFieldsAreOmitted(t *testing.T) {
 		t.Fatalf("CreateMessage: %v", err)
 	}
 	body := string(rec.last(t).body)
-	for _, tag := range []string{"dmToHands", "dmAnnotation", "dmSenderRefNumber", "dmSenderIdent", "dmPersonalDelivery"} {
-		if strings.Contains(body, tag) {
-			t.Errorf("unset %s is present in %s", tag, body)
+	for _, tag := range []string{"dmToHands", "dmAnnotation", "dmSenderRefNumber", "dmSenderIdent"} {
+		if want := "<" + tag + ` xsi:nil="true"></` + tag + ">"; !strings.Contains(body, want) {
+			t.Errorf("unset %s is not sent as a nil element in %s", tag, body)
 		}
+	}
+	if !strings.Contains(body, "<dmPersonalDelivery>false</dmPersonalDelivery>") {
+		t.Errorf("dmPersonalDelivery must be an explicit false in %s", body)
 	}
 }
 

@@ -51,7 +51,7 @@ func (e *StatusError) Error() string {
 }
 
 // Is makes errors.Is(err, ErrISDSRejected) true.
-func (e *StatusError) Is(target error) bool { return target == ErrISDSRejected }
+func (e *StatusError) Is(target error) bool { return errors.Is(ErrISDSRejected, target) }
 
 // FaultError carries a SOAP fault returned by ISDS.
 type FaultError struct {
@@ -64,7 +64,7 @@ func (e *FaultError) Error() string {
 }
 
 // Is makes errors.Is(err, ErrSOAPFault) true.
-func (e *FaultError) Is(target error) bool { return target == ErrSOAPFault }
+func (e *FaultError) Is(target error) bool { return errors.Is(ErrSOAPFault, target) }
 
 // truncate shortens server-provided text so an error message stays small.
 func truncate(s string) string {

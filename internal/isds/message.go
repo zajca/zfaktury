@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -169,18 +170,47 @@ func isXMLChar(r rune) bool {
 		(r >= 0x10000 && r <= 0x10FFFF)
 }
 
-// createMessageRequest is the CreateMessage element. Optional envelope
-// elements are omitted when unset; the order follows gMessageEnvelopeSub in
-// dmBaseTypes.xsd.
+const xsiNS = "http://www.w3.org/2001/XMLSchema-instance"
+
+// nillable is an envelope element that is required by the schema but may be
+// nil: an unset value is sent as xsi:nil="true".
+type nillable struct {
+	Nil  string `xml:"xsi:nil,attr,omitempty"`
+	Text string `xml:",chardata"`
+}
+
+func optional(s string) nillable {
+	if s == "" {
+		return nillable{Nil: "true"}
+	}
+	return nillable{Text: s}
+}
+
+// createMessageRequest is the CreateMessage element. dmEnvelope carries every
+// element of gMessageEnvelopeSub in the schema's order, as the schema makes
+// them all required; dmOVM and dmPublishOwnID are optional and left out.
 type createMessageRequest struct {
 	XMLName  xml.Name `xml:"http://isds.czechpoint.cz/v20 CreateMessage"`
+	XSI      string   `xml:"xmlns:xsi,attr"`
 	Envelope struct {
-		RecipientBoxID   string `xml:"dbIDRecipient"`
-		ToHands          string `xml:"dmToHands,omitempty"`
-		Annotation       string `xml:"dmAnnotation,omitempty"`
-		SenderRefNumber  string `xml:"dmSenderRefNumber,omitempty"`
-		SenderIdent      string `xml:"dmSenderIdent,omitempty"`
-		PersonalDelivery *bool  `xml:"dmPersonalDelivery"`
+		SenderOrgUnit       nillable `xml:"dmSenderOrgUnit"`
+		SenderOrgUnitNum    nillable `xml:"dmSenderOrgUnitNum"`
+		RecipientBoxID      string   `xml:"dbIDRecipient"`
+		RecipientOrgUnit    nillable `xml:"dmRecipientOrgUnit"`
+		RecipientOrgUnitNum nillable `xml:"dmRecipientOrgUnitNum"`
+		ToHands             nillable `xml:"dmToHands"`
+		Annotation          nillable `xml:"dmAnnotation"`
+		RecipientRefNumber  nillable `xml:"dmRecipientRefNumber"`
+		SenderRefNumber     nillable `xml:"dmSenderRefNumber"`
+		RecipientIdent      nillable `xml:"dmRecipientIdent"`
+		SenderIdent         nillable `xml:"dmSenderIdent"`
+		LegalTitleLaw       nillable `xml:"dmLegalTitleLaw"`
+		LegalTitleYear      nillable `xml:"dmLegalTitleYear"`
+		LegalTitleSect      nillable `xml:"dmLegalTitleSect"`
+		LegalTitlePar       nillable `xml:"dmLegalTitlePar"`
+		LegalTitlePoint     nillable `xml:"dmLegalTitlePoint"`
+		PersonalDelivery    nillable `xml:"dmPersonalDelivery"`
+		AllowSubstDelivery  nillable `xml:"dmAllowSubstDelivery"`
 	} `xml:"dmEnvelope"`
 	Files struct {
 		File []requestFile `xml:"dmFile"`
@@ -195,16 +225,22 @@ type requestFile struct {
 }
 
 func newCreateMessageRequest(m MessageInput) createMessageRequest {
-	var r createMessageRequest
-	r.Envelope.RecipientBoxID = m.RecipientBoxID
-	r.Envelope.ToHands = m.ToHands
-	r.Envelope.Annotation = m.Annotation
-	r.Envelope.SenderRefNumber = m.SenderRefNumber
-	r.Envelope.SenderIdent = m.SenderIdent
-	if m.PersonalDelivery {
-		t := true
-		r.Envelope.PersonalDelivery = &t
-	}
+	r := createMessageRequest{XSI: xsiNS}
+	e := &r.Envelope
+	nilValue := optional("")
+	e.SenderOrgUnit, e.SenderOrgUnitNum = nilValue, nilValue
+	e.RecipientBoxID = m.RecipientBoxID
+	e.RecipientOrgUnit, e.RecipientOrgUnitNum = nilValue, nilValue
+	e.ToHands = optional(m.ToHands)
+	e.Annotation = optional(m.Annotation)
+	e.RecipientRefNumber = nilValue
+	e.SenderRefNumber = optional(m.SenderRefNumber)
+	e.RecipientIdent = nilValue
+	e.SenderIdent = optional(m.SenderIdent)
+	e.LegalTitleLaw, e.LegalTitleYear = nilValue, nilValue
+	e.LegalTitleSect, e.LegalTitlePar, e.LegalTitlePoint = nilValue, nilValue, nilValue
+	e.PersonalDelivery = optional(strconv.FormatBool(m.PersonalDelivery))
+	e.AllowSubstDelivery = nilValue
 	for i, f := range m.Files {
 		meta := f.MetaType
 		if meta == "" && i > 0 {

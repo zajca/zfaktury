@@ -10,7 +10,7 @@ import {
 	noCredentials,
 	productionCredentials,
 	testCredentials
-} from '$lib/utils/isds-test-fetch';
+} from '$lib/test-utils/isds-test-fetch';
 
 vi.mock('$app/environment', () => ({ browser: true }));
 

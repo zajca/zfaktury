@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { EPOFinding } from '$lib/api/client';
 	import type { EPOOpenState } from '$lib/utils/epo-open.svelte';
+	import { findingIsWarning as isWarning, findingLabel, findingPlace } from '$lib/utils/filing';
 
 	interface Props {
 		epo: EPOOpenState;
@@ -10,30 +10,6 @@
 	}
 
 	let { epo, hasXml, markFiledLabel }: Props = $props();
-
-	const findingLabels: Record<string, string> = {
-		K: 'Kritická chyba',
-		S: 'Chyba struktury',
-		E: 'Chyba EPO',
-		P: 'Varování',
-		N: 'Upozornění',
-		I: 'Informace'
-	};
-	const warningTypes = ['P', 'N', 'I'];
-
-	function isWarning(finding: EPOFinding): boolean {
-		return warningTypes.includes(finding.type.trim().toUpperCase());
-	}
-
-	function findingLabel(finding: EPOFinding): string {
-		return findingLabels[finding.type.trim().toUpperCase()] ?? 'Chyba';
-	}
-
-	function findingPlace(finding: EPOFinding): string {
-		const parts = [finding.section, finding.field];
-		if (finding.row) parts.push(`řádek ${finding.row}`);
-		return parts.filter(Boolean).join(', ');
-	}
 </script>
 
 <div class="mt-3 space-y-3" data-testid="epo-panel">

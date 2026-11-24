@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 
-import { createIsdsFetch, noCredentials, type IsdsFetchState } from '$lib/utils/isds-test-fetch';
+import {
+	createIsdsFetch,
+	noCredentials,
+	type IsdsFetchState
+} from '$lib/test-utils/isds-test-fetch';
 
 const mockFetch = vi.fn();
 const isds: IsdsFetchState = { credentials: noCredentials, submissions: [] };
@@ -133,7 +137,11 @@ async function openEditor() {
 	await fireEvent.click(screen.getByRole('button', { name: 'Upravit měsíce' }));
 }
 
-import { makePreview, makeSubmission, productionCredentials } from '$lib/utils/isds-test-fetch';
+import {
+	makePreview,
+	makeSubmission,
+	productionCredentials
+} from '$lib/test-utils/isds-test-fetch';
 
 describe('social insurance overview detail page - data-box sending', () => {
 	const sendName = 'Odeslat datovou schránkou';

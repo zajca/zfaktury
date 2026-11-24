@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import ISDSSubmissionHistory from './ISDSSubmissionHistory.svelte';
 import type { FilingSubmission, FilingSubmissionStatus } from '$lib/api/client';
-import { jsonResponse, makeSubmission } from '$lib/utils/isds-test-fetch';
+import { jsonResponse, makeSubmission } from '$lib/test-utils/isds-test-fetch';
 
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$lib/utils/download', async (orig) => ({
@@ -163,6 +163,27 @@ describe('ISDSSubmissionHistory', () => {
 		expect(alert).toHaveTextContent('Datová schránka neodpověděla včas.');
 	});
 
+	it('reloads the list after a refused refresh so a reverted row shows its resolve actions', async () => {
+		rows = [makeSubmission({ id: 5, status: 'sent', dmId: '777' })];
+		refreshResponse = () => {
+			// The server reverted the row to unknown and cleared the id before refusing.
+			rows = [makeSubmission({ id: 5, status: 'unknown', dmId: '' })];
+			return jsonResponse({ error: 'Zpráva nepatří k tomuto odeslání, stav byl vrácen.' }, 409);
+		};
+		await renderHistory();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Zjistit stav' }));
+
+		const row = screen.getByTestId('isds-submission-5');
+		await waitFor(() =>
+			expect(within(row).getByRole('button', { name: 'Zprávu jsem našel' })).toBeInTheDocument()
+		);
+		expect(row).toHaveTextContent('Výsledek není znám');
+		expect(row).not.toHaveTextContent('777');
+		expect(within(row).queryByRole('button', { name: 'Zjistit stav' })).not.toBeInTheDocument();
+		expect(within(row).getByRole('alert')).toHaveTextContent('nepatří k tomuto odeslání');
+	});
+
 	it('offers the receipt only for a delivered row that has one and downloads it', async () => {
 		rows = [
 			makeSubmission({ id: 1, status: 'sent' }),
@@ -206,9 +227,15 @@ describe('ISDSSubmissionHistory', () => {
 			];
 			await renderHistory();
 
+			expect(screen.getByTestId('isds-submission-1')).toHaveTextContent(
+				'zpráva mohla odejít, ale nemusela'
+			);
+			const sending = screen.getByTestId('isds-submission-2');
+			expect(sending).toHaveTextContent('Zpráva se právě odesílá, nebo se odesílání přerušilo');
+			expect(sending).not.toHaveTextContent('Výsledek tohoto odeslání není znám');
+
 			for (const id of [1, 2]) {
 				const row = screen.getByTestId(`isds-submission-${id}`);
-				expect(row).toHaveTextContent('zpráva mohla odejít, ale nemusela');
 				expect(row).toHaveTextContent('odeslané zprávy v datové schránce');
 				expect(within(row).getByRole('button', { name: 'Zprávu jsem našel' })).toBeInTheDocument();
 				expect(within(row).getByRole('button', { name: 'Nic neodešlo' })).toBeInTheDocument();

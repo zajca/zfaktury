@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 
-import { createIsdsFetch, noCredentials, type IsdsFetchState } from '$lib/utils/isds-test-fetch';
+import {
+	createIsdsFetch,
+	noCredentials,
+	type IsdsFetchState
+} from '$lib/test-utils/isds-test-fetch';
 
 const mockFetch = vi.fn();
 const isds: IsdsFetchState = { credentials: noCredentials, submissions: [] };
@@ -94,7 +98,11 @@ afterEach(() => {
 	cleanup();
 });
 
-import { makePreview, makeSubmission, productionCredentials } from '$lib/utils/isds-test-fetch';
+import {
+	makePreview,
+	makeSubmission,
+	productionCredentials
+} from '$lib/test-utils/isds-test-fetch';
 
 describe('Control Statement Detail - data-box sending', () => {
 	const sendName = 'Odeslat datovou schránkou';

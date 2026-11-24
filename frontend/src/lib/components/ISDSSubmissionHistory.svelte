@@ -57,6 +57,15 @@
 		}
 	}
 
+	/** Re-reads the list without the loading state; a failed read keeps the rows shown. */
+	async function syncList(): Promise<void> {
+		try {
+			submissions = await filingApi.submissions(kind, id);
+		} catch {
+			// The row's own error stays visible.
+		}
+	}
+
 	function replaceRow(updated: FilingSubmission) {
 		submissions = submissions.map((s) => (s.id === updated.id ? updated : s));
 	}
@@ -74,6 +83,8 @@
 			}
 		} catch (e) {
 			rowError[sub.id] = filingErrorMessage(e);
+			// A refused refresh can leave the stored row changed, so show what the server has now.
+			await syncList();
 		} finally {
 			rowBusy[sub.id] = undefined;
 		}
@@ -199,11 +210,19 @@
 							<div
 								class="mt-3 rounded-lg border border-warning/30 bg-warning-bg p-3 text-sm text-primary"
 							>
-								<p>
-									Výsledek tohoto odeslání není znám, zpráva mohla odejít, ale nemusela.
-									Zkontrolujte odeslané zprávy v datové schránce. Podání se znovu neodešle, dokud
-									výsledek nepotvrdíte.
-								</p>
+								{#if sub.status === 'sending'}
+									<p>
+										Zpráva se právě odesílá, nebo se odesílání přerušilo. Pokud se stav během
+										několika minut nezmění, zkontrolujte odeslané zprávy v datové schránce. Podání
+										se znovu neodešle, dokud výsledek nepotvrdíte.
+									</p>
+								{:else}
+									<p>
+										Výsledek tohoto odeslání není znám, zpráva mohla odejít, ale nemusela.
+										Zkontrolujte odeslané zprávy v datové schránce. Podání se znovu neodešle, dokud
+										výsledek nepotvrdíte.
+									</p>
+								{/if}
 								<div class="mt-3 flex flex-wrap gap-2">
 									<Button
 										variant="secondary"

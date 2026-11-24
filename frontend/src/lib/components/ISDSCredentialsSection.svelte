@@ -6,7 +6,7 @@
 		type ISDSEnvironment,
 		type ISDSLoginTestResult
 	} from '$lib/api/client';
-	import { filingErrorMessage } from '$lib/utils/filing';
+	import { environmentLabels, environmentOrder, filingErrorMessage } from '$lib/utils/filing';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
@@ -15,10 +15,10 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
-	const environments: { id: ISDSEnvironment; label: string }[] = [
-		{ id: 'test', label: 'Test' },
-		{ id: 'production', label: 'Ostrá' }
-	];
+	const environments: { id: ISDSEnvironment; label: string }[] = environmentOrder
+		.slice()
+		.reverse()
+		.map((id) => ({ id, label: environmentLabels[id] }));
 
 	let overview = $state<Partial<ISDSCredentialsOverview>>({});
 	let loading = $state(true);

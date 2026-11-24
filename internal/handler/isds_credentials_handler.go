@@ -272,6 +272,12 @@ func isLoopbackHost(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+// IsLocalRequestHost is the check behind the local-host guard of the credentials
+// and filing routes, for callers that build internal requests and have to pass it.
+func IsLocalRequestHost(hostHeader string) bool {
+	return isLocalRequestHost(hostHeader)
+}
+
 // isLocalRequestHost reports whether a Host header (with optional port) names
 // the local machine: a loopback address, localhost, or the Wails WebView host.
 func isLocalRequestHost(hostHeader string) bool {

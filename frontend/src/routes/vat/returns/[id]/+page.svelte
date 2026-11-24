@@ -8,6 +8,8 @@
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
 	import EPOOpenPanel from '$lib/components/EPOOpenPanel.svelte';
+	import ISDSSendButton from '$lib/components/ISDSSendButton.svelte';
+	import ISDSSubmissionHistory from '$lib/components/ISDSSubmissionHistory.svelte';
 	import { EPOOpenState } from '$lib/utils/epo-open.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
@@ -19,6 +21,7 @@
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	const epo = new EPOOpenState();
+	let isdsHistory = $state<ISDSSubmissionHistory | undefined>();
 	let vatReturn = $state<VATReturn | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -188,6 +191,15 @@
 					hasXml={vatReturn.has_xml}
 					disabled={actionLoading !== null}
 				/>
+				<ISDSSendButton
+					kind="vat-return"
+					id={returnId}
+					hasXml={vatReturn.has_xml}
+					filed={vatReturn.status === 'filed'}
+					disabled={actionLoading !== null}
+					onsent={() => isdsHistory?.reload()}
+					onattempt={() => isdsHistory?.reload()}
+				/>
 				{#if vatReturn.status !== 'filed'}
 					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit za podané'}
@@ -201,6 +213,12 @@
 				{epo}
 				hasXml={vatReturn.has_xml}
 				markFiledLabel={vatReturn.status !== 'filed' ? 'Označit za podané' : undefined}
+			/>
+			<ISDSSubmissionHistory
+				bind:this={isdsHistory}
+				kind="vat-return"
+				id={returnId}
+				ondocumentfiled={loadData}
 			/>
 		</div>
 

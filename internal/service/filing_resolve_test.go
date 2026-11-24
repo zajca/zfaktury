@@ -49,7 +49,7 @@ func TestFilingService_ResolveAttachMovesToSentAndRefreshFilesOnDelivery(t *test
 		t.Errorf("no log line for the resolution: %s", h.logs.String())
 	}
 
-	at := time.Date(2026, 11, 24, 12, 7, 0, 0, time.UTC)
+	at := sub.CreatedAt.Add(7 * time.Minute)
 	h.client.delivery = deliveredInfo(isds.StatusDelivered, &at)
 	h.client.zfo = []byte("zfo")
 	res, err := h.svc.Refresh(context.Background(), sub.ID)
@@ -493,11 +493,126 @@ func TestFilingService_MismatchOfOwnMessageIDKeepsTheSubmissionSent(t *testing.T
 	if !strings.Contains(h.logs.String(), `"level":"ERROR","msg":"ISDS reports another recipient`) {
 		t.Errorf("no error log for the ISDS inconsistency: %s", h.logs.String())
 	}
+	if actions := h.audit.actions(sub.ID); hasAuditAction(actions, "isds_attach_reverted") {
+		t.Errorf("audit actions = %v, an own message id must not be reverted", actions)
+	}
+}
+
+func hasAuditAction(list []string, want string) bool {
+	for _, s := range list {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
+// attachAndDeliver attaches a user-typed message id to an unknown submission
+// and makes ISDS report a delivery for it; the evidence names the message the
+// fake created, so only its times can disqualify it.
+func attachAndDeliver(t *testing.T, h *filingHarness, info *isds.DeliveryInfo) *domain.FilingSubmission {
+	t.Helper()
+	sub := sendWithUnknownOutcome(t, h)
+	if _, err := h.svc.Resolve(context.Background(), sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654321"}); err != nil {
+		t.Fatal(err)
+	}
+	h.client.delivery = info
+	h.client.zfo = []byte("zfo")
+	return sub
+}
+
+func TestFilingService_RefreshRefusesAnAttachedMessageDeliveredBeforeTheSubmission(t *testing.T) {
+	ctx := context.Background()
+	for name, setTimes := range map[string]func(info *isds.DeliveryInfo, created time.Time){
+		"delivery time":   func(i *isds.DeliveryInfo, c time.Time) { at := c.Add(-72 * time.Hour); i.DeliveryTime = &at },
+		"acceptance time": func(i *isds.DeliveryInfo, c time.Time) { at := c.Add(-72 * time.Hour); i.AcceptanceTime = &at },
+		"just past the allowance": func(i *isds.DeliveryInfo, c time.Time) {
+			at := c.Add(-attachedClockSkew - 2*time.Minute)
+			i.DeliveryTime = &at
+		},
+		"other offset": func(i *isds.DeliveryInfo, c time.Time) {
+			at := c.Add(-48 * time.Hour).In(time.FixedZone("", 7200))
+			i.DeliveryTime = &at
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newFilingHarness(t)
+			info := &isds.DeliveryInfo{MessageID: "987654321", Status: isds.StatusDelivered}
+			sub := sendWithUnknownOutcome(t, h)
+			setTimes(info, sub.CreatedAt)
+			if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654321"}); err != nil {
+				t.Fatal(err)
+			}
+			h.client.delivery, h.client.zfo = info, []byte("zfo")
+
+			if _, err := h.svc.Refresh(ctx, sub.ID); !errors.Is(err, domain.ErrMessageMismatch) {
+				t.Fatalf("Refresh = %v, want ErrMessageMismatch", err)
+			}
+			if len(h.doc.markCalls) != 0 || h.client.zfoHit != 0 {
+				t.Errorf("an older message filed the document (%v) or its receipt was downloaded (%d)", h.doc.markCalls, h.client.zfoHit)
+			}
+			got, _ := h.repo.GetByID(ctx, sub.ID)
+			if got.Status != domain.SubmissionUnknown || got.DmID != "" || got.DmIDAttached || got.DeliveredAt != nil {
+				t.Errorf("submission = %+v, want unknown without the attached id", got)
+			}
+			if actions := h.audit.actions(sub.ID); !hasAuditAction(actions, "isds_attach_reverted") {
+				t.Errorf("audit actions = %v, want isds_attach_reverted", actions)
+			}
+		})
+	}
+}
+
+func TestFilingService_RefreshAcceptsAnAttachedMessageWithinTheClockSkew(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	sub := sendWithUnknownOutcome(t, h)
+	at := sub.CreatedAt.Add(-10 * time.Minute)
+	if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654321"}); err != nil {
+		t.Fatal(err)
+	}
+	h.client.delivery = &isds.DeliveryInfo{MessageID: "987654321", Status: isds.StatusDelivered, DeliveryTime: &at, AcceptanceTime: &at}
+	h.client.zfo = []byte("zfo")
+
+	res, err := h.svc.Refresh(ctx, sub.ID)
+	if err != nil || !res.DocumentFiled || res.Submission.Status != domain.SubmissionDelivered {
+		t.Fatalf("Refresh = %+v, %v; want delivered and filed", res, err)
+	}
+	if actions := h.audit.actions(sub.ID); hasAuditAction(actions, "isds_attach_reverted") {
+		t.Errorf("audit actions = %v, a message within the skew must not be reverted", actions)
+	}
+}
+
+func TestFilingService_RefreshAcceptsAnAttachedMessageWithoutTimes(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	sub := attachAndDeliver(t, h, &isds.DeliveryInfo{MessageID: "987654321", Status: isds.StatusStamped})
+
+	res, err := h.svc.Refresh(ctx, sub.ID)
+	if err != nil || res.Submission.Status != domain.SubmissionSent {
+		t.Fatalf("Refresh = %+v, %v; want the evidence accepted as sent", res, err)
+	}
+}
+
+func TestFilingService_RefreshIgnoresTheTimeOfAnOwnMessage(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	_, sub := h.previewSend(t, "production")
+	// Own ids are ours by construction; a skewed ISDS clock must not undo them.
+	at := sub.CreatedAt.Add(-72 * time.Hour)
+	h.client.delivery = deliveredInfo(isds.StatusDelivered, &at)
+	h.client.zfo = []byte("zfo")
+
+	res, err := h.svc.Refresh(ctx, sub.ID)
+	if err != nil || res.Submission.Status != domain.SubmissionDelivered || !res.DocumentFiled {
+		t.Fatalf("Refresh = %+v, %v; want delivered and filed", res, err)
+	}
+	if actions := h.audit.actions(sub.ID); hasAuditAction(actions, "isds_attach_reverted") {
+		t.Errorf("audit actions = %v, an own message must not be reverted", actions)
+	}
 }
 
 func TestFilingService_RefreshIgnoresAMessageOfAnotherRecipientOrSubject(t *testing.T) {
 	ctx := context.Background()
-	at := time.Date(2026, 11, 24, 12, 7, 0, 0, time.UTC)
 	for name, mutate := range map[string]func(*isds.DeliveryInfo){
 		"other recipient": func(i *isds.DeliveryInfo) { i.RecipientBoxID = "zzzzzzz" },
 		"other subject":   func(i *isds.DeliveryInfo) { i.Annotation = "Jiná zpráva" },
@@ -511,6 +626,7 @@ func TestFilingService_RefreshIgnoresAMessageOfAnotherRecipientOrSubject(t *test
 				t.Fatal(err)
 			}
 			created := h.client.created[len(h.client.created)-1]
+			at := sub.CreatedAt.Add(7 * time.Minute)
 			info := deliveredInfo(isds.StatusDelivered, &at)
 			info.RecipientBoxID, info.Annotation = created.RecipientBoxID, created.Annotation
 			mutate(info)
@@ -532,6 +648,9 @@ func TestFilingService_RefreshIgnoresAMessageOfAnotherRecipientOrSubject(t *test
 			}
 			if !strings.Contains(h.logs.String(), "returned to unknown") {
 				t.Errorf("no log line for the reverted attach: %s", h.logs.String())
+			}
+			if actions := h.audit.actions(sub.ID); !hasAuditAction(actions, "isds_attach_reverted") {
+				t.Errorf("audit actions = %v, want isds_attach_reverted", actions)
 			}
 			if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654322"}); err != nil {
 				t.Errorf("attaching the right id after the revert: %v", err)

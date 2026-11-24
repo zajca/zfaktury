@@ -1,8 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 
+import {
+	createIsdsFetch,
+	noCredentials,
+	type IsdsFetchState
+} from '$lib/test-utils/isds-test-fetch';
+
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+const isds: IsdsFetchState = { credentials: noCredentials, submissions: [] };
+vi.stubGlobal(
+	'fetch',
+	createIsdsFetch((url, init) => mockFetch(url, init), isds)
+);
 vi.mock('$lib/utils/download', async (orig) => ({
 	...(await orig<typeof import('$lib/utils/download')>()),
 	detectDesktop: vi.fn(async () => false)
@@ -70,6 +80,121 @@ beforeEach(async () => {
 
 afterEach(() => {
 	cleanup();
+});
+
+import {
+	makePreview,
+	makeSubmission,
+	productionCredentials
+} from '$lib/test-utils/isds-test-fetch';
+
+describe('VAT return detail page - data-box sending', () => {
+	const sendName = 'Odeslat datovou schránkou';
+
+	beforeEach(() => {
+		isds.credentials = productionCredentials;
+		isds.submissions = [makeSubmission({ id: 11, status: 'sent' })];
+		isds.respond = undefined;
+	});
+
+	afterEach(() => {
+		isds.credentials = noCredentials;
+		isds.submissions = [];
+		isds.respond = undefined;
+	});
+
+	it('shows the send button next to the EPO button and lists the history without refreshing', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleVatReturn, has_xml: true }));
+		const calls: string[] = [];
+		isds.respond = (url) => {
+			calls.push(url);
+			return undefined;
+		};
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		expect(send.parentElement).toBe(
+			screen.getByRole('button', { name: 'Otevřít v EPO' }).parentElement
+		);
+		expect(await screen.findByTestId('isds-submission-11')).toHaveTextContent('Odesláno');
+		expect(calls.filter((u) => u.endsWith('/refresh'))).toHaveLength(0);
+	});
+
+	it('is disabled with a reason for a filed return', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(filedVatReturn));
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		expect(send).toBeDisabled();
+		expect(send).toHaveAttribute('title', 'Podání je už označeno jako podané.');
+	});
+
+	it('is disabled without XML', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleVatReturn));
+
+		render(Page);
+
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+	});
+
+	it('is disabled with a link to the settings when no login is saved', async () => {
+		isds.credentials = noCredentials;
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleVatReturn, has_xml: true }));
+
+		render(Page);
+
+		expect(await screen.findByTestId('isds-no-login')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: sendName })).toBeDisabled();
+	});
+
+	it('opens the confirmation dialog with the preview for this return', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleVatReturn, has_xml: true }));
+		let previewUrl = '';
+		isds.respond = (url) => {
+			if (!url.endsWith('/isds/preview')) return undefined;
+			previewUrl = url;
+			return jsonResponse(makePreview());
+		};
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		await fireEvent.click(send);
+
+		const dialog = await screen.findByRole('dialog');
+		expect(dialog).toHaveTextContent('Finanční úřad pro hlavní město Prahu');
+		expect(previewUrl).toContain('/api/v1/filings/vat-return/1/isds/preview');
+	});
+
+	it('reloads the return and shows it as filed after a refresh reports delivery', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleVatReturn, has_xml: true }));
+		isds.respond = (url) => {
+			if (!url.endsWith('/submissions/11/refresh')) return undefined;
+			return jsonResponse({
+				submission: makeSubmission({
+					id: 11,
+					status: 'delivered',
+					deliveredAt: '2026-03-11T08:30:00Z',
+					hasReceipt: true
+				}),
+				documentFiled: true
+			});
+		};
+
+		render(Page);
+
+		const refreshButton = await screen.findByRole('button', { name: 'Zjistit stav' });
+		mockFetch.mockResolvedValueOnce(jsonResponse(filedVatReturn));
+		await fireEvent.click(refreshButton);
+
+		await waitFor(() => expect(screen.getByText(/Podáno:/)).toBeInTheDocument());
+		expect(mockFetch.mock.calls[1][0]).toContain('/api/v1/vat-returns/1');
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+	});
 });
 
 describe('VAT return detail page', () => {

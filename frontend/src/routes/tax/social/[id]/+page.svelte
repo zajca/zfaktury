@@ -14,6 +14,8 @@
 	import ActivityMonthsPicker from '$lib/components/tax/ActivityMonthsPicker.svelte';
 	import { downloadFile } from '$lib/utils/download';
 	import { formatCZK } from '$lib/utils/money';
+	import ISDSSendButton from '$lib/components/ISDSSendButton.svelte';
+	import ISDSSubmissionHistory from '$lib/components/ISDSSubmissionHistory.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -23,6 +25,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import { toastError, toastSuccess } from '$lib/data/toast-state.svelte';
 
+	let isdsHistory = $state<ISDSSubmissionHistory | undefined>();
 	let data = $state<SocialInsuranceOverview | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -356,6 +359,15 @@
 						{actionLoading === 'download' ? 'Stahuji...' : 'Stáhnout XML'}
 					</Button>
 				{/if}
+				<ISDSSendButton
+					kind="social-insurance"
+					id={returnId}
+					hasXml={data.has_xml}
+					filed={data.status === 'filed'}
+					disabled={actionLoading !== null}
+					onsent={() => isdsHistory?.reload()}
+					onattempt={() => isdsHistory?.reload()}
+				/>
 				{#if data.status !== 'filed'}
 					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit jako podané'}
@@ -365,6 +377,12 @@
 					</Button>
 				{/if}
 			</div>
+			<ISDSSubmissionHistory
+				bind:this={isdsHistory}
+				kind="social-insurance"
+				id={returnId}
+				ondocumentfiled={loadData}
+			/>
 		</div>
 
 		<div class="mt-6 space-y-6">

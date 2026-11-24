@@ -188,6 +188,92 @@ describe('ISDSCredentialsSection', () => {
 		expect(screen.getByTestId('isds-status-test')).toHaveTextContent('Přihlášení uloženo');
 	});
 
+	describe('login test', () => {
+		const okResult = {
+			boxId: 'abc1234',
+			boxType: 'FO',
+			ownerName: 'Jan Testovaci',
+			canCreateAndSend: true,
+			canReadMessages: false
+		};
+
+		it('offers the test only for a configured environment and never runs it on load', async () => {
+			mockFetch.mockResolvedValue(jsonResponse(savedTestOverview));
+			render(ISDSCredentialsSection);
+			await waitFor(() => {
+				expect(screen.getByTestId('isds-status-test')).toHaveTextContent('Přihlášení uloženo');
+			});
+
+			expect(screen.getAllByRole('button', { name: 'Vyzkoušet přihlášení' })).toHaveLength(1);
+			expect(callsWith('POST')).toHaveLength(0);
+		});
+
+		it('shows the box, owner and rights without a warning', async () => {
+			mockFetch.mockResolvedValueOnce(jsonResponse(savedTestOverview));
+			render(ISDSCredentialsSection);
+			await waitFor(() => {
+				expect(screen.getByTestId('isds-status-test')).toHaveTextContent('Přihlášení uloženo');
+			});
+
+			mockFetch.mockResolvedValueOnce(jsonResponse(okResult));
+			await fireEvent.click(screen.getByRole('button', { name: 'Vyzkoušet přihlášení' }));
+
+			const result = await screen.findByTestId('isds-test-result-test');
+			expect(result).toHaveTextContent('abc1234');
+			expect(result).toHaveTextContent('FO');
+			expect(result).toHaveTextContent('Jan Testovaci');
+			expect(result).toHaveTextContent('Smí odesílat');
+			expect(within(result).queryByRole('alert')).not.toBeInTheDocument();
+
+			const [url, init] = callsWith('POST')[0] as [string, RequestInit];
+			expect(url).toContain('/api/v1/settings/isds-credentials/test');
+			expect(JSON.parse(init.body as string)).toEqual({ environment: 'test' });
+			expect((init.headers as Record<string, string>)['X-ZFaktury-Confirm']).toBe('1');
+		});
+
+		it('shows the warning prominently when the login can read delivered messages', async () => {
+			mockFetch.mockResolvedValueOnce(jsonResponse(savedTestOverview));
+			render(ISDSCredentialsSection);
+			await waitFor(() => {
+				expect(screen.getByTestId('isds-status-test')).toHaveTextContent('Přihlášení uloženo');
+			});
+
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					...okResult,
+					canReadMessages: true,
+					warning: 'Tento účet smí číst doručené zprávy, přihlášení spustí doručení přihlášením.'
+				})
+			);
+			await fireEvent.click(screen.getByRole('button', { name: 'Vyzkoušet přihlášení' }));
+
+			const result = await screen.findByTestId('isds-test-result-test');
+			expect(within(result).getByRole('alert')).toHaveTextContent(
+				'přihlášení spustí doručení přihlášením'
+			);
+		});
+
+		it('shows the server message when the test fails', async () => {
+			mockFetch.mockResolvedValueOnce(jsonResponse(savedTestOverview));
+			render(ISDSCredentialsSection);
+			await waitFor(() => {
+				expect(screen.getByTestId('isds-status-test')).toHaveTextContent('Přihlášení uloženo');
+			});
+
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({ error: 'Datová schránka odmítla přihlašovací údaje.' }, 422)
+			);
+			await fireEvent.click(screen.getByRole('button', { name: 'Vyzkoušet přihlášení' }));
+
+			await waitFor(() => {
+				expect(screen.getByRole('alert')).toHaveTextContent(
+					'Datová schránka odmítla přihlašovací údaje.'
+				);
+			});
+			expect(screen.queryByTestId('isds-test-result-test')).not.toBeInTheDocument();
+		});
+	});
+
 	it('shows a load error in an alert', async () => {
 		mockFetch.mockResolvedValue(
 			jsonResponse({ error: 'Systémová klíčenka není dostupná, proto nic nejde načíst.' }, 503)

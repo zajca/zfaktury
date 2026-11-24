@@ -182,7 +182,52 @@ func (c *fakeISDSClient) GetUserInfo(_ context.Context) (*isds.UserInfo, error) 
 	return c.user, nil
 }
 
+// recordingAuditRepo keeps the audit entries the filing service writes.
+type recordingAuditRepo struct {
+	mu      sync.Mutex
+	entries []domain.AuditLogEntry
+}
+
+func (r *recordingAuditRepo) Create(_ context.Context, entry *domain.AuditLogEntry) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.entries = append(r.entries, *entry)
+	return nil
+}
+
+func (r *recordingAuditRepo) ListByEntity(_ context.Context, entityType string, entityID int64) ([]domain.AuditLogEntry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []domain.AuditLogEntry
+	for _, e := range r.entries {
+		if e.EntityType == entityType && e.EntityID == entityID {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
+func (r *recordingAuditRepo) List(_ context.Context, _ domain.AuditLogFilter) ([]domain.AuditLogEntry, int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]domain.AuditLogEntry(nil), r.entries...), len(r.entries), nil
+}
+
+// actions returns the audit actions recorded for one submission, in order.
+func (r *recordingAuditRepo) actions(submissionID int64) []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []string
+	for _, e := range r.entries {
+		if e.EntityType == "filing_submission" && e.EntityID == submissionID {
+			out = append(out, e.Action)
+		}
+	}
+	return out
+}
+
 type filingHarness struct {
+	audit    *recordingAuditRepo
 	svc      *FilingService
 	repo     *repository.FilingSubmissionRepository
 	doc      *fakeFilingDoc
@@ -227,6 +272,7 @@ func newFilingHarness(t *testing.T) *filingHarness {
 
 	clock := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
 	h := &filingHarness{
+		audit:    &recordingAuditRepo{},
 		repo:     repository.NewFilingSubmissionRepository(testutil.NewTestDB(t)),
 		doc:      &fakeFilingDoc{xml: []byte(filingTestXML)},
 		epo:      &fakeFilingEPO{},
@@ -241,7 +287,8 @@ func newFilingHarness(t *testing.T) *filingHarness {
 			domain.FilingKindVATReturn:       h.doc,
 			domain.FilingKindSocialInsurance: h.doc,
 		},
-		Repo: h.repo,
+		Repo:  h.repo,
+		Audit: NewAuditService(h.audit),
 		Recipients: map[isds.RecipientEnvironment]*isds.Recipients{
 			isds.RecipientEnvProduction: prod,
 			isds.RecipientEnvTest:       test,

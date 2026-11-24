@@ -1,8 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 
+import {
+	createIsdsFetch,
+	noCredentials,
+	type IsdsFetchState
+} from '$lib/test-utils/isds-test-fetch';
+
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+const isds: IsdsFetchState = { credentials: noCredentials, submissions: [] };
+vi.stubGlobal(
+	'fetch',
+	createIsdsFetch((url, init) => mockFetch(url, init), isds)
+);
 vi.mock('$lib/utils/download', async (orig) => ({
 	...(await orig<typeof import('$lib/utils/download')>()),
 	detectDesktop: vi.fn(async () => false)
@@ -86,6 +96,109 @@ beforeEach(async () => {
 
 afterEach(() => {
 	cleanup();
+});
+
+import {
+	makePreview,
+	makeSubmission,
+	productionCredentials
+} from '$lib/test-utils/isds-test-fetch';
+
+describe('Control Statement Detail - data-box sending', () => {
+	const sendName = 'Odeslat datovou schránkou';
+
+	beforeEach(() => {
+		isds.credentials = productionCredentials;
+		isds.submissions = [makeSubmission({ id: 21, kind: 'control-statement', status: 'unknown' })];
+		isds.respond = undefined;
+	});
+
+	afterEach(() => {
+		isds.credentials = noCredentials;
+		isds.submissions = [];
+		isds.respond = undefined;
+	});
+
+	it('shows the send button next to the EPO button and the history of the statement', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleStatement));
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		expect(send.parentElement).toBe(
+			screen.getByRole('button', { name: 'Otevřít v EPO' }).parentElement
+		);
+		const row = await screen.findByTestId('isds-submission-21');
+		expect(row).toHaveTextContent('Výsledek není znám');
+		expect(within(row).getByRole('button', { name: 'Zprávu jsem našel' })).toBeInTheDocument();
+	});
+
+	it('is disabled for a filed statement and without a saved login', async () => {
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ ...sampleStatement, status: 'filed', filed_at: '2026-03-15T00:00:00Z' })
+		);
+
+		render(Page);
+
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+		cleanup();
+
+		isds.credentials = noCredentials;
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleStatement));
+		render(Page);
+		expect(await screen.findByTestId('isds-no-login')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: sendName })).toBeDisabled();
+	});
+
+	it('requests the preview for this statement', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleStatement));
+		let previewUrl = '';
+		isds.respond = (url) => {
+			if (!url.endsWith('/isds/preview')) return undefined;
+			previewUrl = url;
+			return jsonResponse(makePreview({ kind: 'control-statement' }));
+		};
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		await fireEvent.click(send);
+
+		expect(await screen.findByRole('dialog')).toHaveTextContent('(7nyn2d9)');
+		expect(previewUrl).toContain('/api/v1/filings/control-statement/1/isds/preview');
+	});
+
+	it('reloads the statement and shows it as filed after a refresh reports delivery', async () => {
+		isds.submissions = [makeSubmission({ id: 21, kind: 'control-statement', status: 'sent' })];
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleStatement));
+		isds.respond = (url) => {
+			if (!url.endsWith('/submissions/21/refresh')) return undefined;
+			return jsonResponse({
+				submission: makeSubmission({
+					id: 21,
+					kind: 'control-statement',
+					status: 'delivered',
+					deliveredAt: '2026-03-11T08:30:00Z',
+					hasReceipt: true
+				}),
+				documentFiled: true
+			});
+		};
+
+		render(Page);
+
+		const refreshButton = await screen.findByRole('button', { name: 'Zjistit stav' });
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ ...sampleStatement, status: 'filed', filed_at: '2026-03-15T00:00:00Z' })
+		);
+		await fireEvent.click(refreshButton);
+
+		await waitFor(() => expect(screen.getByText(/Podáno:/)).toBeInTheDocument());
+		expect(mockFetch.mock.calls[1][0]).toContain('/api/v1/vat-control-statements/1');
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+	});
 });
 
 describe('Control Statement Detail', () => {

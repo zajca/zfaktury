@@ -3,8 +3,10 @@
 	import {
 		isdsCredentialsApi,
 		type ISDSCredentialsOverview,
-		type ISDSEnvironment
+		type ISDSEnvironment,
+		type ISDSLoginTestResult
 	} from '$lib/api/client';
+	import { environmentLabels, environmentOrder, filingErrorMessage } from '$lib/utils/filing';
 	import Card from '$lib/ui/Card.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import Input from '$lib/ui/Input.svelte';
@@ -13,10 +15,10 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
-	const environments: { id: ISDSEnvironment; label: string }[] = [
-		{ id: 'test', label: 'Test' },
-		{ id: 'production', label: 'Ostrá' }
-	];
+	const environments: { id: ISDSEnvironment; label: string }[] = environmentOrder
+		.slice()
+		.reverse()
+		.map((id) => ({ id, label: environmentLabels[id] }));
 
 	let overview = $state<Partial<ISDSCredentialsOverview>>({});
 	let loading = $state(true);
@@ -26,6 +28,12 @@
 	let passwords = $state<Record<ISDSEnvironment, string>>({ test: '', production: '' });
 	let formError = $state<Record<ISDSEnvironment, string | null>>({ test: null, production: null });
 	let busy = $state<ISDSEnvironment | null>(null);
+	let testing = $state<ISDSEnvironment | null>(null);
+	let testResult = $state<Record<ISDSEnvironment, ISDSLoginTestResult | null>>({
+		test: null,
+		production: null
+	});
+	let testError = $state<Record<ISDSEnvironment, string | null>>({ test: null, production: null });
 	let deleteTarget = $state<ISDSEnvironment | null>(null);
 	let showDeleteConfirm = $state(false);
 
@@ -55,6 +63,8 @@
 				password: passwords[env]
 			});
 			overview = { ...overview, [env]: status };
+			testResult[env] = null;
+			testError[env] = null;
 			usernames[env] = '';
 			passwords[env] = '';
 			toastSuccess('Přihlašovací údaje uloženy do systémové klíčenky');
@@ -62,6 +72,20 @@
 			formError[env] = e instanceof Error ? e.message : 'Nepodařilo se uložit přihlašovací údaje';
 		} finally {
 			busy = null;
+		}
+	}
+
+	async function handleTest(env: ISDSEnvironment) {
+		if (testing !== null) return;
+		testing = env;
+		testError[env] = null;
+		testResult[env] = null;
+		try {
+			testResult[env] = await isdsCredentialsApi.test(env);
+		} catch (e) {
+			testError[env] = filingErrorMessage(e);
+		} finally {
+			testing = null;
 		}
 	}
 
@@ -79,6 +103,8 @@
 		try {
 			await isdsCredentialsApi.remove(env);
 			overview = { ...overview, [env]: { configured: false, username: '' } };
+			testResult[env] = null;
+			testError[env] = null;
 			toastSuccess('Přihlašovací údaje smazány');
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se smazat přihlašovací údaje');
@@ -166,7 +192,7 @@
 							</div>
 						</div>
 
-						<div class="mt-4 flex gap-2">
+						<div class="mt-4 flex flex-wrap gap-2">
 							<Button
 								type="submit"
 								variant="primary"
@@ -174,12 +200,53 @@
 							>
 								{status?.configured ? 'Přepsat přihlášení' : 'Uložit přihlášení'}
 							</Button>
+							{#if status?.configured}
+								<Button
+									variant="secondary"
+									disabled={busy !== null || testing !== null}
+									onclick={() => handleTest(env.id)}
+								>
+									{testing === env.id ? 'Zkouším přihlášení...' : 'Vyzkoušet přihlášení'}
+								</Button>
+							{/if}
 							{#if status?.configured || status?.username}
 								<Button variant="danger" disabled={busy !== null} onclick={() => askDelete(env.id)}>
 									Smazat přihlášení
 								</Button>
 							{/if}
 						</div>
+
+						<ErrorAlert error={testError[env.id]} class="mt-3" />
+
+						{#if testResult[env.id]}
+							{@const result = testResult[env.id]!}
+							<div class="mt-3 space-y-3 text-sm" data-testid="isds-test-result-{env.id}">
+								{#if result.warning}
+									<div
+										role="alert"
+										class="rounded-lg border border-warning/40 bg-warning-bg p-3 font-medium text-primary"
+									>
+										{result.warning}
+									</div>
+								{/if}
+								<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+									<dt class="text-muted">Číslo schránky</dt>
+									<dd class="font-mono text-primary">{result.boxId}</dd>
+									<dt class="text-muted">Typ schránky</dt>
+									<dd class="text-primary">{result.boxType}</dd>
+									<dt class="text-muted">Majitel</dt>
+									<dd class="text-primary">{result.ownerName}</dd>
+									<dt class="text-muted">Smí odesílat</dt>
+									<dd class={result.canCreateAndSend ? 'text-success' : 'text-danger'}>
+										{result.canCreateAndSend ? 'Ano' : 'Ne'}
+									</dd>
+									<dt class="text-muted">Smí číst doručené</dt>
+									<dd class={result.canReadMessages ? 'text-warning' : 'text-primary'}>
+										{result.canReadMessages ? 'Ano' : 'Ne'}
+									</dd>
+								</dl>
+							</div>
+						{/if}
 					</form>
 				{/each}
 			</div>

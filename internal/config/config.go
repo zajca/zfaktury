@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -51,6 +52,13 @@ const configTemplate = `# ZFaktury configuration
 # api_key = ""
 # model = ""
 # base_url = ""
+
+# [epo]                           # Podatelna EPO, used by "Otevřít v EPO"; every key is optional
+# base_url = "https://mojedane.gov.cz/dpr"
+# allowed_host = "mojedane.gov.cz"  # Host a returned form link must point to
+# timeout = "10s"
+# max_request_bytes = 5242880
+# max_response_bytes = 1048576
 `
 
 // Config holds the application configuration loaded from config.toml.
@@ -63,6 +71,17 @@ type Config struct {
 	SMTP     SMTPConfig     `toml:"smtp"`
 	FIO      FIOConfig      `toml:"fio"`
 	OCR      OCRConfig      `toml:"ocr"`
+	EPO      EPOConfig      `toml:"epo"`
+}
+
+// EPOConfig holds Podatelna EPO settings. Zero values keep the defaults of the
+// epo package.
+type EPOConfig struct {
+	BaseURL          string        `toml:"base_url"`
+	AllowedHost      string        `toml:"allowed_host"`
+	Timeout          time.Duration `toml:"timeout"`
+	MaxRequestBytes  int64         `toml:"max_request_bytes"`
+	MaxResponseBytes int64         `toml:"max_response_bytes"`
 }
 
 // DatabaseConfig holds database settings.

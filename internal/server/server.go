@@ -17,6 +17,7 @@ import (
 	"github.com/zajca/zfaktury/internal/ares"
 	"github.com/zajca/zfaktury/internal/config"
 	"github.com/zajca/zfaktury/internal/database"
+	"github.com/zajca/zfaktury/internal/epo"
 	"github.com/zajca/zfaktury/internal/flock"
 	"github.com/zajca/zfaktury/internal/handler"
 	"github.com/zajca/zfaktury/internal/isdoc"
@@ -371,6 +372,22 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	}
 	backupSvc := service.NewBackupService(backupHistoryRepo, db, cfg.Backup, cfg.DataDir, backupStorage)
 
+	// Wire the EPO client and the open-in-EPO service. Zero config values keep
+	// the package defaults.
+	epoClient := epo.NewClient(
+		epo.WithBaseURL(cfg.EPO.BaseURL),
+		epo.WithAllowedHost(cfg.EPO.AllowedHost),
+		epo.WithTimeout(cfg.EPO.Timeout),
+		epo.WithMaxRequestBytes(cfg.EPO.MaxRequestBytes),
+		epo.WithMaxResponseBytes(cfg.EPO.MaxResponseBytes),
+	)
+	epoSvc := service.NewEPOService(map[service.EPOKind]service.EPOXMLSource{
+		service.EPOKindVATReturn:        vatReturnSvc,
+		service.EPOKindControlStatement: vatControlSvc,
+		service.EPOKindVIESSummary:      viesSvc,
+		service.EPOKindIncomeTax:        incomeTaxSvc,
+	}, epoClient)
+
 	// Wire dashboard and report repos/services.
 	dashboardRepo := repository.NewDashboardRepository(db)
 	dashboardSvc := service.NewDashboardService(dashboardRepo)
@@ -389,7 +406,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, handler.RouterConfig{
+	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, epoSvc, handler.RouterConfig{
 		DevMode: cfg.Server.Dev,
 		DataDir: cfg.DataDir,
 	})

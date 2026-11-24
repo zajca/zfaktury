@@ -417,6 +417,18 @@ func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, 
 	return xmlData, nil
 }
 
+// GetXMLData retrieves the stored XML data for a control statement.
+func (s *VATControlStatementService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("control statement ID is required: %w", domain.ErrInvalidInput)
+	}
+	cs, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching control statement for XML data: %w", err)
+	}
+	return cs.XMLData, nil
+}
+
 // MarkFiled marks a control statement as filed.
 func (s *VATControlStatementService) MarkFiled(ctx context.Context, id int64) error {
 	cs, err := s.repo.GetByID(ctx, id)

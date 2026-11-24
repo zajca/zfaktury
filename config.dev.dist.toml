@@ -8,6 +8,13 @@
 # path = "logs/zfaktury.log"      # Log file path (default: stderr only)
 # level = "debug"                  # debug, info, warn, error (default: info)
 
+# [epo]                            # Podatelna EPO ("Otevřít v EPO"); every key is optional
+# base_url = "https://mojedane.gov.cz/dpr"
+# allowed_host = "mojedane.gov.cz"
+# timeout = "10s"
+# max_request_bytes = 5242880
+# max_response_bytes = 1048576
+
 [smtp]
 host = "localhost"
 port = 1025

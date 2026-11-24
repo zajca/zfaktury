@@ -823,6 +823,47 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 
 // --- GenerateXML tests ---
 
+func TestVIES_GetXMLData(t *testing.T) {
+	svc, _ := newVIESSvc(t)
+	ctx := context.Background()
+
+	vs := validVIESSummary()
+	if err := svc.Create(ctx, vs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	empty, err := svc.GetXMLData(ctx, vs.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() before generation error: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Errorf("GetXMLData() before generation = %d bytes, want 0", len(empty))
+	}
+
+	if err := svc.GenerateXML(ctx, vs.ID, "CZ12345678"); err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+	stored, err := svc.GetXMLData(ctx, vs.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() error: %v", err)
+	}
+	if !strings.Contains(string(stored), "<?xml") {
+		t.Error("GetXMLData() should return the generated XML")
+	}
+}
+
+func TestVIES_GetXMLData_Errors(t *testing.T) {
+	svc, _ := newVIESSvc(t)
+	ctx := context.Background()
+
+	if _, err := svc.GetXMLData(ctx, 0); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("GetXMLData(0) error = %v, want ErrInvalidInput", err)
+	}
+	if _, err := svc.GetXMLData(ctx, 99999); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetXMLData(99999) error = %v, want ErrNotFound", err)
+	}
+}
+
 func TestVIES_GenerateXML_Valid(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()

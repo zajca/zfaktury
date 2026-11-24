@@ -1,8 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -704,6 +706,51 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 	}
 	if len(updated.XMLData) == 0 {
 		t.Error("XMLData should be stored after GenerateXML with lines")
+	}
+}
+
+func TestVATControlStatementService_GetXMLData(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	cs := &domain.VATControlStatement{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	empty, err := svc.GetXMLData(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() before generation error: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Errorf("GetXMLData() before generation = %d bytes, want 0", len(empty))
+	}
+
+	generated, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+	stored, err := svc.GetXMLData(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() error: %v", err)
+	}
+	if !bytes.Equal(stored, generated) {
+		t.Error("GetXMLData() differs from the generated XML")
+	}
+}
+
+func TestVATControlStatementService_GetXMLData_Errors(t *testing.T) {
+	svc, _ := setupVATControlSvc(t)
+	ctx := context.Background()
+
+	if _, err := svc.GetXMLData(ctx, 0); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("GetXMLData(0) error = %v, want ErrInvalidInput", err)
+	}
+	if _, err := svc.GetXMLData(ctx, 9999); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("GetXMLData(9999) error = %v, want ErrNotFound", err)
 	}
 }
 

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OSVC xmlns="http://schemas.cssz.cz/OSVC2025" version="1.0">
+  <VENDOR productName="ZFaktury" productVersion="1.0"></VENDOR>
+  <SENDER ISDSreport="3" VerzeProtokolu="1.0"></SENDER>
+  <prehledosvc for="prehledosvc" dep="775" rok="2025" typ="N">
+    <client>
+      <name fir="Jan" sur="Testovaci"></name>
+      <birth bno="8001010006" den="1980-01-01"></birth>
+      <adr cit="Praha" cnt="CZ" num="1" pnu="11000" str="Testovaci"></adr>
+      <idds></idds>
+      <email>ja@example.test</email>
+      <tel>600000000</tel>
+      <druc>H</druc>
+      <hlavc>
+        <m1></m1>
+        <m2></m2>
+        <m3></m3>
+        <m4></m4>
+        <m5></m5>
+        <m6></m6>
+        <m7>A</m7>
+        <m8>A</m8>
+        <m9>A</m9>
+        <m10>A</m10>
+        <m11>A</m11>
+        <m12>A</m12>
+        <m13></m13>
+      </hlavc>
+      <vedc>
+        <m1></m1>
+        <m2></m2>
+        <m3></m3>
+        <m4></m4>
+        <m5></m5>
+        <m6></m6>
+        <m7></m7>
+        <m8></m8>
+        <m9></m9>
+        <m10></m10>
+        <m11></m11>
+        <m12></m12>
+        <m13></m13>
+        <zam></zam>
+        <duchod></duchod>
+        <pdite></pdite>
+        <ppm></ppm>
+        <pece></pece>
+        <ndite></ndite>
+      </vedc>
+      <narok>
+        <m1></m1>
+        <m2></m2>
+        <m3></m3>
+        <m4></m4>
+        <m5></m5>
+        <m6></m6>
+        <m7></m7>
+        <m8></m8>
+        <m9></m9>
+        <m10></m10>
+        <m11></m11>
+        <m12></m12>
+        <m13></m13>
+      </narok>
+      <sleva>
+        <m1></m1>
+        <m2></m2>
+        <m3></m3>
+        <m4></m4>
+        <m5></m5>
+        <m6></m6>
+        <m7></m7>
+        <m8></m8>
+        <m9></m9>
+        <m10></m10>
+        <m11></m11>
+        <m12></m12>
+        <m13></m13>
+      </sleva>
+      <vzpm></vzpm>
+    </client>
+    <pvv pri="100000.00">
+      <mesc h="6"></mesc>
+      <mesv h="6"></mesv>
+      <mesp>16666.67</mesp>
+      <rdza h="0" v="0"></rdza>
+      <vvz h="55000" v="0"></vvz>
+      <dvz h="0" v="0"></dvz>
+      <mvz>97770</mvz>
+      <uvz>97770</uvz>
+      <vzza></vzza>
+      <vzsu>97770</vzsu>
+      <vzsvc>97770</vzsvc>
+      <poj>28549</poj>
+      <slev>0</slev>
+      <pojposlev>28549</pojposlev>
+      <zal>0</zal>
+      <ned>28549</ned>
+    </pvv>
+    <prihldp></prihldp>
+    <zal ved="H" vz="16295" dp="4759"></zal>
+    <pre vra="0">
+      <rok></rok>
+      <iban></iban>
+      <bs></bs>
+      <adr></adr>
+    </pre>
+    <prizn>
+      <pov>A</pov>
+      <elektr>A</elektr>
+      <meldat></meldat>
+    </prizn>
+    <opr></opr>
+    <spo>
+      <name></name>
+      <adr></adr>
+    </spo>
+    <dat></dat>
+    <prilo coun="0" plnamoc="N" jina="N"></prilo>
+  </prehledosvc>
+</OSVC>

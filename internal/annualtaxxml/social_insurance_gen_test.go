@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -38,6 +39,7 @@ func TestSocialInsuranceXML_CorrectiveFilingType(t *testing.T) {
 		Prepayments:         domain.NewAmount(38088, 0),
 		Difference:          domain.NewAmount(6880, 0),
 		NewMonthlyPrepay:    domain.NewAmount(3748, 0),
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 
 	settings := map[string]string{
@@ -77,6 +79,7 @@ func TestSocialInsuranceXML_SupplementaryFilingType(t *testing.T) {
 		Prepayments:         domain.NewAmount(38088, 0),
 		Difference:          domain.NewAmount(6880, 0),
 		NewMonthlyPrepay:    domain.NewAmount(3748, 0),
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 
 	settings := map[string]string{
@@ -118,6 +121,7 @@ func TestSocialInsuranceXML_Golden_Regular(t *testing.T) {
 		Prepayments:         domain.NewAmount(38088, 0),   // 3174/month * 12
 		Difference:          domain.NewAmount(90392, 0),   // 128480 - 38088
 		NewMonthlyPrepay:    domain.NewAmount(10707, 0),   // new monthly prepayment
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 
 	settings := map[string]string{
@@ -160,6 +164,7 @@ func TestSocialInsuranceXML_Golden_ActualExpenses(t *testing.T) {
 		Prepayments:         domain.NewAmount(38088, 0),  // 3174/month * 12
 		Difference:          domain.NewAmount(6880, 0),   // 44968 - 38088
 		NewMonthlyPrepay:    domain.NewAmount(3748, 0),   // new monthly prepayment
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 
 	settings := map[string]string{
@@ -196,6 +201,7 @@ func TestSocialInsuranceXML_SemanticFieldsFromCSSZSpec(t *testing.T) {
 		Prepayments:         domain.NewAmount(86991, 0),
 		Difference:          domain.NewAmount(12636, 0),
 		NewMonthlyPrepay:    domain.NewAmount(8303, 0),
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 	settings := validSocialInsuranceSettings()
 	settings["cssz_variable_symbol"] = "75660248"
@@ -243,7 +249,7 @@ func TestSocialInsuranceXML_SemanticFieldsFromCSSZSpec(t *testing.T) {
 }
 
 func TestSocialInsuranceXML_RequiresCSSZSpecFields(t *testing.T) {
-	_, err := GenerateSocialInsuranceXML(&domain.SocialInsuranceOverview{Year: 2025}, map[string]string{
+	_, err := GenerateSocialInsuranceXML(&domain.SocialInsuranceOverview{Year: 2025, ActivityMonths: domain.FullYearActivityMonths}, map[string]string{
 		"cssz_code": "PSSZ",
 	})
 	if err == nil {
@@ -275,6 +281,7 @@ func TestSocialInsuranceXML_ValidatesAgainstOSVC25XSD(t *testing.T) {
 		Prepayments:         domain.NewAmount(86991, 0),
 		Difference:          domain.NewAmount(12636, 0),
 		NewMonthlyPrepay:    domain.NewAmount(8303, 0),
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 	xmlData, err := GenerateSocialInsuranceXML(sio, validSocialInsuranceSettings())
 	if err != nil {
@@ -309,6 +316,7 @@ func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.
 		Prepayments:         domain.NewAmount(60_000, 0),
 		Difference:          domain.NewAmount(56, 0),
 		NewMonthlyPrepay:    domain.NewAmount(5_005, 0),
+		ActivityMonths:      domain.FullYearActivityMonths,
 	}
 	xmlData, err := GenerateSocialInsuranceXML(sio, validSocialInsuranceSettings())
 	if err != nil {
@@ -321,6 +329,155 @@ func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.
 	}
 	xsdPath := filepath.Join("..", "..", "docs", "xml-schemas", "cssz", "OSVC25.xsd")
 	out, err := exec.Command(xmllint, "--noout", "--schema", xsdPath, xmlPath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("xmllint XSD validation failed: %v\n%s", err, out)
+	}
+}
+
+func TestFormatMonthlyAverage(t *testing.T) {
+	tests := []struct {
+		name   string
+		amount domain.Amount
+		months int64
+		want   string
+	}{
+		{name: "regular year", amount: domain.NewAmount(800000, 0), months: 12, want: "66666.67"},
+		{name: "rounded down", amount: domain.NewAmount(280000, 0), months: 12, want: "23333.33"},
+		{name: "half year", amount: domain.NewAmount(100000, 0), months: 6, want: "16666.67"},
+		{name: "halere base", amount: domain.NewAmount(620339, 20), months: 12, want: "51694.93"},
+		{name: "zero base", amount: domain.NewAmount(0, 0), months: 12, want: "0.00"},
+		{name: "negative amount", amount: domain.NewAmount(-100, 0), months: 6, want: "-16.67"},
+		{name: "no months", amount: domain.NewAmount(100000, 0), months: 0, want: "0.00"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatMonthlyAverage(tt.amount, tt.months); got != tt.want {
+				t.Errorf("formatMonthlyAverage(%d, %d) = %q, want %q", tt.amount, tt.months, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSocialInsuranceXML_MissingActivityMonths(t *testing.T) {
+	sio := &domain.SocialInsuranceOverview{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+
+	_, err := GenerateSocialInsuranceXML(sio, validSocialInsuranceSettings())
+	if err == nil {
+		t.Fatal("expected error for missing activity months, got nil")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got: %v", err)
+	}
+}
+
+// partialYearSocialInsuranceOverview covers July to December only.
+func partialYearSocialInsuranceOverview() *domain.SocialInsuranceOverview {
+	return &domain.SocialInsuranceOverview{
+		Year:                2025,
+		FilingType:          domain.FilingTypeRegular,
+		ActivityMonths:      domain.ActivityMonths(4032),
+		TotalRevenue:        domain.NewAmount(100000, 0),
+		TotalExpenses:       domain.NewAmount(0, 0),
+		TaxBase:             domain.NewAmount(100000, 0),
+		AssessmentBase:      domain.NewAmount(55000, 0),
+		MinAssessmentBase:   domain.NewAmount(97770, 0),
+		FinalAssessmentBase: domain.NewAmount(97770, 0),
+		InsuranceRate:       292,
+		TotalInsurance:      domain.NewAmount(28549, 0),
+		Prepayments:         domain.NewAmount(0, 0),
+		Difference:          domain.NewAmount(28549, 0),
+		NewMonthlyPrepay:    domain.NewAmount(4759, 0),
+	}
+}
+
+func TestSocialInsuranceXML_PartialYearFields(t *testing.T) {
+	xmlData, err := GenerateSocialInsuranceXML(partialYearSocialInsuranceOverview(), validSocialInsuranceSettings())
+	if err != nil {
+		t.Fatalf("GenerateSocialInsuranceXML: %v", err)
+	}
+
+	var doc OSVC
+	if err := xml.Unmarshal(xmlData, &doc); err != nil {
+		t.Fatalf("unmarshal generated XML: %v", err)
+	}
+
+	flags := doc.Prehled.Client.Hlavc.MonthFlags
+	for month, flag := range []string{flags.M1, flags.M2, flags.M3, flags.M4, flags.M5, flags.M6} {
+		if flag != "" {
+			t.Errorf("hlavc m%d = %q, want empty for a month without activity", month+1, flag)
+		}
+	}
+	for month, flag := range []string{flags.M7, flags.M8, flags.M9, flags.M10, flags.M11, flags.M12} {
+		if flag != "A" {
+			t.Errorf("hlavc m%d = %q, want A", month+7, flag)
+		}
+	}
+	if flags.M13 != "" {
+		t.Errorf("hlavc m13 = %q, want empty for a partial year", flags.M13)
+	}
+
+	if doc.Prehled.PVV.Mesc.H != "6" {
+		t.Errorf("mesc = %q, want 6", doc.Prehled.PVV.Mesc.H)
+	}
+	if doc.Prehled.PVV.Mesv.H != "6" {
+		t.Errorf("mesv = %q, want 6", doc.Prehled.PVV.Mesv.H)
+	}
+	if doc.Prehled.PVV.Mesp != "16666.67" {
+		t.Errorf("mesp = %q, want 16666.67", doc.Prehled.PVV.Mesp)
+	}
+	if doc.Prehled.PVV.MVZ != "97770" || doc.Prehled.PVV.UVZ != "97770" || doc.Prehled.PVV.Vzsvc != "97770" {
+		t.Errorf("pv bases = mvz:%q uvz:%q vzsvc:%q, want 97770 for all", doc.Prehled.PVV.MVZ, doc.Prehled.PVV.UVZ, doc.Prehled.PVV.Vzsvc)
+	}
+	if doc.Prehled.PVV.Poj != "28549" {
+		t.Errorf("poj = %q, want 28549", doc.Prehled.PVV.Poj)
+	}
+	if doc.Prehled.Zal.VZ != "16295" {
+		t.Errorf("zal@vz = %q, want 16295", doc.Prehled.Zal.VZ)
+	}
+	if doc.Prehled.Zal.DP != "4759" {
+		t.Errorf("zal@dp = %q, want 4759", doc.Prehled.Zal.DP)
+	}
+
+	// The stored advance must follow from the monthly base written to ř. 35.
+	monthlyBase := int64(16295)
+	wantPrepay := (monthlyBase*292 + 999) / 1000
+	if doc.Prehled.Zal.DP != strconv.FormatInt(wantPrepay, 10) {
+		t.Errorf("zal@dp = %q, want %d from the monthly base", doc.Prehled.Zal.DP, wantPrepay)
+	}
+}
+
+func TestSocialInsuranceXML_Golden_PartialYear(t *testing.T) {
+	xmlData, err := GenerateSocialInsuranceXML(partialYearSocialInsuranceOverview(), validSocialInsuranceSettings())
+	if err != nil {
+		t.Fatalf("GenerateSocialInsuranceXML: %v", err)
+	}
+
+	goldenPath := filepath.Join("testdata", "social_insurance_partial_year.golden.xml")
+	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+func TestSocialInsuranceXML_PartialYearValidatesAgainstOSVC25XSD(t *testing.T) {
+	xmllint, err := exec.LookPath("xmllint")
+	if err != nil {
+		t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+	}
+
+	xmlData, err := GenerateSocialInsuranceXML(partialYearSocialInsuranceOverview(), validSocialInsuranceSettings())
+	if err != nil {
+		t.Fatalf("GenerateSocialInsuranceXML: %v", err)
+	}
+
+	xmlPath := filepath.Join(t.TempDir(), "osvc25-partial-year.xml")
+	if err := os.WriteFile(xmlPath, xmlData, 0o600); err != nil {
+		t.Fatalf("write generated XML: %v", err)
+	}
+	xsdPath := filepath.Join("..", "..", "docs", "xml-schemas", "cssz", "OSVC25.xsd")
+	cmd := exec.Command(xmllint, "--noout", "--schema", xsdPath, xmlPath)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("xmllint XSD validation failed: %v\n%s", err, out)
 	}

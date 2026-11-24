@@ -21,6 +21,9 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	if err := validateSocialInsuranceXMLInput(settings); err != nil {
 		return nil, err
 	}
+	if err := sio.ActivityMonths.Validate(); err != nil {
+		return nil, fmt.Errorf("social insurance overview activity months: %w", err)
+	}
 
 	rok := strconv.Itoa(sio.Year)
 
@@ -30,7 +33,9 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 	prepayments := ToWholeCZK(sio.Prepayments)
 	difference := ToWholeCZK(sio.Difference)
 	newMonthlyPrepay := ToWholeCZK(sio.NewMonthlyPrepay)
-	monthlyAssessmentBase := divideRoundedUp(finalAssessmentBase, 12)
+	months := int64(sio.ActivityMonths.Count())
+	// ř. 35: the annual base spread over the months of activity, rounded up (same as calc).
+	monthlyAssessmentBase := divideRoundedUp(finalAssessmentBase, months)
 
 	priznElektr := "A"
 	if v := strings.TrimSpace(settings["tax_return_filed_electronically"]); v != "" {
@@ -79,7 +84,7 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 				Tel:   settings["taxpayer_phone"],
 				Druc:  "H",
 				Hlavc: Hlavc{
-					MonthFlags: MonthFlags{M13: "A"},
+					MonthFlags: mainActivityMonthFlags(sio.ActivityMonths),
 				},
 				Vedc:  Vedc{},
 				Sleva: MonthFlags{},
@@ -87,9 +92,10 @@ func GenerateSocialInsuranceXML(sio *domain.SocialInsuranceOverview, settings ma
 
 			PVV: PVV{
 				Pri:  formatAmount(sio.TaxBase),
-				Mesc: HVPair{H: "12", V: ""},
-				Mesv: HVPair{H: "12", V: ""},
-				Mesp: formatMonthlyAverage(sio.TaxBase, 12),
+				Mesc: HVPair{H: strconv.Itoa(sio.ActivityMonths.Count()), V: ""},
+				// ř. 22: months with a whole-month sickness benefit are not tracked, so it equals ř. 21.
+				Mesv: HVPair{H: strconv.Itoa(sio.ActivityMonths.Count()), V: ""},
+				Mesp: formatMonthlyAverage(sio.TaxBase, months),
 				Rdza: HVPair{H: "0", V: "0"},
 				VVZ: HVPair{
 					H: strconv.FormatInt(assessmentBase, 10),
@@ -186,11 +192,36 @@ func formatAmount(amount domain.Amount) string {
 	return amount.String()
 }
 
+// formatMonthlyAverage divides amount by months, rounded half up to whole halere
+// (ř. 23 "Zaokr. na 2 des. místa").
 func formatMonthlyAverage(amount domain.Amount, months int64) string {
 	if months <= 0 {
 		return "0.00"
 	}
-	return domain.Amount(int64(amount) / months).String()
+	value := int64(amount)
+	if value < 0 {
+		return domain.Amount(-((-2*value + months) / (2 * months))).String()
+	}
+	return domain.Amount((2*value + months) / (2 * months)).String()
+}
+
+// mainActivityMonthFlags marks the months of main activity ("A"); a full year is
+// reported only in m13 ("Výkon SVČ celý rok").
+func mainActivityMonthFlags(m domain.ActivityMonths) MonthFlags {
+	if m.IsFullYear() {
+		return MonthFlags{M13: "A"}
+	}
+	var flags [12]string
+	for month := 1; month <= 12; month++ {
+		if m.Has(month) {
+			flags[month-1] = "A"
+		}
+	}
+	return MonthFlags{
+		M1: flags[0], M2: flags[1], M3: flags[2], M4: flags[3],
+		M5: flags[4], M6: flags[5], M7: flags[6], M8: flags[7],
+		M9: flags[8], M10: flags[9], M11: flags[10], M12: flags[11],
+	}
 }
 
 func divideRoundedUp(value int64, divisor int64) int64 {

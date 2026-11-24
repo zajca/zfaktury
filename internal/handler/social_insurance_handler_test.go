@@ -514,6 +514,28 @@ func TestSocialInsurance_GenerateXML(t *testing.T) {
 	}
 }
 
+func TestSocialInsurance_GenerateXML_NotCalculated(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/social-insurance/%d/generate-xml", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+	var resp struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if want := "přehled je potřeba nejdřív přepočítat"; resp.Error != want {
+		t.Errorf("error = %q, want %q", resp.Error, want)
+	}
+}
+
 func TestSocialInsurance_GenerateXML_NotFound(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 

@@ -60,6 +60,8 @@ interface MockOptions {
 	updateOverview?: Record<string, unknown>;
 	updateStatus?: number;
 	updateBody?: unknown;
+	generateStatus?: number;
+	generateBody?: unknown;
 }
 
 function mockApi(options: MockOptions = {}) {
@@ -68,6 +70,11 @@ function mockApi(options: MockOptions = {}) {
 	mockFetch.mockImplementation((url: string) => {
 		if (url.includes('/tax-constants')) {
 			return Promise.resolve(jsonResponse({ error: 'not found' }, 404));
+		}
+		if (url.includes('/generate-xml') && options.generateStatus) {
+			return Promise.resolve(
+				jsonResponse(options.generateBody ?? { error: 'error' }, options.generateStatus)
+			);
 		}
 		if (url.includes('/activity-months')) {
 			if (options.updateStatus && options.updateStatus !== 200) {
@@ -172,6 +179,20 @@ describe('social insurance overview detail page', () => {
 			expect(toasts.some((t) => t.message === 'Pro rok 2019 zatím nejsou daňová pravidla.')).toBe(
 				true
 			);
+		});
+	});
+
+	it('shows the server message when the XML cannot be generated', async () => {
+		mockApi({
+			generateStatus: 400,
+			generateBody: { error: 'přehled je potřeba nejdřív přepočítat' }
+		});
+
+		await renderPage();
+		await fireEvent.click(screen.getByRole('button', { name: 'Generovat XML' }));
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message === 'přehled je potřeba nejdřív přepočítat')).toBe(true);
 		});
 	});
 

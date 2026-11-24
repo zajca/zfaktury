@@ -337,6 +337,15 @@ func (s *SocialInsuranceService) SetActivityMonths(ctx context.Context, id int64
 	return sio, nil
 }
 
+// Messages GenerateXML shows to the user when the stored calculation cannot be
+// written to the XML.
+const (
+	msgOverviewNotCalculated      = "přehled je potřeba nejdřív přepočítat"
+	msgOverviewNotCalculatedFiled = "přehled je už podaný a nemá uložený začátek zálohy, uložené XML zůstává beze změny"
+	msgFilingMethodChanged        = "způsob podání daňového přiznání se od výpočtu změnil, přepočítejte přehled"
+	msgFilingMethodChangedFiled   = "přehled je už podaný a způsob podání daňového přiznání se od výpočtu změnil, uložené XML zůstává beze změny"
+)
+
 // GenerateXML generates the CSSZ XML for a social insurance overview.
 func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*domain.SocialInsuranceOverview, error) {
 	if id == 0 {
@@ -349,9 +358,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	}
 	if sio.AdvanceStartMonth == 0 || sio.NewMonthlyBase == nil {
 		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
-			return nil, fmt.Errorf("přehled %d byl spočítán starší verzí aplikace a je už podaný, uložené XML zůstává beze změny: %w", sio.ID, domain.ErrInvalidInput)
+			return nil, &domain.UserMessageError{Message: msgOverviewNotCalculatedFiled}
 		}
-		return nil, fmt.Errorf("přehled %d byl spočítán starší verzí aplikace, přepočítejte ho: %w", sio.ID, domain.ErrInvalidInput)
+		return nil, &domain.UserMessageError{Message: msgOverviewNotCalculated}
 	}
 
 	// Load settings for taxpayer info.
@@ -394,9 +403,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	}
 	if tys.FilingMethod != sio.FilingMethod {
 		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
-			return nil, fmt.Errorf("přehled %d je už podaný a způsob podání daňového přiznání se od výpočtu změnil, uložené XML zůstává beze změny: %w", sio.ID, domain.ErrInvalidInput)
+			return nil, &domain.UserMessageError{Message: msgFilingMethodChangedFiled}
 		}
-		return nil, fmt.Errorf("přehled %d: způsob podání daňového přiznání se od výpočtu změnil, přepočítejte přehled: %w", sio.ID, domain.ErrInvalidInput)
+		return nil, &domain.UserMessageError{Message: msgFilingMethodChanged}
 	}
 
 	advanceBase := *sio.NewMonthlyBase

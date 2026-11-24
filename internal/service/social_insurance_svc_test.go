@@ -925,16 +925,14 @@ func TestRecalculate_2026StandardFilingWarnsOnlyAboutMissingMinimum(t *testing.T
 	}
 }
 
-// seedSocialInsuranceXMLSettings stores the taxpayer data the CSSZ XML needs.
 func TestGenerateXML_FilingMethodChangedMessage(t *testing.T) {
 	tests := []struct {
 		name  string
 		filed bool
 		want  string
-		avoid string
 	}{
-		{"draft asks for a recalculation", false, "přepočítejte", ""},
-		{"filed keeps the stored XML", true, "uložené XML zůstává beze změny", "přepočítejte"},
+		{"draft asks for a recalculation", false, msgFilingMethodChanged},
+		{"filed keeps the stored XML", true, msgFilingMethodChangedFiled},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -961,16 +959,47 @@ func TestGenerateXML_FilingMethodChangedMessage(t *testing.T) {
 			}
 
 			_, err := svc.GenerateXML(ctx, sio.ID)
-			if !errors.Is(err, domain.ErrInvalidInput) || !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("error = %v, want ErrInvalidInput containing %q", err, tt.want)
-			}
-			if tt.avoid != "" && strings.Contains(err.Error(), tt.avoid) {
-				t.Errorf("error = %v, must not contain %q", err, tt.avoid)
+			var userMessage *domain.UserMessageError
+			if !errors.Is(err, domain.ErrInvalidInput) || !errors.As(err, &userMessage) || userMessage.Message != tt.want {
+				t.Fatalf("error = %v, want ErrInvalidInput with user message %q", err, tt.want)
 			}
 		})
 	}
 }
 
+func TestGenerateXML_NotCalculatedMessage(t *testing.T) {
+	tests := []struct {
+		name  string
+		filed bool
+		want  string
+	}{
+		{"draft asks for a calculation", false, msgOverviewNotCalculated},
+		{"filed keeps the stored XML", true, msgOverviewNotCalculatedFiled},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _ := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+			if tt.filed {
+				now := time.Now()
+				sio.Status = domain.FilingStatusFiled
+				sio.FiledAt = &now
+			}
+			if err := svc.Create(ctx, sio); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, sio.ID)
+			var userMessage *domain.UserMessageError
+			if !errors.Is(err, domain.ErrInvalidInput) || !errors.As(err, &userMessage) || userMessage.Message != tt.want {
+				t.Fatalf("error = %v, want ErrInvalidInput with user message %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// seedSocialInsuranceXMLSettings stores the taxpayer data the CSSZ XML needs.
 func seedSocialInsuranceXMLSettings(t *testing.T, db *sql.DB) {
 	t.Helper()
 	settingsRepo := repository.NewSettingsRepository(db)
@@ -1105,8 +1134,9 @@ func TestGenerateXML_LegacyRowWithoutStoredBase(t *testing.T) {
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
 	}
-	if !strings.Contains(err.Error(), "přepočítejte") {
-		t.Errorf("GenerateXML() error = %v, want it to ask for a recalculation", err)
+	var userMessage *domain.UserMessageError
+	if !errors.As(err, &userMessage) || userMessage.Message != msgOverviewNotCalculated {
+		t.Errorf("GenerateXML() error = %v, want user message %q", err, msgOverviewNotCalculated)
 	}
 }
 
@@ -1146,8 +1176,8 @@ func TestGenerateXML_LegacyProductionRowWithoutStoredBase(t *testing.T) {
 		filed       bool
 		wantMessage string
 	}{
-		{name: "not filed", status: domain.FilingStatusDraft, wantMessage: "uložená záloha neodpovídá měsíčnímu základu, přepočítejte přehled"},
-		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantMessage: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"},
+		{name: "not filed", status: domain.FilingStatusDraft, wantMessage: msgOverviewNotCalculated},
+		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantMessage: msgOverviewNotCalculatedFiled},
 	}
 
 	for _, tt := range tests {

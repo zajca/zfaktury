@@ -484,6 +484,12 @@ func (s *IncomeTaxReturnService) GetXMLData(ctx context.Context, id int64) ([]by
 
 // MarkFiled marks an income tax return as filed and records the timestamp.
 func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
+	return s.MarkFiledAt(ctx, id, time.Now())
+}
+
+// MarkFiledAt marks an income tax return as filed at the given time. An
+// already filed return yields domain.ErrFilingAlreadyFiled and is left unchanged.
+func (s *IncomeTaxReturnService) MarkFiledAt(ctx context.Context, id int64, at time.Time) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
 	}
@@ -496,9 +502,8 @@ func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, id int64) (*doma
 		return nil, domain.ErrFilingAlreadyFiled
 	}
 
-	now := time.Now()
 	itr.Status = domain.FilingStatusFiled
-	itr.FiledAt = &now
+	itr.FiledAt = &at
 
 	if err := s.repo.Update(ctx, itr); err != nil {
 		return nil, fmt.Errorf("marking income_tax_return as filed: %w", err)

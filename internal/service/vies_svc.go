@@ -284,18 +284,28 @@ func (s *VIESSummaryService) GetXMLData(ctx context.Context, id int64) ([]byte, 
 
 // MarkFiled marks a VIES summary as filed.
 func (s *VIESSummaryService) MarkFiled(ctx context.Context, id int64) error {
+	return s.markFiled(ctx, id, time.Now(), domain.ErrInvalidInput)
+}
+
+// MarkFiledAt marks a VIES summary as filed at the given time. An already
+// filed summary yields domain.ErrFilingAlreadyFiled and is left unchanged.
+func (s *VIESSummaryService) MarkFiledAt(ctx context.Context, id int64, at time.Time) error {
+	return s.markFiled(ctx, id, at, domain.ErrFilingAlreadyFiled)
+}
+
+// markFiled fails with alreadyFiledErr when the summary is already filed.
+func (s *VIESSummaryService) markFiled(ctx context.Context, id int64, at time.Time, alreadyFiledErr error) error {
 	vs, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for filing: %w", err)
 	}
 
 	if vs.Status == domain.FilingStatusFiled {
-		return fmt.Errorf("marking VIES summary as filed: %w: already filed", domain.ErrInvalidInput)
+		return fmt.Errorf("marking VIES summary as filed: %w: already filed", alreadyFiledErr)
 	}
 
-	now := time.Now()
 	vs.Status = domain.FilingStatusFiled
-	vs.FiledAt = &now
+	vs.FiledAt = &at
 
 	if err := s.repo.Update(ctx, vs); err != nil {
 		return fmt.Errorf("updating VIES summary status: %w", err)

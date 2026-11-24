@@ -22,6 +22,7 @@ import (
 	"github.com/zajca/zfaktury/internal/flock"
 	"github.com/zajca/zfaktury/internal/handler"
 	"github.com/zajca/zfaktury/internal/isdoc"
+	"github.com/zajca/zfaktury/internal/isds"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/secrets"
@@ -29,6 +30,7 @@ import (
 	"github.com/zajca/zfaktury/internal/service/cnb"
 	"github.com/zajca/zfaktury/internal/service/email"
 	"github.com/zajca/zfaktury/internal/service/ocr"
+	"github.com/zajca/zfaktury/internal/xsdcheck"
 )
 
 // listenHost is the only address the HTTP server binds to. The ISDS credentials
@@ -118,7 +120,15 @@ func New(opts Options) (*App, error) {
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
 
-	router := wireRouter(cfg, db)
+	router, err := wireRouter(cfg, db)
+	if err != nil {
+		_ = db.Close()
+		_ = lock.Release()
+		if logFile != nil {
+			_ = logFile.Close()
+		}
+		return nil, fmt.Errorf("wiring the router: %w", err)
+	}
 
 	// Mount frontend handler.
 	if cfg.Server.Dev {
@@ -231,7 +241,7 @@ func (a *App) Close() error {
 }
 
 // wireRouter creates repositories, services, and the HTTP router.
-func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
+func wireRouter(cfg *config.Config, db *sql.DB) (*chi.Mux, error) {
 	// Wire repositories.
 	contactRepo := repository.NewContactRepository(db)
 	invoiceRepo := repository.NewInvoiceRepository(db)
@@ -396,7 +406,46 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	}, epoClient)
 
 	// Wire the data-box credentials service over the OS keyring.
-	isdsCredentialsSvc := service.NewISDSCredentialsService(secrets.NewISDSStore())
+	isdsStore := secrets.NewISDSStore()
+	isdsCredentialsSvc := service.NewISDSCredentialsService(isdsStore)
+
+	// Wire the data-box filing service. The test boxes come from the config
+	// and have no built-in values; a bad one fails the startup.
+	recipients := make(map[isds.RecipientEnvironment]*isds.Recipients, 2)
+	for _, env := range []isds.RecipientEnvironment{isds.RecipientEnvProduction, isds.RecipientEnvTest} {
+		r, err := isds.NewRecipients(env, isds.TestRecipientBoxes{
+			CSSZ:       cfg.ISDS.TestCSSZBox,
+			TaxOffices: cfg.ISDS.TestTaxOfficeBoxes,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("configuring data box recipients: %w", err)
+		}
+		recipients[env] = r
+	}
+	xsdChecker, err := xsdcheck.New(xsdcheck.Config{
+		WorkDir:        filepath.Join(cfg.DataDir, "tmp", "xsdcheck"),
+		Timeout:        cfg.ISDS.XSDCheckTimeout,
+		MaxOutputBytes: cfg.ISDS.XSDCheckMaxOutputBytes,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configuring the XSD check: %w", err)
+	}
+	filingSvc, err := service.NewFilingService(service.FilingServiceConfig{
+		Documents:   service.NewFilingDocuments(vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, settingsSvc),
+		Repo:        repository.NewFilingSubmissionRepository(db),
+		Recipients:  recipients,
+		Settings:    settingsSvc,
+		EPO:         epoClient,
+		XSD:         xsdChecker,
+		Credentials: isdsStore,
+		NewClient: func(env isds.Environment, creds isds.Credentials) (service.FilingISDSClient, error) {
+			return isds.NewClient(env, creds)
+		},
+		Audit: auditSvc,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("wiring the filing service: %w", err)
+	}
 
 	// Wire dashboard and report repos/services.
 	dashboardRepo := repository.NewDashboardRepository(db)
@@ -416,9 +465,10 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, epoSvc, isdsCredentialsSvc, handler.RouterConfig{
+	router := handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, epoSvc, isdsCredentialsSvc, filingSvc, handler.RouterConfig{
 		DevMode:  cfg.Server.Dev,
 		DataDir:  cfg.DataDir,
 		BindHost: listenHost,
 	})
+	return router, nil
 }

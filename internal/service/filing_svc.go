@@ -547,8 +547,10 @@ func describeSendError(err error) string {
 // FilingRefreshResult is the outcome of a delivery refresh.
 type FilingRefreshResult struct {
 	Submission *domain.FilingSubmission
-	// DocumentFiled is false when the message is delivered but the document
-	// could not be marked filed; refreshing again retries it.
+	// DocumentFiled is true when the document is filed. It is false when the
+	// message is delivered but the document could not be marked filed
+	// (refreshing again retries it), and always false for a test-environment
+	// submission, which never changes the document.
 	DocumentFiled bool
 }
 
@@ -649,12 +651,22 @@ func (s *FilingService) storeReceipt(ctx context.Context, client FilingISDSClien
 // markFiled marks the document of a delivered submission filed at the delivery
 // time. An already filed document counts as done.
 func (s *FilingService) markFiled(ctx context.Context, sub *domain.FilingSubmission) bool {
+	// Only a delivery to a production box is a filing; a test delivery never
+	// touches the state of the document.
+	if sub.Environment != string(secrets.ISDSEnvironmentProduction) {
+		return false
+	}
 	doc, ok := s.docs[sub.DocumentKind]
 	if !ok || sub.DeliveredAt == nil {
 		return false
 	}
 	err := doc.MarkFiledAt(ctx, sub.DocumentID, *sub.DeliveredAt)
-	if err != nil && !errors.Is(err, domain.ErrFilingAlreadyFiled) {
+	switch {
+	case errors.Is(err, domain.ErrFilingAlreadyFiled):
+		slog.Info("document already filed, its filing time is kept",
+			"submission_id", sub.ID, "kind", string(sub.DocumentKind), "id", sub.DocumentID)
+		return true
+	case err != nil:
 		slog.Error("marking the delivered document filed failed",
 			"submission_id", sub.ID, "kind", string(sub.DocumentKind), "id", sub.DocumentID, "error", err)
 		return false

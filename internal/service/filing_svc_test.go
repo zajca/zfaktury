@@ -847,6 +847,53 @@ func TestFilingService_RefreshRetriesMarkingFiledAndToleratesAFiledDocument(t *t
 	}
 }
 
+func TestFilingService_TestEnvironmentDeliveryNeverMarksTheDocumentFiled(t *testing.T) {
+	h := newFilingHarness(t)
+	_, sub := h.previewSend(t, "test")
+	at := time.Date(2026, 11, 24, 12, 7, 0, 0, time.UTC)
+	h.client.delivery = deliveredInfo(isds.StatusDelivered, &at)
+	h.client.zfo = []byte("zfo")
+
+	for i := 0; i < 2; i++ {
+		res, err := h.svc.Refresh(context.Background(), sub.ID)
+		if err != nil {
+			t.Fatalf("Refresh: %v", err)
+		}
+		if res.Submission.Status != domain.SubmissionDelivered || res.Submission.DeliveredAt == nil || !res.Submission.HasReceipt {
+			t.Errorf("the delivery was not recorded: %+v", res.Submission)
+		}
+		if res.DocumentFiled {
+			t.Error("a test delivery reports the document as filed")
+		}
+	}
+	if len(h.doc.markCalls) != 0 {
+		t.Errorf("a test-environment delivery marked the document filed %d times", len(h.doc.markCalls))
+	}
+}
+
+func TestFilingService_AlreadyFiledDocumentKeepsItsFiledAtAndLogsInfo(t *testing.T) {
+	h := newFilingHarness(t)
+	_, sub := h.previewSend(t, "production")
+	at := time.Date(2026, 11, 24, 12, 7, 0, 0, time.UTC)
+	h.client.delivery = deliveredInfo(isds.StatusDelivered, &at)
+	h.client.zfo = []byte("zfo")
+	h.doc.alreadyDone = true
+
+	res, err := h.svc.Refresh(context.Background(), sub.ID)
+	if err != nil || !res.DocumentFiled {
+		t.Fatalf("Refresh = %+v, %v", res, err)
+	}
+	if res.Submission.DeliveredAt == nil || !res.Submission.DeliveredAt.Equal(at) {
+		t.Errorf("delivered_at = %v, want %v", res.Submission.DeliveredAt, at)
+	}
+	if !strings.Contains(h.logs.String(), `"level":"INFO","msg":"document already filed`) {
+		t.Errorf("no info line for the already filed document: %s", h.logs.String())
+	}
+	if strings.Contains(h.logs.String(), "marking the delivered document filed failed") {
+		t.Error("an already filed document was logged as a failure")
+	}
+}
+
 func TestFilingService_RefreshReceiptFailureIsRetriedNextTime(t *testing.T) {
 	h := newFilingHarness(t)
 	_, sub := h.previewSend(t, "production")

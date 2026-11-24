@@ -14,6 +14,17 @@ import (
 	"github.com/zajca/zfaktury/internal/testutil"
 )
 
+// skipOrFailWithoutXmllint skips an xmllint-based test when xmllint is
+// missing, except under CI, where the missing binary fails the test so the
+// XSD check cannot silently stop running.
+func skipOrFailWithoutXmllint(t *testing.T, lookErr error) {
+	t.Helper()
+	if os.Getenv("CI") != "" {
+		t.Fatalf("xmllint is required in CI: %v", lookErr)
+	}
+	t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+}
+
 func TestSocialInsuranceXML_NilInput(t *testing.T) {
 	_, err := GenerateSocialInsuranceXML(nil, map[string]string{}, 0)
 	if err == nil {
@@ -278,7 +289,7 @@ func TestSocialInsuranceXML_RequiresCSSZSpecFields(t *testing.T) {
 func TestSocialInsuranceXML_ValidatesAgainstOSVC25XSD(t *testing.T) {
 	xmllint, err := exec.LookPath("xmllint")
 	if err != nil {
-		t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+		skipOrFailWithoutXmllint(t, err)
 	}
 
 	sio := &domain.SocialInsuranceOverview{
@@ -317,7 +328,7 @@ func TestSocialInsuranceXML_ValidatesAgainstOSVC25XSD(t *testing.T) {
 func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.T) {
 	xmllint, err := exec.LookPath("xmllint")
 	if err != nil {
-		t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+		skipOrFailWithoutXmllint(t, err)
 	}
 
 	sio := &domain.SocialInsuranceOverview{
@@ -479,7 +490,7 @@ func TestSocialInsuranceXML_Golden_PartialYear(t *testing.T) {
 func TestSocialInsuranceXML_PartialYearValidatesAgainstOSVC25XSD(t *testing.T) {
 	xmllint, err := exec.LookPath("xmllint")
 	if err != nil {
-		t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+		skipOrFailWithoutXmllint(t, err)
 	}
 
 	xmlData, err := GenerateSocialInsuranceXML(partialYearSocialInsuranceOverview(), validSocialInsuranceSettings(), testAdvanceBase(partialYearSocialInsuranceOverview()))

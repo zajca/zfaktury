@@ -59,6 +59,13 @@ const configTemplate = `# ZFaktury configuration
 # timeout = "10s"
 # max_request_bytes = 5242880
 # max_response_bytes = 1048576
+
+# [isds]                          # Data box recipients and the xmllint XSD check; no key has a default
+# test_cssz_box = ""              # ISDS test box standing in for the ČSSZ e-Podání box (documented as 9tsaf6s)
+# xsd_check_timeout = "30s"
+# xsd_check_max_output_bytes = 65536
+# [isds.test_tax_office_boxes]    # c_ufo code = ISDS test box of that regional tax office
+# 451 = ""
 `
 
 // Config holds the application configuration loaded from config.toml.
@@ -72,6 +79,24 @@ type Config struct {
 	FIO      FIOConfig      `toml:"fio"`
 	OCR      OCRConfig      `toml:"ocr"`
 	EPO      EPOConfig      `toml:"epo"`
+	ISDS     ISDSConfig     `toml:"isds"`
+}
+
+// ISDSConfig holds the data box recipient and XSD check settings. Nothing
+// has a default: the test boxes and the XSD check limits must be set
+// explicitly before they are used, and the consumer fails when they are
+// missing.
+type ISDSConfig struct {
+	// TestCSSZBox is the ISDS test box standing in for the ČSSZ e-Podání box
+	// (documented as 9tsaf6s, but it still has to be set here).
+	TestCSSZBox string `toml:"test_cssz_box"`
+	// TestTaxOfficeBoxes maps a c_ufo code (as a string key) to the ISDS test
+	// box standing in for that regional tax office.
+	TestTaxOfficeBoxes map[string]string `toml:"test_tax_office_boxes"`
+	// XSDCheckTimeout bounds one xmllint run.
+	XSDCheckTimeout time.Duration `toml:"xsd_check_timeout"`
+	// XSDCheckMaxOutputBytes caps the captured xmllint output.
+	XSDCheckMaxOutputBytes int `toml:"xsd_check_max_output_bytes"`
 }
 
 // EPOConfig holds Podatelna EPO settings. Zero values keep the defaults of the

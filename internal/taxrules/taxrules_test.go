@@ -63,3 +63,36 @@ func TestGetRuleSet_ReturnsDefensiveCopy(t *testing.T) {
 		t.Errorf("GetRuleSet(2025).Constants.FlatRateCaps[60] after mutation = %d, want %d", got, domain.NewAmount(1_200_000, 0))
 	}
 }
+
+func TestValidateRuleSet_RejectsMissingSocialMaxAnnualBase(t *testing.T) {
+	tests := []struct {
+		name  string
+		value domain.Amount
+	}{
+		{name: "zero", value: domain.NewAmount(0, 0)},
+		{name: "below the annual minimum base", value: domain.NewAmount(100_000, 0)},
+	}
+
+	base, err := GetRuleSet(2025)
+	if err != nil {
+		t.Fatalf("GetRuleSet(2025) error: %v", err)
+	}
+	if err := ValidateRuleSet(base); err != nil {
+		t.Fatalf("ValidateRuleSet(2025) error: %v", err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rules := base
+			rules.Constants.SocialMaxAnnualBase = tt.value
+
+			err := ValidateRuleSet(rules)
+			if err == nil {
+				t.Fatalf("ValidateRuleSet() error = nil, want ErrInvalidInput")
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("ValidateRuleSet() error = %v, want ErrInvalidInput", err)
+			}
+		})
+	}
+}

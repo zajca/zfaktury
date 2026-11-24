@@ -57,7 +57,7 @@ const baseReturn = {
 	other_income_expenses: 0,
 	other_income_exempt: 0,
 	other_income_net: 0,
-	tax_ruleset_id: 'cz-dpfo-2025.v1',
+	tax_ruleset_id: 'cz-dpfo-2025.v2',
 	tax_ruleset_status: 'final',
 	tax_ruleset_hash: 'abc123',
 	calculated_at: '2026-04-01T00:00:00Z',
@@ -69,7 +69,7 @@ const baseReturn = {
 };
 
 const taxConstants = {
-	rule_set_id: 'cz-dpfo-2025.v1',
+	rule_set_id: 'cz-dpfo-2025.v2',
 	rule_set_status: 'final',
 	rule_set_hash: 'abc123',
 	year: 2025,
@@ -119,7 +119,7 @@ describe('Income tax return detail - §6 panel', () => {
 		await waitFor(() => {
 			expect(screen.getByText('Daň z příjmů - 2025')).toBeInTheDocument();
 		});
-		expect(screen.getByText(/Pravidla: cz-dpfo-2025\.v1/)).toBeInTheDocument();
+		expect(screen.getByText(/Pravidla: cz-dpfo-2025\.v2/)).toBeInTheDocument();
 
 		expect(screen.queryByText('§6 Závislá činnost')).not.toBeInTheDocument();
 	});

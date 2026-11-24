@@ -444,9 +444,9 @@ const staticTopics: Record<string, HelpTopic> = {
 	'vymerovaci-zaklad': {
 		title: 'Vyměřovací základ pro pojistné',
 		simple:
-			'Vyměřovací základ je částka, ze které se počítá sociální a zdravotní pojistné. Pro OSVČ je to 50 % ze základu daně (příjmy minus výdaje).\n\nExistuje minimální vyměřovací základ -- i když máte nízký zisk, zaplatíte pojistné alespoň z minima. U sociálního pojištění je minimum dobrovolné (pokud je hlavní činnost), u zdravotního je povinné vždy.',
+			'Vyměřovací základ je částka, ze které se počítá sociální a zdravotní pojistné. Pro OSVČ je to 55 % ze základu daně (příjmy minus výdaje); do roku 2023 to bylo 50 %.\n\nMinimální vyměřovací základ platí pro hlavní činnost povinně -- i když máte nízký zisk, zaplatíte pojistné alespoň z minima. Sociální pojištění má navíc maximální roční vyměřovací základ ve výši 48násobku průměrné mzdy. Z částky nad ním se sociální pojistné neplatí. Zdravotní pojištění maximální vyměřovací základ nemá.',
 		legal:
-			'Vyměřovací základ pro sociální pojištění OSVČ: 50 % základu daně (§ 5b zákona č. 589/1992 Sb.). Minimální vyměřovací základ: 25 % průměrné mzdy pro hlavní činnost. Pro zdravotní pojištění: 50 % základu daně (§ 3a zákona č. 592/1992 Sb.), minimální základ je 50 % průměrné mzdy (§ 3a odst. 2).'
+			'Vyměřovací základ pro sociální pojištění OSVČ: 55 % základu daně od roku 2024 (50 % do roku 2023) (§ 5b zákona č. 589/1992 Sb.). Minimální vyměřovací základ je pro hlavní činnost povinný (§ 5b zákona č. 589/1992 Sb.). Maximální vyměřovací základ sociálního pojištění je 48násobek průměrné mzdy (§ 15a zákona č. 589/1992 Sb.); z částky nad ním se sociální pojistné neplatí. Pro zdravotní pojištění: 50 % základu daně (§ 3a zákona č. 592/1992 Sb.), minimální vyměřovací základ je povinný vždy (§ 3a odst. 2), maximální vyměřovací základ zdravotní pojištění nemá.'
 	},
 	'casovy-test': {
 		title: 'Časový test 3 roky pro cenné papíry',

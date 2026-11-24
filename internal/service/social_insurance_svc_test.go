@@ -410,3 +410,65 @@ func TestSocialInsuranceService_Recalculate_MinAssessmentBase(t *testing.T) {
 		t.Errorf("TotalInsurance = %d, want %d", result.TotalInsurance, expectedInsurance)
 	}
 }
+
+// CSSZ caps the annual assessment base at 48x the average wage (2 234 736 Kč
+// for 2025), so a high-revenue OSVČ pays premium only up to the cap.
+func TestSocialInsuranceService_Recalculate_MaxAssessmentBase(t *testing.T) {
+	svc, db := setupSocialInsuranceSvc(t)
+	ctx := context.Background()
+
+	contact := testutil.SeedContact(t, db, nil)
+	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+
+	// Seed invoice: 5,000,000 CZK revenue, no flat rate -> assessment base 55 %
+	// of 5,000,000 CZK is above the 2025 maximum.
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO invoices (
+			invoice_number, type, status,
+			issue_date, due_date, delivery_date, variable_symbol, constant_symbol,
+			customer_id, currency_code, exchange_rate,
+			payment_method, bank_account, bank_code, iban, swift,
+			subtotal_amount, vat_amount, total_amount, paid_amount,
+			notes, internal_notes,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"FV20250011", domain.InvoiceTypeRegular, domain.InvoiceStatusSent,
+		jan15.Format("2006-01-02"), jan15.AddDate(0, 0, 14).Format("2006-01-02"), jan15.Format("2006-01-02"),
+		"", "", contact.ID, "CZK", 100,
+		"bank_transfer", "", "", "", "",
+		domain.NewAmount(5_000_000, 0), 0, domain.NewAmount(5_000_000, 0), 0,
+		"", "",
+		now.Format(time.RFC3339), now.Format(time.RFC3339),
+	)
+	if err != nil {
+		t.Fatalf("inserting invoice: %v", err)
+	}
+
+	sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, sio); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	result, err := svc.Recalculate(ctx, sio.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	constants, err := calc.GetTaxConstants(2025)
+	if err != nil {
+		t.Fatalf("GetTaxConstants(2025) error: %v", err)
+	}
+	wantAssessmentBase := domain.NewAmount(2_750_000, 0)
+	if result.AssessmentBase != wantAssessmentBase {
+		t.Errorf("AssessmentBase = %d, want %d", result.AssessmentBase, wantAssessmentBase)
+	}
+	if result.FinalAssessmentBase != constants.SocialMaxAnnualBase {
+		t.Errorf("FinalAssessmentBase = %d, want %d (social maximum)", result.FinalAssessmentBase, constants.SocialMaxAnnualBase)
+	}
+
+	wantInsurance := domain.NewAmount(652_543, 0)
+	if result.TotalInsurance != wantInsurance {
+		t.Errorf("TotalInsurance = %d, want %d", result.TotalInsurance, wantInsurance)
+	}
+}

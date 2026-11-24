@@ -116,7 +116,7 @@ describe('help-content', () => {
 
 	describe('getHelpTopics with TaxConstants', () => {
 		const mockConstants: TaxConstants = {
-			rule_set_id: 'cz-dpfo-2024.v1',
+			rule_set_id: 'cz-dpfo-2024.v2',
 			rule_set_status: 'final',
 			rule_set_hash: 'abc123',
 			year: 2024,

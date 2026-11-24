@@ -7,6 +7,9 @@ type InsuranceInput struct {
 	Revenue        domain.Amount
 	UsedExpenses   domain.Amount // already resolved (flat-rate or actual)
 	MinMonthlyBase domain.Amount // e.g. constants.SocialMinMonthly or HealthMinMonthly
+	// MaxAnnualBase caps the assessment base (social insurance, CSSZ). Zero
+	// means no cap (health insurance has no maximum assessment base).
+	MaxAnnualBase domain.Amount
 	// AssessmentBasePermille is the share of tax base used as the assessment
 	// base. Zero keeps the historical/default 50% behavior.
 	AssessmentBasePermille int
@@ -22,7 +25,7 @@ type InsuranceResult struct {
 	TaxBase             domain.Amount
 	AssessmentBase      domain.Amount // taxBase / 2
 	MinAssessmentBase   domain.Amount // minMonthlyBase * 12
-	FinalAssessmentBase domain.Amount // max(assessmentBase, minAssessmentBase)
+	FinalAssessmentBase domain.Amount // min(max(assessmentBase, minAssessmentBase), maxAnnualBase)
 	TotalInsurance      domain.Amount // finalBase * rate / 1000
 	Difference          domain.Amount // totalInsurance - prepayments
 	NewMonthlyPrepay    domain.Amount // ceil(totalInsurance/12) rounded up to nearest CZK
@@ -54,6 +57,9 @@ func CalculateInsurance(input InsuranceInput) InsuranceResult {
 	finalBase := assessmentBase
 	if minAssessmentBase > finalBase {
 		finalBase = minAssessmentBase
+	}
+	if input.MaxAnnualBase > 0 && finalBase > int64(input.MaxAnnualBase) {
+		finalBase = int64(input.MaxAnnualBase)
 	}
 
 	totalInsurance := finalBase * int64(input.RatePermille) / 1000

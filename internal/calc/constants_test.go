@@ -40,6 +40,10 @@ func TestGetTaxConstants_2024Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(13_191, 0) {
 		t.Errorf("2024 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(13_191, 0))
 	}
+	// CSSZ max annual assessment base 2024: 48 × 43 967 = 2 110 416 Kč.
+	if c.SocialMaxAnnualBase != domain.NewAmount(2_110_416, 0) {
+		t.Errorf("2024 SocialMaxAnnualBase = %d, want %d", c.SocialMaxAnnualBase, domain.NewAmount(2_110_416, 0))
+	}
 	// ZP 2024: 50 % × 43 967 = 21 983,50 Kč (stored in halere).
 	if c.HealthMinMonthly != domain.NewAmount(21_983, 50) {
 		t.Errorf("2024 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(21_983, 50))
@@ -62,6 +66,10 @@ func TestGetTaxConstants_2025Values(t *testing.T) {
 	if c.SocialMinMonthly != domain.NewAmount(16_295, 0) {
 		t.Errorf("2025 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(16_295, 0))
 	}
+	// CSSZ max annual assessment base 2025: 48 × 46 557 = 2 234 736 Kč.
+	if c.SocialMaxAnnualBase != domain.NewAmount(2_234_736, 0) {
+		t.Errorf("2025 SocialMaxAnnualBase = %d, want %d", c.SocialMaxAnnualBase, domain.NewAmount(2_234_736, 0))
+	}
 	// ZP 2025: 50 % × 46 557 = 23 278,50 Kč (stored in halere).
 	if c.HealthMinMonthly != domain.NewAmount(23_278, 50) {
 		t.Errorf("2025 HealthMinMonthly = %d, want %d", c.HealthMinMonthly, domain.NewAmount(23_278, 50))
@@ -83,6 +91,10 @@ func TestGetTaxConstants_2026Values(t *testing.T) {
 	// twelve months (CSSZ recalculates January-June).
 	if c.SocialMinMonthly != domain.NewAmount(17_139, 0) {
 		t.Errorf("2026 SocialMinMonthly = %d, want %d", c.SocialMinMonthly, domain.NewAmount(17_139, 0))
+	}
+	// CSSZ max annual assessment base 2026: 48 × 48 967 = 2 350 416 Kč.
+	if c.SocialMaxAnnualBase != domain.NewAmount(2_350_416, 0) {
+		t.Errorf("2026 SocialMaxAnnualBase = %d, want %d", c.SocialMaxAnnualBase, domain.NewAmount(2_350_416, 0))
 	}
 	// ZP 2026: 50 % × 48 967 = 24 483,50 Kč (stored in halere).
 	if c.HealthMinMonthly != domain.NewAmount(24_483, 50) {

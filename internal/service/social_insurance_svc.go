@@ -182,6 +182,7 @@ func (s *SocialInsuranceService) Recalculate(ctx context.Context, id int64) (*do
 		Revenue:                annualBase.Revenue,
 		UsedExpenses:           usedExpenses,
 		MinMonthlyBase:         constants.SocialMinMonthly,
+		MaxAnnualBase:          constants.SocialMaxAnnualBase,
 		AssessmentBasePermille: 550,
 		RatePermille:           constants.SocialRate,
 		Prepayments:            socialTotal,

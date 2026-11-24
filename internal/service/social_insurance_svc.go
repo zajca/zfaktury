@@ -507,6 +507,18 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	return sio, nil
 }
 
+// GetXMLData retrieves the stored XML data for a social insurance overview.
+func (s *SocialInsuranceService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	sio, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching social_insurance_overview for XML data: %w", err)
+	}
+	return sio.XMLData, nil
+}
+
 // moveAdvanceStart recomputes the start month and the advance periods from the
 // filing date, which moves the start earlier when the overview was filed before
 // its deadline. The advance reported in the XML stays as filed; a warning says

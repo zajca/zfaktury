@@ -553,12 +553,12 @@ func TestHealthInsuranceService_SetActivityMonths_ClearsStoredXML(t *testing.T) 
 		t.Fatalf("SetActivityMonths() error: %v", err)
 	}
 
-	stored, err := svc.GetByID(ctx, hi.ID)
+	stored, err := svc.GetXMLData(ctx, hi.ID)
 	if err != nil {
-		t.Fatalf("GetByID() error: %v", err)
+		t.Fatalf("GetXMLData() error: %v", err)
 	}
-	if len(stored.XMLData) != 0 {
-		t.Errorf("stored XML = %q, want it cleared after changing the months", stored.XMLData)
+	if len(stored) != 0 {
+		t.Errorf("stored XML = %q, want it cleared after changing the months", stored)
 	}
 }
 

@@ -336,6 +336,18 @@ func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.Taxpay
 	}, nil
 }
 
+// GetXMLData retrieves the stored XML data for a VAT return.
+func (s *VATReturnService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("vat_return ID is required: %w", domain.ErrInvalidInput)
+	}
+	vr, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching vat_return for XML data: %w", err)
+	}
+	return vr.XMLData, nil
+}
+
 // MarkFiled marks a VAT return as filed and records the timestamp.
 func (s *VATReturnService) MarkFiled(ctx context.Context, id int64) (*domain.VATReturn, error) {
 	if id == 0 {

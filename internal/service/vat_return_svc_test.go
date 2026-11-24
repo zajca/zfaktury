@@ -794,6 +794,66 @@ func TestVATReturnService_GenerateXML_ZeroID(t *testing.T) {
 	}
 }
 
+func TestVATReturnService_GetXMLData_Basic(t *testing.T) {
+	svc, db := setupVATReturnSvc(t)
+	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
+	vr := &domain.VATReturn{
+		Period:     domain.TaxPeriod{Year: 2025, Month: 5},
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, vr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Before generating XML, GetXMLData should return nil/empty.
+	data, err := svc.GetXMLData(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() error: %v", err)
+	}
+	if len(data) != 0 {
+		t.Error("GetXMLData() should return empty before GenerateXML")
+	}
+
+	// Generate XML.
+	if _, err := svc.GenerateXML(ctx, vr.ID); err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+
+	// Now GetXMLData should return data.
+	data, err = svc.GetXMLData(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("GetXMLData() after generate error: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("GetXMLData() should return non-empty after GenerateXML")
+	}
+}
+
+func TestVATReturnService_GetXMLData_ZeroID(t *testing.T) {
+	svc, _ := setupVATReturnSvc(t)
+	ctx := context.Background()
+
+	_, err := svc.GetXMLData(ctx, 0)
+	if err == nil {
+		t.Error("GetXMLData(0) should return error")
+	}
+}
+
+func TestVATReturnService_GetXMLData_NotFound(t *testing.T) {
+	svc, _ := setupVATReturnSvc(t)
+	ctx := context.Background()
+
+	_, err := svc.GetXMLData(ctx, 9999)
+	if err == nil {
+		t.Error("GetXMLData(9999) should return error for non-existent ID")
+	}
+}
+
 func TestVATReturnService_Recalculate_PartialBusinessPercent(t *testing.T) {
 	svc, db := setupVATReturnSvc(t)
 	ctx := context.Background()

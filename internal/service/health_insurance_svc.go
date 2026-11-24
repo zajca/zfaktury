@@ -360,6 +360,18 @@ func (s *HealthInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	return nil, fmt.Errorf("ZP XML generation not yet available (awaiting SZP-VZP format): %w", domain.ErrInvalidInput)
 }
 
+// GetXMLData retrieves the stored XML data for a health insurance overview.
+func (s *HealthInsuranceService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("health_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	hi, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching health_insurance_overview for XML data: %w", err)
+	}
+	return hi.XMLData, nil
+}
+
 // MarkFiled marks a health insurance overview as filed and records the timestamp.
 func (s *HealthInsuranceService) MarkFiled(ctx context.Context, id int64) (*domain.HealthInsuranceOverview, error) {
 	if id == 0 {

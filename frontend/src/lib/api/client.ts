@@ -696,7 +696,12 @@ export interface ISDSLoginTestResult {
 
 // --- Data-box filing ---
 
-export type FilingKind = 'vat-return' | 'control-statement' | 'vies-summary' | 'income-tax-return' | 'social-insurance';
+export type FilingKind =
+	| 'vat-return'
+	| 'control-statement'
+	| 'vies-summary'
+	| 'income-tax-return'
+	| 'social-insurance';
 
 export type FilingSubmissionStatus =
 	| 'sending'

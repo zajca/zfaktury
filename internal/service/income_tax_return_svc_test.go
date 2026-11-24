@@ -656,6 +656,44 @@ func TestIncomeTaxReturnService_Recalculate_DeductionBreakdown(t *testing.T) {
 	}
 }
 
+func TestIncomeTaxReturnService_Recalculate_DisabilityRowsSnapshot(t *testing.T) {
+	svc, creditsSvc, _ := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+
+	if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+		Year:            2025,
+		DisabilityLevel: domain.DisabilityLevel1And2,
+		ZTPP:            true,
+	}); err != nil {
+		t.Fatalf("UpsertPersonal() error: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if want := domain.NewAmount(2_520, 0); result.CreditDisability12 != want {
+		t.Errorf("CreditDisability12 = %d, want %d", result.CreditDisability12, want)
+	}
+	if result.CreditDisability3 != 0 {
+		t.Errorf("CreditDisability3 = %d, want 0", result.CreditDisability3)
+	}
+	if want := domain.NewAmount(16_140, 0); result.CreditDisabilityZTPP != want {
+		t.Errorf("CreditDisabilityZTPP = %d, want %d", result.CreditDisabilityZTPP, want)
+	}
+	if want := domain.NewAmount(18_660, 0); result.CreditDisability != want {
+		t.Errorf("CreditDisability = %d, want %d", result.CreditDisability, want)
+	}
+	if want := domain.NewAmount(49_500, 0); result.TotalCredits != want {
+		t.Errorf("TotalCredits = %d, want %d", result.TotalCredits, want)
+	}
+}
+
 // setupIncomeTaxSvcWithEmployment wires the service with the employment
 // certificate repo for §6 aggregation tests.
 func setupIncomeTaxSvcWithEmployment(t *testing.T) (*IncomeTaxReturnService, *TaxCreditsService, *repository.EmploymentCertificateRepository, *sql.DB) {

@@ -190,12 +190,14 @@ func (h *TaxCreditsHandler) GetSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compute totals.
-	spouseCredit, disabilityCredit, studentCredit, credErr := h.svc.ComputeCredits(ctx, year)
+	spouseCredit, personalCredits, credErr := h.svc.ComputeCredits(ctx, year)
 	if credErr != nil {
 		slog.Error("failed to compute credits", "error", credErr, "year", year)
 		mapDomainError(w, credErr)
 		return
 	}
+	disabilityCredit := personalCredits.Disability()
+	studentCredit := personalCredits.Student
 	totalCredits := spouseCredit + disabilityCredit + studentCredit
 
 	totalChildBenefit, err := h.svc.ComputeChildBenefit(ctx, year)

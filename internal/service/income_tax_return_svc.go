@@ -244,10 +244,11 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	itr.Section6TaxBase = itr.Section6GrossIncome - itr.Section6ForeignTax
 
 	// Compute credits and deductions from DB (needed as calc inputs).
-	var spouseCredit, disabilityCredit, studentCredit, childBenefit, totalDeductions domain.Amount
+	var spouseCredit, childBenefit, totalDeductions domain.Amount
+	var personal calc.PersonalCreditsResult
 	if s.taxCreditsSvc != nil {
 		var credErr error
-		spouseCredit, disabilityCredit, studentCredit, credErr = s.taxCreditsSvc.ComputeCreditsWithConstants(ctx, itr.Year, constants)
+		spouseCredit, personal, credErr = s.taxCreditsSvc.ComputeCreditsWithConstants(ctx, itr.Year, constants)
 		if credErr != nil {
 			return nil, fmt.Errorf("computing credits for income_tax_return: %w", credErr)
 		}
@@ -312,8 +313,8 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		FlatRatePercent:             flatRatePercent,
 		Constants:                   constants,
 		SpouseCredit:                spouseCredit,
-		DisabilityCredit:            disabilityCredit,
-		StudentCredit:               studentCredit,
+		DisabilityCredit:            personal.Disability(),
+		StudentCredit:               personal.Student,
 		ChildBenefit:                childBenefit,
 		TotalDeductions:             totalDeductions,
 		Prepayments:                 taxTotal,
@@ -353,8 +354,11 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	itr.TotalTax = taxResult.TotalTax
 	itr.CreditBasic = taxResult.CreditBasic
 	itr.CreditSpouse = spouseCredit
-	itr.CreditDisability = disabilityCredit
-	itr.CreditStudent = studentCredit
+	itr.CreditDisability = personal.Disability()
+	itr.CreditDisability12 = personal.Disability12
+	itr.CreditDisability3 = personal.Disability3
+	itr.CreditDisabilityZTPP = personal.DisabilityZTPP
+	itr.CreditStudent = personal.Student
 	itr.TotalCredits = taxResult.TotalCredits
 	itr.TaxAfterCredits = taxResult.TaxAfterCredits
 	itr.ChildBenefit = childBenefit
@@ -434,14 +438,23 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 	// Load child-credit entries so the EPO ř.72 formula control can verify
 	// kc_dazvyhod = sum over m_deti* slots × per-order amounts.
 	var children []domain.TaxChildCredit
+	var spouse *domain.TaxSpouseCredit
 	if s.taxCreditsSvc != nil {
 		children, err = s.taxCreditsSvc.ListChildren(ctx, itr.Year)
 		if err != nil {
 			return nil, fmt.Errorf("listing child credits for XML generation: %w", err)
 		}
+		// The spouse record supplies the identity and months of rows 65a/65b.
+		spouse, err = s.taxCreditsSvc.GetSpouse(ctx, itr.Year)
+		if err != nil {
+			if !errors.Is(err, domain.ErrNotFound) {
+				return nil, fmt.Errorf("fetching spouse credit for XML generation: %w", err)
+			}
+			spouse = nil
+		}
 	}
 
-	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children)
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children, spouse)
 	if err != nil {
 		return nil, fmt.Errorf("generating income_tax_return XML: %w", err)
 	}

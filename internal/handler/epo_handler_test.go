@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"database/sql"
@@ -243,11 +244,42 @@ func TestEPOOpenForm_AllKinds(t *testing.T) {
 			if env.fake.count("check") != 1 || env.fake.count("open") != 1 {
 				t.Fatalf("EPO calls check/open = %d/%d, want 1/1", env.fake.count("check"), env.fake.count("open"))
 			}
-			if string(env.fake.received["check"][0]) != epoTestXML || string(env.fake.received["open"][0]) != epoTestXML {
-				t.Errorf("EPO did not receive the stored XML verbatim")
+			for _, mode := range []string{"check", "open"} {
+				got := env.fake.received[mode][0]
+				if kind == service.EPOKindControlStatement {
+					if xmlData := singleZIPEntry(t, got); xmlData != epoTestXML {
+						t.Errorf("%s: archived XML differs from the stored XML", mode)
+					}
+					continue
+				}
+				if string(got) != epoTestXML {
+					t.Errorf("%s: EPO did not receive the stored XML verbatim", mode)
+				}
 			}
 		})
 	}
+}
+
+// singleZIPEntry returns the content of the only entry of the ZIP archive body.
+func singleZIPEntry(t *testing.T, body []byte) string {
+	t.Helper()
+	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatalf("body is not a ZIP archive: %v", err)
+	}
+	if len(zr.File) != 1 {
+		t.Fatalf("archive has %d entries, want 1", len(zr.File))
+	}
+	rc, err := zr.File[0].Open()
+	if err != nil {
+		t.Fatalf("opening ZIP entry: %v", err)
+	}
+	defer func() { _ = rc.Close() }()
+	content, err := io.ReadAll(rc)
+	if err != nil {
+		t.Fatalf("reading ZIP entry: %v", err)
+	}
+	return string(content)
 }
 
 func TestEPOOpenForm_NoWarningsIsEmptyArray(t *testing.T) {

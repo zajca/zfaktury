@@ -64,7 +64,7 @@ func TestOpenForm_Success(t *testing.T) {
 			srv, rec := newFake(t, http.StatusOK, fixture(t, name))
 			c := NewClient(WithBaseURL(srv.URL + "/dpr"))
 
-			got, err := c.OpenForm(context.Background(), []byte(sampleXML))
+			got, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain)
 			if err != nil {
 				t.Fatalf("OpenForm: %v", err)
 			}
@@ -97,7 +97,7 @@ func TestOpenForm_RejectedWithFindings(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, fixture(t, "check_critical.xml"))
 	c := NewClient(WithBaseURL(srv.URL))
 
-	_, err := c.OpenForm(context.Background(), []byte(sampleXML))
+	_, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain)
 	var rejected *RejectedError
 	if !errors.As(err, &rejected) {
 		t.Fatalf("err = %v, want *RejectedError", err)
@@ -136,7 +136,7 @@ func TestOpenForm_RejectsBadLinks(t *testing.T) {
 			srv, _ := newFake(t, http.StatusOK, body)
 			c := NewClient(WithBaseURL(srv.URL))
 
-			got, err := c.OpenForm(context.Background(), []byte(sampleXML))
+			got, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain)
 			if err == nil {
 				t.Fatalf("OpenForm returned %q, want an error", got)
 			}
@@ -155,7 +155,7 @@ func TestOpenForm_CustomAllowedHost(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, body)
 	c := NewClient(WithBaseURL(srv.URL), WithAllowedHost("epo.example.test"))
 
-	if _, err := c.OpenForm(context.Background(), []byte(sampleXML)); err != nil {
+	if _, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain); err != nil {
 		t.Fatalf("OpenForm: %v", err)
 	}
 }
@@ -164,7 +164,7 @@ func TestCheck_HappyPathStripsTestMode(t *testing.T) {
 	srv, rec := newFake(t, http.StatusOK, fixture(t, "check_warning.xml"))
 	c := NewClient(WithBaseURL(srv.URL + "/dpr"))
 
-	findings, err := c.Check(context.Background(), []byte(sampleXML))
+	findings, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain)
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestCheck_ReportsBlockingFindings(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, fixture(t, "check_critical.xml"))
 	c := NewClient(WithBaseURL(srv.URL))
 
-	findings, err := c.Check(context.Background(), []byte(sampleXML))
+	findings, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain)
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestCheck_BlockingFindingWithoutTestMode(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, body)
 	c := NewClient(WithBaseURL(srv.URL))
 
-	findings, err := c.Check(context.Background(), []byte(sampleXML))
+	findings, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain)
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestCheck_MissingTestModeIsAnError(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, fixture(t, "check_no_test_mode.xml"))
 	c := NewClient(WithBaseURL(srv.URL))
 
-	findings, err := c.Check(context.Background(), []byte(sampleXML))
+	findings, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain)
 	if !errors.Is(err, ErrUnexpectedResponse) {
 		t.Fatalf("err = %v, want ErrUnexpectedResponse", err)
 	}
@@ -229,7 +229,7 @@ func TestCheck_URLAnswerIsAnError(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, fixture(t, "open_form_url.xml"))
 	c := NewClient(WithBaseURL(srv.URL))
 
-	if _, err := c.Check(context.Background(), []byte(sampleXML)); !errors.Is(err, ErrUnexpectedResponse) {
+	if _, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain); !errors.Is(err, ErrUnexpectedResponse) {
 		t.Fatalf("err = %v, want ErrUnexpectedResponse", err)
 	}
 }
@@ -239,7 +239,7 @@ func TestUnavailableAndUnexpectedAnswers(t *testing.T) {
 		srv, _ := newFake(t, http.StatusInternalServerError, []byte("boom"))
 		c := NewClient(WithBaseURL(srv.URL))
 
-		_, err := c.OpenForm(context.Background(), []byte(sampleXML))
+		_, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain)
 		if !errors.Is(err, ErrEPOUnavailable) {
 			t.Fatalf("err = %v, want ErrEPOUnavailable", err)
 		}
@@ -252,7 +252,7 @@ func TestUnavailableAndUnexpectedAnswers(t *testing.T) {
 		srv, _ := newFake(t, http.StatusFound, nil)
 		c := NewClient(WithBaseURL(srv.URL))
 
-		if _, err := c.Check(context.Background(), []byte(sampleXML)); !errors.Is(err, ErrEPOUnavailable) {
+		if _, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain); !errors.Is(err, ErrEPOUnavailable) {
 			t.Fatalf("err = %v, want ErrEPOUnavailable", err)
 		}
 	})
@@ -261,10 +261,10 @@ func TestUnavailableAndUnexpectedAnswers(t *testing.T) {
 		srv, _ := newFake(t, http.StatusOK, fixture(t, "maintenance.html"))
 		c := NewClient(WithBaseURL(srv.URL))
 
-		if _, err := c.OpenForm(context.Background(), []byte(sampleXML)); !errors.Is(err, ErrUnexpectedResponse) {
+		if _, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain); !errors.Is(err, ErrUnexpectedResponse) {
 			t.Fatalf("OpenForm err = %v, want ErrUnexpectedResponse", err)
 		}
-		if _, err := c.Check(context.Background(), []byte(sampleXML)); !errors.Is(err, ErrUnexpectedResponse) {
+		if _, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain); !errors.Is(err, ErrUnexpectedResponse) {
 			t.Fatalf("Check err = %v, want ErrUnexpectedResponse", err)
 		}
 	})
@@ -273,7 +273,7 @@ func TestUnavailableAndUnexpectedAnswers(t *testing.T) {
 		srv, _ := newFake(t, http.StatusOK, nil)
 		c := NewClient(WithBaseURL(srv.URL))
 
-		if _, err := c.OpenForm(context.Background(), []byte(sampleXML)); !errors.Is(err, ErrUnexpectedResponse) {
+		if _, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain); !errors.Is(err, ErrUnexpectedResponse) {
 			t.Fatalf("err = %v, want ErrUnexpectedResponse", err)
 		}
 	})
@@ -282,7 +282,7 @@ func TestUnavailableAndUnexpectedAnswers(t *testing.T) {
 		srv, _ := newFake(t, http.StatusOK, []byte(`<Chyby></Chyby>`))
 		c := NewClient(WithBaseURL(srv.URL))
 
-		if _, err := c.OpenForm(context.Background(), []byte(sampleXML)); !errors.Is(err, ErrUnexpectedResponse) {
+		if _, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain); !errors.Is(err, ErrUnexpectedResponse) {
 			t.Fatalf("err = %v, want ErrUnexpectedResponse", err)
 		}
 	})
@@ -302,7 +302,7 @@ func TestTimeout(t *testing.T) {
 	})
 	c := NewClient(WithBaseURL(srv.URL), WithTimeout(50*time.Millisecond))
 
-	_, err := c.OpenForm(context.Background(), []byte(sampleXML))
+	_, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain)
 	if !errors.Is(err, ErrEPOTimeout) {
 		t.Fatalf("err = %v, want ErrEPOTimeout", err)
 	}
@@ -314,7 +314,7 @@ func TestContextCancelIsNotATimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := c.OpenForm(ctx, []byte(sampleXML))
+	_, err := c.OpenForm(ctx, []byte(sampleXML), PackagingPlain)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", err)
 	}
@@ -329,7 +329,7 @@ func TestOversizedResponse(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, big)
 	c := NewClient(WithBaseURL(srv.URL), WithMaxResponseBytes(1024))
 
-	_, err := c.OpenForm(context.Background(), []byte(sampleXML))
+	_, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingPlain)
 	if !errors.Is(err, ErrUnexpectedResponse) {
 		t.Fatalf("err = %v, want ErrUnexpectedResponse", err)
 	}
@@ -354,11 +354,13 @@ func TestInputValidation(t *testing.T) {
 	}
 	for name, input := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := c.OpenForm(context.Background(), input); !errors.Is(err, ErrInvalidXML) {
-				t.Errorf("OpenForm err = %v, want ErrInvalidXML", err)
-			}
-			if _, err := c.Check(context.Background(), input); !errors.Is(err, ErrInvalidXML) {
-				t.Errorf("Check err = %v, want ErrInvalidXML", err)
+			for _, packaging := range []Packaging{PackagingPlain, PackagingZIP} {
+				if _, err := c.OpenForm(context.Background(), input, packaging); !errors.Is(err, ErrInvalidXML) {
+					t.Errorf("OpenForm(packaging %d) err = %v, want ErrInvalidXML", packaging, err)
+				}
+				if _, err := c.Check(context.Background(), input, packaging); !errors.Is(err, ErrInvalidXML) {
+					t.Errorf("Check(packaging %d) err = %v, want ErrInvalidXML", packaging, err)
+				}
 			}
 		})
 	}
@@ -379,7 +381,7 @@ func TestInputAccepted(t *testing.T) {
 	}
 	for name, input := range inputs {
 		t.Run(name, func(t *testing.T) {
-			if _, err := c.OpenForm(context.Background(), []byte(input)); err != nil {
+			if _, err := c.OpenForm(context.Background(), []byte(input), PackagingPlain); err != nil {
 				t.Errorf("OpenForm: %v", err)
 			}
 		})
@@ -421,7 +423,7 @@ func TestCheck_LowercaseAndUnknownTypesBlock(t *testing.T) {
 	srv, _ := newFake(t, http.StatusOK, body)
 	c := NewClient(WithBaseURL(srv.URL))
 
-	findings, err := c.Check(context.Background(), []byte(sampleXML))
+	findings, err := c.Check(context.Background(), []byte(sampleXML), PackagingPlain)
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}

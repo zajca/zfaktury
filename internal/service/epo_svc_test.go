@@ -29,22 +29,64 @@ type fakeEPOClient struct {
 	openCalls   int
 	checkedWith []byte
 	openedWith  []byte
+
+	checkPackaging epo.Packaging
+	openPackaging  epo.Packaging
 }
 
-func (f *fakeEPOClient) Check(_ context.Context, xmlData []byte) ([]epo.Finding, error) {
+func (f *fakeEPOClient) Check(_ context.Context, xmlData []byte, packaging epo.Packaging) ([]epo.Finding, error) {
 	f.checkCalls++
 	f.checkedWith = xmlData
+	f.checkPackaging = packaging
 	return f.findings, f.checkErr
 }
 
-func (f *fakeEPOClient) OpenForm(_ context.Context, xmlData []byte) (string, error) {
+func (f *fakeEPOClient) OpenForm(_ context.Context, xmlData []byte, packaging epo.Packaging) (string, error) {
 	f.openCalls++
 	f.openedWith = xmlData
+	f.openPackaging = packaging
 	return f.link, f.openErr
 }
 
 func newEPOServiceForTest(src *fakeEPOSource, client *fakeEPOClient) *EPOService {
 	return NewEPOService(map[EPOKind]EPOXMLSource{EPOKindVATReturn: src}, client)
+}
+
+func TestEPOKind_Packaging(t *testing.T) {
+	want := map[EPOKind]epo.Packaging{
+		EPOKindControlStatement: epo.PackagingZIP,
+		EPOKindVATReturn:        epo.PackagingPlain,
+		EPOKindVIESSummary:      epo.PackagingPlain,
+		EPOKindIncomeTax:        epo.PackagingPlain,
+	}
+	for kind, packaging := range want {
+		if got := kind.Packaging(); got != packaging {
+			t.Errorf("%s packaging = %d, want %d", kind, got, packaging)
+		}
+	}
+}
+
+// The kind decides the packaging of both the check and the form request.
+func TestEPOService_OpenForm_RoutesPackagingByKind(t *testing.T) {
+	for kind, want := range map[EPOKind]epo.Packaging{
+		EPOKindControlStatement: epo.PackagingZIP,
+		EPOKindVATReturn:        epo.PackagingPlain,
+		EPOKindVIESSummary:      epo.PackagingPlain,
+		EPOKindIncomeTax:        epo.PackagingPlain,
+	} {
+		t.Run(string(kind), func(t *testing.T) {
+			src := &fakeEPOSource{data: []byte("<Pisemnost/>")}
+			client := &fakeEPOClient{link: "https://mojedane.gov.cz/dpr/form?form_id=FAKE"}
+			svc := NewEPOService(map[EPOKind]EPOXMLSource{kind: src}, client)
+
+			if _, err := svc.OpenForm(context.Background(), kind, 1); err != nil {
+				t.Fatalf("OpenForm: %v", err)
+			}
+			if client.checkPackaging != want || client.openPackaging != want {
+				t.Errorf("packaging check/open = %d/%d, want %d/%d", client.checkPackaging, client.openPackaging, want, want)
+			}
+		})
+	}
 }
 
 func TestEPOService_OpenForm_Success(t *testing.T) {

@@ -132,7 +132,9 @@ func CalculateCSSZOverview(in CSSZOverviewInput) (CSSZOverviewResult, error) {
 	res.FinalAssessmentBase = domain.Amount(finalBase)
 
 	sumBase, insuredBase := finalBase, finalBase
-	if in.EmploymentBase != nil && maxBase > 0 {
+	// A secondary activity below the decisive amount is not insured, and the
+	// Pokyny want rows 25-32 empty, so the employment base is not reported either.
+	if in.EmploymentBase != nil && maxBase > 0 && (h > 0 || res.SecondaryParticipates) {
 		employment := int64(*in.EmploymentBase)
 		if employment >= maxBase || finalBase+employment > maxBase {
 			reported := *in.EmploymentBase

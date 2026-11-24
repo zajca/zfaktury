@@ -753,6 +753,30 @@ func TestSocialInsurance_SetSecondaryActivity_Invalid(t *testing.T) {
 	}
 }
 
+func TestSocialInsurance_SetSecondaryActivity_ReturnsOnlyTheCzechSentence(t *testing.T) {
+	tests := []struct {
+		body string
+		want string
+	}{
+		{`{"months":[1],"reason":""}`, "vyberte důvod vedlejší činnosti"},
+		{`{"months":[],"reason":"care"}`, "důvod vedlejší činnosti vyžaduje alespoň jeden měsíc"},
+	}
+	for _, tt := range tests {
+		r, _ := setupSocialInsuranceRouter(t)
+		id := createSocialInsurance(t, r, 2025)
+		w := putSocialInsurance(t, r, id, "secondary-activity", tt.body)
+		var resp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode error: %v", err)
+		}
+		if w.Code != http.StatusBadRequest || resp.Error != tt.want {
+			t.Errorf("status/error = %d/%q, want 400/%q", w.Code, resp.Error, tt.want)
+		}
+	}
+}
+
 func TestSocialInsurance_SetSecondaryActivity_Filed_Conflict(t *testing.T) {
 	r, _ := setupSocialInsuranceRouter(t)
 	id := createSocialInsurance(t, r, 2025)

@@ -20,22 +20,22 @@ const (
 // months of activity and that a reason is given exactly when some months are set.
 func ValidateSecondaryActivity(activity, secondary ActivityMonths, reason SecondaryActivityReason) error {
 	if secondary > FullYearActivityMonths {
-		return fmt.Errorf("měsíce vedlejší činnosti obsahují měsíc mimo leden až prosinec: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "měsíce vedlejší činnosti obsahují měsíc mimo leden až prosinec"}
 	}
 	if secondary&^activity != 0 {
-		return fmt.Errorf("měsíce vedlejší činnosti musí být měsíce činnosti: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "měsíce vedlejší činnosti musí být měsíce činnosti"}
 	}
 	switch reason {
 	case SecondaryReasonNone, SecondaryReasonEmployment, SecondaryReasonPension, SecondaryReasonChildCare,
 		SecondaryReasonMaternity, SecondaryReasonCare, SecondaryReasonStudent:
 	default:
-		return fmt.Errorf("neznámý důvod vedlejší činnosti: %q: %w", reason, ErrInvalidInput)
+		return &UserMessageError{Message: fmt.Sprintf("neznámý důvod vedlejší činnosti: %q", reason)}
 	}
 	if secondary != 0 && reason == SecondaryReasonNone {
-		return fmt.Errorf("vyberte důvod vedlejší činnosti: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "vyberte důvod vedlejší činnosti"}
 	}
 	if secondary == 0 && reason != SecondaryReasonNone {
-		return fmt.Errorf("důvod vedlejší činnosti vyžaduje alespoň jeden měsíc: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "důvod vedlejší činnosti vyžaduje alespoň jeden měsíc"}
 	}
 	return nil
 }

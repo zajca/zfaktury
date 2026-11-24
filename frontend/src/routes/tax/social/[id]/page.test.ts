@@ -269,7 +269,25 @@ describe('social insurance overview detail page', () => {
 		).toBeInTheDocument();
 		expect(screen.getByText('Rozhodná částka pro vedlejší činnost')).toBeInTheDocument();
 		expect(screen.getByText('Vypočtený vyměřovací základ – vedlejší činnost')).toBeInTheDocument();
-		expect(screen.queryByText(/rozhodnou částku nedosáhl/)).not.toBeInTheDocument();
+		expect(screen.queryByText(/rozhodné částky nedosáhl/)).not.toBeInTheDocument();
+	});
+
+	it('shows row 27 as the minimum base of a mixed year', async () => {
+		mockApi({
+			overview: makeOverview({
+				activity_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+				secondary_months: [7, 8, 9, 10, 11, 12],
+				secondary_reason: 'employment',
+				secondary_assessment_base: 6600000,
+				min_assessment_base: 12850200,
+				final_assessment_base: 16377000
+			})
+		});
+
+		await renderPage();
+
+		const minimum = screen.getByText('Minimální vyměřovací základ');
+		expect(minimum.nextElementSibling).toHaveTextContent(/163\s?770/);
 	});
 
 	it('says when the secondary income did not reach the decisive amount', async () => {
@@ -286,7 +304,7 @@ describe('social insurance overview detail page', () => {
 
 		expect(
 			screen.getByText(
-				'Příjem z vedlejší činnosti rozhodnou částku nedosáhl, pojistné z ní se neplatí'
+				'Příjem z vedlejší činnosti rozhodné částky nedosáhl, pojistné z ní se neplatí'
 			)
 		).toBeInTheDocument();
 	});
@@ -341,7 +359,7 @@ describe('social insurance overview detail page', () => {
 	it('shows the server message when the secondary activity is rejected', async () => {
 		mockApi({
 			updateStatus: 400,
-			updateBody: { error: 'měsíce vedlejší činnosti musí být měsíce činnosti' }
+			updateBody: { error: 'vyberte důvod vedlejší činnosti' }
 		});
 
 		await renderPage();
@@ -350,9 +368,7 @@ describe('social insurance overview detail page', () => {
 		await fireEvent.click(card.getByRole('button', { name: 'Uložit vedlejší činnost' }));
 
 		await waitFor(() => {
-			expect(
-				toasts.some((t) => t.message === 'měsíce vedlejší činnosti musí být měsíce činnosti')
-			).toBe(true);
+			expect(toasts.some((t) => t.message === 'vyberte důvod vedlejší činnosti')).toBe(true);
 		});
 	});
 

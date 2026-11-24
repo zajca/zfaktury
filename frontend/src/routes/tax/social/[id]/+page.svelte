@@ -157,6 +157,15 @@
 		SECONDARY_REASON_OPTIONS.map((opt) => [opt.value, opt.label])
 	) as Record<SecondaryActivityReason, string>;
 
+	// In a year with main and secondary months ř. 27 is the highest of three
+	// sums, which the overview stores as its final base; min_assessment_base is
+	// the sum of ř. 26.
+	let mixedYear = $derived(
+		data !== null &&
+			data.secondary_months.length > 0 &&
+			data.secondary_months.length < data.activity_months.length
+	);
+
 	let secondaryLabel = $derived(
 		data
 			? `${data.secondary_months.map((m) => monthNames[m - 1]).join(', ')} (${data.secondary_months.length} měs.)`
@@ -411,7 +420,7 @@
 
 					<dt class="text-secondary">Minimální vyměřovací základ</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
-						{formatCZK(data.min_assessment_base)}
+						{formatCZK(mixedYear ? data.final_assessment_base : data.min_assessment_base)}
 					</dd>
 
 					<dt class="text-secondary">Výsledný vyměřovací základ</dt>
@@ -434,7 +443,7 @@
 
 				{#if data.secondary_months.length > 0 && data.secondary_assessment_base === 0}
 					<p class="mt-3 text-sm text-secondary">
-						Příjem z vedlejší činnosti rozhodnou částku nedosáhl, pojistné z ní se neplatí
+						Příjem z vedlejší činnosti rozhodné částky nedosáhl, pojistné z ní se neplatí
 					</p>
 				{/if}
 

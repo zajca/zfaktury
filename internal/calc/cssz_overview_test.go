@@ -270,6 +270,20 @@ func TestCalculateCSSZOverview(t *testing.T) {
 	}
 }
 
+func TestCalculateCSSZOverview_SecondaryBelowDecisiveAmountIgnoresEmploymentBase(t *testing.T) {
+	in := overview2025(domain.NewAmount(100_000, 0), 0, 12)
+	in.EmploymentBase = func() *domain.Amount { a := domain.NewAmount(2_300_000, 0); return &a }()
+
+	got, err := CalculateCSSZOverview(in)
+	if err != nil {
+		t.Fatalf("CalculateCSSZOverview() error: %v", err)
+	}
+	if got.ReportedEmploymentBase != nil || got.SumBase != 0 || got.InsuredBase != 0 || got.TotalInsurance != 0 || got.FinalAssessmentBase != 0 {
+		t.Errorf("rows = reported %v, sum %d, insured %d, total %d, final %d; want all empty",
+			got.ReportedEmploymentBase, got.SumBase, got.InsuredBase, got.TotalInsurance, got.FinalAssessmentBase)
+	}
+}
+
 func TestCalculateCSSZOverview_NoMaximumMeansNoCap(t *testing.T) {
 	in := overview2025(domain.NewAmount(5_000_000, 0), 12, 0)
 	in.MaxAnnualBase = 0

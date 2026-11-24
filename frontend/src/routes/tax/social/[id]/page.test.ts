@@ -211,6 +211,35 @@ describe('social insurance overview detail page - data-box sending', () => {
 		expect(await screen.findByRole('dialog')).toHaveTextContent('(5ffu6xk)');
 		expect(previewUrl).toContain('/api/v1/filings/social-insurance/1/isds/preview');
 	});
+
+	it('reloads the overview and shows it as filed after a refresh reports delivery', async () => {
+		isds.submissions = [makeSubmission({ id: 51, kind: 'social-insurance', status: 'sent' })];
+		mockApi({ overview: makeOverview({ has_xml: true }) });
+		isds.respond = (url) => {
+			if (!url.endsWith('/submissions/51/refresh')) return undefined;
+			return jsonResponse({
+				submission: makeSubmission({
+					id: 51,
+					kind: 'social-insurance',
+					status: 'delivered',
+					deliveredAt: '2026-03-11T08:30:00Z',
+					hasReceipt: true
+				}),
+				documentFiled: true
+			});
+		};
+
+		await renderPage();
+
+		const refreshButton = await screen.findByRole('button', { name: 'Zjistit stav' });
+		mockApi({
+			overview: makeOverview({ has_xml: true, status: 'filed', filed_at: '2026-03-15T00:00:00Z' })
+		});
+		await fireEvent.click(refreshButton);
+
+		await waitFor(() => expect(screen.getByText(/Podáno:/)).toBeInTheDocument());
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+	});
 });
 
 describe('social insurance overview detail page', () => {

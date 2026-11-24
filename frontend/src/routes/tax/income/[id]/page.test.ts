@@ -184,6 +184,33 @@ describe('Income tax return detail - data-box sending', () => {
 		expect(await screen.findByRole('dialog')).toHaveTextContent('(7nyn2d9)');
 		expect(previewUrl).toContain('/api/v1/filings/income-tax-return/1/isds/preview');
 	});
+
+	it('reloads the return and shows it as filed after a refresh reports delivery', async () => {
+		isds.submissions = [makeSubmission({ id: 41, kind: 'income-tax-return', status: 'sent' })];
+		mockReturn();
+		isds.respond = (url) => {
+			if (!url.endsWith('/submissions/41/refresh')) return undefined;
+			return jsonResponse({
+				submission: makeSubmission({
+					id: 41,
+					kind: 'income-tax-return',
+					status: 'delivered',
+					deliveredAt: '2026-03-11T08:30:00Z',
+					hasReceipt: true
+				}),
+				documentFiled: true
+			});
+		};
+
+		render(Page);
+
+		const refreshButton = await screen.findByRole('button', { name: 'Zjistit stav' });
+		mockReturn({ status: 'filed', filed_at: '2026-03-15T00:00:00Z' });
+		await fireEvent.click(refreshButton);
+
+		await waitFor(() => expect(screen.getByText(/Podáno:/)).toBeInTheDocument());
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+	});
 });
 
 describe('Income tax return detail - §6 panel', () => {

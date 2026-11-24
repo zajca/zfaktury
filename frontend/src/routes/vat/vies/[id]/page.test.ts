@@ -147,6 +147,36 @@ describe('VIES Summary Detail - data-box sending', () => {
 		expect(await screen.findByRole('dialog')).toHaveTextContent('(7nyn2d9)');
 		expect(previewUrl).toContain('/api/v1/filings/vies-summary/1/isds/preview');
 	});
+
+	it('reloads the summary and shows it as filed after a refresh reports delivery', async () => {
+		isds.submissions = [makeSubmission({ id: 31, kind: 'vies-summary', status: 'sent' })];
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleSummary));
+		isds.respond = (url) => {
+			if (!url.endsWith('/submissions/31/refresh')) return undefined;
+			return jsonResponse({
+				submission: makeSubmission({
+					id: 31,
+					kind: 'vies-summary',
+					status: 'delivered',
+					deliveredAt: '2026-03-11T08:30:00Z',
+					hasReceipt: true
+				}),
+				documentFiled: true
+			});
+		};
+
+		render(Page);
+
+		const refreshButton = await screen.findByRole('button', { name: 'Zjistit stav' });
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({ ...sampleSummary, status: 'filed', filed_at: '2026-03-15T00:00:00Z' })
+		);
+		await fireEvent.click(refreshButton);
+
+		await waitFor(() => expect(screen.getByText(/Podáno:/)).toBeInTheDocument());
+		expect(mockFetch.mock.calls[1][0]).toContain('/api/v1/vies-summaries/1');
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+	});
 });
 
 describe('VIES Summary Detail', () => {

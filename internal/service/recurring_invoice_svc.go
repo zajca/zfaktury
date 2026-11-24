@@ -14,6 +14,7 @@ type RecurringInvoiceService struct {
 	repo     repository.RecurringInvoiceRepo
 	invoices *InvoiceService
 	audit    *AuditService
+	now      func() time.Time
 }
 
 // NewRecurringInvoiceService creates a new RecurringInvoiceService.
@@ -22,6 +23,7 @@ func NewRecurringInvoiceService(repo repository.RecurringInvoiceRepo, invoices *
 		repo:     repo,
 		invoices: invoices,
 		audit:    audit,
+		now:      time.Now,
 	}
 }
 
@@ -123,13 +125,17 @@ func (s *RecurringInvoiceService) List(ctx context.Context) ([]domain.RecurringI
 }
 
 // GenerateInvoice creates a single invoice from a recurring invoice template.
+// The invoice is dated today (local date); the template's next_issue_date is left untouched.
 func (s *RecurringInvoiceService) GenerateInvoice(ctx context.Context, id int64) (*domain.Invoice, error) {
 	ri, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching recurring invoice for generation: %w", err)
 	}
 
-	return s.createInvoiceFromTemplate(ctx, ri, ri.NextIssueDate)
+	now := s.now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	return s.createInvoiceFromTemplate(ctx, ri, today)
 }
 
 // ProcessDue finds all due recurring invoices, creates draft invoices, advances

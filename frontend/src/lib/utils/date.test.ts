@@ -6,7 +6,8 @@ import {
 	toISODate,
 	relativeDate,
 	formatDateLong,
-	addDays
+	addDays,
+	lastDayOfPreviousMonth
 } from './date';
 
 describe('formatDate', () => {
@@ -152,6 +153,32 @@ describe('addDays', () => {
 
 	it('handles non-leap year', () => {
 		expect(addDays('2026-02-28', 1)).toBe('2026-03-01');
+	});
+});
+
+describe('lastDayOfPreviousMonth', () => {
+	it('returns 31 December of the previous year in January', () => {
+		expect(lastDayOfPreviousMonth(new Date(2026, 0, 15))).toBe('2025-12-31');
+	});
+
+	it('returns 28 February in March of a non-leap year', () => {
+		expect(lastDayOfPreviousMonth(new Date(2026, 2, 1))).toBe('2026-02-28');
+	});
+
+	it('returns 29 February in March of a leap year', () => {
+		expect(lastDayOfPreviousMonth(new Date(2024, 2, 31))).toBe('2024-02-29');
+	});
+
+	it('returns 30 April in May', () => {
+		expect(lastDayOfPreviousMonth(new Date(2026, 4, 20))).toBe('2026-04-30');
+	});
+
+	it('returns 31 August in September', () => {
+		expect(lastDayOfPreviousMonth(new Date(2026, 8, 1))).toBe('2026-08-31');
+	});
+
+	it('ignores the time of day', () => {
+		expect(lastDayOfPreviousMonth(new Date(2026, 5, 30, 23, 59, 59))).toBe('2026-05-31');
 	});
 });
 

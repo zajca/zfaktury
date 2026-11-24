@@ -38,6 +38,13 @@
 	} = $props();
 
 	import { addDays } from '$lib/utils/date';
+	import LastDayOfPreviousMonthButton from './LastDayOfPreviousMonthButton.svelte';
+
+	function handleLastDayOfPreviousMonth(isoDate: string) {
+		form.issue_date = isoDate;
+		form.delivery_date = isoDate;
+		form.due_date = addDays(isoDate, dueDateOffset);
+	}
 
 	function handleIssueDateChange(newValue: string) {
 		form.issue_date = newValue;
@@ -115,6 +122,9 @@
 				>
 				<DateInput id="edit-delivery" bind:value={form.delivery_date} />
 			</div>
+		</div>
+		<div class="mt-4">
+			<LastDayOfPreviousMonthButton onpick={handleLastDayOfPreviousMonth} />
 		</div>
 		<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div>

@@ -93,6 +93,18 @@ export function addDays(isoDate: string, days: number): string {
 }
 
 /**
+ * Last day of the month preceding the month of `today` (local calendar), as an ISO date string.
+ */
+export function lastDayOfPreviousMonth(today: Date): string {
+	// Day 0 of the current month is the last day of the previous one.
+	const d = new Date(today.getFullYear(), today.getMonth(), 0);
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, '0');
+	const dd = String(d.getDate()).padStart(2, '0');
+	return `${y}-${m}-${dd}`;
+}
+
+/**
  * Returns a human-readable relative time description in Czech.
  */
 export function relativeDate(date: string | Date): string {

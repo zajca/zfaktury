@@ -5,6 +5,7 @@
 	import { toHalere } from '$lib/utils/money';
 	import { toISODate, addDays } from '$lib/utils/date';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import LastDayOfPreviousMonthButton from '$lib/components/invoice/LastDayOfPreviousMonthButton.svelte';
 	import InvoiceItemsEditor, {
 		type FormItem,
 		calcSubtotal,
@@ -19,6 +20,12 @@
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	let dueDateOffset = $state(14);
+
+	function handleLastDayOfPreviousMonth(isoDate: string) {
+		form.issue_date = isoDate;
+		form.delivery_date = isoDate;
+		form.due_date = addDays(isoDate, dueDateOffset);
+	}
 
 	function handleIssueDateChange(newValue: string) {
 		form.issue_date = newValue;
@@ -212,6 +219,9 @@
 					>
 					<DateInput id="delivery_date" bind:value={form.delivery_date} />
 				</div>
+			</div>
+			<div class="mt-4">
+				<LastDayOfPreviousMonthButton onpick={handleLastDayOfPreviousMonth} />
 			</div>
 			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div>

@@ -144,6 +144,96 @@ func TestRecurringInvoiceService_GenerateInvoice(t *testing.T) {
 	}
 }
 
+func TestRecurringInvoiceService_GenerateInvoice_DatesToday(t *testing.T) {
+	svc, _, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// The clock is fixed late in the day to prove the time-of-day is dropped.
+	svc.now = func() time.Time { return time.Date(2026, 5, 20, 23, 45, 0, 0, time.Local) }
+
+	ri := makeTestRecurringInvoice(customerID)
+	ri.NextIssueDate = time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	inv, err := svc.GenerateInvoice(ctx, ri.ID)
+	if err != nil {
+		t.Fatalf("GenerateInvoice() error: %v", err)
+	}
+
+	loaded, err := svc.invoices.GetByID(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	got := map[string]string{
+		"IssueDate":    loaded.IssueDate.Format(time.DateOnly),
+		"DeliveryDate": loaded.DeliveryDate.Format(time.DateOnly),
+		"DueDate":      loaded.DueDate.Format(time.DateOnly),
+	}
+	want := map[string]string{
+		"IssueDate":    "2026-05-20",
+		"DeliveryDate": "2026-05-20",
+		"DueDate":      "2026-06-03",
+	}
+	for field, w := range want {
+		if got[field] != w {
+			t.Errorf("%s = %s, want %s", field, got[field], w)
+		}
+	}
+
+	// Manual generation must not move the template's schedule.
+	after, err := svc.GetByID(ctx, ri.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	if !after.NextIssueDate.Equal(ri.NextIssueDate) {
+		t.Errorf("NextIssueDate = %v, want unchanged %v", after.NextIssueDate, ri.NextIssueDate)
+	}
+}
+
+func TestRecurringInvoiceService_ProcessDue_DatesByNextIssueDate(t *testing.T) {
+	svc, invoiceSvc, createCustomer := newRecurringInvoiceTestStack(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// A clock far from the schedule proves scheduled generation ignores it.
+	svc.now = func() time.Time { return time.Date(2026, 9, 15, 10, 0, 0, 0, time.Local) }
+
+	ri := makeTestRecurringInvoice(customerID)
+	ri.NextIssueDate = time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	if err := svc.Create(ctx, ri); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	count, err := svc.ProcessDue(ctx)
+	if err != nil {
+		t.Fatalf("ProcessDue() error: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("count = %d, want 1", count)
+	}
+
+	invoices, _, err := invoiceSvc.List(ctx, domain.InvoiceFilter{})
+	if err != nil {
+		t.Fatalf("List() error: %v", err)
+	}
+	if len(invoices) != 1 {
+		t.Fatalf("len(invoices) = %d, want 1", len(invoices))
+	}
+	inv := invoices[0]
+	if got := inv.IssueDate.Format(time.DateOnly); got != "2026-03-10" {
+		t.Errorf("IssueDate = %s, want 2026-03-10", got)
+	}
+	if got := inv.DeliveryDate.Format(time.DateOnly); got != "2026-03-10" {
+		t.Errorf("DeliveryDate = %s, want 2026-03-10", got)
+	}
+	if got := inv.DueDate.Format(time.DateOnly); got != "2026-03-24" {
+		t.Errorf("DueDate = %s, want 2026-03-24", got)
+	}
+}
+
 func TestRecurringInvoiceService_ProcessDue(t *testing.T) {
 	svc, invoiceSvc, createCustomer := newRecurringInvoiceTestStack(t)
 	ctx := context.Background()

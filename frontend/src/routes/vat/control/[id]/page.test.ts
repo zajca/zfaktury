@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-li
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
+vi.mock('$lib/utils/download', async (orig) => ({
+	...(await orig<typeof import('$lib/utils/download')>()),
+	detectDesktop: vi.fn(async () => false)
+}));
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({

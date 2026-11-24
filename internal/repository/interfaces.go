@@ -345,6 +345,21 @@ type EmploymentDocumentRepo interface {
 	UpdateExtraction(ctx context.Context, id int64, status, errMsg string) error
 }
 
+// FilingSubmissionRepo defines the persistence interface for data-box send
+// attempts.
+type FilingSubmissionRepo interface {
+	// Create inserts a submission; it returns domain.ErrFilingAlreadySent when a
+	// blocking submission of the same bytes to the same environment exists.
+	Create(ctx context.Context, sub *domain.FilingSubmission) error
+	GetByID(ctx context.Context, id int64) (*domain.FilingSubmission, error)
+	ListByDocument(ctx context.Context, kind domain.FilingKind, documentID int64) ([]domain.FilingSubmission, error)
+	MarkSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error
+	MarkFailed(ctx context.Context, id int64, status domain.FilingSubmissionStatus, errorText string) error
+	UpdateDelivery(ctx context.Context, id int64, status domain.FilingSubmissionStatus, dmMessageStatus int, deliveredAt *time.Time) error
+	SaveReceipt(ctx context.Context, id int64, zfo []byte) error
+	GetReceipt(ctx context.Context, id int64) ([]byte, error)
+}
+
 // EmploymentCertificateRepo defines the persistence interface for parsed/manual
 // §6 employment income certificates (RFC-016).
 type EmploymentCertificateRepo interface {

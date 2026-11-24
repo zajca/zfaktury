@@ -429,6 +429,14 @@ func (r *InvoiceRepository) List(ctx context.Context, filter domain.InvoiceFilte
 		where += " AND i.issue_date <= ?"
 		args = append(args, dateArg(*filter.DateTo))
 	}
+	if filter.DeliveryDateFrom != nil {
+		where += " AND " + invoiceDeliveryDateExpr + " >= ?"
+		args = append(args, dateArg(*filter.DeliveryDateFrom))
+	}
+	if filter.DeliveryDateTo != nil {
+		where += " AND " + invoiceDeliveryDateExpr + " <= ?"
+		args = append(args, dateArg(*filter.DeliveryDateTo))
+	}
 	if filter.Search != "" {
 		where += " AND (i.invoice_number LIKE ? OR i.variable_symbol LIKE ? OR c.name LIKE ?)"
 		search := "%" + filter.Search + "%"

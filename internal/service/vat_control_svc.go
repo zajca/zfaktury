@@ -179,10 +179,10 @@ func (s *VATControlStatementService) Recalculate(ctx context.Context, id int64) 
 func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID int64, monthStart, monthEnd time.Time) ([]domain.VATControlStatementLine, error) {
 	// Get invoices with delivery_date in the month, status sent/paid/overdue.
 	filter := domain.InvoiceFilter{
-		DateFrom: &monthStart,
-		DateTo:   &monthEnd,
-		Limit:    10000,
-		Offset:   0,
+		DeliveryDateFrom: &monthStart,
+		DeliveryDateTo:   &monthEnd,
+		Limit:            10000,
+		Offset:           0,
 	}
 
 	allInvoices, _, err := s.invoices.List(ctx, filter)
@@ -198,10 +198,7 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 			inv.Status != domain.InvoiceStatusOverdue {
 			continue
 		}
-		if inv.DeliveryDate.IsZero() {
-			continue
-		}
-		if !inv.DeliveryDate.Before(monthStart) && !inv.DeliveryDate.After(monthEnd) {
+		if supplyDate := inv.TaxableSupplyDate(); !supplyDate.Before(monthStart) && !supplyDate.After(monthEnd) {
 			invoices = append(invoices, inv)
 		}
 	}

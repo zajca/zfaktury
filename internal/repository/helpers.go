@@ -18,6 +18,11 @@ func dateArg(t time.Time) string {
 	return t.Format(dateLayout)
 }
 
+// invoiceDeliveryDateExpr is the SQL expression for an invoice's taxable
+// supply date: delivery_date, or issue_date when the delivery date is NULL,
+// empty or the zero date written for an unset value.
+const invoiceDeliveryDateExpr = "COALESCE(NULLIF(NULLIF(i.delivery_date, ''), '0001-01-01'), i.issue_date)"
+
 // parseDate parses a date string and returns the time value.
 // It tries the given layout first, with fallbacks for common mismatches:
 //   - RFC3339 layout with space-separated SQLite datetime

@@ -156,10 +156,10 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 
 	// Query invoices in the period: sent, paid, overdue; NOT credit_note type.
 	invoices, _, err := s.invoiceRepo.List(ctx, domain.InvoiceFilter{
-		DateFrom: &dateFrom,
-		DateTo:   &dateTo,
-		Limit:    10000,
-		Offset:   0,
+		DeliveryDateFrom: &dateFrom,
+		DeliveryDateTo:   &dateTo,
+		Limit:            10000,
+		Offset:           0,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("listing invoices for vat_return recalculation: %w", err)
@@ -170,7 +170,7 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	var invoiceIDs []int64
 
 	for _, inv := range invoices {
-		if inv.DeliveryDate.Before(dateFrom) || inv.DeliveryDate.After(dateTo) {
+		if supplyDate := inv.TaxableSupplyDate(); supplyDate.Before(dateFrom) || supplyDate.After(dateTo) {
 			continue
 		}
 		if inv.Status != domain.InvoiceStatusSent && inv.Status != domain.InvoiceStatusPaid && inv.Status != domain.InvoiceStatusOverdue {

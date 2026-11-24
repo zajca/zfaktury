@@ -86,12 +86,12 @@ func (r *AuditLogRepository) List(ctx context.Context, filter domain.AuditLogFil
 		args = append(args, filter.Action)
 	}
 	if !filter.From.IsZero() {
-		where += " AND created_at >= ?"
-		args = append(args, filter.From.Format(time.RFC3339))
+		where += " AND datetime(created_at) >= datetime(?)"
+		args = append(args, filter.From.UTC().Format(time.RFC3339))
 	}
 	if !filter.To.IsZero() {
-		where += " AND created_at <= ?"
-		args = append(args, filter.To.Format(time.RFC3339))
+		where += " AND datetime(created_at) <= datetime(?)"
+		args = append(args, filter.To.UTC().Format(time.RFC3339))
 	}
 
 	// Count total matching entries.

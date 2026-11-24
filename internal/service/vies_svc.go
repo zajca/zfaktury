@@ -143,14 +143,12 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 
 	startDate, endDate := quarterDateRange(vs.Period.Year, vs.Period.Quarter)
 
-	// Fetch invoices in the quarter period by delivery_date.
-	// We need to fetch all invoices and filter by delivery_date and status.
-	// Use a broad date filter on issue_date and then filter by delivery_date in code.
+	// Fetch invoices in the quarter by delivery date; status is filtered in code.
 	filter := domain.InvoiceFilter{
-		DateFrom: &startDate,
-		DateTo:   &endDate,
-		Limit:    10000,
-		Offset:   0,
+		DeliveryDateFrom: &startDate,
+		DeliveryDateTo:   &endDate,
+		Limit:            10000,
+		Offset:           0,
 	}
 
 	invoices, _, err := s.invoices.List(ctx, filter)
@@ -177,7 +175,7 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 		}
 
 		// Filter by delivery_date within the quarter.
-		if inv.DeliveryDate.Before(startDate) || inv.DeliveryDate.After(endDate) {
+		if supplyDate := inv.TaxableSupplyDate(); supplyDate.Before(startDate) || supplyDate.After(endDate) {
 			continue
 		}
 

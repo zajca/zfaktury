@@ -1,28 +1,58 @@
 #!/usr/bin/env bash
 # PreToolUse hook (Bash): runs CI's lint checks before a `git commit`.
 #
-# A commit is recognised in every simple command of the Bash input, split on
-# `&&`, `||`, `;`, `|` and `&`. `cd <dir>` and `git -C <dir>` change the tree the
-# commit targets; the starting directory is `cwd` from the hook JSON. The tree is
-# linted only when it lies inside $CLAUDE_PROJECT_DIR, otherwise the hook does
-# nothing. Quoting is not interpreted: quote characters are dropped and words are
-# split on whitespace, so a path with spaces is not followed.
+# The Bash input is first stripped of heredoc bodies and quoted strings, then split
+# on `&&`, `||`, `;`, `|`, `&` and newlines into simple commands. A commit is a
+# simple command `git [global options] commit`. `cd <dir>` and `git -C <dir>`
+# change the tree the commit targets; the starting directory is `cwd` from the
+# hook JSON. The tree is linted only when it lies inside $CLAUDE_PROJECT_DIR,
+# otherwise the hook does nothing.
+#
+# Commit forms that are NOT detected (the commit then goes through unlinted):
+# commands inside quotes or heredocs (`bash -c "git commit"`, `eval`, `xargs`),
+# `command git` / `env git` / `sudo git`, shell aliases and functions, a path with
+# spaces after `cd` or `git -C`, `git --git-dir/--work-tree` pointing at another
+# tree, and a `cd` made inside a subshell that leaks into later commands.
 #
 # Checks (same as the CI Go and Frontend jobs):
 #   golangci-lint run --build-tags server
 #   npm run lint | npm run check | npm run format:check   (in frontend/)
 #
 # Exit codes: 2 blocks the commit with the reason on stderr (a failed check).
-# 0 lets it through, also when a tool or frontend/node_modules is missing or a
-# check timed out: that gives one warning line on stderr instead of a block.
+# 0 lets it through. A missing tool or frontend/node_modules or a timed-out check
+# does not block: the warning goes to stderr and, because Claude Code shows stderr
+# of an exit-0 hook only in the debug log, also to stdout as a `systemMessage`
+# JSON object, which the user sees.
 # 1 (non-blocking) reports a broken setup such as an unset CLAUDE_PROJECT_DIR.
 
-# Upper bound in seconds for each single check.
-CHECK_TIMEOUT="${ZFAKTURY_HOOK_CHECK_TIMEOUT:-240}"
+# Default upper bound in seconds for each single check.
+DEFAULT_CHECK_TIMEOUT=240
 # Lines of a failed check's output shown in the block reason.
 REASON_LINES=40
 
-warn() { printf 'pre-commit-lint: warning: %s\n' "$*" >&2; }
+warnings=()
+warn() {
+  printf 'pre-commit-lint: warning: %s\n' "$*" >&2
+  warnings+=("pre-commit-lint: $*")
+}
+
+# finish <rc>: prints the collected warnings as a systemMessage, then exits.
+finish() {
+  if [ "${#warnings[@]}" -gt 0 ]; then
+    if command -v jq >/dev/null 2>&1; then
+      jq -n --arg m "$(printf '%s\n' "${warnings[@]}")" '{systemMessage: $m}'
+    else
+      printf '{"systemMessage":"pre-commit-lint: jq not found, lint skipped"}\n'
+    fi
+  fi
+  exit "$1"
+}
+
+CHECK_TIMEOUT="${ZFAKTURY_HOOK_CHECK_TIMEOUT:-$DEFAULT_CHECK_TIMEOUT}"
+if ! [[ $CHECK_TIMEOUT =~ ^[1-9][0-9]*$ ]]; then
+  warn "ZFAKTURY_HOOK_CHECK_TIMEOUT='$CHECK_TIMEOUT' is not a positive integer, using $DEFAULT_CHECK_TIMEOUT"
+  CHECK_TIMEOUT=$DEFAULT_CHECK_TIMEOUT
+fi
 
 if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
   echo "pre-commit-lint: CLAUDE_PROJECT_DIR is not set" >&2
@@ -35,7 +65,7 @@ PROJECT=$(realpath -e -- "$CLAUDE_PROJECT_DIR" 2>/dev/null) || {
 
 if ! command -v jq >/dev/null 2>&1; then
   warn "jq not found, skipping lint"
-  exit 0
+  finish 0
 fi
 
 input=$(cat)
@@ -63,9 +93,41 @@ resolve_dir() {
 
 targets=()
 cur=$cwd
-segments=$(printf '%s\n' "$command_line" | sed -E 's/(&&|\|\||;|\||&)/\n/g')
+# 1. awk drops heredoc bodies (`<<[-]WORD` up to the line holding WORD; `<<<` is
+#    a here-string, not a heredoc).
+# 2. awk walks the quotes in pairs: a quoted string that holds anything beyond
+#    path characters becomes Q; a plain quoted word such as "sub" is unquoted so it
+#    stays usable as a `cd`/`-C` argument.
+# 3. sed splits on command separators.
+segments=$(printf '%s\n' "$command_line" |
+  awk '
+    skip { t = $0; sub(/^\t+/, "", t); if (t == tag) skip = 0; next }
+    {
+      print
+      if (match($0, /<<-?[ \t]*["\047]?[A-Za-z_][A-Za-z0-9_]*/) && substr($0, RSTART - 1, 1) != "<") {
+        tag = substr($0, RSTART, RLENGTH)
+        sub(/^<<-?[ \t]*["\047]?/, "", tag)
+        skip = 1
+      }
+    }' |
+  awk -v RS='\001' '
+    {
+      s = $0; n = length(s); out = ""; i = 1
+      while (i <= n) {
+        c = substr(s, i, 1)
+        if (c == "\"" || c == "\047") {
+          j = index(substr(s, i + 1), c)
+          if (j == 0) { out = out substr(s, i + 1); break }
+          body = substr(s, i + 1, j - 1)
+          out = out (body ~ /^[A-Za-z0-9_.\/-]*$/ ? body : "Q")
+          i = i + j + 1
+        } else { out = out c; i++ }
+      }
+      printf "%s", out
+    }' |
+  sed -E 's/(&&|\|\||;|\||&)/\n/g')
 while IFS= read -r seg; do
-  seg=${seg//[\'\"()]/ }
+  seg=${seg//[()]/ }
   read -r -a w <<<"$seg"
   n=${#w[@]}
   i=0
@@ -165,4 +227,4 @@ if [ "${#failed[@]}" -gt 0 ]; then
   } >&2
   exit 2
 fi
-exit 0
+finish 0

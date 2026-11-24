@@ -19,7 +19,7 @@ CALLS="$T/calls.log"
 
 # Directory with only the tools the hooks need, so "tool missing" is reproducible.
 mkdir -p "$BASE" "$STUBS" "$PROJ/.claude" "$OUTSIDE"
-for tool in bash env jq git timeout realpath sed tail tr cat dirname gofmt sleep; do
+for tool in bash env awk jq git timeout realpath sed tail tr cat dirname gofmt sleep; do
   p=$(command -v "$tool") && ln -s "$p" "$BASE/$tool"
 done
 
@@ -49,6 +49,7 @@ chmod +x "$STUBS/golangci-lint" "$STUBS/npm" "$PROJ/frontend/node_modules/.bin/p
 pass=0
 fail=0
 ERR_FILE="$T/stderr.txt"
+OUT_FILE="$T/stdout.txt"
 
 # check <name> <hook> <stdin json> <expected rc> <stderr regex or ""> [VAR=val ...]
 check() {
@@ -56,14 +57,24 @@ check() {
   shift 5
   : >"$CALLS"
   printf '%s' "$json" | env -i PATH="$BASE:$STUBS" CALLS="$CALLS" "$@" \
-    "$BASH_BIN" "$PROJ/.claude/hooks/$hook" 2>"$ERR_FILE" >/dev/null
+    "$BASH_BIN" "$PROJ/.claude/hooks/$hook" 2>"$ERR_FILE" >"$OUT_FILE"
   rc=$?
   err=$(cat "$ERR_FILE")
+  local out msg
+  out=$(cat "$OUT_FILE")
+  msg=$(jq -r '.systemMessage // empty' <<<"$out" 2>/dev/null)
   if [ "$rc" -ne "$want" ]; then
     echo "FAIL $name: rc=$rc want=$want stderr=$err"
     fail=$((fail + 1))
   elif [ -n "$pattern" ] && ! grep -Eq -- "$pattern" <<<"$err"; then
     echo "FAIL $name: stderr does not match /$pattern/: $err"
+    fail=$((fail + 1))
+  elif [ "$rc" -eq 0 ] && [ -n "$pattern" ] && ! grep -Eq -- "$pattern" <<<"$msg"; then
+    # A warning on an exit-0 hook must also reach the user as a systemMessage.
+    echo "FAIL $name: stdout has no systemMessage matching /$pattern/: $out"
+    fail=$((fail + 1))
+  elif [ "$rc" -eq 0 ] && [ -z "$pattern" ] && [ -n "$out" ]; then
+    echo "FAIL $name: unexpected stdout: $out"
     fail=$((fail + 1))
   else
     echo "ok   $name"
@@ -112,6 +123,18 @@ expect_not_called "non-commit command runs no check"
 check "git status mentioning commit ignored" $LINT "$(bash_json 'git log --grep commit' "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
 expect_not_called "git log runs no check"
 check "echo of git commit ignored" $LINT "$(bash_json 'echo git commit' "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
+check "separator inside double quotes ignored" $LINT "$(bash_json 'echo "note; git commit -m y"' "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
+check "&& inside quoted PR body ignored" $LINT "$(bash_json 'gh pr create --body "fix && git commit hooks"' "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
+check "separator inside single quotes ignored" $LINT "$(bash_json "echo 'a; git commit -m y'" "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
+check "heredoc body mentioning git commit ignored" $LINT "$(bash_json $'cat > notes.txt <<EOF\ngit commit -m y\nEOF' "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
+check "quoted heredoc body mentioning git commit ignored" $LINT "$(bash_json $'cat > notes.txt <<\'EOF\'\nline\ngit commit -m y\nEOF\nls' "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
+expect_not_called "quoted/heredoc text runs no check"
+check "git commit with heredoc message still blocks" $LINT "$(bash_json $'git commit -m "$(cat <<\'EOF\'\nfix; things && more\nEOF\n)"' "$PROJ")" 2 'blocked' "$PD" FAKE_GO_RC=1
+check "git commit with quoted multi-line message blocks" $LINT "$(bash_json $'git commit -m "a; b\nc && d"' "$PROJ")" 2 'blocked' "$PD" FAKE_GO_RC=1
+check "quoted -C path still followed" $LINT "$(bash_json 'git -C "sub" commit -m "x; y"' "$PROJ")" 2 'blocked' "$PD" FAKE_GO_RC=1
+check "commit after heredoc command blocks" $LINT "$(bash_json $'cat > f <<EOF\nx\nEOF\ngit commit -m z' "$PROJ")" 2 'blocked' "$PD" FAKE_GO_RC=1
+check "here-string is not a heredoc" $LINT "$(bash_json $'cat <<< word\ngit commit -m z' "$PROJ")" 2 'blocked' "$PD" FAKE_GO_RC=1
+check "invalid check timeout warns and falls back" $LINT "$(bash_json 'git commit -m x' "$PROJ")" 0 'not a positive integer' "$PD" ZFAKTURY_HOOK_CHECK_TIMEOUT=abc
 check "commit in cwd outside the project does nothing" $LINT "$(bash_json 'git commit -m x' "$OUTSIDE")" 0 "" "$PD" FAKE_GO_RC=1
 expect_not_called "outside cwd runs no check"
 check "git -C outside path does nothing" $LINT "$(bash_json "git -C $OUTSIDE commit -m x" "$PROJ")" 0 "" "$PD" FAKE_GO_RC=1
@@ -148,6 +171,17 @@ echo 'x' >"$OUTSIDE/c.ts"
 check "frontend-like file outside the project ignored" $FMT "$(edit_json "$OUTSIDE/c.ts")" 0 "" "$PD"
 expect_not_called "outside ts file runs no formatter"
 check "dotdot path escaping the project ignored" $FMT "$(edit_json "$PROJ/../outside/b.go")" 0 "" "$PD"
+if grep -q 'func  main( )' "$OUTSIDE/b.go"; then echo "ok   dotdot escape left the outside file untouched"; pass=$((pass + 1)); else
+  echo "FAIL dotdot escape modified the outside file"
+  fail=$((fail + 1))
+fi
+ln -s "$OUTSIDE/b.go" "$PROJ/link.go"
+check "symlink escaping the project ignored" $FMT "$(edit_json "$PROJ/link.go")" 0 "" "$PD"
+if grep -q 'func  main( )' "$OUTSIDE/b.go"; then echo "ok   symlink escape left the outside file untouched"; pass=$((pass + 1)); else
+  echo "FAIL symlink escape modified the outside file"
+  fail=$((fail + 1))
+fi
+check "invalid format timeout warns and falls back" $FMT "$(edit_json "$PROJ/a.go")" 0 'not a positive integer' "$PD" ZFAKTURY_HOOK_FORMAT_TIMEOUT=0
 check "unset CLAUDE_PROJECT_DIR fails clearly (format)" $FMT "$(edit_json "$PROJ/a.go")" 1 'CLAUDE_PROJECT_DIR is not set'
 mv "$PROJ/frontend/node_modules" "$T/node_modules.off"
 check "missing prettier warns, no block" $FMT "$(edit_json "$PROJ/frontend/src/A.svelte")" 0 'node_modules missing' "$PD"

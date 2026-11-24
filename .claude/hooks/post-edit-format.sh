@@ -3,13 +3,37 @@
 #   *.go                                -> gofmt -w
 #   frontend/src/**/*.{svelte,ts,js}    -> the project's prettier --write
 # Files outside the project are ignored. The hook never blocks: problems are
-# reported as one warning line on stderr and the exit code stays 0.
+# reported on stderr and, because Claude Code shows stderr of an exit-0 hook only
+# in the debug log, also on stdout as a `systemMessage` JSON object that the user
+# sees. The exit code stays 0 (1 for an unset CLAUDE_PROJECT_DIR).
 # Input: hook JSON on stdin (tool_input.file_path is absolute).
 
-# Upper bound in seconds for one formatter run.
-FORMAT_TIMEOUT="${ZFAKTURY_HOOK_FORMAT_TIMEOUT:-30}"
+# Default upper bound in seconds for one formatter run.
+DEFAULT_FORMAT_TIMEOUT=30
 
-warn() { printf 'post-edit-format: warning: %s\n' "$*" >&2; }
+warnings=()
+warn() {
+  printf 'post-edit-format: warning: %s\n' "$*" >&2
+  warnings+=("post-edit-format: $*")
+}
+
+# finish <rc>: prints the collected warnings as a systemMessage, then exits.
+finish() {
+  if [ "${#warnings[@]}" -gt 0 ]; then
+    if command -v jq >/dev/null 2>&1; then
+      jq -n --arg m "$(printf '%s\n' "${warnings[@]}")" '{systemMessage: $m}'
+    else
+      printf '{"systemMessage":"post-edit-format: jq not found, format skipped"}\n'
+    fi
+  fi
+  exit "$1"
+}
+
+FORMAT_TIMEOUT="${ZFAKTURY_HOOK_FORMAT_TIMEOUT:-$DEFAULT_FORMAT_TIMEOUT}"
+if ! [[ $FORMAT_TIMEOUT =~ ^[1-9][0-9]*$ ]]; then
+  warn "ZFAKTURY_HOOK_FORMAT_TIMEOUT='$FORMAT_TIMEOUT' is not a positive integer, using $DEFAULT_FORMAT_TIMEOUT"
+  FORMAT_TIMEOUT=$DEFAULT_FORMAT_TIMEOUT
+fi
 
 if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
   echo "post-edit-format: CLAUDE_PROJECT_DIR is not set" >&2
@@ -22,7 +46,7 @@ PROJECT=$(realpath -e -- "$CLAUDE_PROJECT_DIR" 2>/dev/null) || {
 
 if ! command -v jq >/dev/null 2>&1; then
   warn "jq not found, skipping format"
-  exit 0
+  finish 0
 fi
 
 file=$(jq -r '.tool_input.file_path // empty' 2>/dev/null)
@@ -40,7 +64,7 @@ case "$file" in
   *.go)
     if ! command -v gofmt >/dev/null 2>&1; then
       warn "gofmt not found, skipping $file"
-      exit 0
+      finish 0
     fi
     timeout "$FORMAT_TIMEOUT" gofmt -w "$file" || warn "gofmt failed on $file"
     ;;
@@ -48,11 +72,11 @@ case "$file" in
     prettier="$PROJECT/frontend/node_modules/.bin/prettier"
     if [ ! -x "$prettier" ]; then
       warn "frontend/node_modules missing (run npm ci), skipping prettier for $file"
-      exit 0
+      finish 0
     fi
     (cd "$PROJECT/frontend" && timeout "$FORMAT_TIMEOUT" "$prettier" --write "$file" >/dev/null) ||
       warn "prettier failed on $file"
     ;;
 esac
 
-exit 0
+finish 0

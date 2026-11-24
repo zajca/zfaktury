@@ -21,7 +21,7 @@ func NewHealthInsuranceOverviewRepository(db *sql.DB) *HealthInsuranceOverviewRe
 }
 
 // healthInsuranceColumns is the list of columns to select for a HealthInsuranceOverview row.
-const healthInsuranceColumns = `id, year, filing_type, total_revenue, total_expenses,
+const healthInsuranceColumns = `id, year, filing_type, activity_months, total_revenue, total_expenses,
 	tax_base, assessment_base, min_assessment_base, final_assessment_base,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 	xml_data, status, filed_at, created_at, updated_at`
@@ -32,9 +32,10 @@ func scanHealthInsuranceOverview(s scanner) (*domain.HealthInsuranceOverview, er
 	var filedAtStr sql.NullString
 	var createdAtStr, updatedAtStr string
 	var xmlData []byte
+	var activityMonths int64
 
 	err := s.Scan(
-		&hi.ID, &hi.Year, &hi.FilingType,
+		&hi.ID, &hi.Year, &hi.FilingType, &activityMonths,
 		&hi.TotalRevenue, &hi.TotalExpenses,
 		&hi.TaxBase, &hi.AssessmentBase, &hi.MinAssessmentBase, &hi.FinalAssessmentBase,
 		&hi.InsuranceRate, &hi.TotalInsurance, &hi.Prepayments, &hi.Difference, &hi.NewMonthlyPrepay,
@@ -45,6 +46,7 @@ func scanHealthInsuranceOverview(s scanner) (*domain.HealthInsuranceOverview, er
 		return nil, err
 	}
 
+	hi.ActivityMonths = domain.ActivityMonths(activityMonths)
 	hi.XMLData = xmlData
 
 	hi.CreatedAt, err = parseDate(time.RFC3339, createdAtStr)
@@ -74,12 +76,12 @@ func (r *HealthInsuranceOverviewRepository) Create(ctx context.Context, hi *doma
 
 	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO health_insurance_overviews (
-			year, filing_type, total_revenue, total_expenses,
+			year, filing_type, activity_months, total_revenue, total_expenses,
 			tax_base, assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		hi.Year, hi.FilingType, hi.TotalRevenue, hi.TotalExpenses,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		hi.Year, hi.FilingType, int64(hi.ActivityMonths), hi.TotalRevenue, hi.TotalExpenses,
 		hi.TaxBase, hi.AssessmentBase, hi.MinAssessmentBase, hi.FinalAssessmentBase,
 		hi.InsuranceRate, hi.TotalInsurance, hi.Prepayments, hi.Difference, hi.NewMonthlyPrepay,
 		nil, hi.Status, nil,
@@ -108,12 +110,12 @@ func (r *HealthInsuranceOverviewRepository) Update(ctx context.Context, hi *doma
 
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE health_insurance_overviews SET
-			year = ?, filing_type = ?, total_revenue = ?, total_expenses = ?,
+			year = ?, filing_type = ?, activity_months = ?, total_revenue = ?, total_expenses = ?,
 			tax_base = ?, assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
-		hi.Year, hi.FilingType, hi.TotalRevenue, hi.TotalExpenses,
+		hi.Year, hi.FilingType, int64(hi.ActivityMonths), hi.TotalRevenue, hi.TotalExpenses,
 		hi.TaxBase, hi.AssessmentBase, hi.MinAssessmentBase, hi.FinalAssessmentBase,
 		hi.InsuranceRate, hi.TotalInsurance, hi.Prepayments, hi.Difference, hi.NewMonthlyPrepay,
 		hi.XMLData, hi.Status, filedAt,

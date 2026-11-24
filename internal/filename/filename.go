@@ -7,6 +7,7 @@ package filename
 import (
 	"fmt"
 	"mime"
+	"path"
 	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
@@ -15,8 +16,9 @@ import (
 // Variant suffixes appended after the period.
 const (
 	variantCorrective    = "opravne"
-	variantSupplementary = "dodatecne"
-	variantFollowUp      = "nasledne"
+	variantSupplementary = "dodatecne" // VAT return (D), income tax
+	variantFollowUp      = "nasledne"  // control and summary statements (N)
+	variantChange        = "zmenovy"   // CSSZ and health insurance overviews (Z)
 )
 
 // Kind prefixes and extensions.
@@ -40,38 +42,38 @@ const (
 
 // VATReturn returns the name of a VAT return XML, e.g. dph-2025-03.xml or dph-2025-q1-opravne.xml.
 func VATReturn(period domain.TaxPeriod, filingType string) string {
-	return build(kindVATReturn, periodPart(period), variant(filingType, false), extXML)
+	return build(kindVATReturn, periodPart(period), variant(filingType, variantSupplementary), extXML)
 }
 
 // ControlStatement returns the name of a control statement XML, e.g. kh-2025-03.xml.
-// A supplementary control statement is a follow-up one (nasledne).
+// A supplementary control statement is a follow-up one (nasledne, code N).
 func ControlStatement(period domain.TaxPeriod, filingType string) string {
-	return build(kindControlStatement, periodPart(period), variant(filingType, true), extXML)
+	return build(kindControlStatement, periodPart(period), variant(filingType, variantFollowUp), extXML)
 }
 
 // SummaryStatement returns the name of a VIES summary statement XML, e.g. sh-2025-q1.xml.
 func SummaryStatement(period domain.TaxPeriod, filingType string) string {
-	return build(kindSummaryStatement, periodPart(period), variant(filingType, false), extXML)
+	return build(kindSummaryStatement, periodPart(period), variant(filingType, variantFollowUp), extXML)
 }
 
 // IncomeTax returns the name of an income tax return XML, e.g. dpfo-2025.xml.
 func IncomeTax(year int, filingType string) string {
-	return build(kindIncomeTax, yearPart(year), variant(filingType, false), extXML)
+	return build(kindIncomeTax, yearPart(year), variant(filingType, variantSupplementary), extXML)
 }
 
 // IncomeTaxBundle returns the name of an income tax return ZIP bundle, e.g. dpfo-2025.zip.
 func IncomeTaxBundle(year int, filingType string) string {
-	return build(kindIncomeTax, yearPart(year), variant(filingType, false), extZIP)
+	return build(kindIncomeTax, yearPart(year), variant(filingType, variantSupplementary), extZIP)
 }
 
 // SocialInsurance returns the name of a CSSZ overview XML, e.g. cssz-2025.xml.
 func SocialInsurance(year int, filingType string) string {
-	return build(kindSocialInsurance, yearPart(year), variant(filingType, false), extXML)
+	return build(kindSocialInsurance, yearPart(year), variant(filingType, variantChange), extXML)
 }
 
 // HealthInsurance returns the name of a health insurance overview XML, e.g. zp-2025.xml.
 func HealthInsurance(year int, filingType string) string {
-	return build(kindHealthInsurance, yearPart(year), variant(filingType, false), extXML)
+	return build(kindHealthInsurance, yearPart(year), variant(filingType, variantChange), extXML)
 }
 
 // InvoicePDF returns the name of an invoice PDF, e.g. faktura-2025001.pdf.
@@ -97,6 +99,24 @@ func InvoicesCSV(year int) string {
 // ExpensesCSV returns the name of the yearly expense CSV export, e.g. vydaje-2025.csv.
 func ExpensesCSV(year int) string {
 	return build(kindExpensesCSV, yearPart(year), "", extCSV)
+}
+
+// Unique returns name, or name with a numeric suffix (-2, -3, ...) before the
+// extension when name is already in used. The returned name is added to used.
+func Unique(name string, used map[string]struct{}) string {
+	candidate := name
+	if _, taken := used[candidate]; taken {
+		ext := path.Ext(name)
+		base := strings.TrimSuffix(name, ext)
+		for n := 2; ; n++ {
+			candidate = fmt.Sprintf("%s-%d%s", base, n, ext)
+			if _, taken := used[candidate]; !taken {
+				break
+			}
+		}
+	}
+	used[candidate] = struct{}{}
+	return candidate
 }
 
 // ContentDisposition returns an attachment Content-Disposition header value for name.
@@ -145,17 +165,14 @@ func periodPart(p domain.TaxPeriod) string {
 }
 
 // variant maps a domain filing type to a name suffix; a regular or unknown
-// filing type has none. followUp selects "nasledne" for a supplementary
-// filing, which is how a control statement names it.
-func variant(filingType string, followUp bool) string {
+// filing type has none. supplementary is the suffix of a supplementary filing,
+// which each filing kind names after its own EPO code.
+func variant(filingType, supplementary string) string {
 	switch filingType {
 	case domain.FilingTypeCorrective:
 		return variantCorrective
 	case domain.FilingTypeSupplementary:
-		if followUp {
-			return variantFollowUp
-		}
-		return variantSupplementary
+		return supplementary
 	default:
 		return ""
 	}

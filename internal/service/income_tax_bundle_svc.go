@@ -77,7 +77,7 @@ func NewIncomeTaxBundleService(
 // GenerateBundle produces a ZIP archive for the income tax return with the
 // given ID. The archive contains:
 //
-//	priznani-{year}.xml
+//	dpfo-{year}.xml
 //	prilohy/odpocty/{category}-{deductionID}-{filename}   (per proof document)
 //	prilohy/investice/{year}-{platform}-{docID}-{filename} (optional)
 //	CHYBEJICI-SOUBORY.txt                                  (only if any files
@@ -115,7 +115,7 @@ func (s *IncomeTaxBundleService) GenerateBundle(ctx context.Context, incomeTaxRe
 	var missing []string
 
 	// 1. Write the DPFO XML at the archive root.
-	xmlName := fmt.Sprintf("priznani-%d.xml", itr.Year)
+	xmlName := filename.IncomeTax(itr.Year, itr.FilingType)
 	if err := writeZipFile(zw, xmlName, itr.XMLData); err != nil {
 		return nil, "", fmt.Errorf("writing XML to bundle: %w", err)
 	}

@@ -33,7 +33,7 @@ func TestPeriodNames(t *testing.T) {
 		{"summary monthly", SummaryStatement(monthly, domain.FilingTypeRegular), "sh-2025-03.xml"},
 		{"summary quarterly", SummaryStatement(quarterly, domain.FilingTypeRegular), "sh-2025-q1.xml"},
 		{"summary corrective", SummaryStatement(quarterly, domain.FilingTypeCorrective), "sh-2025-q1-opravne.xml"},
-		{"summary supplementary", SummaryStatement(monthly, domain.FilingTypeSupplementary), "sh-2025-03-dodatecne.xml"},
+		{"summary follow-up", SummaryStatement(monthly, domain.FilingTypeSupplementary), "sh-2025-03-nasledne.xml"},
 		{"income tax regular", IncomeTax(2025, domain.FilingTypeRegular), "dpfo-2025.xml"},
 		{"income tax corrective", IncomeTax(2025, domain.FilingTypeCorrective), "dpfo-2025-opravne.xml"},
 		{"income tax supplementary", IncomeTax(2025, domain.FilingTypeSupplementary), "dpfo-2025-dodatecne.xml"},
@@ -41,10 +41,10 @@ func TestPeriodNames(t *testing.T) {
 		{"income tax bundle corrective", IncomeTaxBundle(2025, domain.FilingTypeCorrective), "dpfo-2025-opravne.zip"},
 		{"social regular", SocialInsurance(2025, domain.FilingTypeRegular), "cssz-2025.xml"},
 		{"social corrective", SocialInsurance(2025, domain.FilingTypeCorrective), "cssz-2025-opravne.xml"},
-		{"social supplementary", SocialInsurance(2025, domain.FilingTypeSupplementary), "cssz-2025-dodatecne.xml"},
+		{"social supplementary", SocialInsurance(2025, domain.FilingTypeSupplementary), "cssz-2025-zmenovy.xml"},
 		{"health regular", HealthInsurance(2025, domain.FilingTypeRegular), "zp-2025.xml"},
 		{"health corrective", HealthInsurance(2025, domain.FilingTypeCorrective), "zp-2025-opravne.xml"},
-		{"health supplementary", HealthInsurance(2025, domain.FilingTypeSupplementary), "zp-2025-dodatecne.xml"},
+		{"health supplementary", HealthInsurance(2025, domain.FilingTypeSupplementary), "zp-2025-zmenovy.xml"},
 		{"isdoc export", ISDOCExport(), "faktury-isdoc.zip"},
 		{"invoices csv", InvoicesCSV(2025), "faktury-2025.csv"},
 		{"expenses csv", ExpensesCSV(2025), "vydaje-2025.csv"},
@@ -99,6 +99,21 @@ func TestSanitizeInvoiceNumber(t *testing.T) {
 		if got := SanitizeInvoiceNumber(tt.in); got != tt.want {
 			t.Errorf("SanitizeInvoiceNumber(%q) = %q, want %q", tt.in, got, tt.want)
 		}
+	}
+}
+
+func TestUnique(t *testing.T) {
+	used := map[string]struct{}{}
+	want := []string{"a.isdoc", "a-2.isdoc", "a-3.isdoc", "b.isdoc"}
+	in := []string{"a.isdoc", "a.isdoc", "a.isdoc", "b.isdoc"}
+	for i, name := range in {
+		if got := Unique(name, used); got != want[i] {
+			t.Errorf("call %d: Unique(%q) = %q, want %q", i, name, got, want[i])
+		}
+	}
+	// A natural name equal to a generated suffix does not collide.
+	if got := Unique("a-2.isdoc", used); got != "a-2-2.isdoc" {
+		t.Errorf("Unique(a-2.isdoc) = %q, want a-2-2.isdoc", got)
 	}
 }
 

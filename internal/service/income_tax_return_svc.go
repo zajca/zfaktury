@@ -470,18 +470,6 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 	return itr, nil
 }
 
-// GetXMLData retrieves the stored XML data for an income tax return.
-func (s *IncomeTaxReturnService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
-	if id == 0 {
-		return nil, fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
-	}
-	itr, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("fetching income_tax_return for XML data: %w", err)
-	}
-	return itr.XMLData, nil
-}
-
 // MarkFiled marks an income tax return as filed and records the timestamp.
 func (s *IncomeTaxReturnService) MarkFiled(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {

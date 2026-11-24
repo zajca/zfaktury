@@ -16,7 +16,7 @@ func downloadName(contentDisposition, fallback string) string {
 		return fallback
 	}
 	name := filepath.Base(params["filename"])
-	if name == "." || name == string(filepath.Separator) {
+	if name == "." || name == ".." || name == string(filepath.Separator) {
 		return fallback
 	}
 	return name

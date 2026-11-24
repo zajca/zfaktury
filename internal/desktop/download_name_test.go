@@ -15,6 +15,8 @@ func TestDownloadName(t *testing.T) {
 		{"missing header", "", "x.xml", "x.xml"},
 		{"no filename parameter", "attachment", "x.xml", "x.xml"},
 		{"malformed header", "attachment; filename=", "x.xml", "x.xml"},
+		{"dot-dot rejected", `attachment; filename=".."`, "x.xml", "x.xml"},
+		{"trailing dot-dot rejected", `attachment; filename="a/.."`, "x.xml", "x.xml"},
 		{"path stripped", `attachment; filename="../../etc/passwd"`, "x.xml", "passwd"},
 	}
 	for _, tt := range tests {

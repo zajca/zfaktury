@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"html"
 	"log/slog"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
@@ -209,7 +209,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		}
 
 		attachments = append(attachments, email.Attachment{
-			Filename:    fmt.Sprintf("faktura_%s.pdf", invoice.InvoiceNumber),
+			Filename:    filename.InvoicePDF(invoice.InvoiceNumber),
 			ContentType: "application/pdf",
 			Data:        pdfBytes,
 		})
@@ -239,7 +239,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		}
 
 		attachments = append(attachments, email.Attachment{
-			Filename:    fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber),
+			Filename:    filename.InvoiceISDOC(invoice.InvoiceNumber),
 			ContentType: "application/xml",
 			Data:        isdocBytes,
 		})

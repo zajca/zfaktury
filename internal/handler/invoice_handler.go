@@ -591,6 +591,7 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 	// Buffer the ZIP in memory so partial failures can be reported as errors.
 	var buf bytes.Buffer
 	zipWriter := zip.NewWriter(&buf)
+	usedEntries := make(map[string]struct{})
 
 	for _, id := range req.InvoiceIDs {
 		invoice, err := h.svc.GetByID(r.Context(), id)
@@ -606,7 +607,7 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 		}
 
 		// The sanitized entry name contains no path separators, which rules out zip slip.
-		entryName := filename.InvoiceISDOC(invoice.InvoiceNumber)
+		entryName := filename.Unique(filename.InvoiceISDOC(invoice.InvoiceNumber), usedEntries)
 		f, err := zipWriter.Create(entryName)
 		if err != nil {
 			slog.Error("failed to create zip entry", "error", err, "filename", entryName)

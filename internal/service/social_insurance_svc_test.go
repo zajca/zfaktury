@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/xml"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -856,13 +855,13 @@ func TestGenerateXML_RejectsInconsistentStoredAdvance(t *testing.T) {
 // final base 158 293 CZK: base 13 192, expected advance 3 853, stored 3 852.
 func TestGenerateXML_LegacyProductionRowWithoutStoredBase(t *testing.T) {
 	tests := []struct {
-		name       string
-		status     string
-		filed      bool
-		wantPhrase string
+		name        string
+		status      string
+		filed       bool
+		wantMessage string
 	}{
-		{name: "not filed", status: domain.FilingStatusDraft, wantPhrase: "recalculate the overview"},
-		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantPhrase: "already filed"},
+		{name: "not filed", status: domain.FilingStatusDraft, wantMessage: "uložená záloha neodpovídá měsíčnímu základu, přepočítejte přehled"},
+		{name: "already filed", status: domain.FilingStatusFiled, filed: true, wantMessage: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"},
 	}
 
 	for _, tt := range tests {
@@ -898,8 +897,9 @@ func TestGenerateXML_LegacyProductionRowWithoutStoredBase(t *testing.T) {
 			if !errors.Is(err, domain.ErrInvalidInput) {
 				t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
 			}
-			if !strings.Contains(err.Error(), tt.wantPhrase) {
-				t.Errorf("GenerateXML() error = %v, want it to contain %q", err, tt.wantPhrase)
+			var userMessage *domain.UserMessageError
+			if !errors.As(err, &userMessage) || userMessage.Message != tt.wantMessage {
+				t.Errorf("GenerateXML() error = %v, want user message %q", err, tt.wantMessage)
 			}
 		})
 	}

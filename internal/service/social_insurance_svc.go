@@ -356,9 +356,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 	advanceBase := s.storedAdvanceBase(sio)
 	if want := calc.SocialAdvanceFromMonthlyBase(advanceBase, sio.InsuranceRate); want != sio.NewMonthlyPrepay {
 		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
-			return nil, fmt.Errorf("social_insurance_overview %d: the stored advance %d does not match the monthly base %d (expected %d) and the overview is already filed, so the stored XML stays unchanged: %w", sio.ID, sio.NewMonthlyPrepay, advanceBase, want, domain.ErrInvalidInput)
+			return nil, &domain.UserMessageError{Message: "uložená záloha neodpovídá měsíčnímu základu a přehled je už podaný, uložené XML zůstává beze změny"}
 		}
-		return nil, fmt.Errorf("social_insurance_overview %d: the stored advance %d does not match the monthly base %d (expected %d), recalculate the overview: %w", sio.ID, sio.NewMonthlyPrepay, advanceBase, want, domain.ErrInvalidInput)
+		return nil, &domain.UserMessageError{Message: "uložená záloha neodpovídá měsíčnímu základu, přepočítejte přehled"}
 	}
 	xmlData, err := annualtaxxml.GenerateSocialInsuranceXML(sio, settings, advanceBase)
 	if err != nil {

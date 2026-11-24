@@ -17,7 +17,10 @@ func noRuleSetMessage(year int) string {
 // mapDomainError translates domain errors to HTTP status codes.
 func mapDomainError(w http.ResponseWriter, err error) {
 	var noRules *taxrules.NoRuleSetError
+	var userMessage *domain.UserMessageError
 	switch {
+	case errors.As(err, &userMessage):
+		respondError(w, http.StatusBadRequest, userMessage.Message)
 	case errors.As(err, &noRules):
 		respondError(w, http.StatusBadRequest, noRuleSetMessage(noRules.Year))
 	case errors.Is(err, domain.ErrNotFound):

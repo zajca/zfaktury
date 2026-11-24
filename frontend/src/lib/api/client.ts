@@ -1090,11 +1090,34 @@ export interface AdvancePeriod {
 	monthly_prepay: number;
 }
 
+export type SecondaryActivityReason =
+	| ''
+	| 'employment'
+	| 'pension'
+	| 'child_care'
+	| 'maternity'
+	| 'care'
+	| 'student';
+
 export interface SocialInsuranceOverview {
 	id: number;
 	year: number;
 	filing_type: string;
 	activity_months: number[];
+	secondary_months: number[];
+	secondary_reason: SecondaryActivityReason;
+	/** Employment assessment base entered by the user, in halere; null = none. */
+	employment_assessment_base: number | null;
+	/** Employment base reported in row 29 of the overview, in halere; null = row empty. */
+	reported_employment_base: number | null;
+	main_tax_base_share: number;
+	secondary_tax_base_share: number;
+	secondary_assessment_base: number;
+	main_partial_base: number;
+	secondary_partial_base: number;
+	secondary_decisive_amount: number;
+	sum_base: number;
+	insured_base: number;
 	total_revenue: number;
 	total_expenses: number;
 	tax_base: number;
@@ -1211,6 +1234,17 @@ export const socialInsuranceApi = {
 	setActivityMonths(id: number, activityMonths: number[]) {
 		return put<SocialInsuranceOverview>(`/social-insurance/${id}/activity-months`, {
 			activity_months: activityMonths
+		});
+	},
+	setSecondaryActivity(id: number, months: number[], reason: SecondaryActivityReason) {
+		return put<SocialInsuranceOverview>(`/social-insurance/${id}/secondary-activity`, {
+			months,
+			reason
+		});
+	},
+	setEmploymentBase(id: number, halere: number | null) {
+		return put<SocialInsuranceOverview>(`/social-insurance/${id}/employment-base`, {
+			employment_assessment_base: halere
 		});
 	}
 };

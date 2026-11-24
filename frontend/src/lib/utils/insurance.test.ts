@@ -22,6 +22,12 @@ describe('insuranceWarningText', () => {
 		expect(text).toContain('za rok 2025');
 	});
 
+	it('explains that social advances are not required', () => {
+		expect(insuranceWarningText('social_advance_not_required', 2025)).toBe(
+			'Zálohy na důchodové pojištění v roce 2026 nejsou povinné: příjem z vedlejší činnosti za rok 2025 nedosáhl rozhodné částky.'
+		);
+	});
+
 	it('returns an unknown token unchanged', () => {
 		expect(insuranceWarningText('something_new', 2025)).toBe('something_new');
 	});

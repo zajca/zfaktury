@@ -12,6 +12,8 @@ export function insuranceWarningText(token: string, overviewYear: number): strin
 			return 'Přehled byl podán dříve, než aplikace počítala. Od prvního měsíce platí záloha podle tabulky níže, ne částka z XML přehledu.';
 		case 'health_advance_not_required':
 			return `Zálohy na zdravotní pojištění v roce ${overviewYear + 1} nejsou povinné, protože minimální vyměřovací základ se na vás za rok ${overviewYear} nevztahoval (§ 8 odst. 3 zákona č. 592/1992 Sb.). Pokud důvod v roce ${overviewYear + 1} skončí, platíte zálohy alespoň v minimální výši.`;
+		case 'social_advance_not_required':
+			return `Zálohy na důchodové pojištění v roce ${overviewYear + 1} nejsou povinné: příjem z vedlejší činnosti za rok ${overviewYear} nedosáhl rozhodné částky.`;
 		default:
 			return token;
 	}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 
 const mockFetch = vi.fn();
@@ -26,6 +26,18 @@ function makeOverview(overrides: Record<string, unknown> = {}) {
 		year: 2025,
 		filing_type: 'regular',
 		activity_months: [7, 8, 9, 10, 11, 12],
+		secondary_months: [],
+		secondary_reason: '',
+		employment_assessment_base: null,
+		reported_employment_base: null,
+		main_tax_base_share: 0,
+		secondary_tax_base_share: 0,
+		secondary_assessment_base: 0,
+		main_partial_base: 0,
+		secondary_partial_base: 0,
+		secondary_decisive_amount: 0,
+		sum_base: 9777000,
+		insured_base: 9777000,
 		total_revenue: 10000000,
 		total_expenses: 0,
 		tax_base: 10000000,
@@ -75,6 +87,14 @@ function mockApi(options: MockOptions = {}) {
 			return Promise.resolve(
 				jsonResponse(options.generateBody ?? { error: 'error' }, options.generateStatus)
 			);
+		}
+		if (url.includes('/secondary-activity') || url.includes('/employment-base')) {
+			if (options.updateStatus && options.updateStatus !== 200) {
+				return Promise.resolve(
+					jsonResponse(options.updateBody ?? { error: 'error' }, options.updateStatus)
+				);
+			}
+			return Promise.resolve(jsonResponse(options.updateOverview ?? overview));
 		}
 		if (url.includes('/activity-months')) {
 			if (options.updateStatus && options.updateStatus !== 200) {
@@ -218,6 +238,217 @@ describe('social insurance overview detail page', () => {
 		await waitFor(() => {
 			expect(toasts.some((t) => t.message === 'Nepodařilo se uložit měsíce činnosti')).toBe(true);
 		});
+	});
+
+	it('labels the computed base as 55 percent', async () => {
+		mockApi();
+
+		await renderPage();
+
+		expect(screen.getByText('Vypočtený vyměřovací základ (55 %)')).toBeInTheDocument();
+		expect(screen.queryByText('Vyměřovací základ (50%)')).not.toBeInTheDocument();
+	});
+
+	it('shows the secondary activity with its reason and decisive amount', async () => {
+		mockApi({
+			overview: makeOverview({
+				secondary_months: [7, 8, 9, 10, 11, 12],
+				secondary_reason: 'student',
+				secondary_assessment_base: 6600000,
+				secondary_decisive_amount: 5586400
+			})
+		});
+
+		await renderPage();
+
+		const card = within(screen.getByRole('group', { name: 'Vedlejší činnost' }));
+		expect(
+			card.getByText(
+				/červenec, srpen, září, říjen, listopad, prosinec \(6 měs\.\) – Nezaopatřené dítě/
+			)
+		).toBeInTheDocument();
+		expect(screen.getByText('Rozhodná částka pro vedlejší činnost')).toBeInTheDocument();
+		expect(screen.getByText('Vypočtený vyměřovací základ – vedlejší činnost')).toBeInTheDocument();
+		expect(screen.queryByText(/rozhodnou částku nedosáhl/)).not.toBeInTheDocument();
+	});
+
+	it('says when the secondary income did not reach the decisive amount', async () => {
+		mockApi({
+			overview: makeOverview({
+				secondary_months: [7, 8, 9, 10, 11, 12],
+				secondary_reason: 'employment',
+				secondary_assessment_base: 0,
+				secondary_decisive_amount: 5586400
+			})
+		});
+
+		await renderPage();
+
+		expect(
+			screen.getByText(
+				'Příjem z vedlejší činnosti rozhodnou částku nedosáhl, pojistné z ní se neplatí'
+			)
+		).toBeInTheDocument();
+	});
+
+	it('shows the warning that social advances are not required', async () => {
+		mockApi({ overview: makeOverview({ warnings: ['social_advance_not_required'] }) });
+
+		await renderPage();
+
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'Zálohy na důchodové pojištění v roce 2026'
+		);
+	});
+
+	it('saves the secondary activity through its endpoint', async () => {
+		mockApi({
+			updateOverview: makeOverview({ secondary_months: [7], secondary_reason: 'employment' })
+		});
+
+		await renderPage();
+		const card = within(screen.getByRole('group', { name: 'Vedlejší činnost' }));
+		await fireEvent.click(card.getByRole('button', { name: 'Upravit' }));
+		await fireEvent.click(card.getByLabelText('červenec'));
+		await fireEvent.change(card.getByLabelText('Důvod'), { target: { value: 'employment' } });
+		await fireEvent.click(card.getByRole('button', { name: 'Uložit vedlejší činnost' }));
+
+		await waitFor(() => {
+			expect(
+				mockFetch.mock.calls.some(
+					([url]) => url === '/api/v1/social-insurance/1/secondary-activity'
+				)
+			).toBe(true);
+		});
+		const call = mockFetch.mock.calls.find(
+			([url]) => url === '/api/v1/social-insurance/1/secondary-activity'
+		);
+		expect(call?.[1].method).toBe('PUT');
+		expect(JSON.parse(call?.[1].body as string)).toEqual({ months: [7], reason: 'employment' });
+	});
+
+	it('only offers the months of activity as secondary months', async () => {
+		mockApi();
+
+		await renderPage();
+		const card = within(screen.getByRole('group', { name: 'Vedlejší činnost' }));
+		await fireEvent.click(card.getByRole('button', { name: 'Upravit' }));
+
+		expect(card.getByLabelText('leden')).toBeDisabled();
+		expect(card.getByLabelText('červenec')).toBeEnabled();
+	});
+
+	it('shows the server message when the secondary activity is rejected', async () => {
+		mockApi({
+			updateStatus: 400,
+			updateBody: { error: 'měsíce vedlejší činnosti musí být měsíce činnosti' }
+		});
+
+		await renderPage();
+		const card = within(screen.getByRole('group', { name: 'Vedlejší činnost' }));
+		await fireEvent.click(card.getByRole('button', { name: 'Upravit' }));
+		await fireEvent.click(card.getByRole('button', { name: 'Uložit vedlejší činnost' }));
+
+		await waitFor(() => {
+			expect(
+				toasts.some((t) => t.message === 'měsíce vedlejší činnosti musí být měsíce činnosti')
+			).toBe(true);
+		});
+	});
+
+	it('saves the employment base in halere', async () => {
+		mockApi({ updateOverview: makeOverview({ employment_assessment_base: 50000000 }) });
+
+		await renderPage();
+		const card = within(screen.getByRole('group', { name: 'Zaměstnání' }));
+		await fireEvent.input(card.getByLabelText(/Vyměřovací základ ze zaměstnání za rok 2025/), {
+			target: { value: '500000' }
+		});
+		await fireEvent.click(
+			card.getByRole('button', { name: 'Uložit vyměřovací základ ze zaměstnání' })
+		);
+
+		await waitFor(() => {
+			expect(
+				mockFetch.mock.calls.some(([url]) => url === '/api/v1/social-insurance/1/employment-base')
+			).toBe(true);
+		});
+		const call = mockFetch.mock.calls.find(
+			([url]) => url === '/api/v1/social-insurance/1/employment-base'
+		);
+		expect(call?.[1].method).toBe('PUT');
+		expect(JSON.parse(call?.[1].body as string)).toEqual({ employment_assessment_base: 50000000 });
+	});
+
+	it('removes the employment base by sending null', async () => {
+		mockApi({
+			overview: makeOverview({ employment_assessment_base: 50000000 }),
+			updateOverview: makeOverview()
+		});
+
+		await renderPage();
+		const card = within(screen.getByRole('group', { name: 'Zaměstnání' }));
+		await fireEvent.click(
+			card.getByRole('button', { name: 'Odebrat vyměřovací základ ze zaměstnání' })
+		);
+
+		await waitFor(() => {
+			expect(
+				mockFetch.mock.calls.some(([url]) => url === '/api/v1/social-insurance/1/employment-base')
+			).toBe(true);
+		});
+		const call = mockFetch.mock.calls.find(
+			([url]) => url === '/api/v1/social-insurance/1/employment-base'
+		);
+		expect(JSON.parse(call?.[1].body as string)).toEqual({ employment_assessment_base: null });
+	});
+
+	it('does not send a fractional employment base', async () => {
+		mockApi();
+
+		await renderPage();
+		const card = within(screen.getByRole('group', { name: 'Zaměstnání' }));
+		await fireEvent.input(card.getByLabelText(/Vyměřovací základ ze zaměstnání za rok 2025/), {
+			target: { value: '1234.5' }
+		});
+		await fireEvent.click(
+			card.getByRole('button', { name: 'Uložit vyměřovací základ ze zaměstnání' })
+		);
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message.includes('celé nezáporné číslo'))).toBe(true);
+		});
+		expect(
+			mockFetch.mock.calls.some(([url]) => url === '/api/v1/social-insurance/1/employment-base')
+		).toBe(false);
+	});
+
+	it('shows the employment base and the insured base when an employment base is entered', async () => {
+		mockApi({
+			overview: makeOverview({
+				employment_assessment_base: 50000000,
+				reported_employment_base: 50000000,
+				insured_base: 173473600
+			})
+		});
+
+		await renderPage();
+
+		expect(screen.getByText('Vyměřovací základ pro pojistné (ř. 31)')).toBeInTheDocument();
+		const input = screen.getByLabelText(/Vyměřovací základ ze zaměstnání za rok 2025/);
+		expect(input).toHaveValue(500000);
+	});
+
+	it('hides the secondary and employment editors for a filed overview', async () => {
+		mockApi({ overview: makeOverview({ status: 'filed', filed_at: '2026-02-01T00:00:00Z' }) });
+
+		await renderPage();
+
+		const secondary = within(screen.getByRole('group', { name: 'Vedlejší činnost' }));
+		expect(secondary.queryByRole('button', { name: 'Upravit' })).not.toBeInTheDocument();
+		expect(
+			screen.queryByLabelText(/Vyměřovací základ ze zaměstnání za rok/)
+		).not.toBeInTheDocument();
 	});
 
 	it('hides the edit control for a filed overview', async () => {

@@ -5,6 +5,7 @@
 	import {
 		socialInsuranceApi,
 		ApiError,
+		type SecondaryActivityReason,
 		type SocialInsuranceOverview,
 		type TaxConstants
 	} from '$lib/api/client';
@@ -31,6 +32,10 @@
 	let showDeleteConfirm = $state(false);
 	let editingMonths = $state(false);
 	let monthsDraft = $state<number[]>([]);
+	let editingSecondary = $state(false);
+	let secondaryDraft = $state<number[]>([]);
+	let secondaryReasonDraft = $state<SecondaryActivityReason>('');
+	let employmentDraft = $state<number | null>(null);
 
 	let returnId = $derived(Number(page.params.id));
 
@@ -56,6 +61,7 @@
 		try {
 			data = await socialInsuranceApi.getById(returnId);
 			if (data) {
+				employmentDraft = employmentToDraft(data.employment_assessment_base);
 				loadTaxConstants(data.year).then((tc) => {
 					taxConstants = tc;
 				});
@@ -129,6 +135,100 @@
 			}
 		}
 		return 'Nepodařilo se uložit měsíce činnosti';
+	}
+
+	const SECONDARY_REASON_OPTIONS: { value: SecondaryActivityReason; label: string }[] = [
+		{ value: '', label: 'Vyberte důvod' },
+		{
+			value: 'employment',
+			label: 'Zaměstnání (účast na nemocenském pojištění zaměstnanců)'
+		},
+		{ value: 'pension', label: 'Nárok na invalidní důchod nebo přiznaný starobní důchod' },
+		{ value: 'child_care', label: 'Osobní péče o dítě do 4 let' },
+		{
+			value: 'maternity',
+			label: 'Peněžitá pomoc v mateřství nebo nemocenské z důvodu těhotenství a porodu'
+		},
+		{ value: 'care', label: 'Osobní péče o osobu závislou na pomoci jiné osoby' },
+		{ value: 'student', label: 'Nezaopatřené dítě (student do 26 let)' }
+	];
+
+	const secondaryReasonLabels = Object.fromEntries(
+		SECONDARY_REASON_OPTIONS.map((opt) => [opt.value, opt.label])
+	) as Record<SecondaryActivityReason, string>;
+
+	let secondaryLabel = $derived(
+		data
+			? `${data.secondary_months.map((m) => monthNames[m - 1]).join(', ')} (${data.secondary_months.length} měs.)`
+			: ''
+	);
+
+	function startEditingSecondary() {
+		secondaryDraft = [...(data?.secondary_months ?? [])];
+		secondaryReasonDraft = data?.secondary_reason ?? '';
+		editingSecondary = true;
+	}
+
+	async function saveSecondary() {
+		actionLoading = 'secondary';
+		try {
+			data = await socialInsuranceApi.setSecondaryActivity(
+				returnId,
+				secondaryDraft,
+				secondaryReasonDraft
+			);
+			toastSuccess('Vedlejší činnost uložena a přehled přepočítán');
+			editingSecondary = false;
+		} catch (e) {
+			toastError(overviewChangeError(e, 'Nepodařilo se uložit vedlejší činnost'));
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	function employmentToDraft(halere: number | null): number | null {
+		return halere === null ? null : halere / 100;
+	}
+
+	async function saveEmployment() {
+		const czk = employmentDraft;
+		if (czk === null || czk === undefined || !Number.isInteger(czk) || czk < 0) {
+			toastError('Zadejte vyměřovací základ ze zaměstnání jako celé nezáporné číslo v Kč.');
+			return;
+		}
+		await changeEmployment(
+			czk * 100,
+			'Vyměřovací základ ze zaměstnání uložen a přehled přepočítán'
+		);
+	}
+
+	async function removeEmployment() {
+		await changeEmployment(null, 'Vyměřovací základ ze zaměstnání odebrán a přehled přepočítán');
+	}
+
+	async function changeEmployment(halere: number | null, successMessage: string) {
+		actionLoading = 'employment';
+		try {
+			data = await socialInsuranceApi.setEmploymentBase(returnId, halere);
+			employmentDraft = employmentToDraft(data.employment_assessment_base);
+			toastSuccess(successMessage);
+		} catch (e) {
+			toastError(overviewChangeError(e, 'Nepodařilo se uložit vyměřovací základ ze zaměstnání'));
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	function overviewChangeError(e: unknown, fallback: string): string {
+		if (e instanceof ApiError) {
+			if (e.status === 409) {
+				return 'Přehled je už podaný, nelze ho změnit.';
+			}
+			if (e.status === 400 && !e.message.startsWith('API Error ')) {
+				return e.message;
+			}
+		}
+		return fallback;
 	}
 
 	async function handleGenerateXml() {
@@ -292,10 +392,22 @@
 						{formatCZK(data.tax_base)}
 					</dd>
 
-					<dt class="text-secondary">Vyměřovací základ (50%)</dt>
+					<dt class="text-secondary">Vypočtený vyměřovací základ (55 %)</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{formatCZK(data.assessment_base)}
 					</dd>
+
+					{#if data.secondary_months.length > 0}
+						<dt class="text-secondary">Vypočtený vyměřovací základ – vedlejší činnost</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.secondary_assessment_base)}
+						</dd>
+
+						<dt class="text-secondary">Rozhodná částka pro vedlejší činnost</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.secondary_decisive_amount)}
+						</dd>
+					{/if}
 
 					<dt class="text-secondary">Minimální vyměřovací základ</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
@@ -306,7 +418,25 @@
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{formatCZK(data.final_assessment_base)}
 					</dd>
+
+					{#if data.employment_assessment_base !== null}
+						<dt class="text-secondary">Vyměřovací základ ze zaměstnání</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.employment_assessment_base)}
+						</dd>
+
+						<dt class="text-secondary">Vyměřovací základ pro pojistné (ř. 31)</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.insured_base)}
+						</dd>
+					{/if}
 				</div>
+
+				{#if data.secondary_months.length > 0 && data.secondary_assessment_base === 0}
+					<p class="mt-3 text-sm text-secondary">
+						Příjem z vedlejší činnosti rozhodnou částku nedosáhl, pojistné z ní se neplatí
+					</p>
+				{/if}
 
 				{#if data.status !== 'filed'}
 					<div class="mt-4 border-t border-border pt-4">
@@ -344,6 +474,132 @@
 						{/if}
 					</div>
 				{/if}
+			</Card>
+
+			<!-- Secondary activity -->
+			<Card>
+				<div role="group" aria-label="Vedlejší činnost">
+					<h2 class="text-base font-semibold text-primary">Vedlejší činnost</h2>
+					<p class="mt-1 text-sm text-secondary">
+						{#if data.secondary_months.length === 0}
+							Žádné měsíce vedlejší činnosti
+						{:else}
+							{secondaryLabel} – {secondaryReasonLabels[data.secondary_reason]}
+						{/if}
+					</p>
+
+					{#if data.status !== 'filed'}
+						<div class="mt-4 border-t border-border pt-4">
+							{#if !editingSecondary}
+								<Button
+									variant="secondary"
+									onclick={startEditingSecondary}
+									disabled={actionLoading !== null}
+								>
+									Upravit
+								</Button>
+							{:else}
+								<ActivityMonthsPicker
+									idPrefix="social-secondary-edit"
+									legend="Měsíce vedlejší činnosti"
+									hint="Měsíce, ve kterých jste podnikali jako vedlejší činnost."
+									allowedMonths={data.activity_months}
+									required={false}
+									value={secondaryDraft}
+									onchange={(months) => (secondaryDraft = months)}
+									disabled={actionLoading !== null}
+								/>
+								<div class="mt-3 max-w-md">
+									<label for="secondary-reason" class="block text-sm font-medium text-secondary"
+										>Důvod</label
+									>
+									<select
+										id="secondary-reason"
+										bind:value={secondaryReasonDraft}
+										disabled={actionLoading !== null}
+										class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+									>
+										{#each SECONDARY_REASON_OPTIONS as opt (opt.value)}
+											<option value={opt.value}>{opt.label}</option>
+										{/each}
+									</select>
+								</div>
+								<p class="mt-3 text-xs text-muted">
+									Důvod doložte ČSSZ nejpozději do konce měsíce následujícího po podání přehledu,
+									jinak se činnost považuje za hlavní.
+								</p>
+								<div class="mt-3 flex gap-3">
+									<Button
+										variant="primary"
+										onclick={saveSecondary}
+										disabled={actionLoading !== null}
+										aria-label="Uložit vedlejší činnost"
+									>
+										{actionLoading === 'secondary' ? 'Ukládám...' : 'Uložit'}
+									</Button>
+									<Button
+										variant="secondary"
+										onclick={() => (editingSecondary = false)}
+										disabled={actionLoading !== null}
+									>
+										Zrušit
+									</Button>
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			</Card>
+
+			<!-- Employment -->
+			<Card>
+				<div role="group" aria-label="Zaměstnání">
+					<h2 class="text-base font-semibold text-primary">Zaměstnání</h2>
+					{#if data.status !== 'filed'}
+						<div class="mt-3 max-w-md">
+							<label for="employment-base" class="block text-sm font-medium text-secondary">
+								Vyměřovací základ ze zaměstnání za rok {data.year} (Kč)
+							</label>
+							<input
+								id="employment-base"
+								type="number"
+								min="0"
+								step="1"
+								bind:value={employmentDraft}
+								disabled={actionLoading !== null}
+								class="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-primary focus:border-accent focus:ring-1 focus:ring-accent/50 focus:outline-none"
+							/>
+							<p class="mt-1 text-xs text-muted">
+								Podle potvrzení zaměstnavatele. Do přehledu se uvede, jen když spolu s podnikáním
+								přesáhne maximální vyměřovací základ.
+							</p>
+						</div>
+						<div class="mt-3 flex gap-3">
+							<Button
+								variant="primary"
+								onclick={saveEmployment}
+								disabled={actionLoading !== null}
+								aria-label="Uložit vyměřovací základ ze zaměstnání"
+							>
+								{actionLoading === 'employment' ? 'Ukládám...' : 'Uložit'}
+							</Button>
+							<Button
+								variant="secondary"
+								aria-label="Odebrat vyměřovací základ ze zaměstnání"
+								onclick={removeEmployment}
+								disabled={actionLoading !== null || data.employment_assessment_base === null}
+							>
+								Odebrat
+							</Button>
+						</div>
+					{:else}
+						<p class="mt-1 text-sm text-secondary">
+							{data.employment_assessment_base === null
+								? 'Vyměřovací základ ze zaměstnání nebyl zadán'
+								: `Vyměřovací základ ze zaměstnání: ${formatCZK(data.employment_assessment_base)}`}
+						</p>
+					{/if}
+				</div>
 			</Card>
 
 			<!-- Insurance -->

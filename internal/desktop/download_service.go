@@ -24,7 +24,7 @@ type DownloadService struct {
 // with the Content-Disposition filename (suggestedName when absent), and writes the response body to the selected path.
 // Returns nil if the user cancels the dialog.
 func (s *DownloadService) SaveToFile(apiPath, suggestedName string) error {
-	req := httptest.NewRequest(http.MethodGet, apiPath, nil)
+	req := newInternalRequest(apiPath)
 	rec := httptest.NewRecorder()
 	s.Handler.ServeHTTP(rec, req)
 

@@ -410,7 +410,7 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 	case errors.Is(err, domain.ErrMessageIDInUse):
 		respondError(w, http.StatusConflict, "Toto číslo zprávy už patří k jinému odeslání. Zkontrolujte ho v datové schránce.")
 	case errors.Is(err, domain.ErrMessageMismatch):
-		respondError(w, http.StatusConflict, "Zpráva s tímto číslem v datové schránce nepatří k tomuto odeslání (jiný příjemce nebo předmět), stav doručení se nepřevzal. Zkontrolujte číslo zprávy v odeslaných zprávách.")
+		respondError(w, http.StatusConflict, "Zpráva s tímto číslem v datové schránce nepatří k tomuto odeslání (jiný příjemce, jiný předmět nebo dřívější datum), stav doručení se nepřevzal. Zkontrolujte číslo zprávy v odeslaných zprávách.")
 	case errors.Is(err, domain.ErrFilingAlreadyFiled):
 		respondError(w, http.StatusConflict, "Podání je už označeno jako podané, nelze ho znovu připravit ani odeslat.")
 	case errors.Is(err, domain.ErrSubmissionNotResolvable):

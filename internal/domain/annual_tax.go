@@ -57,10 +57,14 @@ type IncomeTaxReturn struct {
 	// Credits (slevy na dani)
 	CreditBasic      Amount // sleva na poplatnika
 	CreditSpouse     Amount // sleva na manzela/ku
-	CreditDisability Amount // invalidita
-	CreditStudent    Amount // student
-	TotalCredits     Amount
-	TaxAfterCredits  Amount
+	CreditDisability Amount // invalidita, sum of the three per-row amounts below
+	// Per-row snapshot of the last Recalculate: EPO rows 66, 67 and 68.
+	CreditDisability12   Amount // 1st/2nd degree
+	CreditDisability3    Amount // 3rd degree
+	CreditDisabilityZTPP Amount // ZTP/P holder
+	CreditStudent        Amount // student
+	TotalCredits         Amount
+	TaxAfterCredits      Amount
 
 	// Child benefit (danove zvyhodneni)
 	ChildBenefit    Amount

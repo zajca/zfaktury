@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
+vi.mock('$lib/utils/download', async (orig) => ({
+	...(await orig<typeof import('$lib/utils/download')>()),
+	detectDesktop: vi.fn(async () => false)
+}));
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -144,6 +148,33 @@ describe('VIES Summary Detail', () => {
 		expect(screen.getByText('Stáhnout XML')).toBeInTheDocument();
 		expect(screen.getByText('Označit za podané')).toBeInTheDocument();
 		expect(screen.getByText('Smazat')).toBeInTheDocument();
+	});
+
+	it('renders the EPO button enabled when has_xml is true and disabled otherwise', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleSummary));
+		const first = render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
+		});
+		first.unmount();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleSummary, has_xml: false }));
+		render(Page);
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeDisabled();
+		});
+	});
+
+	it('keeps the EPO panel below the action row so the row keeps its buttons', async () => {
+		mockFetch.mockResolvedValueOnce(jsonResponse(sampleSummary));
+		render(Page);
+		const epoButton = await screen.findByRole('button', { name: 'Otevřít v EPO' });
+
+		const row = epoButton.parentElement as HTMLElement;
+		expect(row).not.toContainElement(screen.getByTestId('epo-panel'));
+		expect(within(row).getByText('Stáhnout XML')).toBeInTheDocument();
+		expect(within(row).getByText('Označit za podané')).toBeInTheDocument();
+		expect(within(row).getByText('Smazat')).toBeInTheDocument();
 	});
 
 	it('disables buttons when status is filed', async () => {

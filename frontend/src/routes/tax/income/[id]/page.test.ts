@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, waitFor, cleanup, within } from '@testing-library/svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
+vi.mock('$lib/utils/download', async (orig) => ({
+	...(await orig<typeof import('$lib/utils/download')>()),
+	detectDesktop: vi.fn(async () => false)
+}));
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
@@ -256,6 +260,50 @@ describe('Income tax return detail - §6 panel', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText(/ř\. 89 Vyplacené měsíční bonusy/)).toBeInTheDocument();
+		});
+	});
+});
+
+describe('Income tax return detail - EPO button', () => {
+	function mockReturn(hasXml: boolean) {
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/income-tax-returns/')) {
+				return Promise.resolve(jsonResponse({ ...baseReturn, has_xml: hasXml }));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants));
+			}
+			return Promise.resolve(jsonResponse({}));
+		});
+	}
+
+	it('is enabled when the return has XML', async () => {
+		mockReturn(true);
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
+		});
+	});
+
+	it('keeps the EPO panel below the action row so the row keeps its buttons', async () => {
+		mockReturn(true);
+		render(Page);
+		const epoButton = await screen.findByRole('button', { name: 'Otevřít v EPO' });
+
+		const row = epoButton.parentElement as HTMLElement;
+		expect(row).not.toContainElement(screen.getByTestId('epo-panel'));
+		expect(within(row).getByText('Stáhnout XML')).toBeInTheDocument();
+		expect(within(row).getByText('Označit jako podané')).toBeInTheDocument();
+		expect(within(row).getByText('Smazat')).toBeInTheDocument();
+	});
+
+	it('is disabled when the return has no XML', async () => {
+		mockReturn(false);
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeDisabled();
 		});
 	});
 });

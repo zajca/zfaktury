@@ -114,5 +114,11 @@ func (s *EPOService) OpenForm(ctx context.Context, kind EPOKind, id int64) (*EPO
 	}
 
 	log("url", len(findings), nil)
-	return &EPOFormLink{URL: link, Warnings: findings}, nil
+	warnings := make([]epo.Finding, 0, len(findings))
+	for _, f := range findings {
+		if f.IsWarning() {
+			warnings = append(warnings, f)
+		}
+	}
+	return &EPOFormLink{URL: link, Warnings: warnings}, nil
 }

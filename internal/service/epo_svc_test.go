@@ -127,8 +127,13 @@ func TestEPOService_OpenForm_NonBlockingTypesPass(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenForm: %v", err)
 	}
-	if len(got.Warnings) != 3 {
-		t.Errorf("warnings = %d, want 3", len(got.Warnings))
+	if len(got.Warnings) != 2 {
+		t.Fatalf("warnings = %d, want 2 (info findings are dropped)", len(got.Warnings))
+	}
+	for _, w := range got.Warnings {
+		if w.Type != epo.TypePassable && w.Type != epo.TypeNonCritical {
+			t.Errorf("warning of type %q, want only P and N", w.Type)
+		}
 	}
 }
 

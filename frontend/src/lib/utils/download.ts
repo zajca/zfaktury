@@ -7,7 +7,7 @@ let wailsCall: { ByName: (name: string, ...args: unknown[]) => Promise<unknown> 
 
 const DOWNLOAD_SERVICE_FQN = 'github.com/zajca/zfaktury/internal/desktop.DownloadService';
 
-async function detectDesktop(): Promise<boolean> {
+export async function detectDesktop(): Promise<boolean> {
 	if (desktopMode !== null) return desktopMode;
 	try {
 		// Use variable to prevent Vite from statically analyzing the import path.

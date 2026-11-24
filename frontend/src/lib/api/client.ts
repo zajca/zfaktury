@@ -2178,3 +2178,36 @@ export const pdfSettingsApi = {
 		return `${API_BASE}/settings/pdf-preview`;
 	}
 };
+
+// --- EPO ("Otevřít v EPO") ---
+
+export type EPOKind = 'vat-return' | 'control-statement' | 'vies-summary' | 'income-tax-return';
+
+export interface EPOFinding {
+	type: string;
+	code: string;
+	field: string;
+	section: string;
+	row: string;
+	text: string;
+}
+
+export interface EPOOpenFormResult {
+	url: string;
+	warnings: EPOFinding[];
+}
+
+/** Returns the EPO findings carried by an error response (422), or an empty list. */
+export function epoFindingsFromError(err: unknown): EPOFinding[] {
+	if (!(err instanceof ApiError)) return [];
+	const body = err.body;
+	if (!body || typeof body !== 'object' || !('findings' in body)) return [];
+	const findings = (body as { findings: unknown }).findings;
+	return Array.isArray(findings) ? (findings as EPOFinding[]) : [];
+}
+
+export const epoApi = {
+	openForm(kind: EPOKind, id: number): Promise<EPOOpenFormResult> {
+		return post<EPOOpenFormResult>(`/epo/${kind}/${id}/open-form`);
+	}
+};

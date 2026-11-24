@@ -386,6 +386,50 @@ func TestInputAccepted(t *testing.T) {
 	}
 }
 
+func TestFindingClassification(t *testing.T) {
+	cases := []struct {
+		typ      string
+		blocking bool
+		warning  bool
+	}{
+		{"P", false, true},
+		{"N", false, true},
+		{"I", false, false},
+		{"p", false, true},
+		{" n ", false, true},
+		{"K", true, false},
+		{"k", true, false},
+		{"S", true, false},
+		{"E", true, false},
+		{"", true, false},
+		{"X", true, false},
+		{"KRITICKA", true, false},
+	}
+	for _, c := range cases {
+		f := Finding{Type: c.typ}
+		if got := f.IsBlocking(); got != c.blocking {
+			t.Errorf("Finding{Type: %q}.IsBlocking() = %v, want %v", c.typ, got, c.blocking)
+		}
+		if got := f.IsWarning(); got != c.warning {
+			t.Errorf("Finding{Type: %q}.IsWarning() = %v, want %v", c.typ, got, c.warning)
+		}
+	}
+}
+
+func TestCheck_LowercaseAndUnknownTypesBlock(t *testing.T) {
+	body := []byte(`<Chyby><Chyba Typ="k" Zkr="A"><Text>x</Text></Chyba><Chyba Typ="" Zkr="B"><Text>y</Text></Chyba></Chyby>`)
+	srv, _ := newFake(t, http.StatusOK, body)
+	c := NewClient(WithBaseURL(srv.URL))
+
+	findings, err := c.Check(context.Background(), []byte(sampleXML))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(findings) != 2 || !findings[0].IsBlocking() || !findings[1].IsBlocking() {
+		t.Errorf("findings = %+v, want two blocking findings", findings)
+	}
+}
+
 func TestValidateFormURL(t *testing.T) {
 	if err := ValidateFormURL(fakeFormURL, DefaultAllowedHost); err != nil {
 		t.Errorf("valid link rejected: %v", err)
@@ -400,6 +444,10 @@ func TestValidateFormURL(t *testing.T) {
 		"https://other.gov.cz/dpr/x",
 		"https://mojedane.gov.cz/",
 		"https://mojedane.gov.cz/dpr",
+		"https://mojedane.gov.cz/dpr/../evil",
+		"https://mojedane.gov.cz/dpr/%2e%2e/evil",
+		"https://mojedane.gov.cz/dpr/a/./b",
+		"https://mojedane.gov.cz/dpr//b",
 		"file:///etc/passwd",
 		"javascript:alert(1)",
 		"https://user:pw@mojedane.gov.cz/dpr/x",

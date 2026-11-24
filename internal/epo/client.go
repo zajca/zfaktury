@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 )
@@ -78,12 +79,27 @@ type Finding struct {
 	Text    string
 }
 
-// IsBlocking reports whether the finding means EPO cannot process the file
-// (critical, structure or exception). Passable, non-critical and info
-// findings do not block.
+func (f Finding) normalizedType() string {
+	return strings.ToUpper(strings.TrimSpace(f.Type))
+}
+
+// IsBlocking reports whether the finding means EPO cannot process the file.
+// Only passable, non-critical and info findings do not block; an empty or
+// unknown type blocks, so a new EPO finding type is never read as harmless.
 func (f Finding) IsBlocking() bool {
-	switch f.Type {
-	case TypeCritical, TypeStructure, TypeException:
+	switch f.normalizedType() {
+	case TypePassable, TypeNonCritical, TypeInfo:
+		return false
+	default:
+		return true
+	}
+}
+
+// IsWarning reports whether the finding is a passable or non-critical one the
+// user should see before submitting.
+func (f Finding) IsWarning() bool {
+	switch f.normalizedType() {
+	case TypePassable, TypeNonCritical:
 		return true
 	default:
 		return false
@@ -256,6 +272,7 @@ func ValidateFormURL(rawURL, allowedHost string) error {
 	if err != nil {
 		return fmt.Errorf("%w: unparsable", ErrInvalidFormURL)
 	}
+	cleaned := path.Clean(u.Path)
 	switch {
 	case u.Scheme != "https":
 		return fmt.Errorf("%w: scheme %q is not https", ErrInvalidFormURL, u.Scheme)
@@ -263,7 +280,9 @@ func ValidateFormURL(rawURL, allowedHost string) error {
 		return fmt.Errorf("%w: credentials in URL", ErrInvalidFormURL)
 	case !strings.EqualFold(u.Host, allowedHost):
 		return fmt.Errorf("%w: host %q is not allowed", ErrInvalidFormURL, u.Host)
-	case !strings.HasPrefix(u.Path, FormPathPrefix):
+	case cleaned != u.Path:
+		return fmt.Errorf("%w: path contains dot segments", ErrInvalidFormURL)
+	case !strings.HasPrefix(cleaned, FormPathPrefix):
 		return fmt.Errorf("%w: path is outside %s", ErrInvalidFormURL, FormPathPrefix)
 	}
 	return nil

@@ -11,6 +11,9 @@
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import Badge from '$lib/ui/Badge.svelte';
+	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
+	import EPOOpenPanel from '$lib/components/EPOOpenPanel.svelte';
+	import { EPOOpenState } from '$lib/utils/epo-open.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Card from '$lib/ui/Card.svelte';
@@ -19,6 +22,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
+	const epo = new EPOOpenState();
 	let statement = $state<ControlStatement | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -194,6 +198,13 @@
 				<Button variant="secondary" onclick={handleDownloadXml} disabled={!statement.has_xml}>
 					Stáhnout XML
 				</Button>
+				<EPOOpenButton
+					{epo}
+					kind="control-statement"
+					id={statementId}
+					hasXml={statement.has_xml}
+					disabled={actionLoading}
+				/>
 				<Button
 					variant="success"
 					onclick={handleMarkFiled}
@@ -205,6 +216,11 @@
 					Smazat
 				</Button>
 			</div>
+			<EPOOpenPanel
+				{epo}
+				hasXml={statement.has_xml}
+				markFiledLabel={statement.status !== 'filed' ? 'Označit za podané' : undefined}
+			/>
 		</div>
 
 		<!-- Tabs -->

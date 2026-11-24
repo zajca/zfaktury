@@ -449,6 +449,15 @@ func TestSecretsNeverLeak(t *testing.T) {
 	_, err = c.CreateMessage(context.Background(), MessageInput{})
 	record(err)
 
+	// A struct that holds a Client in an unexported field is printed by
+	// reflection, which cannot call String on that field.
+	type holder struct{ client *Client }
+	type valueHolder struct{ client Client }
+	holders := []any{holder{c}, &holder{c}, valueHolder{*c}, &valueHolder{*c}, []*Client{c}, map[string]*Client{"k": c}}
+	for _, h := range holders {
+		seen = append(seen, fmt.Sprintf("%v", h), fmt.Sprintf("%+v", h), fmt.Sprintf("%#v", h), fmt.Sprint(h))
+	}
+
 	creds := Credentials{Username: testUsername, Password: testPassword}
 	asJSON, _ := json.Marshal(struct{ C Credentials }{creds})
 	var structLog bytes.Buffer

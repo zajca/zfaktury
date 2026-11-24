@@ -115,28 +115,20 @@ func (c Credentials) validate() error {
 	return nil
 }
 
-// authenticator adds the login to a request. Basic auth is the only mode;
-// another mode only needs another implementation.
-type authenticator interface {
-	apply(req *http.Request)
+// basicAuthFunc returns a function that adds the login to a request. The login
+// lives only in the closure: fmt and reflection print a func value as an
+// address, so no formatting of a Client (or of a struct holding one) can reach
+// the credentials. Basic auth is the only mode; another mode only needs
+// another function.
+func basicAuthFunc(creds Credentials) func(*http.Request) {
+	username, password := creds.Username, creds.Password
+	return func(req *http.Request) { req.SetBasicAuth(username, password) }
 }
-
-// basicAuth is used through a pointer: fmt prints a nested pointer as an
-// address, so reflection-based printing of a Client (which cannot call methods
-// on unexported fields) never reaches the credentials.
-type basicAuth struct{ creds Credentials }
-
-func (a *basicAuth) apply(req *http.Request) {
-	req.SetBasicAuth(a.creds.Username, a.creds.Password)
-}
-
-func (*basicAuth) String() string   { return "basicAuth(" + redacted + ")" }
-func (*basicAuth) GoString() string { return "basicAuth(" + redacted + ")" }
 
 // Client talks to the ISDS web services of one environment as one login.
 type Client struct {
 	baseURL          string
-	auth             authenticator
+	applyAuth        func(*http.Request)
 	maxResponseBytes int64
 	httpClient       *http.Client
 }
@@ -212,7 +204,7 @@ func NewClient(env Environment, creds Credentials, opts ...Option) (*Client, err
 
 	c := &Client{
 		baseURL:          base,
-		auth:             &basicAuth{creds: creds},
+		applyAuth:        basicAuthFunc(creds),
 		maxResponseBytes: DefaultMaxResponseBytes,
 		httpClient: &http.Client{
 			Timeout:       DefaultTimeout,
@@ -289,7 +281,7 @@ func call[T any](ctx context.Context, c *Client, path, name string, op any) (*T,
 	req.Header.Set("Content-Type", "text/xml; charset=utf-8")
 	req.Header.Set("Accept", "text/xml")
 	req.Header.Set("SOAPAction", `""`)
-	c.auth.apply(req)
+	c.applyAuth(req)
 
 	start := time.Now()
 	resp, err := c.httpClient.Do(req)

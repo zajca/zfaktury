@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -212,7 +213,9 @@ func (c *Client) GetDeliveryInfo(ctx context.Context, dmID string) (*DeliveryInf
 		Status:    MessageStatus(resp.Delivery.Status),
 	}
 	if !info.Status.Valid() {
-		return nil, fmt.Errorf("GetDeliveryInfo: %w: message status %d out of range", ErrUnexpectedResponse, resp.Delivery.Status)
+		// A status the client does not know is kept as received and counts as
+		// not delivered; it must not hide the rest of the delivery evidence.
+		slog.Warn("ISDS returned an unknown message status", "message_status", resp.Delivery.Status)
 	}
 	if info.DeliveryTime, err = parseTime(resp.Delivery.DeliveryTime); err != nil {
 		return nil, fmt.Errorf("GetDeliveryInfo: %w", err)

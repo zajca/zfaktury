@@ -245,6 +245,70 @@ func TestISDSStore_SaveRollsBackPassword(t *testing.T) {
 	}
 }
 
+func TestISDSStore_FailedOverwriteLeavesNotConfigured(t *testing.T) {
+	useMock(t)
+	store := NewISDSStore()
+	if err := store.Save(ISDSEnvironmentTest, ISDSCredentials{Username: "old-user", Password: "old-pass"}); err != nil {
+		t.Fatalf("initial Save: %v", err)
+	}
+	// The overwrite replaces the password, then fails on the username write.
+	setSecret = func(service, user, password string) error {
+		if strings.HasSuffix(user, "/username") {
+			return keyring.ErrSetDataTooBig
+		}
+		return keyring.Set(service, user, password)
+	}
+	t.Cleanup(func() { setSecret = keyring.Set })
+
+	if err := store.Save(ISDSEnvironmentTest, ISDSCredentials{Username: "new-user", Password: "new-pass"}); err == nil {
+		t.Fatal("Save succeeded although the username write failed")
+	}
+	status, err := store.Status(ISDSEnvironmentTest)
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.Configured || status.Username != "" {
+		t.Errorf("a failed overwrite left a configured login behind: %+v", status)
+	}
+	for _, field := range []string{"username", "password"} {
+		if _, err := keyring.Get("zfaktury", "isds/test/"+field); !errors.Is(err, keyring.ErrNotFound) {
+			t.Errorf("%s entry survived the failed overwrite: %v", field, err)
+		}
+	}
+	if _, err := store.Load(ISDSEnvironmentTest); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("Load after a failed overwrite = %v, want ErrNotFound", err)
+	}
+}
+
+func TestISDSStore_DeleteStopsAfterFailedUsernameDelete(t *testing.T) {
+	useMock(t)
+	store := NewISDSStore()
+	if err := store.Save(ISDSEnvironmentTest, ISDSCredentials{Username: "user", Password: "pass"}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	var deleted []string
+	deleteSecret = func(service, user string) error {
+		deleted = append(deleted, user)
+		if strings.HasSuffix(user, "/username") {
+			return errors.New("backend refused")
+		}
+		return keyring.Delete(service, user)
+	}
+	t.Cleanup(func() { deleteSecret = keyring.Delete })
+
+	err := store.Delete(ISDSEnvironmentTest)
+	if !errors.Is(err, domain.ErrKeyringUnavailable) {
+		t.Fatalf("Delete error = %v, want ErrKeyringUnavailable", err)
+	}
+	if len(deleted) != 1 || !strings.HasSuffix(deleted[0], "/username") {
+		t.Errorf("Delete went on after the username failure: %v", deleted)
+	}
+	// The login is still complete, so the delete can be retried.
+	if _, err := store.Load(ISDSEnvironmentTest); err != nil {
+		t.Errorf("the login was damaged by the failed delete: %v", err)
+	}
+}
+
 func TestISDSCredentials_Validate(t *testing.T) {
 	long := func(n int) string { return strings.Repeat("a", n) }
 	tests := []struct {

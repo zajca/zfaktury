@@ -3,6 +3,7 @@ package isds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -122,18 +123,40 @@ func TestGetDeliveryInfo(t *testing.T) {
 	}
 }
 
-func TestGetDeliveryInfo_BadStatusOrTime(t *testing.T) {
-	const tmpl = `<Envelope><Body><GetDeliveryInfoResponse><dmDelivery><dmDm><dmID>1</dmID></dmDm><dmDeliveryTime>%s</dmDeliveryTime><dmMessageStatus>%s</dmMessageStatus></dmDelivery><dmStatus><dmStatusCode>0000</dmStatusCode><dmStatusMessage>ok</dmStatusMessage></dmStatus></GetDeliveryInfoResponse></Body></Envelope>`
-	for name, args := range map[string][2]string{
-		"status out of range": {"2026-11-24T10:00:00+01:00", "12"},
-		"bad time":            {"yesterday", "4"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			body := strings.Replace(strings.Replace(tmpl, "%s", args[0], 1), "%s", args[1], 1)
-			srv, _ := newFake(t, http.StatusOK, []byte(body))
-			_, err := newTestClient(t, srv).GetDeliveryInfo(context.Background(), "1")
-			wantIs(t, err, ErrUnexpectedResponse)
+const deliveryInfoTemplate = `<Envelope><Body><GetDeliveryInfoResponse><dmDelivery><dmDm><dmID>1</dmID></dmDm><dmDeliveryTime>%s</dmDeliveryTime><dmMessageStatus>%s</dmMessageStatus></dmDelivery><dmStatus><dmStatusCode>0000</dmStatusCode><dmStatusMessage>ok</dmStatusMessage></dmStatus></GetDeliveryInfoResponse></Body></Envelope>`
+
+func deliveryInfoBody(deliveryTime, status string) []byte {
+	return []byte(strings.Replace(strings.Replace(deliveryInfoTemplate, "%s", deliveryTime, 1), "%s", status, 1))
+}
+
+func TestGetDeliveryInfo_BadTime(t *testing.T) {
+	srv, _ := newFake(t, http.StatusOK, deliveryInfoBody("yesterday", "4"))
+	_, err := newTestClient(t, srv).GetDeliveryInfo(context.Background(), "1")
+	wantIs(t, err, ErrUnexpectedResponse)
+}
+
+func TestGetDeliveryInfo_UnknownStatusIsKeptAndNotDelivered(t *testing.T) {
+	logs := captureLogs(t)
+	for _, status := range []string{"10", "12", "0"} {
+		t.Run(status, func(t *testing.T) {
+			srv, _ := newFake(t, http.StatusOK, deliveryInfoBody("2026-11-24T10:00:00+01:00", status))
+			info, err := newTestClient(t, srv).GetDeliveryInfo(context.Background(), "1")
+			if err != nil {
+				t.Fatalf("GetDeliveryInfo: %v", err)
+			}
+			if fmt.Sprint(int(info.Status)) != status {
+				t.Errorf("Status = %d, want the raw value %s", info.Status, status)
+			}
+			if info.Status.Delivered() {
+				t.Errorf("unknown status %s counted as delivered", status)
+			}
+			if info.DeliveryTime == nil {
+				t.Error("the delivery time was dropped")
+			}
 		})
+	}
+	if !strings.Contains(logs.String(), "unknown message status") {
+		t.Errorf("unknown status was not logged: %q", logs.String())
 	}
 }
 

@@ -107,12 +107,12 @@ func (h *ISDSCredentialsHandler) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	creds := secrets.ISDSCredentials{Username: req.Username, Password: req.Password}
+	creds := secrets.ISDSCredentials{Username: req.Username, Password: req.Password}.Normalize()
 	if err := h.svc.Save(req.Environment, creds); err != nil {
 		h.respondError(w, err)
 		return
 	}
-	respondJSON(w, http.StatusOK, isdsStatusResponse{Configured: true, Username: req.Username})
+	respondJSON(w, http.StatusOK, isdsStatusResponse{Configured: true, Username: creds.Username})
 }
 
 // Delete handles DELETE /api/v1/settings/isds-credentials?environment=.

@@ -200,7 +200,7 @@ impl ReportsView {
                         .map_err(|e| format!("Chyba pri generovani CSV: {e}"))?;
 
                     // Save to temp file.
-                    let tmp_path = std::env::temp_dir().join(format!("faktury-{}.csv", year));
+                    let tmp_path = std::env::temp_dir().join(zfaktury_gen::filename::invoices_csv(year));
                     std::fs::write(&tmp_path, &csv_bytes)
                         .map_err(|e| format!("Chyba pri zapisu CSV: {e}"))?;
 
@@ -262,7 +262,7 @@ impl ReportsView {
                         .map_err(|e| format!("Chyba pri generovani CSV: {e}"))?;
 
                     // Save to temp file.
-                    let tmp_path = std::env::temp_dir().join(format!("naklady-{}.csv", year));
+                    let tmp_path = std::env::temp_dir().join(zfaktury_gen::filename::expenses_csv(year));
                     std::fs::write(&tmp_path, &csv_bytes)
                         .map_err(|e| format!("Chyba pri zapisu CSV: {e}"))?;
 

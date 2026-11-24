@@ -168,8 +168,8 @@ func TestBundleService_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateBundle: %v", err)
 	}
-	if filename != "priznani-2025.zip" {
-		t.Errorf("filename = %q, want %q", filename, "priznani-2025.zip")
+	if filename != "dpfo-2025.zip" {
+		t.Errorf("filename = %q, want %q", filename, "dpfo-2025.zip")
 	}
 
 	entries := readZip(t, data)

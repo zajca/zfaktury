@@ -21,7 +21,7 @@ type DownloadService struct {
 }
 
 // SaveToFile fetches apiPath via the internal router, opens a native save dialog
-// with suggestedName, and writes the response body to the selected path.
+// with the Content-Disposition filename (suggestedName when absent), and writes the response body to the selected path.
 // Returns nil if the user cancels the dialog.
 func (s *DownloadService) SaveToFile(apiPath, suggestedName string) error {
 	req := httptest.NewRequest(http.MethodGet, apiPath, nil)
@@ -36,11 +36,12 @@ func (s *DownloadService) SaveToFile(apiPath, suggestedName string) error {
 	}
 
 	body := rec.Body.Bytes()
+	name := downloadName(result.Header.Get("Content-Disposition"), suggestedName)
 
 	dialog := application.Get().Dialog.SaveFile()
-	dialog.SetFilename(suggestedName)
+	dialog.SetFilename(name)
 
-	ext := strings.TrimPrefix(filepath.Ext(suggestedName), ".")
+	ext := strings.TrimPrefix(filepath.Ext(name), ".")
 	if ext != "" {
 		dialog.AddFilter(strings.ToUpper(ext)+" files", "*."+ext)
 	}

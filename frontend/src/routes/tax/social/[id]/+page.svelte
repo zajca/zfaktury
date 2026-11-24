@@ -254,10 +254,7 @@
 	async function handleDownloadXml() {
 		actionLoading = 'download';
 		try {
-			await downloadFile(
-				`/api/v1/social-insurance/${returnId}/xml`,
-				`cssz-prehled-${returnId}.xml`
-			);
+			await downloadFile(`/api/v1/social-insurance/${returnId}/xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		} finally {

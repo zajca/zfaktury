@@ -3,8 +3,9 @@ package handler
 import (
 	"fmt"
 	"log/slog"
-	"mime"
 	"net/http"
+
+	filenamepkg "github.com/zajca/zfaktury/internal/filename"
 )
 
 // DownloadBundle handles GET /api/v1/income-tax-returns/{id}/bundle.
@@ -37,7 +38,7 @@ func (h *IncomeTaxHandler) DownloadBundle(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	w.Header().Set("Content-Disposition", filenamepkg.ContentDisposition(filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)

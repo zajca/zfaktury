@@ -101,7 +101,7 @@
 	async function handleDownloadXml() {
 		actionLoading = 'download';
 		try {
-			await downloadFile(incomeTaxApi.xmlUrl(returnId), `dpfo-${returnId}.xml`);
+			await downloadFile(incomeTaxApi.xmlUrl(returnId));
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		} finally {
@@ -113,7 +113,7 @@
 		if (!data) return;
 		actionLoading = 'bundle';
 		try {
-			await downloadFile(incomeTaxApi.bundleUrl(returnId), `priznani-${data.year}.zip`);
+			await downloadFile(incomeTaxApi.bundleUrl(returnId));
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout ZIP s přílohami');
 		} finally {

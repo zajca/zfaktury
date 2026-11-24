@@ -119,11 +119,7 @@
 					<HelpTip topic="vyrovnani-zalohy" />
 				</Button>
 			{/if}
-			<Button
-				variant="secondary"
-				onclick={() =>
-					downloadFile(invoicesApi.getPdfUrl(invoiceId), `faktura-${invoice.invoice_number}.pdf`)}
-			>
+			<Button variant="secondary" onclick={() => downloadFile(invoicesApi.getPdfUrl(invoiceId))}>
 				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 					<path
 						stroke-linecap="round"
@@ -136,11 +132,7 @@
 			<Button variant="secondary" onclick={onshowsendemail}>Odeslat emailem</Button>
 			<Button
 				variant="secondary"
-				onclick={() =>
-					downloadFile(
-						invoicesApi.getIsdocUrl(invoiceId),
-						`faktura-${invoice.invoice_number}.isdoc`
-					)}
+				onclick={() => downloadFile(invoicesApi.getIsdocUrl(invoiceId))}
 				title="Stáhne fakturu ve formátu ISDOC (český standard elektronické fakturace)"
 			>
 				Export ISDOC <HelpTip topic="isdoc-export" />

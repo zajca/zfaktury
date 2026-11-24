@@ -6,13 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"mime"
 	"net/http"
-	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/service"
@@ -407,9 +406,8 @@ func (h *InvoiceHandler) DownloadPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("faktura_%s.pdf", invoice.InvoiceNumber)
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.InvoicePDF(invoice.InvoiceNumber)))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
@@ -554,9 +552,8 @@ func (h *InvoiceHandler) ExportISDOC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("%s.isdoc", invoice.InvoiceNumber)
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.InvoiceISDOC(invoice.InvoiceNumber)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(xmlData)
 }
@@ -608,16 +605,15 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 			continue
 		}
 
-		// Sanitize filename to prevent zip slip attacks.
-		safeNumber := filepath.Base(invoice.InvoiceNumber)
-		filename := fmt.Sprintf("%s.isdoc", safeNumber)
-		f, err := zipWriter.Create(filename)
+		// The sanitized entry name contains no path separators, which rules out zip slip.
+		entryName := filename.InvoiceISDOC(invoice.InvoiceNumber)
+		f, err := zipWriter.Create(entryName)
 		if err != nil {
-			slog.Error("failed to create zip entry", "error", err, "filename", filename)
+			slog.Error("failed to create zip entry", "error", err, "filename", entryName)
 			continue
 		}
 		if _, err := f.Write(xmlData); err != nil {
-			slog.Error("failed to write zip entry data", "error", err, "filename", filename)
+			slog.Error("failed to write zip entry data", "error", err, "filename", entryName)
 			continue
 		}
 	}
@@ -629,7 +625,7 @@ func (h *InvoiceHandler) ExportISDOCBatch(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", `attachment; filename="isdoc-export.zip"`)
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.ISDOCExport()))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(buf.Bytes())

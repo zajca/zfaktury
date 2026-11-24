@@ -3,13 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"log/slog"
-	"mime"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -219,9 +219,8 @@ func (h *VIESHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := "vies_" + strconv.Itoa(vs.Period.Year) + "_Q" + strconv.Itoa(vs.Period.Quarter) + ".xml"
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.SummaryStatement(vs.Period, vs.FilingType)))
 	w.WriteHeader(http.StatusOK)
 	if _, writeErr := w.Write(vs.XMLData); writeErr != nil {
 		slog.Error("failed to write XML response", "error", writeErr)

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/repository"
 )
 
@@ -83,7 +84,7 @@ func NewIncomeTaxBundleService(
 //	                                                        referenced in the DB
 //	                                                        were missing on disk)
 //
-// Returns the bytes of the ZIP and a suggested filename like "priznani-2025.zip".
+// Returns the bytes of the ZIP and its download filename like "dpfo-2025.zip".
 func (s *IncomeTaxBundleService) GenerateBundle(ctx context.Context, incomeTaxReturnID int64) ([]byte, string, error) {
 	if incomeTaxReturnID == 0 {
 		return nil, "", fmt.Errorf("income_tax_return ID is required: %w", domain.ErrInvalidInput)
@@ -197,8 +198,7 @@ func (s *IncomeTaxBundleService) GenerateBundle(ctx context.Context, incomeTaxRe
 		s.audit.Log(ctx, "income_tax_return", incomeTaxReturnID, "generate_bundle", nil, nil)
 	}
 
-	filename := fmt.Sprintf("priznani-%d.zip", itr.Year)
-	return buf.Bytes(), filename, nil
+	return buf.Bytes(), filename.IncomeTaxBundle(itr.Year, itr.FilingType), nil
 }
 
 // addDeductionDoc reads the on-disk file for a deduction document and adds it

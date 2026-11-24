@@ -1,0 +1,17 @@
+ISDS web service definitions (v2.0), copies of the public files. The content is
+unchanged; git normalized the CRLF line endings of the downloads to LF.
+
+Source:        https://www.datovka.gov.cz/static/wsdl/v20/
+Downloaded:    2026-11-24
+
+Files and the service each WSDL is bound to (soap:address):
+  dm_operations.wsdl  https://ws1.datovka.gov.cz/DS/dz        CreateMessage, SignedSentMessageDownload
+  dm_info.wsdl        https://ws1.datovka.gov.cz/DS/dx        GetDeliveryInfo, GetSignedDeliveryInfo
+  db_access.wsdl      https://ws1.datovka.gov.cz/DS/DsManage  GetOwnerInfoFromLogin2, GetUserInfoFromLogin2
+  dmBaseTypes.xsd     imported by dm_operations.wsdl and dm_info.wsdl
+  dbTypes.xsd         imported by db_access.wsdl
+
+The test environment serves the same paths on https://ws1.datovka-test.gov.cz.
+The userPrivils bit values (0x4 create and send, 0x8 view info, ...) are not in
+the WSDL; they come from the isds_privileges enum of libdatovka
+(https://gitlab.nic.cz/datovka/libdatovka, include/libdatovka/isds.h).

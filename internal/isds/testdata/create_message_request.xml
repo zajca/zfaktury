@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+  <Body>
+    <CreateMessage xmlns="http://isds.czechpoint.cz/v20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <dmEnvelope>
+        <dmSenderOrgUnit xsi:nil="true"></dmSenderOrgUnit>
+        <dmSenderOrgUnitNum xsi:nil="true"></dmSenderOrgUnitNum>
+        <dbIDRecipient>abc1234</dbIDRecipient>
+        <dmRecipientOrgUnit xsi:nil="true"></dmRecipientOrgUnit>
+        <dmRecipientOrgUnitNum xsi:nil="true"></dmRecipientOrgUnitNum>
+        <dmToHands>Fake Hands</dmToHands>
+        <dmAnnotation>Fake filing</dmAnnotation>
+        <dmRecipientRefNumber xsi:nil="true"></dmRecipientRefNumber>
+        <dmSenderRefNumber>REF-1</dmSenderRefNumber>
+        <dmRecipientIdent xsi:nil="true"></dmRecipientIdent>
+        <dmSenderIdent>IDENT-1</dmSenderIdent>
+        <dmLegalTitleLaw xsi:nil="true"></dmLegalTitleLaw>
+        <dmLegalTitleYear xsi:nil="true"></dmLegalTitleYear>
+        <dmLegalTitleSect xsi:nil="true"></dmLegalTitleSect>
+        <dmLegalTitlePar xsi:nil="true"></dmLegalTitlePar>
+        <dmLegalTitlePoint xsi:nil="true"></dmLegalTitlePoint>
+        <dmPersonalDelivery>true</dmPersonalDelivery>
+        <dmAllowSubstDelivery xsi:nil="true"></dmAllowSubstDelivery>
+      </dmEnvelope>
+      <dmFiles>
+        <dmFile dmMimeType="application/xml" dmFileMetaType="main" dmFileDescr="filing.xml">
+          <dmEncodedContent>PGEvPg==</dmEncodedContent>
+        </dmFile>
+        <dmFile dmMimeType="application/pdf" dmFileMetaType="enclosure" dmFileDescr="note &amp; more.pdf">
+          <dmEncodedContent>JVBERg==</dmEncodedContent>
+        </dmFile>
+      </dmFiles>
+    </CreateMessage>
+  </Body>
+</Envelope>

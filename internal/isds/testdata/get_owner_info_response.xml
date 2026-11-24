@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetOwnerInfoFromLogin2Response xmlns="http://isds.czechpoint.cz/v20">
+      <dbOwnerInfo>
+        <dbID>abc1234</dbID>
+        <aifoIsds>false</aifoIsds>
+        <dbType>FO</dbType>
+        <ic xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+        <pnGivenNames>Jan Karel</pnGivenNames>
+        <pnLastName>Testovaci</pnLastName>
+        <firmName xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+      </dbOwnerInfo>
+      <dbStatus>
+        <dbStatusCode>0000</dbStatusCode>
+        <dbStatusMessage>Provedeno uspesne.</dbStatusMessage>
+      </dbStatus>
+    </GetOwnerInfoFromLogin2Response>
+  </soap:Body>
+</soap:Envelope>

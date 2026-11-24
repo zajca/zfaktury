@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetUserInfoFromLogin2Response xmlns="http://isds.czechpoint.cz/v20">
+      <dbUserInfo>
+        <aifoIsds>false</aifoIsds>
+        <pnGivenNames>Fake</pnGivenNames>
+        <pnLastName>Delegate</pnLastName>
+        <userType>OFFICIAL</userType>
+        <userPrivils>12</userPrivils>
+      </dbUserInfo>
+      <dbStatus>
+        <dbStatusCode>0000</dbStatusCode>
+        <dbStatusMessage>Provedeno uspesne.</dbStatusMessage>
+      </dbStatus>
+    </GetUserInfoFromLogin2Response>
+  </soap:Body>
+</soap:Envelope>

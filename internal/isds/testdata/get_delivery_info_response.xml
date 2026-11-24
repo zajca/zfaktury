@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetDeliveryInfoResponse xmlns="http://isds.czechpoint.cz/v20">
+      <dmDelivery>
+        <dmDm>
+          <dmID>1234567890</dmID>
+          <dbIDSender>xyz7654</dbIDSender>
+          <dmSender>Fake Sender</dmSender>
+          <dbIDRecipient>abc1234</dbIDRecipient>
+        </dmDm>
+        <dmHash algorithm="SHA-512">ZmFrZQ==</dmHash>
+        <dmQTimestamp>ZmFrZQ==</dmQTimestamp>
+        <dmDeliveryTime>2026-11-24T10:15:30.123+01:00</dmDeliveryTime>
+        <dmAcceptanceTime xsi:nil="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+        <dmMessageStatus>4</dmMessageStatus>
+        <dmEvents>
+          <dmEvent>
+            <dmEventTime>2026-11-24T10:15:30.123+01:00</dmEventTime>
+            <dmEventDescr>EV1: message delivered</dmEventDescr>
+          </dmEvent>
+          <dmEvent>
+            <dmEventTime>2026-11-24T10:00:00+01:00</dmEventTime>
+            <dmEventDescr>EV0: message submitted</dmEventDescr>
+          </dmEvent>
+        </dmEvents>
+      </dmDelivery>
+      <dmStatus>
+        <dmStatusCode>0000</dmStatusCode>
+        <dmStatusMessage>Provedeno uspesne.</dmStatusMessage>
+      </dmStatus>
+    </GetDeliveryInfoResponse>
+  </soap:Body>
+</soap:Envelope>

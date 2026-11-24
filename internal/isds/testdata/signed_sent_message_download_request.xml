@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+  <Body>
+    <SignedSentMessageDownload xmlns="http://isds.czechpoint.cz/v20">
+      <dmID>1234567890</dmID>
+    </SignedSentMessageDownload>
+  </Body>
+</Envelope>

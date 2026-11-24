@@ -2,8 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import { toasts, clearAllToasts } from '$lib/data/toast-state.svelte';
 
+import { createIsdsFetch, noCredentials, type IsdsFetchState } from '$lib/utils/isds-test-fetch';
+
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+const isds: IsdsFetchState = { credentials: noCredentials, submissions: [] };
+vi.stubGlobal(
+	'fetch',
+	createIsdsFetch((url, init) => mockFetch(url, init), isds)
+);
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/state', () => ({
 	page: {
@@ -126,6 +132,86 @@ async function renderPage() {
 async function openEditor() {
 	await fireEvent.click(screen.getByRole('button', { name: 'Upravit měsíce' }));
 }
+
+import { makePreview, makeSubmission, productionCredentials } from '$lib/utils/isds-test-fetch';
+
+describe('social insurance overview detail page - data-box sending', () => {
+	const sendName = 'Odeslat datovou schránkou';
+
+	beforeEach(() => {
+		isds.credentials = productionCredentials;
+		isds.submissions = [
+			makeSubmission({
+				id: 51,
+				kind: 'social-insurance',
+				recipientBoxId: '5ffu6xk',
+				recipientName: 'e-podání ČSSZ',
+				status: 'sent'
+			})
+		];
+		isds.respond = undefined;
+	});
+
+	afterEach(() => {
+		isds.credentials = noCredentials;
+		isds.submissions = [];
+		isds.respond = undefined;
+	});
+
+	it('shows the send button and the history of the overview', async () => {
+		mockApi({ overview: makeOverview({ has_xml: true }) });
+
+		await renderPage();
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		const row = await screen.findByTestId('isds-submission-51');
+		expect(row).toHaveTextContent('e-podání ČSSZ');
+		expect(row).toHaveTextContent('(5ffu6xk)');
+	});
+
+	it('is disabled for a filed overview and without a saved login', async () => {
+		mockApi({
+			overview: makeOverview({ has_xml: true, status: 'filed', filed_at: '2026-02-01T00:00:00Z' })
+		});
+
+		await renderPage();
+
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+		cleanup();
+
+		isds.credentials = noCredentials;
+		mockApi({ overview: makeOverview({ has_xml: true }) });
+		await renderPage();
+		expect(await screen.findByTestId('isds-no-login')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: sendName })).toBeDisabled();
+	});
+
+	it('requests the preview for this overview', async () => {
+		mockApi({ overview: makeOverview({ has_xml: true }) });
+		let previewUrl = '';
+		isds.respond = (url) => {
+			if (!url.endsWith('/isds/preview')) return undefined;
+			previewUrl = url;
+			return jsonResponse(
+				makePreview({
+					kind: 'social-insurance',
+					recipientBoxId: '5ffu6xk',
+					recipientName: 'e-podání ČSSZ'
+				})
+			);
+		};
+
+		await renderPage();
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		await fireEvent.click(send);
+
+		expect(await screen.findByRole('dialog')).toHaveTextContent('(5ffu6xk)');
+		expect(previewUrl).toContain('/api/v1/filings/social-insurance/1/isds/preview');
+	});
+});
 
 describe('social insurance overview detail page', () => {
 	it('shows the stored months of activity', async () => {

@@ -10,6 +10,8 @@
 	import Badge from '$lib/ui/Badge.svelte';
 	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
 	import EPOOpenPanel from '$lib/components/EPOOpenPanel.svelte';
+	import ISDSSendButton from '$lib/components/ISDSSendButton.svelte';
+	import ISDSSubmissionHistory from '$lib/components/ISDSSubmissionHistory.svelte';
 	import { EPOOpenState } from '$lib/utils/epo-open.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -20,6 +22,7 @@
 	import { toastError, toastSuccess } from '$lib/data/toast-state.svelte';
 
 	const epo = new EPOOpenState();
+	let isdsHistory = $state<ISDSSubmissionHistory | undefined>();
 	let data = $state<IncomeTaxReturn | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -242,6 +245,15 @@
 					hasXml={data.has_xml}
 					disabled={actionLoading !== null}
 				/>
+				<ISDSSendButton
+					kind="income-tax-return"
+					id={returnId}
+					hasXml={data.has_xml}
+					filed={data.status === 'filed'}
+					disabled={actionLoading !== null}
+					onsent={() => isdsHistory?.reload()}
+					onattempt={() => isdsHistory?.reload()}
+				/>
 				{#if data.status !== 'filed'}
 					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
 						{actionLoading === 'filed' ? 'Označuji...' : 'Označit jako podané'}
@@ -255,6 +267,12 @@
 				{epo}
 				hasXml={data.has_xml}
 				markFiledLabel={data.status !== 'filed' ? 'Označit jako podané' : undefined}
+			/>
+			<ISDSSubmissionHistory
+				bind:this={isdsHistory}
+				kind="income-tax-return"
+				id={returnId}
+				ondocumentfiled={loadData}
 			/>
 		</div>
 

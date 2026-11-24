@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, within } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
+
+import { createIsdsFetch, noCredentials, type IsdsFetchState } from '$lib/utils/isds-test-fetch';
 
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+const isds: IsdsFetchState = { credentials: noCredentials, submissions: [] };
+vi.stubGlobal(
+	'fetch',
+	createIsdsFetch((url, init) => mockFetch(url, init), isds)
+);
 vi.mock('$lib/utils/download', async (orig) => ({
 	...(await orig<typeof import('$lib/utils/download')>()),
 	detectDesktop: vi.fn(async () => false)
@@ -104,6 +110,80 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+});
+
+import { makePreview, makeSubmission, productionCredentials } from '$lib/utils/isds-test-fetch';
+
+describe('Income tax return detail - data-box sending', () => {
+	const sendName = 'Odeslat datovou schránkou';
+
+	function mockReturn(overrides: Record<string, unknown> = {}) {
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/tax-constants/')) return Promise.resolve(jsonResponse(taxConstants));
+			return Promise.resolve(jsonResponse({ ...baseReturn, has_xml: true, ...overrides }));
+		});
+	}
+
+	beforeEach(() => {
+		isds.credentials = productionCredentials;
+		isds.submissions = [
+			makeSubmission({ id: 41, kind: 'income-tax-return', status: 'undeliverable' })
+		];
+		isds.respond = undefined;
+	});
+
+	afterEach(() => {
+		isds.credentials = noCredentials;
+		isds.submissions = [];
+		isds.respond = undefined;
+	});
+
+	it('shows the send button next to the EPO button and the history of the return', async () => {
+		mockReturn();
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		expect(send.parentElement).toBe(
+			screen.getByRole('button', { name: 'Otevřít v EPO' }).parentElement
+		);
+		expect(await screen.findByTestId('isds-submission-41')).toHaveTextContent('Nedoručitelné');
+	});
+
+	it('is disabled for a filed return and without a saved login', async () => {
+		mockReturn({ status: 'filed', filed_at: '2026-03-15T00:00:00Z' });
+
+		render(Page);
+
+		expect(await screen.findByRole('button', { name: sendName })).toBeDisabled();
+		cleanup();
+
+		isds.credentials = noCredentials;
+		mockReturn();
+		render(Page);
+		expect(await screen.findByTestId('isds-no-login')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: sendName })).toBeDisabled();
+	});
+
+	it('requests the preview for this return', async () => {
+		mockReturn();
+		let previewUrl = '';
+		isds.respond = (url) => {
+			if (!url.endsWith('/isds/preview')) return undefined;
+			previewUrl = url;
+			return jsonResponse(makePreview({ kind: 'income-tax-return' }));
+		};
+
+		render(Page);
+
+		const send = await screen.findByRole('button', { name: sendName });
+		await waitFor(() => expect(send).toBeEnabled());
+		await fireEvent.click(send);
+
+		expect(await screen.findByRole('dialog')).toHaveTextContent('(7nyn2d9)');
+		expect(previewUrl).toContain('/api/v1/filings/income-tax-return/1/isds/preview');
+	});
 });
 
 describe('Income tax return detail - §6 panel', () => {

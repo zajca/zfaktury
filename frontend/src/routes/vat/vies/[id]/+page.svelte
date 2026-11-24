@@ -9,6 +9,8 @@
 	import Badge from '$lib/ui/Badge.svelte';
 	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
 	import EPOOpenPanel from '$lib/components/EPOOpenPanel.svelte';
+	import ISDSSendButton from '$lib/components/ISDSSendButton.svelte';
+	import ISDSSubmissionHistory from '$lib/components/ISDSSubmissionHistory.svelte';
 	import { EPOOpenState } from '$lib/utils/epo-open.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -19,6 +21,7 @@
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
 	const epo = new EPOOpenState();
+	let isdsHistory = $state<ISDSSubmissionHistory | undefined>();
 	let summary = $state<VIESSummary | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -185,6 +188,15 @@
 					hasXml={summary.has_xml}
 					disabled={actionLoading}
 				/>
+				<ISDSSendButton
+					kind="vies-summary"
+					id={summaryId}
+					hasXml={summary.has_xml}
+					filed={summary.status === 'filed'}
+					disabled={actionLoading}
+					onsent={() => isdsHistory?.reload()}
+					onattempt={() => isdsHistory?.reload()}
+				/>
 				<Button
 					variant="success"
 					onclick={handleMarkFiled}
@@ -200,6 +212,12 @@
 				{epo}
 				hasXml={summary.has_xml}
 				markFiledLabel={summary.status !== 'filed' ? 'Označit za podané' : undefined}
+			/>
+			<ISDSSubmissionHistory
+				bind:this={isdsHistory}
+				kind="vies-summary"
+				id={summaryId}
+				ondocumentfiled={loadSummary}
 			/>
 		</div>
 

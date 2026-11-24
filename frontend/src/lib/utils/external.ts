@@ -4,7 +4,7 @@ const BROWSER_SERVICE_FQN = 'github.com/zajca/zfaktury/internal/desktop.BrowserS
 
 /** A link opening prepared synchronously in a click handler. */
 export interface PendingExternalOpen {
-	/** Opens the link; resolves false when the browser blocked the new tab. */
+	/** Opens the link; resolves false when there is no usable new tab (blocked or closed). */
 	open(url: string): Promise<boolean>;
 	/** Releases whatever was prepared (closes the pre-opened tab). */
 	cancel(): void;
@@ -41,7 +41,8 @@ export function prepareExternalOpen(desktop: boolean): PendingExternalOpen {
 	}
 	return {
 		async open(url) {
-			if (!tab) return false;
+			// A tab the user closed while the request ran cannot show the link.
+			if (!tab || tab.closed) return false;
 			tab.location.href = url;
 			return true;
 		},

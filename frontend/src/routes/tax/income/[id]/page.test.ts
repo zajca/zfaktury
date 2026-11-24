@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, waitFor, cleanup, within } from '@testing-library/svelte';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -280,6 +280,18 @@ describe('Income tax return detail - EPO button', () => {
 		await waitFor(() => {
 			expect(screen.getByRole('button', { name: 'Otevřít v EPO' })).toBeEnabled();
 		});
+	});
+
+	it('keeps the EPO panel below the action row so the row keeps its buttons', async () => {
+		mockReturn(true);
+		render(Page);
+		const epoButton = await screen.findByRole('button', { name: 'Otevřít v EPO' });
+
+		const row = epoButton.parentElement as HTMLElement;
+		expect(row).not.toContainElement(screen.getByTestId('epo-panel'));
+		expect(within(row).getByText('Stáhnout XML')).toBeInTheDocument();
+		expect(within(row).getByText('Označit jako podané')).toBeInTheDocument();
+		expect(within(row).getByText('Smazat')).toBeInTheDocument();
 	});
 
 	it('is disabled when the return has no XML', async () => {

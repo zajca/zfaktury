@@ -7,6 +7,8 @@
 	import { formatCZK } from '$lib/utils/money';
 	import { vatStatusLabels, filingTypeLabels } from '$lib/utils/vat';
 	import EPOOpenButton from '$lib/components/EPOOpenButton.svelte';
+	import EPOOpenPanel from '$lib/components/EPOOpenPanel.svelte';
+	import { EPOOpenState } from '$lib/utils/epo-open.svelte';
 	import Badge from '$lib/ui/Badge.svelte';
 	import Button from '$lib/ui/Button.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -16,6 +18,7 @@
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
 	import { toastSuccess, toastError } from '$lib/data/toast-state.svelte';
 
+	const epo = new EPOOpenState();
 	let vatReturn = $state<VATReturn | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -179,11 +182,11 @@
 					</Button>
 				{/if}
 				<EPOOpenButton
+					{epo}
 					kind="vat-return"
 					id={returnId}
 					hasXml={vatReturn.has_xml}
 					disabled={actionLoading !== null}
-					onMarkFiled={vatReturn.status !== 'filed' ? handleMarkFiled : undefined}
 				/>
 				{#if vatReturn.status !== 'filed'}
 					<Button variant="success" onclick={handleMarkFiled} disabled={actionLoading !== null}>
@@ -194,6 +197,11 @@
 					</Button>
 				{/if}
 			</div>
+			<EPOOpenPanel
+				{epo}
+				hasXml={vatReturn.has_xml}
+				markFiledLabel={vatReturn.status !== 'filed' ? 'Označit za podané' : undefined}
+			/>
 		</div>
 
 		<!-- Output VAT -->

@@ -2,10 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prepareExternalOpen } from './external';
 
 describe('prepareExternalOpen in browser mode', () => {
-	let tab: { opener: unknown; location: { href: string }; close: ReturnType<typeof vi.fn> };
+	let tab: {
+		opener: unknown;
+		closed: boolean;
+		location: { href: string };
+		close: ReturnType<typeof vi.fn>;
+	};
 
 	beforeEach(() => {
-		tab = { opener: 'unset', location: { href: '' }, close: vi.fn() };
+		tab = { opener: 'unset', closed: false, location: { href: '' }, close: vi.fn() };
 		vi.stubGlobal(
 			'open',
 			vi.fn(() => tab)
@@ -30,6 +35,14 @@ describe('prepareExternalOpen in browser mode', () => {
 		prepareExternalOpen(false).cancel();
 
 		expect(tab.close).toHaveBeenCalled();
+	});
+
+	it('reports false and leaves the tab alone when the user closed it', async () => {
+		const pending = prepareExternalOpen(false);
+		tab.closed = true;
+
+		await expect(pending.open('https://mojedane.gov.cz/dpr/x')).resolves.toBe(false);
+		expect(tab.location.href).toBe('');
 	});
 
 	it('reports a blocked popup', async () => {

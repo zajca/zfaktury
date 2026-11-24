@@ -12,7 +12,7 @@ import (
 )
 
 func TestIncomeTaxXML_NilInput(t *testing.T) {
-	_, err := GenerateIncomeTaxXML(nil, map[string]string{}, nil)
+	_, err := GenerateIncomeTaxXML(nil, map[string]string{}, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for nil input, got nil")
 	}
@@ -46,7 +46,7 @@ func TestIncomeTaxXML_CorrectiveFilingType(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestIncomeTaxXML_SupplementaryFilingType(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestIncomeTaxXML_Golden_Full(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestIncomeTaxXML_DeductionBreakdown(t *testing.T) {
 		"taxpayer_postal_code":  "11000",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestIncomeTaxXML_DICStripsCountryPrefix(t *testing.T) {
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
 		"dic":                "CZ8905244997",
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestIncomeTaxXML_Section10TriggersPriloha2(t *testing.T) {
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
 		"dic":                "CZ1234567890",
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestIncomeTaxXML_Golden_Minimal(t *testing.T) {
 		"taxpayer_postal_code":  "60200",
 	}
 
-	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -332,7 +332,7 @@ func TestIncomeTaxXML_ChildMonthsAggregation(t *testing.T) {
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
 		"dic":                "CZ8905244997",
-	}, children)
+	}, children, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -371,7 +371,7 @@ func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
 		"dic":                "CZ8905244997",
-	}, children)
+	}, children, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestIncomeTaxXML_VetaARowsMatchAggregates(t *testing.T) {
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
 		"dic":                "CZ8905244997",
-	}, children)
+	}, children, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -446,7 +446,7 @@ func TestIncomeTaxXML_VetaAOmittedWithoutChildren(t *testing.T) {
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
 		"dic":                "CZ8001011234",
-	}, nil)
+	}, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestIncomeTaxXML_VetaAOmittedWithoutChildren(t *testing.T) {
 	}
 }
 
-func TestSplitChildName(t *testing.T) {
+func TestSplitPersonName(t *testing.T) {
 	tests := []struct {
 		in, wantFirst, wantLast string
 	}{
@@ -466,9 +466,9 @@ func TestSplitChildName(t *testing.T) {
 		{"", "", ""},
 	}
 	for _, tt := range tests {
-		first, last := splitChildName(tt.in)
+		first, last := splitPersonName(tt.in)
 		if first != tt.wantFirst || last != tt.wantLast {
-			t.Errorf("splitChildName(%q) = (%q, %q), want (%q, %q)",
+			t.Errorf("splitPersonName(%q) = (%q, %q), want (%q, %q)",
 				tt.in, first, last, tt.wantFirst, tt.wantLast)
 		}
 	}
@@ -530,7 +530,7 @@ func TestIncomeTaxXML_InvalidUfoCil(t *testing.T) {
 			if tt.ufoCil != "" {
 				s["financni_urad_code"] = tt.ufoCil
 			}
-			_, err := GenerateIncomeTaxXML(itr, s, nil)
+			_, err := GenerateIncomeTaxXML(itr, s, nil, nil)
 			if err == nil {
 				t.Fatalf("expected error for c_ufo_cil=%q, got nil", tt.ufoCil)
 			}
@@ -567,7 +567,7 @@ func TestIncomeTaxXML_ValidUfoCil(t *testing.T) {
 				"taxpayer_city":         "Praha",
 				"taxpayer_postal_code":  "11000",
 			}
-			if _, err := GenerateIncomeTaxXML(itr, s, nil); err != nil {
+			if _, err := GenerateIncomeTaxXML(itr, s, nil, nil); err != nil {
 				t.Errorf("unexpected error for c_ufo_cil=%q: %v", code, err)
 			}
 		})
@@ -597,7 +597,7 @@ func TestIncomeTaxXML_PhonePracufoMortgageMonths(t *testing.T) {
 		"taxpayer_last_name":  "Novak",
 		"taxpayer_phone":      "+420123456789",
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -614,7 +614,7 @@ func TestIncomeTaxXML_PhonePracufoMortgageMonths(t *testing.T) {
 
 	// Override the mortgage months via settings.
 	settings["mortgage_interest_months"] = "7"
-	xmlData, err = GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err = GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -626,7 +626,7 @@ func TestIncomeTaxXML_PhonePracufoMortgageMonths(t *testing.T) {
 	itr.DeductionMortgage = domain.NewAmount(0, 0)
 	itr.TotalDeductions = domain.NewAmount(0, 0)
 	delete(settings, "mortgage_interest_months")
-	xmlData, err = GenerateIncomeTaxXML(itr, settings, nil)
+	xmlData, err = GenerateIncomeTaxXML(itr, settings, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -687,7 +687,7 @@ func TestIncomeTaxXML_Section6Advance(t *testing.T) {
 		Section6CertsAdvance:     2,
 		// Section6CertsBonus stays 0 -- standalone bonus form OOS in MVP
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -726,7 +726,7 @@ func TestIncomeTaxXML_Section6Withholding(t *testing.T) {
 		Section6WithholdingCredited: domain.NewAmount(7500, 0), // ř.87 -- §36 odst.6 sražená daň
 		Section6CertsWithholding:    1,
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -762,7 +762,7 @@ func TestIncomeTaxXML_Section6Control1411(t *testing.T) {
 		Section6ForeignTax:  domain.NewAmount(1, 50),      // 1.50 CZK
 		Section6TaxBase:     domain.NewAmount(239999, 50), // 239999.50 CZK
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -790,7 +790,7 @@ func TestIncomeTaxXML_Section6OnlyNegativeSection7(t *testing.T) {
 		Section6GrossIncome: domain.NewAmount(300000, 0),
 		Section6TaxBase:     domain.NewAmount(300000, 0),
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -835,7 +835,7 @@ func TestIncomeTaxXML_BonusReportedSeparately(t *testing.T) {
 		// value flows through to kc_zbyvpred.
 		TaxDue: -domain.NewAmount(10000, 0),
 	}
-	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil)
+	xmlData, err := GenerateIncomeTaxXML(itr, section6BaseSettings(), nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}

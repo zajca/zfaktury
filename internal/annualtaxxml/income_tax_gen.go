@@ -71,8 +71,8 @@ type childMonths struct {
 	DetiZtpp, DetiZtpp2, DetiZtpp3 int
 }
 
-// splitChildName splits a single-field "Křestní Příjmení" name into the EPO
-// vyzdite_jmeno / vyzdite_prijmeni pair. The first whitespace-separated token
+// splitPersonName splits a single-field "Křestní Příjmení" name into the EPO
+// vyzdite_jmeno / vyzdite_prijmeni or manz_jmeno / manz_prijmeni pair. The first whitespace-separated token
 // is treated as the given name, the remainder as the surname (handling both
 // "Jan Novák" and compound surnames like "Anna van der Berg").
 //
@@ -80,7 +80,7 @@ type childMonths struct {
 // single token we fall back to using it as the surname (more identifying than
 // the given name) and leave the given name empty -- the form will still parse
 // but the user will see a warning to complete the row.
-func splitChildName(full string) (first, last string) {
+func splitPersonName(full string) (first, last string) {
 	full = strings.TrimSpace(full)
 	if full == "" {
 		return "", ""
@@ -116,7 +116,7 @@ func buildChildRows(children []domain.TaxChildCredit) []DPFOVetaA {
 	}
 	rows := make([]DPFOVetaA, 0, len(children))
 	for _, c := range children {
-		first, last := splitChildName(c.ChildName)
+		first, last := splitPersonName(c.ChildName)
 		row := DPFOVetaA{
 			VyzditeJmeno:    first,
 			VyzditePrijmeni: last,
@@ -162,12 +162,81 @@ func aggregateChildMonths(children []domain.TaxChildCredit) childMonths {
 	return m
 }
 
+// disabilityMonths is the month count emitted for the disability rows 66-68: the
+// model has no partial-year disability, and the calc grants the full annual amount,
+// which equals 12 times the monthly amount.
+const disabilityMonths = 12
+
+// creditRows holds the whole-CZK amounts and month counts of the §35ba credit rows
+// 65a-68 and the spouse identity of rows 65a/65b.
+type creditRows struct {
+	SpouseFirst, SpouseLast, SpouseRC string
+	Op15_1c                           int64 // ř.65a
+	MVyzmanzl                         int
+	Manztpp                           int64 // ř.65b
+	MManz                             int
+	Op15_1d                           int64 // ř.66
+	MCinvduch                         int
+	Op15_1e1                          int64 // ř.67
+	MInvduch                          int
+	Op15_1e2                          int64 // ř.68
+	MZtpp                             int
+}
+
+// sum returns the total of rows 65a-68.
+func (c creditRows) sum() int64 {
+	return c.Op15_1c + c.Manztpp + c.Op15_1d + c.Op15_1e1 + c.Op15_1e2
+}
+
+// buildCreditRows maps the credits of the return to the DPFDP7 rows 65a-68. It
+// rejects data that has no row or that the snapshot cannot back.
+func buildCreditRows(itr *domain.IncomeTaxReturn, spouse *domain.TaxSpouseCredit) (creditRows, error) {
+	var rows creditRows
+
+	if itr.CreditStudent > 0 {
+		return rows, fmt.Errorf("sleva na studenta se od roku 2024 neuplatňuje a DPFDP7 pro ni nemá řádek: %w", domain.ErrInvalidInput)
+	}
+	if itr.CreditDisability != itr.CreditDisability12+itr.CreditDisability3+itr.CreditDisabilityZTPP {
+		return rows, fmt.Errorf("přiznání bylo spočteno starší verzí, přepočítejte ho: %w", domain.ErrInvalidInput)
+	}
+
+	if itr.CreditSpouse > 0 {
+		if spouse == nil {
+			return rows, fmt.Errorf("sleva na manžela/ku vyžaduje údaje o manželovi/manželce: %w", domain.ErrInvalidInput)
+		}
+		rows.SpouseFirst, rows.SpouseLast = splitPersonName(spouse.SpouseName)
+		rows.SpouseRC = stripBirthNumberSeparators(spouse.SpouseBirthNumber)
+		if spouse.SpouseZTP {
+			rows.Manztpp = ToWholeCZK(itr.CreditSpouse)
+			rows.MManz = spouse.MonthsClaimed
+		} else {
+			rows.Op15_1c = ToWholeCZK(itr.CreditSpouse)
+			rows.MVyzmanzl = spouse.MonthsClaimed
+		}
+	}
+
+	if itr.CreditDisability12 > 0 {
+		rows.Op15_1d = ToWholeCZK(itr.CreditDisability12)
+		rows.MCinvduch = disabilityMonths
+	}
+	if itr.CreditDisability3 > 0 {
+		rows.Op15_1e1 = ToWholeCZK(itr.CreditDisability3)
+		rows.MInvduch = disabilityMonths
+	}
+	if itr.CreditDisabilityZTPP > 0 {
+		rows.Op15_1e2 = ToWholeCZK(itr.CreditDisabilityZTPP)
+		rows.MZtpp = disabilityMonths
+	}
+	return rows, nil
+}
+
 // GenerateIncomeTaxXML produces EPO XML bytes from an IncomeTaxReturn, settings map,
-// and the list of child-credit entries used by the §35c calculation. The children
+// the list of child-credit entries used by the §35c calculation and the spouse
+// record behind the spouse credit (nil when none is claimed). The children
 // slice is required by EPO's ř.72 formula control even though the aggregate amount
 // is already in itr.ChildBenefit -- omitting it triggers a "kc_dazvyhod neodpovídá
-// výpočtu" warning.
-func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]string, children []domain.TaxChildCredit) ([]byte, error) {
+// výpočtu" warning. The spouse supplies the identity and months of rows 65a/65b.
+func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]string, children []domain.TaxChildCredit, spouse *domain.TaxSpouseCredit) ([]byte, error) {
 	if itr == nil {
 		return nil, fmt.Errorf("income tax return is nil: %w", domain.ErrInvalidInput)
 	}
@@ -239,13 +308,28 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	daSlezap := fmt.Sprintf("%d.00", dan16)
 	daCelod13 := dan16
 
-	uhrnSlevy35ba := ToWholeCZK(itr.TotalCredits) // ř.70
-	creditBasic := ToWholeCZK(itr.CreditBasic)    // ř.64 (§35ba 1a)
-	taxAfter35ba := daCelod13 - uhrnSlevy35ba     // ř.71 = ř.60 - ř.70
+	rows, err := buildCreditRows(itr, spouse)
+	if err != nil {
+		return nil, err
+	}
+	creditBasic := ToWholeCZK(itr.CreditBasic) // ř.64 (§35ba 1a)
+	// ř.70 = ř.64 + ř.65a + ř.65b + ř.66 + ř.67 + ř.68 (ř.62, 62a, 63 are not used by OSVC).
+	uhrnSlevy35ba := creditBasic + rows.sum()
+	if totalCredits := ToWholeCZK(itr.TotalCredits); uhrnSlevy35ba != totalCredits {
+		return nil, fmt.Errorf("úhrn slev (ř.70) %d Kč nesouhlasí se součtem řádků 64-68 %d Kč: %w", totalCredits, uhrnSlevy35ba, domain.ErrInvalidInput)
+	}
+	taxAfter35ba := daCelod13 - uhrnSlevy35ba // ř.71 = ř.60 - ř.70
 	if taxAfter35ba < 0 {
 		taxAfter35ba = 0
 	}
-	childBenefit := ToWholeCZK(itr.ChildBenefit)                        // ř.72
+	childBenefit := ToWholeCZK(itr.ChildBenefit) // ř.72
+	if childBenefit > 0 && len(children) == 0 {
+		return nil, fmt.Errorf("daňové zvýhodnění na děti vyžaduje seznam dětí (ř.72 se počítá z měsíců): %w", domain.ErrInvalidInput)
+	}
+	vetaT, err := buildPriloha1(itr, settings, revenue, expenses, zd7Signed)
+	if err != nil {
+		return nil, err
+	}
 	slevy35c, danbonus := splitChildBenefit(taxAfter35ba, childBenefit) // ř.73 / ř.76
 	taxAfter35c := taxAfter35ba - slevy35c                              // ř.74
 	danCelk := taxAfter35c                                              // ř.75 (= ř.74 + ř.74a; no separate-base tax tracked)
@@ -275,6 +359,19 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			DaSlezap:      daSlezap,
 			DaCelod13:     daCelod13,
 			KcOp15_1a:     creditBasic,
+			ManzJmeno:     rows.SpouseFirst,
+			ManzPrijmeni:  rows.SpouseLast,
+			ManzRCislo:    rows.SpouseRC,
+			KcOp15_1c:     rows.Op15_1c,
+			MVyzmanzl:     rows.MVyzmanzl,
+			KcManztpp:     rows.Manztpp,
+			MManz:         rows.MManz,
+			KcOp15_1d:     rows.Op15_1d,
+			MCinvduch:     rows.MCinvduch,
+			KcOp15_1e1:    rows.Op15_1e1,
+			MInvduch:      rows.MInvduch,
+			KcOp15_1e2:    rows.Op15_1e2,
+			MZtpp:         rows.MZtpp,
 			UhrnSlevy35ba: uhrnSlevy35ba,
 			DaSlevy35ba:   taxAfter35ba,
 			MDeti:         cm.Deti,
@@ -351,7 +448,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			Potv36:     itr.Section6CertsWithholding,
 			PotvDazvyh: itr.Section6CertsBonus,
 		},
-		VetaT: buildPriloha1(itr, settings, revenue, expenses, zd7Signed),
+		VetaT: vetaT,
 	}
 
 	// Příloha č. 2 (§9 + §10). EPO requires it whenever ř.39 or ř.40 (kc_zd9 / kc_zd10)
@@ -472,10 +569,15 @@ func padNACEto6(code string) string {
 //  2. c_okec (shared NACE code already used for VAT XML) -- this is the existing
 //     "NACE kód činnosti" field in firma settings (e.g. 582900)
 //
-// If both are empty, c_nace is omitted; EPO will warn but the user can fill it
-// manually in the portal. Invented defaults must NOT be used because EPO
-// validates against the okec číselník.
-func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, revenue, expenses, zd7Signed int64) *DPFOVetaT {
+// If both are empty and §7 revenue is reported, generation fails: EPO control 1670
+// rejects a part-B return without c_nace, and invented defaults must NOT be used
+// because EPO validates against the okec číselník.
+//
+// uc_soust ("typ účetní soustavy") is emitted as 1 (daňová evidence) for actual-expense
+// filers. The XSD controls say that a filled tax-records table requires uc_soust = 1 and
+// that with tax records or accounting the flat-rate expenses (vyd7proc = "A") cannot be
+// claimed, so flat-rate filers leave uc_soust out. The app supports tax records only.
+func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, revenue, expenses, zd7Signed int64) (*DPFOVetaT, error) {
 	months := 12
 	if v, err := strconv.Atoi(settings["main_activity_months"]); err == nil && v > 0 && v <= 12 {
 		months = v
@@ -483,6 +585,9 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, reve
 	nace := settings["main_activity_nace"]
 	if nace == "" {
 		nace = settings["c_okec"]
+	}
+	if revenue > 0 && padNACEto6(nace) == "" {
+		return nil, fmt.Errorf("kód hlavní činnosti CZ-NACE (c_okec) není vyplněn v nastavení firmy: %w", domain.ErrInvalidInput)
 	}
 	// ř.101 (kc_prij7) and ř.102 (kc_vyd7) are required for both actual-expense and
 	// flat-rate filers -- EPO control fires when ř.101 != celk_pr_prij7 / ř.102 != celk_pr_vyd7.
@@ -506,6 +611,7 @@ func buildPriloha1(itr *domain.IncomeTaxReturn, settings map[string]string, reve
 		v.CelkPrVyd7 = expenses
 	} else {
 		v.Vyd7proc = "N"
+		v.UcSoust = "1"
 	}
-	return v
+	return v, nil
 }

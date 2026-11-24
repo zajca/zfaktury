@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -659,6 +660,209 @@ func TestSocialInsurance_SetActivityMonths_Filed_Conflict(t *testing.T) {
 
 	if w.Code != http.StatusConflict {
 		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusConflict, w.Body.String())
+	}
+}
+
+func putSocialInsurance(t *testing.T, r *chi.Mux, id int64, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/social-insurance/%d/%s", id, path), bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func decodeSocialInsurance(t *testing.T, w *httptest.ResponseRecorder) socialInsuranceResponse {
+	t.Helper()
+	var resp socialInsuranceResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v, body: %s", err, w.Body.String())
+	}
+	return resp
+}
+
+func TestSocialInsurance_SetSecondaryActivity(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+
+	w := putSocialInsurance(t, r, id, "secondary-activity", `{"months":[7,8,9,10,11,12],"reason":"employment"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	resp := decodeSocialInsurance(t, w)
+
+	if len(resp.SecondaryMonths) != 6 || resp.SecondaryReason != "employment" {
+		t.Errorf("secondary = %v/%q, want 6 months/employment", resp.SecondaryMonths, resp.SecondaryReason)
+	}
+	// No income: the secondary part is below the decisive amount, so only the
+	// main months carry a minimum base.
+	if resp.SecondaryDecisive != 5_586_400 {
+		t.Errorf("SecondaryDecisive = %d, want 5586400 halere (111 736 - 6 x 9 312 CZK)", resp.SecondaryDecisive)
+	}
+	if resp.SumBase != resp.FinalAssessmentBase || resp.InsuredBase != resp.FinalAssessmentBase {
+		t.Errorf("sum/insured = %d/%d, want the final base %d", resp.SumBase, resp.InsuredBase, resp.FinalAssessmentBase)
+	}
+	if resp.EmploymentBase != nil || resp.ReportedEmployment != nil {
+		t.Errorf("employment = %v/%v, want nil", resp.EmploymentBase, resp.ReportedEmployment)
+	}
+	if !strings.Contains(w.Body.String(), `"secondary_months":[7,8,9,10,11,12]`) {
+		t.Errorf("secondary_months not in the response: %s", w.Body.String())
+	}
+}
+
+func TestSocialInsurance_SetSecondaryActivity_Clear(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+	if w := putSocialInsurance(t, r, id, "secondary-activity", `{"months":[1],"reason":"student"}`); w.Code != http.StatusOK {
+		t.Fatalf("set: status = %d, body: %s", w.Code, w.Body.String())
+	}
+
+	w := putSocialInsurance(t, r, id, "secondary-activity", `{"months":[],"reason":""}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("clear: status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	resp := decodeSocialInsurance(t, w)
+	if len(resp.SecondaryMonths) != 0 || resp.SecondaryReason != "" {
+		t.Errorf("secondary = %v/%q, want cleared", resp.SecondaryMonths, resp.SecondaryReason)
+	}
+	if !strings.Contains(w.Body.String(), `"secondary_months":[]`) {
+		t.Errorf("secondary_months is not an empty array: %s", w.Body.String())
+	}
+}
+
+func TestSocialInsurance_SetSecondaryActivity_Invalid(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want int
+	}{
+		{"months without a reason", `{"months":[1],"reason":""}`, http.StatusBadRequest},
+		{"reason without months", `{"months":[],"reason":"care"}`, http.StatusBadRequest},
+		{"unknown reason", `{"months":[1],"reason":"hobby"}`, http.StatusBadRequest},
+		{"month out of range", `{"months":[13],"reason":"care"}`, http.StatusBadRequest},
+		{"broken JSON", `{`, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, _ := setupSocialInsuranceRouter(t)
+			id := createSocialInsurance(t, r, 2025)
+			if w := putSocialInsurance(t, r, id, "secondary-activity", tt.body); w.Code != tt.want {
+				t.Errorf("status = %d, want %d, body: %s", w.Code, tt.want, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestSocialInsurance_SetSecondaryActivity_ReturnsOnlyTheCzechSentence(t *testing.T) {
+	tests := []struct {
+		body string
+		want string
+	}{
+		{`{"months":[1],"reason":""}`, "vyberte důvod vedlejší činnosti"},
+		{`{"months":[],"reason":"care"}`, "důvod vedlejší činnosti vyžaduje alespoň jeden měsíc"},
+	}
+	for _, tt := range tests {
+		r, _ := setupSocialInsuranceRouter(t)
+		id := createSocialInsurance(t, r, 2025)
+		w := putSocialInsurance(t, r, id, "secondary-activity", tt.body)
+		var resp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("decode error: %v", err)
+		}
+		if w.Code != http.StatusBadRequest || resp.Error != tt.want {
+			t.Errorf("status/error = %d/%q, want 400/%q", w.Code, resp.Error, tt.want)
+		}
+	}
+}
+
+func TestSocialInsurance_SetSecondaryActivity_Filed_Conflict(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/social-insurance/%d/mark-filed", id), nil)
+	filed := httptest.NewRecorder()
+	r.ServeHTTP(filed, req)
+	if filed.Code != http.StatusOK {
+		t.Fatalf("mark-filed: status = %d, want %d", filed.Code, http.StatusOK)
+	}
+
+	if w := putSocialInsurance(t, r, id, "secondary-activity", `{"months":[1],"reason":"care"}`); w.Code != http.StatusConflict {
+		t.Errorf("secondary: status = %d, want %d, body: %s", w.Code, http.StatusConflict, w.Body.String())
+	}
+	if w := putSocialInsurance(t, r, id, "employment-base", `{"employment_assessment_base":100000}`); w.Code != http.StatusConflict {
+		t.Errorf("employment: status = %d, want %d, body: %s", w.Code, http.StatusConflict, w.Body.String())
+	}
+}
+
+func TestSocialInsurance_SetEmploymentBase(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	id := createSocialInsurance(t, r, 2025)
+
+	// 30 000 CZK fits below the maximum with the minimum base, so it is stored
+	// but not reported.
+	w := putSocialInsurance(t, r, id, "employment-base", `{"employment_assessment_base":3000000}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	resp := decodeSocialInsurance(t, w)
+	if resp.EmploymentBase == nil || *resp.EmploymentBase != 3_000_000 {
+		t.Errorf("EmploymentBase = %v, want 3000000", resp.EmploymentBase)
+	}
+	if resp.ReportedEmployment != nil {
+		t.Errorf("ReportedEmployment = %d, want nil", *resp.ReportedEmployment)
+	}
+	if !strings.Contains(w.Body.String(), `"reported_employment_base":null`) {
+		t.Errorf("reported_employment_base is not null: %s", w.Body.String())
+	}
+
+	// 2 300 000 CZK reaches the maximum, so it is reported and nothing is insured.
+	w = putSocialInsurance(t, r, id, "employment-base", `{"employment_assessment_base":230000000}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	resp = decodeSocialInsurance(t, w)
+	if resp.ReportedEmployment == nil || *resp.ReportedEmployment != 230_000_000 || resp.InsuredBase != 0 || resp.TotalInsurance != 0 {
+		t.Errorf("reported/insured/total = %v/%d/%d, want 230000000/0/0", resp.ReportedEmployment, resp.InsuredBase, resp.TotalInsurance)
+	}
+
+	w = putSocialInsurance(t, r, id, "employment-base", `{"employment_assessment_base":null}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("remove: status = %d, want %d, body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	resp = decodeSocialInsurance(t, w)
+	if resp.EmploymentBase != nil || resp.ReportedEmployment != nil || resp.InsuredBase != resp.FinalAssessmentBase {
+		t.Errorf("after removal = %v/%v/%d, want nil/nil/%d", resp.EmploymentBase, resp.ReportedEmployment, resp.InsuredBase, resp.FinalAssessmentBase)
+	}
+}
+
+func TestSocialInsurance_SetEmploymentBase_Invalid(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"negative", `{"employment_assessment_base":-100}`},
+		{"halere", `{"employment_assessment_base":1234567}`},
+		{"broken JSON", `{`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, _ := setupSocialInsuranceRouter(t)
+			id := createSocialInsurance(t, r, 2025)
+			if w := putSocialInsurance(t, r, id, "employment-base", tt.body); w.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestSocialInsurance_SetSecondaryActivity_NotFound(t *testing.T) {
+	r, _ := setupSocialInsuranceRouter(t)
+	if w := putSocialInsurance(t, r, 99999, "secondary-activity", `{"months":[1],"reason":"care"}`); w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusNotFound, w.Body.String())
+	}
+	if w := putSocialInsurance(t, r, 99999, "employment-base", `{"employment_assessment_base":null}`); w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusNotFound, w.Body.String())
 	}
 }
 

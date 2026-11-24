@@ -27,6 +27,9 @@ const socialInsuranceColumns = `id, year, filing_type, activity_months,
 	assessment_base, min_assessment_base, final_assessment_base,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 	new_monthly_base, filing_method, advance_start_month, advance_periods, warnings,
+	secondary_months, secondary_reason, employment_assessment_base, reported_employment_base,
+	main_tax_base_share, secondary_tax_base_share, secondary_assessment_base,
+	main_partial_base, secondary_partial_base, secondary_decisive_amount, sum_base, insured_base,
 	xml_data, status, filed_at, created_at, updated_at`
 
 // advancePeriodRow is the JSON form of a domain.AdvancePeriod in the
@@ -102,6 +105,15 @@ func nullableAmount(amount *domain.Amount) any {
 	return int64(*amount)
 }
 
+// optionalAmount converts a nullable database integer into an optional amount.
+func optionalAmount(value sql.NullInt64) *domain.Amount {
+	if !value.Valid {
+		return nil
+	}
+	amount := domain.Amount(value.Int64)
+	return &amount
+}
+
 // scanSocialInsuranceOverview scans a SocialInsuranceOverview from a row.
 func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, error) {
 	sio := &domain.SocialInsuranceOverview{}
@@ -110,7 +122,9 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 	var xmlData []byte
 	var activityMonths int64
 	var newMonthlyBase sql.NullInt64
-	var filingMethod, advancePeriods, warnings string
+	var filingMethod, advancePeriods, warnings, secondaryReason string
+	var secondaryMonths int64
+	var employmentBase, reportedEmploymentBase sql.NullInt64
 
 	err := s.Scan(
 		&sio.ID, &sio.Year, &sio.FilingType, &activityMonths,
@@ -118,12 +132,23 @@ func scanSocialInsuranceOverview(s scanner) (*domain.SocialInsuranceOverview, er
 		&sio.AssessmentBase, &sio.MinAssessmentBase, &sio.FinalAssessmentBase,
 		&sio.InsuranceRate, &sio.TotalInsurance, &sio.Prepayments, &sio.Difference, &sio.NewMonthlyPrepay,
 		&newMonthlyBase, &filingMethod, &sio.AdvanceStartMonth, &advancePeriods, &warnings,
+		&secondaryMonths, &secondaryReason, &employmentBase, &reportedEmploymentBase,
+		&sio.MainTaxBaseShare, &sio.SecondaryTaxBaseShare, &sio.SecondaryAssessmentBase,
+		&sio.MainPartialBase, &sio.SecondaryPartialBase, &sio.SecondaryDecisiveAmount, &sio.SumBase, &sio.InsuredBase,
 		&xmlData, &sio.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	if secondaryMonths < 0 || secondaryMonths > int64(domain.FullYearActivityMonths) {
+		return nil, fmt.Errorf("secondary_months %d out of range 0..4095", secondaryMonths)
+	}
+	sio.SecondaryMonths = domain.ActivityMonths(secondaryMonths)
+	sio.SecondaryReason = domain.SecondaryActivityReason(secondaryReason)
+	sio.EmploymentAssessmentBase = optionalAmount(employmentBase)
+	sio.ReportedEmploymentBase = optionalAmount(reportedEmploymentBase)
 
 	sio.FilingMethod = domain.FilingMethod(filingMethod)
 	sio.AdvancePeriods, err = decodeAdvancePeriods(advancePeriods)
@@ -179,13 +204,19 @@ func (r *SocialInsuranceOverviewRepository) Create(ctx context.Context, sio *dom
 			assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
 			new_monthly_base, filing_method, advance_start_month, advance_periods, warnings,
+			secondary_months, secondary_reason, employment_assessment_base, reported_employment_base,
+			main_tax_base_share, secondary_tax_base_share, secondary_assessment_base,
+			main_partial_base, secondary_partial_base, secondary_decisive_amount, sum_base, insured_base,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
 		sio.TotalRevenue, sio.TotalExpenses, sio.TaxBase,
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
 		nullableAmount(sio.NewMonthlyBase), string(sio.FilingMethod), sio.AdvanceStartMonth, advancePeriods, joinWarnings(sio.Warnings),
+		int64(sio.SecondaryMonths), string(sio.SecondaryReason), nullableAmount(sio.EmploymentAssessmentBase), nullableAmount(sio.ReportedEmploymentBase),
+		sio.MainTaxBaseShare, sio.SecondaryTaxBaseShare, sio.SecondaryAssessmentBase,
+		sio.MainPartialBase, sio.SecondaryPartialBase, sio.SecondaryDecisiveAmount, sio.SumBase, sio.InsuredBase,
 		nil, sio.Status, nil,
 		sio.CreatedAt.Format(time.RFC3339), sio.UpdatedAt.Format(time.RFC3339),
 	)
@@ -221,6 +252,9 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 			assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
 			new_monthly_base = ?, filing_method = ?, advance_start_month = ?, advance_periods = ?, warnings = ?,
+			secondary_months = ?, secondary_reason = ?, employment_assessment_base = ?, reported_employment_base = ?,
+			main_tax_base_share = ?, secondary_tax_base_share = ?, secondary_assessment_base = ?,
+			main_partial_base = ?, secondary_partial_base = ?, secondary_decisive_amount = ?, sum_base = ?, insured_base = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		sio.Year, sio.FilingType, int64(sio.ActivityMonths),
@@ -228,6 +262,9 @@ func (r *SocialInsuranceOverviewRepository) Update(ctx context.Context, sio *dom
 		sio.AssessmentBase, sio.MinAssessmentBase, sio.FinalAssessmentBase,
 		sio.InsuranceRate, sio.TotalInsurance, sio.Prepayments, sio.Difference, sio.NewMonthlyPrepay,
 		nullableAmount(sio.NewMonthlyBase), string(sio.FilingMethod), sio.AdvanceStartMonth, advancePeriods, joinWarnings(sio.Warnings),
+		int64(sio.SecondaryMonths), string(sio.SecondaryReason), nullableAmount(sio.EmploymentAssessmentBase), nullableAmount(sio.ReportedEmploymentBase),
+		sio.MainTaxBaseShare, sio.SecondaryTaxBaseShare, sio.SecondaryAssessmentBase,
+		sio.MainPartialBase, sio.SecondaryPartialBase, sio.SecondaryDecisiveAmount, sio.SumBase, sio.InsuredBase,
 		sio.XMLData, sio.Status, filedAt,
 		sio.UpdatedAt.Format(time.RFC3339), sio.ID,
 	)

@@ -34,26 +34,35 @@ type MonthlyBasePeriod struct {
 
 // TaxYearConstants holds tax computation constants for a specific year.
 type TaxYearConstants struct {
-	ProgressiveThreshold   domain.Amount         // prah pro 23% sazbu (in halere)
-	BasicCredit            domain.Amount         // sleva na poplatnika
-	SpouseCredit           domain.Amount         // sleva na manzela/ku
-	StudentCredit          domain.Amount         // student
-	DisabilityCredit1      domain.Amount         // invalidita 1. a 2. stupen
-	DisabilityCredit3      domain.Amount         // invalidita 3. stupen
-	DisabilityZTPP         domain.Amount         // drzitel prukazu ZTP/P
-	ChildBenefit1          domain.Amount         // 1. dite
-	ChildBenefit2          domain.Amount         // 2. dite
-	ChildBenefit3Plus      domain.Amount         // 3+ dite
-	ChildBenefitZTP        domain.Amount         // ZTP prirazka (double)
-	SocialMinMonthly       domain.Amount         // min mesicni vym. zaklad CSSZ pro rocni Prehled (platny pro vsechny mesice roku)
-	SocialRate             int                   // permille*10, e.g. 292 = 29.2%
-	SocialMaxAnnualBase    domain.Amount         // max rocni vym. zaklad CSSZ (48nasobek prumerne mzdy)
-	SocialMinAdvanceBases  []MonthlyBasePeriod   // min mesicni vym. zaklad CSSZ pro zalohy placene v tomto roce, po obdobich
-	HealthMinMonthly       domain.Amount         // min mesicni vym. zaklad ZP
-	HealthRate             int                   // permille*10, e.g. 135 = 13.5%
-	FlatRateCaps           map[int]domain.Amount // percent -> max halere amount
-	TimeTestYears          int                   // years to hold for time test exemption
-	SecurityExemptionLimit domain.Amount         // max yearly gross time-test income that stays exempt (0 = no limit)
+	ProgressiveThreshold  domain.Amount       // prah pro 23% sazbu (in halere)
+	BasicCredit           domain.Amount       // sleva na poplatnika
+	SpouseCredit          domain.Amount       // sleva na manzela/ku
+	StudentCredit         domain.Amount       // student
+	DisabilityCredit1     domain.Amount       // invalidita 1. a 2. stupen
+	DisabilityCredit3     domain.Amount       // invalidita 3. stupen
+	DisabilityZTPP        domain.Amount       // drzitel prukazu ZTP/P
+	ChildBenefit1         domain.Amount       // 1. dite
+	ChildBenefit2         domain.Amount       // 2. dite
+	ChildBenefit3Plus     domain.Amount       // 3+ dite
+	ChildBenefitZTP       domain.Amount       // ZTP prirazka (double)
+	SocialMinMonthly      domain.Amount       // min mesicni vym. zaklad CSSZ pro rocni Prehled (platny pro vsechny mesice roku)
+	SocialRate            int                 // permille*10, e.g. 292 = 29.2%
+	SocialMaxAnnualBase   domain.Amount       // max rocni vym. zaklad CSSZ (48nasobek prumerne mzdy)
+	SocialMinAdvanceBases []MonthlyBasePeriod // min mesicni vym. zaklad CSSZ pro zalohy placene v tomto roce, po obdobich
+	// SocialSecondaryMinMonthly is the minimum monthly base of a secondary
+	// activity (vedlejsi SVC), for the annual overview and for advances paid
+	// in this year.
+	SocialSecondaryMinMonthly domain.Amount
+	// SocialDecisiveAmount is the rozhodna castka of a full year of secondary
+	// activity; it is reduced by SocialDecisiveAmountMonthlyStep for each month
+	// without secondary activity.
+	SocialDecisiveAmount            domain.Amount
+	SocialDecisiveAmountMonthlyStep domain.Amount
+	HealthMinMonthly                domain.Amount         // min mesicni vym. zaklad ZP
+	HealthRate                      int                   // permille*10, e.g. 135 = 13.5%
+	FlatRateCaps                    map[int]domain.Amount // percent -> max halere amount
+	TimeTestYears                   int                   // years to hold for time test exemption
+	SecurityExemptionLimit          domain.Amount         // max yearly gross time-test income that stays exempt (0 = no limit)
 
 	SpouseIncomeLimit           domain.Amount
 	DeductionCapMortgage        domain.Amount
@@ -147,6 +156,30 @@ func validateSocialMinAdvanceBases(id string, periods []MonthlyBasePeriod) error
 	return errors.Join(errs...)
 }
 
+// validateSocialSecondary checks the secondary-activity constants: all are
+// positive and the monthly step is the decisive amount divided by 12, rounded up
+// to whole CZK.
+func validateSocialSecondary(id string, c TaxYearConstants) error {
+	var errs []error
+	if c.SocialSecondaryMinMonthly <= 0 {
+		errs = append(errs, fmt.Errorf("%s social secondary minimum monthly base must be positive: %w", id, domain.ErrInvalidInput))
+	}
+	if c.SocialDecisiveAmount <= 0 {
+		errs = append(errs, fmt.Errorf("%s social decisive amount must be positive: %w", id, domain.ErrInvalidInput))
+	}
+	if c.SocialDecisiveAmountMonthlyStep <= 0 {
+		errs = append(errs, fmt.Errorf("%s social decisive amount monthly step must be positive: %w", id, domain.ErrInvalidInput))
+	}
+	if c.SocialDecisiveAmount > 0 && c.SocialDecisiveAmountMonthlyStep > 0 {
+		step := c.SocialDecisiveAmountMonthlyStep
+		wholeCZK := domain.NewAmount(1, 0)
+		if step%wholeCZK != 0 || step*12 < c.SocialDecisiveAmount || (step-wholeCZK)*12 >= c.SocialDecisiveAmount {
+			errs = append(errs, fmt.Errorf("%s social decisive amount step %d is not the amount %d divided by 12 rounded up: %w", id, step, c.SocialDecisiveAmount, domain.ErrInvalidInput))
+		}
+	}
+	return errors.Join(errs...)
+}
+
 // ValidateRuleSet checks structural invariants that would make a rule set
 // unsafe for calculation if broken.
 func ValidateRuleSet(r RuleSet) error {
@@ -174,6 +207,9 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if r.Constants.SocialMaxAnnualBase < r.Constants.SocialMinMonthly*12 {
 		errs = append(errs, fmt.Errorf("%s social max annual base %d is below the annual minimum base %d: %w", r.ID, r.Constants.SocialMaxAnnualBase, r.Constants.SocialMinMonthly*12, domain.ErrInvalidInput))
+	}
+	if err := validateSocialSecondary(r.ID, r.Constants); err != nil {
+		errs = append(errs, err)
 	}
 	if len(r.Constants.FlatRateCaps) == 0 {
 		errs = append(errs, fmt.Errorf("%s flat-rate caps are empty: %w", r.ID, domain.ErrInvalidInput))

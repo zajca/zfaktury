@@ -24,4 +24,8 @@ const (
 	// any month of activity, so advances are not obligatory (§ 8 odst. 3 zákona
 	// č. 592/1992 Sb.).
 	WarningHealthAdvanceNotRequired = "health_advance_not_required"
+	// WarningSocialAdvanceNotRequired: the overview has only secondary activity
+	// and its income did not reach the decisive amount, so no social advance is
+	// due.
+	WarningSocialAdvanceNotRequired = "social_advance_not_required"
 )

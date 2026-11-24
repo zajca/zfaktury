@@ -200,6 +200,9 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	if err := sio.ActivityMonths.Validate(); err != nil {
 		return fmt.Errorf("validating stored activity months of social_insurance_overview %d: %w", sio.ID, err)
 	}
+	if err := domain.ValidateSecondaryActivity(sio.ActivityMonths, sio.SecondaryMonths, sio.SecondaryReason); err != nil {
+		return fmt.Errorf("validating secondary activity of social_insurance_overview %d: %w", sio.ID, err)
+	}
 
 	// Calculate annual base from invoices and expenses.
 	annualBase, err := CalculateAnnualBase(ctx, s.invoiceRepo, s.expenseRepo, sio.Year)
@@ -245,29 +248,27 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	if err != nil {
 		return err
 	}
-	var bounds *calc.AdvanceBaseBounds
-	if payment != nil {
-		bounds, err = calc.SocialAdvanceBoundsForMonth(*payment, startMonth)
-		if err != nil {
-			return fmt.Errorf("getting advance bounds for social insurance: %w", err)
-		}
-	}
-	insResult, err := calc.CalculateInsurance(calc.InsuranceInput{
-		Revenue:                annualBase.Revenue,
-		UsedExpenses:           usedExpenses,
-		MinMonthlyBase:         constants.SocialMinMonthly,
-		MaxAnnualBase:          constants.SocialMaxAnnualBase,
-		AssessmentBasePermille: 550,
-		RatePermille:           constants.SocialRate,
-		Prepayments:            socialTotal,
-		ActivityMonths:         sio.ActivityMonths.Count(),
-		AdvanceBounds:          bounds,
+	mainMonths := (sio.ActivityMonths &^ sio.SecondaryMonths).Count()
+	secondaryMonths := sio.SecondaryMonths.Count()
+	taxBase := max(annualBase.Revenue-usedExpenses, 0)
+	res, err := calc.CalculateCSSZOverview(calc.CSSZOverviewInput{
+		TaxBase:                   taxBase,
+		MainMonths:                mainMonths,
+		SecondaryMonths:           secondaryMonths,
+		MainMinMonthly:            constants.SocialMinMonthly,
+		SecondaryMinMonthly:       constants.SocialSecondaryMinMonthly,
+		MaxAnnualBase:             constants.SocialMaxAnnualBase,
+		DecisiveAmount:            constants.SocialDecisiveAmount,
+		DecisiveAmountMonthlyStep: constants.SocialDecisiveAmountMonthlyStep,
+		EmploymentBase:            sio.EmploymentAssessmentBase,
+		RatePermille:              constants.SocialRate,
+		Prepayments:               socialTotal,
 	})
 	if err != nil {
 		return fmt.Errorf("calculating social insurance: %w", err)
 	}
 
-	periods, err := calc.SocialAdvancePeriods(insResult.AssessmentBase, insResult.FinalAssessmentBase, sio.ActivityMonths.Count(), startMonth, payment, constants.SocialRate)
+	periods, err := calc.SocialAdvancePeriods(res.AdvanceComputedBase, res.FinalAssessmentBase, mainMonths+secondaryMonths, startMonth, payment, constants.SocialRate, sio.AdvanceAsSecondary())
 	if err != nil {
 		return fmt.Errorf("calculating social advance periods: %w", err)
 	}
@@ -278,21 +279,36 @@ func (s *SocialInsuranceService) applyRecalculatedAmounts(ctx context.Context, s
 	if payment == nil {
 		warnings = append(warnings, domain.WarningAdvanceMinimumMissing)
 	}
+	if mainMonths == 0 && !res.SecondaryParticipates {
+		// A secondary activity below the decisive amount is not insured, so no
+		// advance is due.
+		periods = []domain.AdvancePeriod{{FromMonth: startMonth}}
+		warnings = append(warnings, domain.WarningSocialAdvanceNotRequired)
+	}
 
 	sio.FilingMethod = tys.FilingMethod
 	sio.AdvanceStartMonth = startMonth
 	sio.AdvancePeriods = periods
 	sio.Warnings = warnings
-	sio.TaxBase = insResult.TaxBase
-	sio.AssessmentBase = insResult.AssessmentBase
-	sio.MinAssessmentBase = insResult.MinAssessmentBase
-	sio.FinalAssessmentBase = insResult.FinalAssessmentBase
+	sio.TaxBase = taxBase
+	sio.AssessmentBase = res.MainAssessmentBase
+	sio.MinAssessmentBase = res.MinAssessmentBase
+	sio.FinalAssessmentBase = res.FinalAssessmentBase
+	sio.MainTaxBaseShare = res.MainTaxBaseShare
+	sio.SecondaryTaxBaseShare = res.SecondaryTaxBaseShare
+	sio.SecondaryAssessmentBase = res.SecondaryAssessmentBase
+	sio.MainPartialBase = res.MainPartialBase
+	sio.SecondaryPartialBase = res.SecondaryPartialBase
+	sio.SecondaryDecisiveAmount = res.SecondaryDecisiveAmount
+	sio.ReportedEmploymentBase = res.ReportedEmploymentBase
+	sio.SumBase = res.SumBase
+	sio.InsuredBase = res.InsuredBase
 	sio.InsuranceRate = constants.SocialRate
-	sio.TotalInsurance = insResult.TotalInsurance
+	sio.TotalInsurance = res.TotalInsurance
 	sio.Prepayments = socialTotal
-	sio.Difference = insResult.Difference
-	sio.NewMonthlyPrepay = insResult.NewMonthlyPrepay
-	newMonthlyBase := insResult.NewMonthlyBase
+	sio.Difference = res.Difference
+	sio.NewMonthlyPrepay = periods[0].MonthlyPrepay
+	newMonthlyBase := periods[0].MonthlyBase
 	// The base is stored with the amounts it produced, so a later export reports
 	// ř. 35 and ř. 36 from the same calculation.
 	sio.NewMonthlyBase = &newMonthlyBase
@@ -331,6 +347,66 @@ func (s *SocialInsuranceService) SetActivityMonths(ctx context.Context, id int64
 		return nil, fmt.Errorf("updating social_insurance_overview after changing activity months: %w", err)
 	}
 
+	if s.audit != nil {
+		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
+	}
+	return sio, nil
+}
+
+// SetSecondaryActivity stores the months of secondary activity with their
+// reason and recalculates the overview. Empty months with an empty reason clear
+// the secondary activity. The overview is written once, only after the
+// recalculation succeeds.
+func (s *SocialInsuranceService) SetSecondaryActivity(ctx context.Context, id int64, months domain.ActivityMonths, reason domain.SecondaryActivityReason) (*domain.SocialInsuranceOverview, error) {
+	return s.changeAndRecalculate(ctx, id, "secondary activity", func(sio *domain.SocialInsuranceOverview) error {
+		if err := domain.ValidateSecondaryActivity(sio.ActivityMonths, months, reason); err != nil {
+			return fmt.Errorf("validating secondary activity: %w", err)
+		}
+		sio.SecondaryMonths = months
+		sio.SecondaryReason = reason
+		return nil
+	})
+}
+
+// SetEmploymentBase stores the employment assessment base entered by the user
+// (nil removes it) and recalculates the overview.
+func (s *SocialInsuranceService) SetEmploymentBase(ctx context.Context, id int64, base *domain.Amount) (*domain.SocialInsuranceOverview, error) {
+	return s.changeAndRecalculate(ctx, id, "employment base", func(sio *domain.SocialInsuranceOverview) error {
+		if base != nil && (*base < 0 || *base%domain.NewAmount(1, 0) != 0) {
+			return fmt.Errorf("employment assessment base %d must be whole CZK and not negative: %w", *base, domain.ErrInvalidInput)
+		}
+		if base == nil {
+			sio.EmploymentAssessmentBase = nil
+			return nil
+		}
+		value := *base
+		sio.EmploymentAssessmentBase = &value
+		return nil
+	})
+}
+
+// changeAndRecalculate loads an unfiled overview, applies change, recalculates
+// and writes it once.
+func (s *SocialInsuranceService) changeAndRecalculate(ctx context.Context, id int64, what string, change func(*domain.SocialInsuranceOverview) error) (*domain.SocialInsuranceOverview, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("social_insurance_overview ID is required: %w", domain.ErrInvalidInput)
+	}
+	sio, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching social_insurance_overview for %s: %w", what, err)
+	}
+	if sio.Status == domain.FilingStatusFiled {
+		return nil, domain.ErrFilingAlreadyFiled
+	}
+	if err := change(sio); err != nil {
+		return nil, err
+	}
+	if err := s.applyRecalculatedAmounts(ctx, sio); err != nil {
+		return nil, err
+	}
+	if err := s.repo.Update(ctx, sio); err != nil {
+		return nil, fmt.Errorf("updating social_insurance_overview after changing %s: %w", what, err)
+	}
 	if s.audit != nil {
 		s.audit.Log(ctx, "social_insurance", id, "update", nil, sio)
 	}
@@ -463,9 +539,12 @@ func (s *SocialInsuranceService) moveAdvanceStart(sio *domain.SocialInsuranceOve
 	if err != nil {
 		return err
 	}
-	periods, err := calc.SocialAdvancePeriods(sio.AssessmentBase, sio.FinalAssessmentBase, sio.ActivityMonths.Count(), start, payment, sio.InsuranceRate)
+	periods, err := calc.SocialAdvancePeriods(calc.SocialAdvanceComputedBase(sio.TaxBase), sio.FinalAssessmentBase, sio.ActivityMonths.Count(), start, payment, sio.InsuranceRate, sio.AdvanceAsSecondary())
 	if err != nil {
 		return fmt.Errorf("calculating social advance periods: %w", err)
+	}
+	if sio.ActivityMonths&^sio.SecondaryMonths == 0 && sio.SecondaryAssessmentBase == 0 {
+		periods = []domain.AdvancePeriod{{FromMonth: start}}
 	}
 	sio.AdvanceStartMonth = start
 	sio.AdvancePeriods = periods

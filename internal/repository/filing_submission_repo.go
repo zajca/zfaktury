@@ -186,7 +186,9 @@ func (r *FilingSubmissionRepository) ResolveNotSent(ctx context.Context, id int6
 // domain.ErrNotFound, one in another status domain.ErrSubmissionNotResolvable;
 // a resolvable one the update still skipped is reported as conflict.
 func (r *FilingSubmissionRepository) resolve(ctx context.Context, id int64, what string, conflict error, query string, head, tail []any) error {
-	args := append(head, id, string(domain.SubmissionSending), string(domain.SubmissionUnknown))
+	args := make([]any, 0, len(head)+3+len(tail))
+	args = append(args, head...)
+	args = append(args, id, string(domain.SubmissionSending), string(domain.SubmissionUnknown))
 	args = append(args, tail...)
 	err := r.updateOne(ctx, what, query, args...)
 	if !errors.Is(err, domain.ErrNotFound) {

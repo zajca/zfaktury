@@ -9,7 +9,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /home/zajca/Code/Me/ZFaktury/.claude/hooks/pre-commit-lint.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/pre-commit-lint.sh",
+            "timeout": 1200
           }
         ]
       }
@@ -20,7 +21,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /home/zajca/Code/Me/ZFaktury/.claude/hooks/post-edit-format.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/post-edit-format.sh",
+            "timeout": 60
           }
         ]
       }

@@ -28,6 +28,11 @@ var (
 	// Settings errors
 	ErrMissingSetting = errors.New("required setting not configured")
 
+	// ErrKeyringUnavailable means the OS keyring cannot be reached (for example
+	// no Secret Service on a headless Linux). Credentials are never stored
+	// anywhere else.
+	ErrKeyringUnavailable = errors.New("system keyring unavailable")
+
 	// Reminder errors
 	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")
 	ErrNoCustomerEmail   = errors.New("customer has no email address")

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,11 +24,17 @@ import (
 	"github.com/zajca/zfaktury/internal/isdoc"
 	"github.com/zajca/zfaktury/internal/pdf"
 	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/secrets"
 	"github.com/zajca/zfaktury/internal/service"
 	"github.com/zajca/zfaktury/internal/service/cnb"
 	"github.com/zajca/zfaktury/internal/service/email"
 	"github.com/zajca/zfaktury/internal/service/ocr"
 )
+
+// listenHost is the only address the HTTP server binds to. The ISDS credentials
+// API reads it through RouterConfig.BindHost and refuses to work unless it is
+// a loopback address.
+const listenHost = "127.0.0.1"
 
 // App holds the wired application components.
 type App struct {
@@ -142,7 +149,7 @@ func (a *App) Config() *config.Config {
 
 // ListenAndServe starts the HTTP server and blocks until ctx is cancelled.
 func (a *App) ListenAndServe(ctx context.Context) error {
-	addr := fmt.Sprintf("127.0.0.1:%d", a.cfg.Server.Port)
+	addr := net.JoinHostPort(listenHost, strconv.Itoa(a.cfg.Server.Port))
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      a.router,
@@ -176,7 +183,7 @@ func (a *App) ListenAndServe(ctx context.Context) error {
 // ListenAndServeOnFreePort starts the HTTP server on a random free port
 // and returns the listener address. The server runs until ctx is cancelled.
 func (a *App) ListenAndServeOnFreePort(ctx context.Context) (net.Addr, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := net.Listen("tcp", net.JoinHostPort(listenHost, "0"))
 	if err != nil {
 		return nil, fmt.Errorf("listening on free port: %w", err)
 	}
@@ -388,6 +395,9 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 		service.EPOKindIncomeTax:        incomeTaxSvc,
 	}, epoClient)
 
+	// Wire the data-box credentials service over the OS keyring.
+	isdsCredentialsSvc := service.NewISDSCredentialsService(secrets.NewISDSStore())
+
 	// Wire dashboard and report repos/services.
 	dashboardRepo := repository.NewDashboardRepository(db)
 	dashboardSvc := service.NewDashboardService(dashboardRepo)
@@ -406,8 +416,9 @@ func wireRouter(cfg *config.Config, db *sql.DB) *chi.Mux {
 	reminderRepo := repository.NewReminderRepository(db)
 	reminderSvc := service.NewReminderService(reminderRepo, invoiceRepo, emailSender, settingsSvc)
 
-	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, epoSvc, handler.RouterConfig{
-		DevMode: cfg.Server.Dev,
-		DataDir: cfg.DataDir,
+	return handler.NewRouter(contactSvc, invoiceSvc, expenseSvc, settingsSvc, sequenceSvc, categorySvc, documentSvc, recurringInvoiceSvc, recurringExpenseSvc, ocrSvc, importSvc, overdueSvc, reminderSvc, cnbClient, pdfGen, isdocGen, vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, incomeTaxBundleSvc, socialInsuranceSvc, healthInsuranceSvc, taxYearSettingsSvc, taxCreditsSvc, taxDeductionDocSvc, taxExtractionSvc, investmentIncomeSvc, investmentDocSvc, investmentExtractionSvc, employmentSvc, invDocumentSvc, fakturoidImportSvc, dashboardSvc, reportSvc, taxCalendarSvc, emailSender, auditSvc, backupSvc, epoSvc, isdsCredentialsSvc, handler.RouterConfig{
+		DevMode:  cfg.Server.Dev,
+		DataDir:  cfg.DataDir,
+		BindHost: listenHost,
 	})
 }

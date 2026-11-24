@@ -6,6 +6,7 @@
 		type FinancialOffice,
 		type NACEEntry
 	} from '$lib/api/client';
+	import ISDSCredentialsSection from '$lib/components/ISDSCredentialsSection.svelte';
 	import Card from '$lib/ui/Card.svelte';
 	import HelpTip from '$lib/ui/HelpTip.svelte';
 	import LoadingSpinner from '$lib/ui/LoadingSpinner.svelte';
@@ -509,5 +510,7 @@
 			<!-- Save -->
 			<FormActions {saving} saveLabel="Uložit nastavení" class="pb-8" />
 		</form>
+
+		<ISDSCredentialsSection />
 	{/if}
 </div>

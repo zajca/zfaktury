@@ -13,6 +13,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.10.2
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.74
+	github.com/zalando/go-keyring v0.2.8
 	modernc.org/sqlite v1.46.1
 )
 
@@ -28,6 +29,7 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.9.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect

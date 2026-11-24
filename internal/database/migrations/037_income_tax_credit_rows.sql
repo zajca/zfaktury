@@ -1,6 +1,6 @@
 -- +goose Up
 ALTER TABLE tax_personal_credits ADD COLUMN ztpp INTEGER NOT NULL DEFAULT 0;
--- Level 3 meant "ZTP/P holder" in the single-choice field; ZTP/P is now its own flag.
+-- Legacy disability level 3 is the ZTP/P flag.
 UPDATE tax_personal_credits SET ztpp = 1, disability_level = 0 WHERE disability_level = 3;
 ALTER TABLE income_tax_returns ADD COLUMN credit_disability_12 INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE income_tax_returns ADD COLUMN credit_disability_3 INTEGER NOT NULL DEFAULT 0;

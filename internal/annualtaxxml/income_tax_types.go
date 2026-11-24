@@ -172,8 +172,8 @@ type DPFOVetaO struct {
 type DPFOVetaS struct {
 	// Per-řádek odpočtu jsou v XSD use="optional"; emitting "0" pro odpočty,
 	// které se neuplatňují, plnit nepatřičně (ř.46-49 jsou v papírovém formuláři
-	// prázdné, ne nulové). KcOdcelk / KcZdsniz / KcZdzaokr / DaDan16 zůstávají
-	// vždy přítomné -- jsou tahané formula controls a musí matchovat ř.45.
+	// prázdné, ne nulové). KcZdsniz / KcZdzaokr / DaDan16 zůstávají vždy
+	// přítomné -- jsou tahané formula controls a musí matchovat ř.45.
 	// KcOdcelk (ř.54) se vynechává, když se žádná nezdanitelná část neuplatňuje.
 	KcOp28_5  int64 `xml:"kc_op28_5,attr,omitempty"`  // ř. 47 -- úroky z hypoték / stavebního spoření
 	MUroky    int   `xml:"m_uroky,attr,omitempty"`    // počet měsíců placení úroků (1..12, povinné když kc_op28_5 > 0)

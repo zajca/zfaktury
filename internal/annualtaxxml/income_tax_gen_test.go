@@ -123,15 +123,17 @@ func TestIncomeTaxXML_Golden_Full(t *testing.T) {
 		TaxAfterCredits:    domain.NewAmount(61800, 0), // 120000 - 58200
 
 		// Child benefit
-		ChildBenefit:    domain.NewAmount(15204, 0), // 1 child
-		TaxAfterBenefit: domain.NewAmount(46596, 0), // 61800 - 15204
+		ChildBenefit:    domain.NewAmount(37524, 0), // 15204 + 22320 (1st + 2nd child, full year)
+		TaxAfterBenefit: domain.NewAmount(24276, 0), // 61800 - 37524
 
 		// Prepayments
-		Prepayments: domain.NewAmount(36000, 0), // 3000/month * 12
-		TaxDue:      domain.NewAmount(10596, 0), // 46596 - 36000
+		Prepayments: domain.NewAmount(12000, 0), // 1000/month * 12
+		TaxDue:      domain.NewAmount(12276, 0), // 24276 - 12000
 	}
 	children := []domain.TaxChildCredit{
 		{ChildName: "Petr Novak", BirthNumber: "150310/0005", ChildOrder: 1, MonthsClaimed: 12},
+		// Born 2023: under 3 for the whole of 2025, which row 65a (spouse credit) requires.
+		{ChildName: "Anna Novakova", BirthNumber: "230615/0110", ChildOrder: 2, MonthsClaimed: 12},
 	}
 	spouse := &domain.TaxSpouseCredit{
 		SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12,

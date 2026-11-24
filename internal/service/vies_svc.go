@@ -282,7 +282,7 @@ func (s *VIESSummaryService) GetXMLData(ctx context.Context, id int64) ([]byte, 
 	return vs.XMLData, nil
 }
 
-// MarkFiledmarks a VIES summary as filed.
+// MarkFiled marks a VIES summary as filed.
 func (s *VIESSummaryService) MarkFiled(ctx context.Context, id int64) error {
 	vs, err := s.repo.GetByID(ctx, id)
 	if err != nil {

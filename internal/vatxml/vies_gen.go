@@ -23,53 +23,81 @@ func stripCountryPrefix(dic string) string {
 	return dic
 }
 
-// viesFilingTypeCode maps domain filing type to VIES EPO codes.
-// VIES uses different codes: B=regular, O=corrective, N=supplementary.
-func viesFilingTypeCode(filingType string) string {
-	switch filingType {
-	case domain.FilingTypeCorrective:
-		return "O"
-	case domain.FilingTypeSupplementary:
-		return "N"
-	default:
-		return "B"
+// viesFormRegular is the shvies_forma code of a regular summary. A follow-up
+// summary (N) corrects earlier rows through storno rows, which are not
+// generated, so only the regular form is produced.
+const viesFormRegular = "R"
+
+// msgVIESFollowUpUnsupported is the user-facing text for a corrective or
+// supplementary summary.
+const msgVIESFollowUpUnsupported = "Následné souhrnné hlášení zatím nelze vygenerovat, podejte ho ručně v EPO."
+
+// toCeilCZK converts halere to whole CZK rounded up, as DPHSHV requires for
+// pln_hodnota. Integer arithmetic only. A negative total is rounded towards
+// zero (-85500.01 CZK gives -85500), which is the ceiling.
+func toCeilCZK(a domain.Amount) int64 {
+	whole := int64(a) / 100
+	if int64(a)%100 > 0 {
+		whole++
 	}
+	return whole
 }
 
-// Generate produces the EPO XML for a VIES summary.
+// Generate produces the EPO XML for a regular VIES summary. Corrective and
+// supplementary summaries are refused. The taxpayer is validated with
+// ValidateTaxpayerIdentity.
 func (g *VIESSummaryGenerator) Generate(
 	vs *domain.VIESSummary,
 	lines []domain.VIESSummaryLine,
-	dic string,
+	info TaxpayerInfo,
 ) ([]byte, error) {
 	if vs == nil {
-		return nil, fmt.Errorf("VIES summary is nil")
+		return nil, fmt.Errorf("VIES summary is nil: %w", domain.ErrInvalidInput)
 	}
-
-	filerDIC := stripCountryPrefix(dic)
+	if vs.FilingType == domain.FilingTypeCorrective || vs.FilingType == domain.FilingTypeSupplementary {
+		return nil, &domain.UserMessageError{Message: msgVIESFollowUpUnsupported}
+	}
+	if err := ValidateTaxpayerIdentity(info, TaxpayerDocVIESSummary); err != nil {
+		return nil, err
+	}
 
 	vetaD := VIESVetaD{
-		KDaph:  viesFilingTypeCode(vs.FilingType),
-		Rok:    vs.Period.Year,
-		Ctvrt:  vs.Period.Quarter,
-		DICOdb: filerDIC,
+		Dokument:    "SHV",
+		KUladis:     "DPH",
+		Rok:         vs.Period.Year,
+		Ctvrt:       vs.Period.Quarter,
+		ShviesForma: viesFormRegular,
 	}
 
-	var vetaP []VIESVetaP
+	vetaP := VIESVetaP{
+		CUfo:     info.UFOCode,
+		CPracufo: info.PracUFO,
+		DIC:      info.DIC,
+		TypDS:    TaxpayerTypeNaturalPerson,
+		Jmeno:    info.FirstName,
+		Prijmeni: info.LastName,
+		Ulice:    info.Street,
+		CPop:     info.HouseNum,
+		NazObce:  info.City,
+		PSC:      info.ZIP,
+		Stat:     TaxpayerCountry,
+	}
+
+	var vetaR []VIESVetaR
 	for _, line := range lines {
-		vetaP = append(vetaP, VIESVetaP{
-			KStat:   line.CountryCode,
-			DICOdbe: stripCountryPrefix(line.PartnerDIC),
-			KPlneni: line.ServiceCode,
-			Obrat:   ToWholeCZK(line.TotalAmount),
+		vetaR = append(vetaR, VIESVetaR{
+			KStat:      line.CountryCode,
+			CVat:       stripCountryPrefix(line.PartnerDIC),
+			KPlnEU:     line.ServiceCode,
+			PlnHodnota: toCeilCZK(line.TotalAmount),
 		})
 	}
 
 	pisemnost := VIESPisemnost{
-		Xmlns: "http://adis.mfcr.cz/rozhranni/",
 		DPHSHV: DPHSHV{
 			VetaD: vetaD,
 			VetaP: vetaP,
+			VetaR: vetaR,
 		},
 	}
 

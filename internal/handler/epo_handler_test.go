@@ -119,12 +119,14 @@ func setupEPOEnv(t *testing.T, clientOpts ...epo.Option) *epoTestEnv {
 		repository.NewInvoiceRepository(db),
 		repository.NewExpenseRepository(db),
 		repository.NewContactRepository(db),
+		repository.NewSettingsRepository(db),
 		nil,
 	)
 	viesSvc := service.NewVIESSummaryService(
 		repository.NewVIESSummaryRepository(db),
 		repository.NewInvoiceRepository(db),
 		repository.NewContactRepository(db),
+		repository.NewSettingsRepository(db),
 		nil,
 	)
 	incomeTaxSvc := service.NewIncomeTaxReturnService(

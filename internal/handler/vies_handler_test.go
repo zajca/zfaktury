@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -24,9 +25,8 @@ func setupVIESRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	contactRepo := repository.NewContactRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
 
-	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, nil)
-	settingsSvc := service.NewSettingsService(settingsRepo, nil)
-	h := NewVIESHandler(viesSvc, settingsSvc)
+	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, settingsRepo, nil)
+	h := NewVIESHandler(viesSvc)
 
 	r := chi.NewRouter()
 	r.Mount("/api/v1/vies-summaries", h.Routes())
@@ -268,13 +268,72 @@ func TestVIESHandler_GenerateXML_NoDIC(t *testing.T) {
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
 	}
+	if !strings.Contains(w.Body.String(), "V nastavení chybí DIČ.") {
+		t.Errorf("body should carry the missing-DIC message, got: %s", w.Body.String())
+	}
+}
+
+func TestVIESHandler_GenerateXML_FollowUpRefused(t *testing.T) {
+	r, db := setupVIESRouter(t)
+
+	if err := insertVATTaxpayerSettings(db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
+	body := `{"year":2025,"quarter":1,"filing_type":"corrective"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/vies-summaries", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("creating corrective summary: status = %d, body = %s", w.Code, w.Body.String())
+	}
+	var created viesSummaryResponse
+	if err := json.NewDecoder(w.Body).Decode(&created); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/vies-summaries/%d/generate-xml", created.ID), nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "ručně v EPO") {
+		t.Errorf("body should carry the follow-up message, got: %s", w.Body.String())
+	}
+}
+
+func TestVIESHandler_GenerateXML_MissingUFO(t *testing.T) {
+	r, db := setupVIESRouter(t)
+
+	if err := insertVATTaxpayerSettings(db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "DELETE FROM settings WHERE key = 'c_ufo'"); err != nil {
+		t.Fatalf("deleting c_ufo: %v", err)
+	}
+
+	created := createTestVIESSummary(t, r, 2025, 1)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/vies-summaries/%d/generate-xml", created.ID), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "c_ufo") {
+		t.Errorf("error should name c_ufo, body: %s", w.Body.String())
+	}
 }
 
 func TestVIESHandler_GenerateXML_WithDIC(t *testing.T) {
 	r, db := setupVIESRouter(t)
 
 	// Insert DIC setting.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("inserting DIC setting: %v", err)
 	}
@@ -342,7 +401,7 @@ func TestVIESHandler_DownloadXML_Success(t *testing.T) {
 	r, db := setupVIESRouter(t)
 
 	// Insert DIC setting.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("inserting DIC setting: %v", err)
 	}
@@ -458,7 +517,7 @@ func TestVIESHandler_GenerateXML_NotFound(t *testing.T) {
 	r, db := setupVIESRouter(t)
 
 	// Insert DIC to get past the DIC check.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("inserting DIC setting: %v", err)
 	}
@@ -647,7 +706,7 @@ func TestVIESHandler_GenerateXML_WithDIC_VerifyHasXML(t *testing.T) {
 	r, db := setupVIESRouter(t)
 
 	// Insert DIC setting.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ99999999', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("inserting DIC setting: %v", err)
 	}

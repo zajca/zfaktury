@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -25,9 +26,8 @@ func setupVATControlRouter(t *testing.T) (*chi.Mux, *sql.DB) {
 	contactRepo := repository.NewContactRepository(db)
 	settingsRepo := repository.NewSettingsRepository(db)
 
-	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, nil)
-	settingsSvc := service.NewSettingsService(settingsRepo, nil)
-	h := NewVATControlStatementHandler(vatControlSvc, settingsSvc)
+	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, settingsRepo, nil)
+	h := NewVATControlStatementHandler(vatControlSvc)
 
 	r := chi.NewRouter()
 	r.Mount("/api/v1/vat-control-statements", h.Routes())
@@ -248,8 +248,32 @@ func TestVATControl_GenerateXML_NoDIC(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
+	}
+}
+
+func TestVATControl_GenerateXML_MissingUFO(t *testing.T) {
+	r, db := setupVATControlRouter(t)
+
+	if err := insertVATTaxpayerSettings(db); err != nil {
+		t.Fatalf("failed to insert taxpayer settings: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "DELETE FROM settings WHERE key = 'c_ufo'"); err != nil {
+		t.Fatalf("failed to delete c_ufo: %v", err)
+	}
+
+	id := createVATControlStatement(t, r, 2025, 11)
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/vat-control-statements/%d/generate-xml", id), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
 	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+		t.Fatalf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "c_ufo") {
+		t.Errorf("error should name c_ufo, body: %s", w.Body.String())
 	}
 }
 
@@ -257,7 +281,7 @@ func TestVATControl_GenerateXML_WithDIC(t *testing.T) {
 	r, db := setupVATControlRouter(t)
 
 	// Insert DIC setting directly into the database.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("failed to insert DIC setting: %v", err)
 	}
@@ -289,7 +313,7 @@ func TestVATControl_GenerateXML_NotFound(t *testing.T) {
 	r, db := setupVATControlRouter(t)
 
 	// Insert DIC to get past the DIC check.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("failed to insert DIC setting: %v", err)
 	}
@@ -414,7 +438,7 @@ func TestVATControl_DownloadXML_Success(t *testing.T) {
 	r, db := setupVATControlRouter(t)
 
 	// Insert DIC setting.
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("failed to insert DIC setting: %v", err)
 	}
@@ -655,7 +679,7 @@ func TestVATControl_GetByID_WithLines(t *testing.T) {
 func TestVATControl_GenerateXML_WithDIC_VerifyResponse(t *testing.T) {
 	r, db := setupVATControlRouter(t)
 
-	_, err := db.ExecContext(context.Background(), "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ99999999', datetime('now'))")
+	err := insertVATTaxpayerSettings(db)
 	if err != nil {
 		t.Fatalf("failed to insert DIC setting: %v", err)
 	}

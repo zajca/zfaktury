@@ -1,6 +1,8 @@
 package vatxml
 
 import (
+	"encoding/xml"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,7 +48,7 @@ func TestControlStatementGenerator_Generate_Basic(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ87654321")
+	xmlData, err := gen.Generate(cs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
@@ -80,9 +82,14 @@ func TestControlStatementGenerator_Generate_Basic(t *testing.T) {
 		t.Error("XML should contain k_uladis=DPH")
 	}
 
-	// Verify VetaP.
-	if !strings.Contains(xmlStr, `dic="87654321"`) {
-		t.Error("XML should contain DIC without CZ prefix")
+	// Verify VetaP: the sole-proprietor block with the tax office codes.
+	for _, want := range []string{`dic="8001010006"`, `typ_ds="F"`, `c_ufo="464"`, `c_pracufo="3305"`, `jmeno="Jan"`, `prijmeni="Testovaci"`} {
+		if !strings.Contains(xmlStr, want) {
+			t.Errorf("XML should contain %s", want)
+		}
+	}
+	if strings.Contains(xmlStr, `typ_ds="P"`) {
+		t.Error("XML must not declare the taxpayer a legal entity")
 	}
 
 	// Verify A4 element.
@@ -131,7 +138,7 @@ func TestControlStatementGenerator_Generate_CorrectiveFiling(t *testing.T) {
 		Status:     domain.FilingStatusReady,
 	}
 
-	xmlData, err := gen.Generate(cs, nil, "CZ12345678")
+	xmlData, err := gen.Generate(cs, nil, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
@@ -177,7 +184,7 @@ func TestControlStatementGenerator_Generate_B2B3Lines(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ12345678")
+	xmlData, err := gen.Generate(cs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
@@ -215,16 +222,86 @@ func TestControlStatementGenerator_Generate_EmptyDIC(t *testing.T) {
 		},
 	}
 
-	_, err := gen.Generate(cs, nil, "")
-	if err == nil {
-		t.Error("Generate() should return error for empty DIC")
+	info := testTaxpayerInfo()
+	info.DIC = ""
+	_, err := gen.Generate(cs, nil, info)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("Generate() with empty DIC: err = %v, want ErrInvalidInput", err)
+	}
+}
+
+func TestControlStatementGenerator_Generate_TaxpayerBlock(t *testing.T) {
+	gen := NewControlStatementGenerator()
+	cs := &domain.VATControlStatement{
+		ID:         1,
+		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
+		FilingType: domain.FilingTypeRegular,
+	}
+
+	xmlData, err := gen.Generate(cs, nil, testTaxpayerInfo())
+	if err != nil {
+		t.Fatalf("Generate() returned error: %v", err)
+	}
+
+	var doc struct {
+		VetaP struct {
+			Attrs []xml.Attr `xml:",any,attr"`
+		} `xml:"DPHKH1>VetaP"`
+	}
+	if err := xml.Unmarshal(xmlData, &doc); err != nil {
+		t.Fatalf("unmarshalling generated XML: %v", err)
+	}
+	got := map[string]string{}
+	for _, a := range doc.VetaP.Attrs {
+		got[a.Name.Local] = a.Value
+	}
+	want := map[string]string{
+		"c_ufo":     "464",
+		"c_pracufo": "3305",
+		"dic":       "8001010006",
+		"typ_ds":    TaxpayerTypeNaturalPerson,
+		"jmeno":     "Jan",
+		"prijmeni":  "Testovaci",
+		"ulice":     "Testovaci",
+		"c_pop":     "1",
+		"naz_obce":  "Praha",
+		"psc":       "11000",
+		"stat":      TaxpayerCountry,
+		"email":     "ja@example.test",
+		"c_telef":   "600000000",
+	}
+	for name, value := range want {
+		if got[name] != value {
+			t.Errorf("VetaP %s = %q, want %q", name, got[name], value)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("VetaP has %d attributes, want %d: %v", len(got), len(want), got)
+	}
+}
+
+func TestControlStatementGenerator_Generate_MissingUFO(t *testing.T) {
+	gen := NewControlStatementGenerator()
+	cs := &domain.VATControlStatement{
+		ID:     1,
+		Period: domain.TaxPeriod{Year: 2025, Month: 3},
+	}
+
+	info := testTaxpayerInfo()
+	info.UFOCode = ""
+	_, err := gen.Generate(cs, nil, info)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("Generate() without c_ufo: err = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "c_ufo") {
+		t.Errorf("error should name c_ufo, got: %v", err)
 	}
 }
 
 func TestControlStatementGenerator_Generate_NilStatement(t *testing.T) {
 	gen := NewControlStatementGenerator()
 
-	_, err := gen.Generate(nil, nil, "CZ12345678")
+	_, err := gen.Generate(nil, nil, testTaxpayerInfo())
 	if err == nil {
 		t.Error("Generate() should return error for nil statement")
 	}
@@ -290,7 +367,7 @@ func TestControlStatementGenerator_Generate_ZeroAmountLine(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ87654321")
+	xmlData, err := gen.Generate(cs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
@@ -318,7 +395,7 @@ func TestControlStatementGenerator_Generate_SupplementaryFiling(t *testing.T) {
 		Status:     domain.FilingStatusReady,
 	}
 
-	xmlData, err := gen.Generate(cs, nil, "CZ12345678")
+	xmlData, err := gen.Generate(cs, nil, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() returned error: %v", err)
 	}
@@ -425,7 +502,7 @@ func TestControlStatement_Golden_A4A5(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ80010100")
+	xmlData, err := gen.Generate(cs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -490,7 +567,7 @@ func TestControlStatement_Golden_B2B3(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ80010100")
+	xmlData, err := gen.Generate(cs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -528,7 +605,7 @@ func TestControlStatement_Golden_Corrective(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ80010100")
+	xmlData, err := gen.Generate(cs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}

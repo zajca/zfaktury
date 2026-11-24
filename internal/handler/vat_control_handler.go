@@ -15,13 +15,12 @@ import (
 
 // VATControlStatementHandler handles HTTP requests for VAT control statements.
 type VATControlStatementHandler struct {
-	svc         *service.VATControlStatementService
-	settingsSvc *service.SettingsService
+	svc *service.VATControlStatementService
 }
 
 // NewVATControlStatementHandler creates a new VATControlStatementHandler.
-func NewVATControlStatementHandler(svc *service.VATControlStatementService, settingsSvc *service.SettingsService) *VATControlStatementHandler {
-	return &VATControlStatementHandler{svc: svc, settingsSvc: settingsSvc}
+func NewVATControlStatementHandler(svc *service.VATControlStatementService) *VATControlStatementHandler {
+	return &VATControlStatementHandler{svc: svc}
 }
 
 // Routes registers VAT control statement routes on the given router.
@@ -171,20 +170,7 @@ func (h *VATControlStatementHandler) GenerateXML(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Get DIC from settings.
-	dic := ""
-	if h.settingsSvc != nil {
-		settings, err := h.settingsSvc.GetAll(r.Context())
-		if err == nil {
-			dic = settings["dic"]
-		}
-	}
-	if dic == "" {
-		respondError(w, http.StatusBadRequest, "DIC not configured in settings")
-		return
-	}
-
-	if _, err := h.svc.GenerateXML(r.Context(), id, dic); err != nil {
+	if _, err := h.svc.GenerateXML(r.Context(), id); err != nil {
 		slog.Error("failed to generate XML", "error", err, "id", id)
 		mapDomainError(w, err)
 		return

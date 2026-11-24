@@ -29,7 +29,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"vat return": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupVATReturnSvc(t)
 			return markFiledAtCase{
-				doc: NewFilingDocuments(svc, nil, nil, nil, nil, nil)[domain.FilingKindVATReturn],
+				doc: NewFilingDocuments(svc, nil, nil, nil, nil)[domain.FilingKindVATReturn],
 				create: func(t *testing.T) int64 {
 					vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
 					if err := svc.Create(ctx, vr); err != nil {
@@ -51,7 +51,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"control statement": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupVATControlSvc(t)
 			return markFiledAtCase{
-				doc: NewFilingDocuments(nil, svc, nil, nil, nil, nil)[domain.FilingKindControlStatement],
+				doc: NewFilingDocuments(nil, svc, nil, nil, nil)[domain.FilingKindControlStatement],
 				create: func(t *testing.T) int64 {
 					cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
 					if err := svc.Create(ctx, cs); err != nil {
@@ -71,7 +71,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"VIES summary": func(t *testing.T) markFiledAtCase {
 			svc, _ := newVIESSvc(t)
 			return markFiledAtCase{
-				doc: NewFilingDocuments(nil, nil, svc, nil, nil, nil)[domain.FilingKindVIESSummary],
+				doc: NewFilingDocuments(nil, nil, svc, nil, nil)[domain.FilingKindVIESSummary],
 				create: func(t *testing.T) int64 {
 					vs := validVIESSummary()
 					if err := svc.Create(ctx, vs); err != nil {
@@ -90,7 +90,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"income tax return": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupIncomeTaxSvc(t)
 			return markFiledAtCase{
-				doc: NewFilingDocuments(nil, nil, nil, svc, nil, nil)[domain.FilingKindIncomeTax],
+				doc: NewFilingDocuments(nil, nil, nil, svc, nil)[domain.FilingKindIncomeTax],
 				create: func(t *testing.T) int64 {
 					itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
 					if err := svc.Create(ctx, itr); err != nil {
@@ -112,7 +112,7 @@ func TestMarkFiledAt_UsesTheGivenTimeAndReportsAFiledDocument(t *testing.T) {
 		"social insurance": func(t *testing.T) markFiledAtCase {
 			svc, _ := setupSocialInsuranceSvc(t)
 			return markFiledAtCase{
-				doc: NewFilingDocuments(nil, nil, nil, nil, svc, nil)[domain.FilingKindSocialInsurance],
+				doc: NewFilingDocuments(nil, nil, nil, nil, svc)[domain.FilingKindSocialInsurance],
 				create: func(t *testing.T) int64 {
 					sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
 					if err := svc.Create(ctx, sio); err != nil {

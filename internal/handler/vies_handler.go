@@ -15,13 +15,12 @@ import (
 
 // VIESHandler handles HTTP requests for VIES summary management.
 type VIESHandler struct {
-	svc         *service.VIESSummaryService
-	settingsSvc *service.SettingsService
+	svc *service.VIESSummaryService
 }
 
 // NewVIESHandler creates a new VIESHandler.
-func NewVIESHandler(svc *service.VIESSummaryService, settingsSvc *service.SettingsService) *VIESHandler {
-	return &VIESHandler{svc: svc, settingsSvc: settingsSvc}
+func NewVIESHandler(svc *service.VIESSummaryService) *VIESHandler {
+	return &VIESHandler{svc: svc}
 }
 
 // Routes registers VIES summary routes on the given router.
@@ -171,19 +170,7 @@ func (h *VIESHandler) GenerateXML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings, err := h.settingsSvc.GetAll(r.Context())
-	if err != nil {
-		slog.Error("failed to load settings for XML generation", "error", err)
-		respondError(w, http.StatusInternalServerError, "failed to load settings")
-		return
-	}
-	dic, ok := settings["dic"]
-	if !ok || dic == "" {
-		respondError(w, http.StatusUnprocessableEntity, "DIC not configured in settings")
-		return
-	}
-
-	if err := h.svc.GenerateXML(r.Context(), id, dic); err != nil {
+	if err := h.svc.GenerateXML(r.Context(), id); err != nil {
 		slog.Error("failed to generate VIES XML", "error", err)
 		mapDomainError(w, err)
 		return

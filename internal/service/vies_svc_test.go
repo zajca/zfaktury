@@ -19,7 +19,8 @@ func newVIESSvc(t *testing.T) (*VIESSummaryService, *sql.DB) {
 	viesRepo := repository.NewVIESSummaryRepository(db)
 	invoiceRepo := repository.NewInvoiceRepository(db)
 	contactRepo := repository.NewContactRepository(db)
-	svc := NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, nil)
+	settingsRepo := repository.NewSettingsRepository(db)
+	svc := NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, settingsRepo, nil)
 	return svc, db
 }
 
@@ -824,8 +825,12 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 // --- GenerateXML tests ---
 
 func TestVIES_GetXMLData(t *testing.T) {
-	svc, _ := newVIESSvc(t)
+	svc, db := newVIESSvc(t)
 	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
 
 	vs := validVIESSummary()
 	if err := svc.Create(ctx, vs); err != nil {
@@ -840,7 +845,7 @@ func TestVIES_GetXMLData(t *testing.T) {
 		t.Errorf("GetXMLData() before generation = %d bytes, want 0", len(empty))
 	}
 
-	if err := svc.GenerateXML(ctx, vs.ID, "CZ12345678"); err != nil {
+	if err := svc.GenerateXML(ctx, vs.ID); err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 	stored, err := svc.GetXMLData(ctx, vs.ID)
@@ -868,6 +873,10 @@ func TestVIES_GenerateXML_Valid(t *testing.T) {
 	svc, db := newVIESSvc(t)
 	ctx := context.Background()
 
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
 	euContact := testutil.SeedContact(t, db, &domain.Contact{
 		Name: "German GmbH", DIC: "DE444444444", Country: "DE",
 	})
@@ -892,7 +901,7 @@ func TestVIES_GenerateXML_Valid(t *testing.T) {
 	}
 
 	// Generate XML.
-	if err := svc.GenerateXML(ctx, vs.ID, "CZ12345678"); err != nil {
+	if err := svc.GenerateXML(ctx, vs.ID); err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 
@@ -918,8 +927,12 @@ func TestVIES_GenerateXML_Valid(t *testing.T) {
 }
 
 func TestVIES_GenerateXML_NoLines(t *testing.T) {
-	svc, _ := newVIESSvc(t)
+	svc, db := newVIESSvc(t)
 	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
 
 	vs := validVIESSummary()
 	if err := svc.Create(ctx, vs); err != nil {
@@ -927,7 +940,7 @@ func TestVIES_GenerateXML_NoLines(t *testing.T) {
 	}
 
 	// GenerateXML with no lines should succeed (empty summary is valid).
-	if err := svc.GenerateXML(ctx, vs.ID, "CZ87654321"); err != nil {
+	if err := svc.GenerateXML(ctx, vs.ID); err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 
@@ -944,11 +957,82 @@ func TestVIES_GenerateXML_NotFound(t *testing.T) {
 	svc, _ := newVIESSvc(t)
 	ctx := context.Background()
 
-	err := svc.GenerateXML(ctx, 99999, "CZ12345678")
+	err := svc.GenerateXML(ctx, 99999)
 	if err == nil {
 		t.Fatal("expected error for non-existent ID, got nil")
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got: %v", err)
+	}
+}
+
+func TestVIES_GenerateXML_FollowUpRefused(t *testing.T) {
+	ctx := context.Background()
+
+	for _, filingType := range []string{domain.FilingTypeCorrective, domain.FilingTypeSupplementary} {
+		t.Run(filingType, func(t *testing.T) {
+			svc, db := newVIESSvc(t)
+			if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+				t.Fatalf("inserting taxpayer settings: %v", err)
+			}
+			vs := validVIESSummary()
+			vs.FilingType = filingType
+			if err := svc.Create(ctx, vs); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			err := svc.GenerateXML(ctx, vs.ID)
+			var userMessage *domain.UserMessageError
+			if !errors.As(err, &userMessage) || !strings.Contains(userMessage.Message, "ručně v EPO") {
+				t.Fatalf("GenerateXML() error = %v, want the follow-up user message", err)
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("error should wrap ErrInvalidInput, got %v", err)
+			}
+
+			stored, err := svc.GetByID(ctx, vs.ID)
+			if err != nil {
+				t.Fatalf("GetByID() error: %v", err)
+			}
+			if len(stored.XMLData) != 0 {
+				t.Error("no XML should be stored for a refused summary")
+			}
+		})
+	}
+}
+
+func TestVIES_GenerateXML_MissingSettings(t *testing.T) {
+	ctx := context.Background()
+
+	cases := map[string]struct {
+		drop    string
+		wantErr error
+		wantMsg string
+	}{
+		"c_ufo": {drop: "c_ufo", wantErr: domain.ErrInvalidInput, wantMsg: "c_ufo"},
+		"dic":   {drop: "dic", wantErr: domain.ErrMissingSetting, wantMsg: "DIC"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc, db := newVIESSvc(t)
+			if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+				t.Fatalf("inserting taxpayer settings: %v", err)
+			}
+			if _, err := db.ExecContext(ctx, "DELETE FROM settings WHERE key = ?", tc.drop); err != nil {
+				t.Fatalf("deleting setting: %v", err)
+			}
+			vs := validVIESSummary()
+			if err := svc.Create(ctx, vs); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			err := svc.GenerateXML(ctx, vs.ID)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("GenerateXML() error = %v, want %v", err, tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantMsg) {
+				t.Errorf("error should mention %q, got: %v", tc.wantMsg, err)
+			}
+		})
 	}
 }

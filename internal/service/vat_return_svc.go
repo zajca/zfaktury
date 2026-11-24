@@ -275,7 +275,7 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("fetching vat_return for XML generation: %w", err)
 	}
 
-	info, err := s.buildTaxpayerInfo(ctx)
+	info, err := buildTaxpayerInfo(ctx, s.settingsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("building taxpayer info for XML generation: %w", err)
 	}
@@ -302,23 +302,23 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 	return vr, nil
 }
 
-// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo.
-func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.TaxpayerInfo, error) {
+// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo. It
+// is shared by the VAT return, control statement and VIES summary generators.
+func buildTaxpayerInfo(ctx context.Context, settingsRepo repository.SettingsRepo) (vatxml.TaxpayerInfo, error) {
 	getSetting := func(key string) string {
-		val, err := s.settingsRepo.Get(ctx, key)
+		val, err := settingsRepo.Get(ctx, key)
 		if err != nil {
 			return ""
 		}
 		return val
 	}
 
-	dic := getSetting(SettingDIC)
-	if dic == "" {
-		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
+	// The XML formats carry the DIČ without the CZ prefix.
+	dicNum := strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(getSetting(SettingDIC))), "CZ")
+	if dicNum == "" {
+		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation: %w: %w", domain.ErrMissingSetting,
+			&domain.UserMessageError{Message: "V nastavení chybí DIČ."})
 	}
-
-	// Strip CZ prefix for DPHDP3 format.
-	dicNum := strings.TrimPrefix(dic, "CZ")
 
 	return vatxml.TaxpayerInfo{
 		DIC:       dicNum,

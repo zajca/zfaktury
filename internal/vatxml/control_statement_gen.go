@@ -17,21 +17,19 @@ func NewControlStatementGenerator() *ControlStatementGenerator {
 	return &ControlStatementGenerator{}
 }
 
-// Generate builds the EPO XML for the given control statement, its lines, and the taxpayer DIC.
-func (g *ControlStatementGenerator) Generate(cs *domain.VATControlStatement, lines []domain.VATControlStatementLine, dic string) ([]byte, error) {
+// Generate builds the EPO XML for the given control statement, its lines, and the
+// taxpayer block. The taxpayer is validated with ValidateTaxpayerIdentity.
+func (g *ControlStatementGenerator) Generate(cs *domain.VATControlStatement, lines []domain.VATControlStatementLine, info TaxpayerInfo) ([]byte, error) {
 	if cs == nil {
-		return nil, fmt.Errorf("control statement is nil")
+		return nil, fmt.Errorf("control statement is nil: %w", domain.ErrInvalidInput)
 	}
-
-	dicNum := strings.TrimPrefix(strings.ToUpper(dic), "CZ")
-	if dicNum == "" {
-		return nil, fmt.Errorf("DIC is empty")
+	if err := ValidateTaxpayerIdentity(info, TaxpayerDocControlStatement); err != nil {
+		return nil, err
 	}
 
 	filingCode := FilingTypeCode(cs.FilingType)
 
 	doc := ControlStatementXML{
-		Xmlns: "http://adis.mfcr.cz/rozhranni/",
 		DPHKH: DPHKH1{
 			VetaD: KHVetaD{
 				Dokument:  "KH1",
@@ -41,8 +39,19 @@ func (g *ControlStatementGenerator) Generate(cs *domain.VATControlStatement, lin
 				KHDPHForm: filingCode,
 			},
 			VetaP: KHVetaP{
-				DIC:  dicNum,
-				Type: "P",
+				CUfo:     info.UFOCode,
+				CPracufo: info.PracUFO,
+				DIC:      info.DIC,
+				Type:     TaxpayerTypeNaturalPerson,
+				Jmeno:    info.FirstName,
+				Prijmeni: info.LastName,
+				Ulice:    info.Street,
+				CPop:     info.HouseNum,
+				NazObce:  info.City,
+				PSC:      info.ZIP,
+				Stat:     TaxpayerCountry,
+				Email:    info.Email,
+				CTelef:   info.Phone,
 			},
 		},
 	}

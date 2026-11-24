@@ -298,8 +298,8 @@ impl InvoiceDetailView {
                     .map_err(|e| format!("Chyba při generování PDF: {e}"))?;
 
                     // Save to temp file.
-                    let tmp_path =
-                        std::env::temp_dir().join(format!("faktura-{}.pdf", invoice_number));
+                    let tmp_path = std::env::temp_dir()
+                        .join(zfaktury_gen::filename::invoice_pdf(&invoice_number));
                     std::fs::write(&tmp_path, &pdf_bytes)
                         .map_err(|e| format!("Chyba při zápisu PDF: {e}"))?;
 
@@ -408,8 +408,8 @@ impl InvoiceDetailView {
                         .map_err(|e| format!("Chyba při generování ISDOC: {e}"))?;
 
                     // Save to temp file.
-                    let tmp_path =
-                        std::env::temp_dir().join(format!("faktura-{}.isdoc", invoice_number));
+                    let tmp_path = std::env::temp_dir()
+                        .join(zfaktury_gen::filename::invoice_isdoc(&invoice_number));
                     std::fs::write(&tmp_path, &xml_bytes)
                         .map_err(|e| format!("Chyba při zápisu ISDOC: {e}"))?;
 

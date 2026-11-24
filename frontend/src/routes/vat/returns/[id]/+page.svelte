@@ -65,7 +65,7 @@
 	async function handleDownloadXml() {
 		actionLoading = 'download';
 		try {
-			await downloadFile(`/api/v1/vat-returns/${returnId}/xml`, `dph-priznani-${returnId}.xml`);
+			await downloadFile(`/api/v1/vat-returns/${returnId}/xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		} finally {

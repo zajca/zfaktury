@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"mime"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -325,24 +325,23 @@ func (h *HealthInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	hi, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get health insurance overview XML", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	if len(xmlData) == 0 {
+	if len(hi.XMLData) == 0 {
 		respondError(w, http.StatusNotFound, "XML not yet generated for this health insurance overview")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/xml")
-	filename := fmt.Sprintf("zp-prehled-%d.xml", id)
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(xmlData)))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.HealthInsurance(hi.Year, hi.FilingType)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(hi.XMLData)))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(xmlData)
+	_, _ = w.Write(hi.XMLData)
 }
 
 // MarkFiled handles POST /api/v1/health-insurance/{id}/mark-filed.

@@ -455,6 +455,10 @@ func TestIncomeTax_DownloadXML(t *testing.T) {
 	if w.Body.Len() == 0 {
 		t.Error("expected non-empty XML body")
 	}
+
+	if got, want := w.Header().Get("Content-Disposition"), "attachment; filename=dpfo-2025.xml"; got != want {
+		t.Errorf("Content-Disposition = %q, want %q", got, want)
+	}
 }
 
 func TestIncomeTax_DownloadXML_NotFound(t *testing.T) {

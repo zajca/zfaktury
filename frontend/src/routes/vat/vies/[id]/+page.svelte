@@ -64,8 +64,7 @@
 
 	async function handleDownloadXml() {
 		try {
-			const filename = `souhrnne-hlaseni-${summary?.period.year}-Q${summary?.period.quarter}.xml`;
-			await downloadFile(`/api/v1/vies-summaries/${summaryId}/xml`, filename);
+			await downloadFile(`/api/v1/vies-summaries/${summaryId}/xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		}

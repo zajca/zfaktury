@@ -58,8 +58,8 @@ func TestExportHandler_ExportInvoices_Empty(t *testing.T) {
 
 	// Check Content-Disposition.
 	cd := w.Header().Get("Content-Disposition")
-	if !strings.Contains(cd, ".csv") {
-		t.Errorf("Content-Disposition = %q, expected CSV filename", cd)
+	if !strings.HasPrefix(cd, "attachment; filename=faktury-") || !strings.HasSuffix(cd, ".csv") {
+		t.Errorf("Content-Disposition = %q, expected faktury-<year>.csv", cd)
 	}
 
 	body := w.Body.Bytes()

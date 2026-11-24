@@ -168,16 +168,16 @@ func TestBundleService_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateBundle: %v", err)
 	}
-	if filename != "priznani-2025.zip" {
-		t.Errorf("filename = %q, want %q", filename, "priznani-2025.zip")
+	if filename != "dpfo-2025.zip" {
+		t.Errorf("filename = %q, want %q", filename, "dpfo-2025.zip")
 	}
 
 	entries := readZip(t, data)
 
 	// XML at archive root.
-	gotXML, ok := entries["priznani-2025.xml"]
+	gotXML, ok := entries["dpfo-2025.xml"]
 	if !ok {
-		t.Fatalf("expected priznani-2025.xml in archive, got keys: %v", keys(entries))
+		t.Fatalf("expected dpfo-2025.xml in archive, got keys: %v", keys(entries))
 	}
 	if !bytes.Equal(gotXML, xmlBytes) {
 		t.Errorf("xml bytes mismatch: got %q, want %q", gotXML, xmlBytes)
@@ -216,7 +216,7 @@ func TestBundleService_NoDeductions(t *testing.T) {
 	if len(entries) != 1 {
 		t.Errorf("expected exactly 1 entry in ZIP, got %d: %v", len(entries), keys(entries))
 	}
-	if _, ok := entries["priznani-2024.xml"]; !ok {
+	if _, ok := entries["dpfo-2024.xml"]; !ok {
 		t.Errorf("missing XML in archive, keys: %v", keys(entries))
 	}
 }
@@ -241,7 +241,7 @@ func TestBundleService_MissingFileOnDisk(t *testing.T) {
 	}
 	entries := readZip(t, data)
 
-	if _, ok := entries["priznani-2025.xml"]; !ok {
+	if _, ok := entries["dpfo-2025.xml"]; !ok {
 		t.Errorf("missing XML in archive")
 	}
 	note, ok := entries["CHYBEJICI-SOUBORY.txt"]

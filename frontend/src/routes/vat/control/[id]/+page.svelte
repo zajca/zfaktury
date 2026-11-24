@@ -83,8 +83,7 @@
 
 	async function handleDownloadXml() {
 		try {
-			const filename = `kontrolni-hlaseni-${statement?.period.year}-${String(statement?.period.month).padStart(2, '0')}.xml`;
-			await downloadFile(`/api/v1/vat-control-statements/${statementId}/xml`, filename);
+			await downloadFile(`/api/v1/vat-control-statements/${statementId}/xml`);
 		} catch (e) {
 			toastError(e instanceof Error ? e.message : 'Nepodařilo se stáhnout XML');
 		}

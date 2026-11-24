@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"mime"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -303,24 +303,23 @@ func (h *IncomeTaxHandler) DownloadXML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	itr, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get income tax return XML", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	if len(xmlData) == 0 {
+	if len(itr.XMLData) == 0 {
 		respondError(w, http.StatusNotFound, "XML not yet generated for this income tax return")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/xml")
-	filename := fmt.Sprintf("dpfo-%d.xml", id)
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(xmlData)))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.IncomeTax(itr.Year, itr.FilingType)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(itr.XMLData)))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(xmlData)
+	_, _ = w.Write(itr.XMLData)
 }
 
 // MarkFiled handles POST /api/v1/income-tax-returns/{id}/mark-filed.

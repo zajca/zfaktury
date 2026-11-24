@@ -11,6 +11,7 @@
 //! - Invoice PDF (via typst)
 
 pub mod csv;
+pub mod filename;
 pub mod isdoc;
 pub mod pdf;
 pub mod qr;

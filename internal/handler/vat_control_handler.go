@@ -3,13 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"log/slog"
-	"mime"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -227,9 +227,8 @@ func (h *VATControlStatementHandler) DownloadXML(w http.ResponseWriter, r *http.
 		return
 	}
 
-	filename := "kh_" + strconv.Itoa(cs.Period.Year) + "_" + strconv.Itoa(cs.Period.Month) + ".xml"
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.ControlStatement(cs.Period, cs.FilingType)))
 	w.Header().Set("Content-Length", strconv.Itoa(len(cs.XMLData)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(cs.XMLData)

@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"mime"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -420,24 +420,23 @@ func (h *SocialInsuranceHandler) DownloadXML(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	xmlData, err := h.svc.GetXMLData(r.Context(), id)
+	sio, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		slog.Error("failed to get social insurance XML", "error", err, "id", id)
 		mapDomainError(w, err)
 		return
 	}
 
-	if len(xmlData) == 0 {
+	if len(sio.XMLData) == 0 {
 		respondError(w, http.StatusNotFound, "XML not yet generated for this social insurance overview")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/xml")
-	filename := fmt.Sprintf("cssz-prehled-%d.xml", id)
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(xmlData)))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.SocialInsurance(sio.Year, sio.FilingType)))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(sio.XMLData)))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(xmlData)
+	_, _ = w.Write(sio.XMLData)
 }
 
 // MarkFiled handles POST /api/v1/social-insurance/{id}/mark-filed.

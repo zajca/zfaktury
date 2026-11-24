@@ -207,7 +207,7 @@
 			<a
 				href={exportApi.invoicesUrl(year)}
 				download
-				use:nativeDownload={`faktury-${year}.csv`}
+				use:nativeDownload
 				class="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-secondary hover:bg-hover"
 			>
 				Export faktur (CSV)
@@ -215,7 +215,7 @@
 			<a
 				href={exportApi.expensesUrl(year)}
 				download
-				use:nativeDownload={`naklady-${year}.csv`}
+				use:nativeDownload
 				class="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-secondary hover:bg-hover"
 			>
 				Export nákladů (CSV)

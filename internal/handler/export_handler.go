@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/filename"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
@@ -56,9 +57,8 @@ func (h *ExportHandler) ExportInvoices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("faktury_%d.csv", year)
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.InvoicesCSV(year)))
 	w.WriteHeader(http.StatusOK)
 
 	// Write UTF-8 BOM for Excel compatibility.
@@ -127,9 +127,8 @@ func (h *ExportHandler) ExportExpenses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := fmt.Sprintf("vydaje_%d.csv", year)
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Disposition", filename.ContentDisposition(filename.ExpensesCSV(year)))
 	w.WriteHeader(http.StatusOK)
 
 	// Write UTF-8 BOM for Excel compatibility.

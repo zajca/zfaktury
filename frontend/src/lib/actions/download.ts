@@ -14,8 +14,7 @@ export function nativeDownload(node: HTMLAnchorElement, filename?: string) {
 		e.preventDefault();
 		const href = node.getAttribute('href');
 		if (!href) return;
-		const name = filename || href.split('/').pop() || 'download';
-		downloadFile(href, name);
+		downloadFile(href, filename);
 	}
 
 	node.addEventListener('click', handleClick);

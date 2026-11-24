@@ -130,11 +130,11 @@ func formulaCases() []formulaCase {
 func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 	// Row formulas and month x rate products of the published EPO controls.
 	omitWhenZero := []string{
-		"kc_op15_1a", "kc_op15_1c", "kc_manztpp", "kc_op15_1d", "kc_op15_1e1", "kc_op15_1e2",
+		"kc_op15_1a", "kc_op15_1c", "kc_manztpp", "kc_op15_1d", "kc_op15_1e1", "kc_op15_1e2", "kc_dazvyhod",
 	}
 	// Rows EPO computes itself must be present even at 0 (codes 108, 191, 354).
 	alwaysPresent := []string{
-		"kc_dztrata", "uhrn_slevy35ba", "kc_dazvyhod", "kc_slevy35c", "kc_danbonus", "kc_db_po_odpd", "kc_zalpred",
+		"kc_dztrata", "uhrn_slevy35ba", "kc_slevy35c", "kc_danbonus", "kc_db_po_odpd", "kc_zalpred",
 	}
 
 	for _, tc := range formulaCases() {
@@ -232,6 +232,32 @@ func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 			t.Errorf("kc_slevy35c = %q, want \"0\" when ř.73 is 0", d["kc_slevy35c"])
 		}
 	})
+}
+
+// TestIncomeTaxXML_ChildBenefitRow guards EPO code 181: ř.72 is empty without a
+// child and filled with the child months' amount otherwise.
+func TestIncomeTaxXML_ChildBenefitRow(t *testing.T) {
+	want := map[string]string{"full": "15204", "minimal": ""}
+	for _, tc := range formulaCases() {
+		w, ok := want[tc.name]
+		if !ok {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse)
+			if err != nil {
+				t.Fatalf("GenerateIncomeTaxXML: %v", err)
+			}
+			d, _, _ := parseIncomeTax(t, data)
+			got, present := d["kc_dazvyhod"]
+			if w == "" && present {
+				t.Errorf("kc_dazvyhod = %q, want it omitted without a child", got)
+			}
+			if w != "" && got != w {
+				t.Errorf("kc_dazvyhod = %q, want %q", got, w)
+			}
+		})
+	}
 }
 
 // TestIncomeTaxXML_ComputedRowsPresentAtZero guards the EPO serious errors 108

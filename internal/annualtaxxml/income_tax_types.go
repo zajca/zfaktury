@@ -55,10 +55,11 @@ type DPFOVetaD struct {
 	//   - ř.62 (sleva podle §35 odst.1 -- zaměstnanci ZTP) = da_slevy (NOT for OSVC)
 	//   - ř.63 (sleva podle §35a/35b -- investiční pobídky) = sleva_rp (NOT for OSVC)
 	//   - ř.64 (základní sleva na poplatníka §35ba 1a) = kc_op15_1a
-	// Rows EPO computes itself (ř.61, ř.70, ř.72-77a, ř.84, ř.91) are always emitted,
+	// Rows EPO computes itself (ř.61, ř.70, ř.73-77a, ř.84, ř.91) are always emitted,
 	// "0" included: a missing item is compared as an empty value and trips the formula
-	// controls (codes 108, 191, 354). Only claimed optional items (credit rows with
-	// months, ř.54) are left out when nothing is claimed (PodatelnaEPO.pdf, p.3).
+	// controls (codes 108, 191, 354). Claimed optional items (credit rows with months,
+	// ř.54, ř.72) are left out when nothing is claimed: EPO expects ř.72 empty without
+	// a child (code 181) (PodatelnaEPO.pdf, p.3).
 	KcDztrata int64  `xml:"kc_dztrata,attr"` // ř. 61 -- daňová ztráta (zaokr. nahoru, bez znaménka mínus)
 	DaSlezap  string `xml:"da_slezap,attr"`  // ř. 58 -- daň podle §16 (formát "Kc.00", decimal 2 frac digits)
 	DaCelod13 int64  `xml:"da_celod13,attr"` // ř. 60 -- daň celkem zaokrouhlená na celé Kč nahoru
@@ -98,7 +99,7 @@ type DPFOVetaD struct {
 	MDetiZtpp  int   `xml:"m_detiztpp,attr,omitempty"`  // měsíců s 1. dítětem ZTP/P
 	MDetiZtpp2 int   `xml:"m_detiztpp2,attr,omitempty"` // měsíců s 2. dítětem ZTP/P
 	MDetiZtpp3 int   `xml:"m_detiztpp3,attr,omitempty"` // měsíců s 3+ dítětem ZTP/P
-	KcDazvyhod int64 `xml:"kc_dazvyhod,attr"`           // ř. 72 -- daňové zvýhodnění na děti
+	KcDazvyhod int64 `xml:"kc_dazvyhod,attr,omitempty"` // ř. 72 -- daňové zvýhodnění na děti (prázdné bez dítěte, kód 181)
 	KcSlevy35c int64 `xml:"kc_slevy35c,attr"`           // ř. 73 -- sleva na děti uplatněná do výše daně
 	DaSlevy35c int64 `xml:"da_slevy35c,attr"`           // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
 	KcDanCelk  int64 `xml:"kc_dan_celk,attr"`           // ř. 75 -- daň celkem (= ř.74 + ř.74a)

@@ -30,7 +30,7 @@ func assertValidatesAgainstOSVC25(t *testing.T, xmlData []byte) {
 	t.Helper()
 	xmllint, err := exec.LookPath("xmllint")
 	if err != nil {
-		t.Skip("xmllint not available; run with libxml2 installed to perform XSD validation")
+		skipOrFailWithoutXmllint(t, err)
 	}
 	xmlPath := filepath.Join(t.TempDir(), "osvc25.xml")
 	if err := os.WriteFile(xmlPath, xmlData, 0o600); err != nil {

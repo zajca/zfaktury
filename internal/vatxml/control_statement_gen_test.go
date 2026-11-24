@@ -425,7 +425,7 @@ func TestControlStatement_Golden_A4A5(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ89052449")
+	xmlData, err := gen.Generate(cs, lines, "CZ80010100")
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -490,7 +490,7 @@ func TestControlStatement_Golden_B2B3(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ89052449")
+	xmlData, err := gen.Generate(cs, lines, "CZ80010100")
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestControlStatement_Golden_Corrective(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(cs, lines, "CZ89052449")
+	xmlData, err := gen.Generate(cs, lines, "CZ80010100")
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}

@@ -263,7 +263,7 @@ func TestVIESSummary_Golden_Regular(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(vs, lines, "CZ89052449")
+	xmlData, err := gen.Generate(vs, lines, "CZ80010100")
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -285,7 +285,7 @@ func TestVIESSummary_Golden_Empty(t *testing.T) {
 		Status:     domain.FilingStatusReady,
 	}
 
-	xmlData, err := gen.Generate(vs, nil, "CZ89052449")
+	xmlData, err := gen.Generate(vs, nil, "CZ80010100")
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}

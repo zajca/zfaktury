@@ -223,13 +223,13 @@ func TestIncomeTaxXML_DICStripsCountryPrefix(t *testing.T) {
 	}
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
-		"dic":                "CZ8905244997",
+		"dic":                "CZ8001010006",
 		"c_okec":             "62109",
 	}, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
-	if !bytes.Contains(xmlData, []byte(`dic="8905244997"`)) {
+	if !bytes.Contains(xmlData, []byte(`dic="8001010006"`)) {
 		t.Errorf("expected dic without CZ prefix, got:\n%s", string(xmlData))
 	}
 	if bytes.Contains(xmlData, []byte(`dic="CZ`)) {
@@ -349,7 +349,7 @@ func TestIncomeTaxXML_ChildMonthsAggregation(t *testing.T) {
 	}
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
-		"dic":                "CZ8905244997",
+		"dic":                "CZ8001010006",
 		"c_okec":             "62109",
 	}, children, nil)
 	if err != nil {
@@ -389,7 +389,7 @@ func TestIncomeTaxXML_ChildMonthsZTPAndThirdOrder(t *testing.T) {
 	}
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
-		"dic":                "CZ8905244997",
+		"dic":                "CZ8001010006",
 		"c_okec":             "62109",
 	}, children, nil)
 	if err != nil {
@@ -428,7 +428,7 @@ func TestIncomeTaxXML_VetaARowsMatchAggregates(t *testing.T) {
 	}
 	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
 		"financni_urad_code": "451",
-		"dic":                "CZ8905244997",
+		"dic":                "CZ8001010006",
 		"c_okec":             "62109",
 	}, children, nil)
 	if err != nil {
@@ -615,7 +615,7 @@ func TestIncomeTaxXML_PhonePracufoMortgageMonths(t *testing.T) {
 	settings := map[string]string{
 		"financni_urad_code":  "451",
 		"c_pracufo":           "2001",
-		"dic":                 "CZ8905244997",
+		"dic":                 "CZ8001010006",
 		"taxpayer_first_name": "Jan",
 		"taxpayer_last_name":  "Novak",
 		"taxpayer_phone":      "+420123456789",

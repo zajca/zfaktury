@@ -329,15 +329,15 @@ func TestSocialInsuranceXML_2026MinimumBaseValidatesAgainstOSVC25XSD(t *testing.
 func validSocialInsuranceSettings() map[string]string {
 	return map[string]string{
 		"cssz_code":             "775",
-		"taxpayer_first_name":   "Martin",
-		"taxpayer_last_name":    "Zajic",
-		"taxpayer_birth_number": "8905244997",
-		"taxpayer_birth_date":   "1989-05-24",
-		"taxpayer_street":       "Ludkovice",
-		"taxpayer_house_number": "189",
-		"taxpayer_postal_code":  "76341",
-		"taxpayer_city":         "Ludkovice",
+		"taxpayer_first_name":   "Jan",
+		"taxpayer_last_name":    "Testovaci",
+		"taxpayer_birth_number": "8001010006",
+		"taxpayer_birth_date":   "1980-01-01",
+		"taxpayer_street":       "Testovaci",
+		"taxpayer_house_number": "1",
+		"taxpayer_postal_code":  "11000",
+		"taxpayer_city":         "Praha",
 		"taxpayer_email":        "ja@example.test",
-		"taxpayer_phone":        "776598983",
+		"taxpayer_phone":        "600000000",
 	}
 }

@@ -16,15 +16,15 @@ var fixedSubmissionDate = time.Date(2025, 4, 25, 0, 0, 0, 0, time.UTC)
 
 func testTaxpayerInfo() TaxpayerInfo {
 	return TaxpayerInfo{
-		DIC:            "8905244997",
-		FirstName:      "Martin",
-		LastName:       "Zajic",
-		Street:         "Ludkovice",
-		HouseNum:       "189",
-		ZIP:            "76341",
-		City:           "Ludkovice",
-		Phone:          "776598983",
-		Email:          "ja@mzajic.cz",
+		DIC:            "8001010006",
+		FirstName:      "Jan",
+		LastName:       "Testovaci",
+		Street:         "Testovaci",
+		HouseNum:       "1",
+		ZIP:            "11000",
+		City:           "Praha",
+		Phone:          "600000000",
+		Email:          "ja@example.test",
 		UFOCode:        "464",
 		PracUFO:        "3305",
 		OKEC:           "582900",
@@ -156,8 +156,8 @@ func TestVATReturnGenerator_Generate(t *testing.T) {
 
 	// Verify VetaP.
 	p := doc.DPHDP3.VetaP
-	if p.DIC != "8905244997" {
-		t.Errorf("VetaP.dic = %q, want %q", p.DIC, "8905244997")
+	if p.DIC != "8001010006" {
+		t.Errorf("VetaP.dic = %q, want %q", p.DIC, "8001010006")
 	}
 	if p.TypDS != "F" {
 		t.Errorf("VetaP.typ_ds = %q, want %q", p.TypDS, "F")
@@ -168,11 +168,11 @@ func TestVATReturnGenerator_Generate(t *testing.T) {
 	if p.CPracufo != "3305" {
 		t.Errorf("VetaP.c_pracufo = %q, want %q", p.CPracufo, "3305")
 	}
-	if p.Jmeno != "Martin" {
-		t.Errorf("VetaP.jmeno = %q, want %q", p.Jmeno, "Martin")
+	if p.Jmeno != "Jan" {
+		t.Errorf("VetaP.jmeno = %q, want %q", p.Jmeno, "Jan")
 	}
-	if p.Prijmeni != "Zajic" {
-		t.Errorf("VetaP.prijmeni = %q, want %q", p.Prijmeni, "Zajic")
+	if p.Prijmeni != "Testovaci" {
+		t.Errorf("VetaP.prijmeni = %q, want %q", p.Prijmeni, "Testovaci")
 	}
 	if p.Stat != "ČESKÁ REPUBLIKA" {
 		t.Errorf("VetaP.stat = %q, want %q", p.Stat, "ČESKÁ REPUBLIKA")

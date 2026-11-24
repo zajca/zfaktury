@@ -926,6 +926,51 @@ func TestRecalculate_2026StandardFilingWarnsOnlyAboutMissingMinimum(t *testing.T
 }
 
 // seedSocialInsuranceXMLSettings stores the taxpayer data the CSSZ XML needs.
+func TestGenerateXML_FilingMethodChangedMessage(t *testing.T) {
+	tests := []struct {
+		name  string
+		filed bool
+		want  string
+		avoid string
+	}{
+		{"draft asks for a recalculation", false, "přepočítejte", ""},
+		{"filed keeps the stored XML", true, "uložené XML zůstává beze změny", "přepočítejte"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, db := setupSocialInsuranceSvc(t)
+			ctx := context.Background()
+			tysRepo := repository.NewTaxYearSettingsRepository(db)
+			if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}); err != nil {
+				t.Fatalf("storing filing method: %v", err)
+			}
+			sio := &domain.SocialInsuranceOverview{Year: 2025, FilingType: domain.FilingTypeRegular, ActivityMonths: domain.FullYearActivityMonths}
+			if err := svc.Create(ctx, sio); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			if _, err := svc.Recalculate(ctx, sio.ID); err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			if tt.filed {
+				if _, err := svc.MarkFiled(ctx, sio.ID); err != nil {
+					t.Fatalf("MarkFiled() error: %v", err)
+				}
+			}
+			if err := tysRepo.Upsert(ctx, &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}); err != nil {
+				t.Fatalf("changing filing method: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, sio.ID)
+			if !errors.Is(err, domain.ErrInvalidInput) || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want ErrInvalidInput containing %q", err, tt.want)
+			}
+			if tt.avoid != "" && strings.Contains(err.Error(), tt.avoid) {
+				t.Errorf("error = %v, must not contain %q", err, tt.avoid)
+			}
+		})
+	}
+}
+
 func seedSocialInsuranceXMLSettings(t *testing.T, db *sql.DB) {
 	t.Helper()
 	settingsRepo := repository.NewSettingsRepository(db)

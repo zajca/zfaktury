@@ -499,8 +499,6 @@ func validSocialInsuranceSettings() map[string]string {
 	}
 }
 
-// testAdvanceBase returns the ř. 35 base the fixtures are calculated with: the
-// final annual base spread over the months of activity, rounded up.
 func TestSocialInsuranceXML_FilingMethodFlags(t *testing.T) {
 	tests := []struct {
 		method      domain.FilingMethod
@@ -560,6 +558,8 @@ func TestSocialInsuranceXML_InvalidFilingMethod(t *testing.T) {
 	}
 }
 
+// testAdvanceBase returns the ř. 35 base the fixtures are calculated with: the
+// final annual base spread over the months of activity, rounded up.
 func testAdvanceBase(sio *domain.SocialInsuranceOverview) domain.Amount {
 	months := int64(sio.ActivityMonths.Count())
 	if months <= 0 {

@@ -393,6 +393,9 @@ func (s *SocialInsuranceService) GenerateXML(ctx context.Context, id int64) (*do
 		settings["flat_rate_expenses"] = "true"
 	}
 	if tys.FilingMethod != sio.FilingMethod {
+		if sio.Status == domain.FilingStatusFiled || sio.FiledAt != nil {
+			return nil, fmt.Errorf("přehled %d je už podaný a způsob podání daňového přiznání se od výpočtu změnil, uložené XML zůstává beze změny: %w", sio.ID, domain.ErrInvalidInput)
+		}
 		return nil, fmt.Errorf("přehled %d: způsob podání daňového přiznání se od výpočtu změnil, přepočítejte přehled: %w", sio.ID, domain.ErrInvalidInput)
 	}
 

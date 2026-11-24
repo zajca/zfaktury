@@ -57,6 +57,9 @@ var (
 	// ErrFilingRecordFailed means the message was accepted by ISDS but the
 	// local record of it could not be written.
 	ErrFilingRecordFailed = errors.New("filing sent but its record could not be stored")
+	// ErrSubmissionNotResolvable means a submission is not in a state that
+	// the user can resolve (only sending and unknown are).
+	ErrSubmissionNotResolvable = errors.New("submission is not awaiting resolution")
 
 	// Reminder errors
 	ErrInvoiceNotOverdue = errors.New("invoice is not overdue")

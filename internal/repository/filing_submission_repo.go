@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
@@ -79,7 +81,8 @@ func (r *FilingSubmissionRepository) Create(ctx context.Context, sub *domain.Fil
 		string(sub.Status), sub.ErrorText, sub.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		var sqliteErr *sqlite.Error
+		if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.SQLITE_CONSTRAINT_UNIQUE {
 			return fmt.Errorf("inserting filing submission: %w", domain.ErrFilingAlreadySent)
 		}
 		return fmt.Errorf("inserting filing submission: %w", err)
@@ -153,11 +156,66 @@ func (r *FilingSubmissionRepository) MarkFailed(ctx context.Context, id int64, s
 		string(status), errorText, id, string(domain.SubmissionSending))
 }
 
+// ResolveSent attaches the message id the user found in the data box to a
+// submission whose outcome was unknown and moves it to sent. Only a sending or
+// unknown submission is resolved.
+func (r *FilingSubmissionRepository) ResolveSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error {
+	return r.resolve(ctx, id, "resolving filing submission as sent", `
+		UPDATE filing_submissions SET dm_id = ?, status = ?, sent_at = ?, error_text = ''
+		WHERE id = ? AND status IN (?, ?) AND deleted_at IS NULL`,
+		dmID, string(domain.SubmissionSent), sentAt.UTC().Format(time.RFC3339))
+}
+
+// ResolveNotSent records the user's confirmation that nothing left the data
+// box and moves a sending or unknown submission to failed, which releases the
+// same bytes for a new send.
+func (r *FilingSubmissionRepository) ResolveNotSent(ctx context.Context, id int64, errorText string) error {
+	return r.resolve(ctx, id, "resolving filing submission as not sent", `
+		UPDATE filing_submissions SET status = ?, error_text = ?
+		WHERE id = ? AND status IN (?, ?) AND deleted_at IS NULL`,
+		string(domain.SubmissionFailed), errorText)
+}
+
+// resolve runs a resolving update; the trailing arguments of the statement
+// are the sending and unknown statuses. A submission that is missing is
+// domain.ErrNotFound, one in another status domain.ErrSubmissionNotResolvable.
+func (r *FilingSubmissionRepository) resolve(ctx context.Context, id int64, what, query string, args ...any) error {
+	args = append(args, id, string(domain.SubmissionSending), string(domain.SubmissionUnknown))
+	err := r.updateOne(ctx, what, query, args...)
+	if !errors.Is(err, domain.ErrNotFound) {
+		return err
+	}
+	// updateOne reports "no row matched"; tell a missing row from a wrong state.
+	if _, getErr := r.GetByID(ctx, id); getErr != nil {
+		return getErr
+	}
+	return fmt.Errorf("%s: %w", what, domain.ErrSubmissionNotResolvable)
+}
+
+// MarkStaleSendingUnknown moves every sending submission created before the
+// cutoff to unknown: no request of that age can still be in flight, so its
+// outcome is unknown. It returns the number of rows changed.
+func (r *FilingSubmissionRepository) MarkStaleSendingUnknown(ctx context.Context, createdBefore time.Time, errorText string) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE filing_submissions SET status = ?, error_text = ?
+		WHERE status = ? AND created_at < ? AND deleted_at IS NULL`,
+		string(domain.SubmissionUnknown), errorText,
+		string(domain.SubmissionSending), createdBefore.UTC().Format(time.RFC3339))
+	if err != nil {
+		return 0, fmt.Errorf("marking stale sending submissions unknown: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("marking stale sending submissions unknown: checking rows affected: %w", err)
+	}
+	return n, nil
+}
+
 // UpdateDelivery stores the delivery state read from ISDS. deliveredAt is set
 // only for a delivered submission and an already stored value is kept.
 func (r *FilingSubmissionRepository) UpdateDelivery(ctx context.Context, id int64, status domain.FilingSubmissionStatus, dmMessageStatus int, deliveredAt *time.Time) error {
 	switch status {
-	case domain.SubmissionSent, domain.SubmissionDelivered, domain.SubmissionUndeliverable:
+	case domain.SubmissionSent, domain.SubmissionDelivered, domain.SubmissionUndeliverable, domain.SubmissionFailed:
 	default:
 		return fmt.Errorf("updating filing submission delivery: %w: status %q", domain.ErrInvalidInput, status)
 	}

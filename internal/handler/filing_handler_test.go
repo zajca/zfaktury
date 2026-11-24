@@ -33,6 +33,13 @@ type fakeFilingDoc struct {
 	mu       sync.Mutex
 	xml      []byte
 	markedAt []time.Time
+	filed    bool
+}
+
+func (d *fakeFilingDoc) IsFiled(context.Context, int64) (bool, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.filed, nil
 }
 
 func (d *fakeFilingDoc) RegenerateXML(context.Context, int64) ([]byte, error) {
@@ -451,7 +458,7 @@ func TestFilingHandler_SendFailureMapping(t *testing.T) {
 		"timeout":       {fmt.Errorf("x: %w: %w", isds.ErrISDSTimeout, isds.ErrISDSUnavailable), http.StatusGatewayTimeout, "zpráva mohla odejít"},
 		"unavailable":   {fmt.Errorf("x: %w", isds.ErrISDSUnavailable), http.StatusBadGateway, "zpráva mohla odejít"},
 		"unexpected":    {fmt.Errorf("x: %w", isds.ErrUnexpectedResponse), http.StatusBadGateway, "zpráva mohla odejít"},
-		"fault":         {&isds.FaultError{Code: "S:Server", Message: "internal fault text"}, http.StatusBadGateway, "nečekanou odpověď"},
+		"fault":         {&isds.FaultError{Code: "S:Server", Message: "internal fault text"}, http.StatusBadGateway, "nic nebylo odesláno"},
 		"limit":         {fmt.Errorf("x: %w", isds.ErrInvalidInput), http.StatusUnprocessableEntity, "limity"},
 		"response size": {fmt.Errorf("x: %w", isds.ErrResponseTooLarge), http.StatusBadGateway, "zpráva mohla odejít"},
 	}
@@ -483,6 +490,8 @@ func TestFilingHandler_ErrorMapping(t *testing.T) {
 		{domain.ErrISDSCredentialsMissing, http.StatusConflict},
 		{domain.ErrFilingSendInProgress, http.StatusConflict},
 		{domain.ErrFilingAlreadySent, http.StatusConflict},
+		{domain.ErrFilingAlreadyFiled, http.StatusConflict},
+		{domain.ErrSubmissionNotResolvable, http.StatusConflict},
 		{domain.ErrConfirmTokenInvalid, http.StatusConflict},
 		{domain.ErrWarningsNotAccepted, http.StatusUnprocessableEntity},
 		{domain.ErrMissingSetting, http.StatusConflict},
@@ -521,7 +530,162 @@ func TestFilingHandler_ErrorMapping(t *testing.T) {
 			if strings.Contains(w.Body.String(), "/home/") || strings.Contains(w.Body.String(), "wrapped") {
 				t.Errorf("body leaks internal text: %s", w.Body.String())
 			}
+			if strings.Contains(w.Body.String(), "internal server error") {
+				t.Errorf("body is English: %s", w.Body.String())
+			}
 		})
+	}
+}
+
+func TestFilingHandler_SOAPFaultOnSendSaysNothingWasSent(t *testing.T) {
+	send := httptest.NewRecorder()
+	respondFilingError(send, fmt.Errorf("x: %w", &isds.FaultError{Code: "S:Server", Message: "fault"}), opSend)
+	if send.Code != http.StatusBadGateway || !strings.Contains(send.Body.String(), "nic nebylo odesláno") ||
+		strings.Contains(send.Body.String(), "mohla odejít") {
+		t.Errorf("SOAP fault on send = %d %s", send.Code, send.Body.String())
+	}
+	refresh := httptest.NewRecorder()
+	respondFilingError(refresh, fmt.Errorf("x: %w", isds.ErrSOAPFault), opRefresh)
+	if refresh.Code != http.StatusBadGateway || strings.Contains(refresh.Body.String(), "nic nebylo odesláno") {
+		t.Errorf("SOAP fault on refresh = %d %s", refresh.Code, refresh.Body.String())
+	}
+}
+
+func TestFilingHandler_UnknownOutcomeMessagesPointToResolveOrEPO(t *testing.T) {
+	for name, err := range map[string]error{
+		"blocked":     domain.ErrFilingAlreadySent,
+		"transport":   fmt.Errorf("x: %w", isds.ErrISDSUnavailable),
+		"timeout":     fmt.Errorf("x: %w: %w", isds.ErrISDSTimeout, isds.ErrISDSUnavailable),
+		"not stored":  domain.ErrFilingRecordFailed,
+		"no response": fmt.Errorf("x: %w", isds.ErrUnexpectedResponse),
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			respondFilingError(w, err, opSend)
+			body := w.Body.String()
+			if !strings.Contains(body, "resolve") || !strings.Contains(body, "EPO") || !strings.Contains(body, "datové schránce") {
+				t.Errorf("message does not tell how to proceed: %s", body)
+			}
+		})
+	}
+}
+
+func TestFilingHandler_FiledDocumentIsRefused(t *testing.T) {
+	f := newFilingFixture(t, false, "127.0.0.1")
+	p := f.preview(t, "production")
+	f.doc.filed = true
+
+	for name, w := range map[string]*httptest.ResponseRecorder{
+		"preview": f.do(filingPost(vatPreviewPath, map[string]any{"environment": "production"})),
+		"send":    f.send(p.ConfirmToken, "production", false),
+	} {
+		if w.Code != http.StatusConflict || !strings.Contains(errorOf(t, w), "podané") {
+			t.Errorf("%s of a filed document = %d %s", name, w.Code, w.Body.String())
+		}
+	}
+	if len(f.client.created) != 0 {
+		t.Error("a filed document was sent")
+	}
+}
+
+func TestFilingHandler_Resolve(t *testing.T) {
+	const resolvePath = "/api/v1/filings/submissions/1/resolve"
+
+	// unknownOutcome leaves submission 1 unknown: the transport fails mid-send.
+	unknownOutcome := func(t *testing.T) *filingFixture {
+		f := newFilingFixture(t, false, "127.0.0.1")
+		f.client.createErr = fmt.Errorf("x: %w", isds.ErrISDSUnavailable)
+		p := f.preview(t, "production")
+		if w := f.send(p.ConfirmToken, "production", false); w.Code != http.StatusBadGateway {
+			t.Fatalf("setup send = %d %s", w.Code, w.Body.String())
+		}
+		f.client.createErr = nil
+		return f
+	}
+	statusOf := func(t *testing.T, f *filingFixture) filingSubmissionResponse {
+		list := decode[[]filingSubmissionResponse](t, f.do(isdsReq{method: http.MethodGet, path: vatListPath}))
+		if len(list) == 0 {
+			t.Fatal("no submissions")
+		}
+		return list[0]
+	}
+
+	t.Run("attach", func(t *testing.T) {
+		f := unknownOutcome(t)
+		w := f.do(filingPost(resolvePath, map[string]any{"action": "attach", "dmId": "424242"}))
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d %s", w.Code, w.Body.String())
+		}
+		if sub := decode[filingSubmissionResponse](t, w); sub.Status != "sent" || sub.DmID != "424242" {
+			t.Errorf("submission = %+v", sub)
+		}
+		if len(f.doc.markedAt) != 0 {
+			t.Error("attaching a message id marked the document filed")
+		}
+	})
+
+	t.Run("notSent releases the document", func(t *testing.T) {
+		f := unknownOutcome(t)
+		w := f.do(filingPost(resolvePath, map[string]any{"action": "notSent"}))
+		if w.Code != http.StatusOK || decode[filingSubmissionResponse](t, w).Status != "failed" {
+			t.Fatalf("status = %d %s", w.Code, w.Body.String())
+		}
+		p := f.preview(t, "production")
+		if w := f.send(p.ConfirmToken, "production", false); w.Code != http.StatusCreated {
+			t.Errorf("send after notSent = %d %s", w.Code, w.Body.String())
+		}
+	})
+
+	t.Run("refused", func(t *testing.T) {
+		f := unknownOutcome(t)
+		for name, tc := range map[string]struct {
+			body   any
+			status int
+		}{
+			"unknown action":    {map[string]any{"action": "retry"}, http.StatusBadRequest},
+			"missing action":    {map[string]any{}, http.StatusBadRequest},
+			"bad dmId":          {map[string]any{"action": "attach", "dmId": "12x"}, http.StatusBadRequest},
+			"attach without id": {map[string]any{"action": "attach"}, http.StatusBadRequest},
+			"unknown field":     {map[string]any{"action": "notSent", "recipient": "abc1234"}, http.StatusBadRequest},
+		} {
+			if w := f.do(filingPost(resolvePath, tc.body)); w.Code != tc.status {
+				t.Errorf("%s = %d %s, want %d", name, w.Code, w.Body.String(), tc.status)
+			}
+		}
+		if got := statusOf(t, f); got.Status != "unknown" {
+			t.Errorf("a refused resolve changed the submission to %s", got.Status)
+		}
+		if w := f.do(filingPost("/api/v1/filings/submissions/999/resolve", map[string]any{"action": "notSent"})); w.Code != http.StatusNotFound {
+			t.Errorf("resolve of a missing submission = %d", w.Code)
+		}
+	})
+
+	t.Run("a submission in another status", func(t *testing.T) {
+		f := newFilingFixture(t, false, "127.0.0.1")
+		p := f.preview(t, "production")
+		f.send(p.ConfirmToken, "production", false)
+		w := f.do(filingPost(resolvePath, map[string]any{"action": "notSent"}))
+		if w.Code != http.StatusConflict {
+			t.Errorf("resolve of a sent submission = %d %s, want 409", w.Code, w.Body.String())
+		}
+		if got := statusOf(t, f); got.Status != "sent" {
+			t.Errorf("status = %s", got.Status)
+		}
+	})
+}
+
+func TestFilingHandler_RefreshOfASentSubmissionReportsTheDocumentNotFiled(t *testing.T) {
+	f := newFilingFixture(t, false, "127.0.0.1")
+	p := f.preview(t, "production")
+	f.send(p.ConfirmToken, "production", false)
+	f.client.delivery = &isds.DeliveryInfo{MessageID: "1234567890", Status: isds.StatusStamped}
+
+	w := f.do(filingPost("/api/v1/filings/submissions/1/refresh", map[string]any{}))
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d %s", w.Code, w.Body.String())
+	}
+	if res := decode[filingRefreshResponse](t, w); res.DocumentFiled || res.Submission.Status != "sent" {
+		t.Errorf("result = %+v, want sent and not filed", res)
 	}
 }
 
@@ -535,6 +699,7 @@ func TestFilingHandler_GuardsOnEveryRoute(t *testing.T) {
 		{http.MethodPost, vatPreviewPath, `{"environment":"test"}`, true},
 		{http.MethodPost, vatSendPath, `{"environment":"test","confirmToken":"x"}`, true},
 		{http.MethodPost, "/api/v1/filings/submissions/1/refresh", `{}`, true},
+		{http.MethodPost, "/api/v1/filings/submissions/1/resolve", `{"action":"notSent"}`, true},
 		{http.MethodGet, vatListPath, "", false},
 		{http.MethodGet, "/api/v1/filings/submissions/1/receipt.zfo", "", false},
 		{http.MethodPost, "/api/v1/settings/isds-credentials/test", `{"environment":"test"}`, true},
@@ -598,7 +763,7 @@ func TestFilingHandler_GuardsOnEveryRoute(t *testing.T) {
 
 func TestFilingHandler_DevCORSDoesNotApply(t *testing.T) {
 	f := newFilingFixture(t, true, "127.0.0.1")
-	for _, path := range []string{vatSendPath, vatPreviewPath, vatListPath, "/api/v1/settings/isds-credentials/test"} {
+	for _, path := range []string{vatSendPath, vatPreviewPath, vatListPath, "/api/v1/filings/submissions/1/resolve", "/api/v1/settings/isds-credentials/test"} {
 		w := isdsReq{method: http.MethodOptions, path: path, origin: "https://evil.example.com"}.do(f.router)
 		if w.Header().Get("Access-Control-Allow-Origin") != "" {
 			t.Errorf("OPTIONS %s got a CORS allow-origin header: %q", path, w.Header().Get("Access-Control-Allow-Origin"))

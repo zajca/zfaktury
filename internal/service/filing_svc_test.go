@@ -39,6 +39,14 @@ type fakeFilingDoc struct {
 	markErr     error
 	markCalls   []time.Time
 	alreadyDone bool
+	filed       bool // what IsFiled reports
+	filedErr    error
+}
+
+func (d *fakeFilingDoc) IsFiled(_ context.Context, _ int64) (bool, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.filed, d.filedErr
 }
 
 func (d *fakeFilingDoc) RegenerateXML(_ context.Context, _ int64) ([]byte, error) {
@@ -459,10 +467,24 @@ func TestFilingService_SameBytesAreNotSentTwiceToOneEnvironment(t *testing.T) {
 		t.Errorf("CreateMessage calls = %d, want 1", len(h.client.created))
 	}
 
-	// The test environment is independent of the production one.
+	// A document with a production send is not sent to the test box either.
+	pt, err := h.svc.Preview(context.Background(), domain.FilingKindVATReturn, 7, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.svc.Send(context.Background(), domain.FilingKindVATReturn, 7,
+		FilingSendRequest{Environment: "test", ConfirmToken: pt.ConfirmToken})
+	if !errors.Is(err, domain.ErrFilingAlreadySent) || len(h.client.created) != 1 {
+		t.Errorf("test send after a production send = %v (messages %d), want ErrFilingAlreadySent", err, len(h.client.created))
+	}
+}
+
+func TestFilingService_TestSendDoesNotBlockTheProductionSend(t *testing.T) {
+	h := newFilingHarness(t)
 	h.previewSend(t, "test")
+	h.previewSend(t, "production")
 	if len(h.client.created) != 2 {
-		t.Errorf("a send to the test environment was blocked by the production send")
+		t.Errorf("messages = %d, want the test and the production send", len(h.client.created))
 	}
 }
 
@@ -779,7 +801,7 @@ func TestFilingService_RefreshStatuses(t *testing.T) {
 	}{
 		"submitted":         {isds.StatusSubmitted, domain.SubmissionSent, false, false},
 		"stamped":           {isds.StatusStamped, domain.SubmissionSent, false, false},
-		"malicious":         {isds.StatusRejectedMalicious, domain.SubmissionSent, false, false},
+		"malicious":         {isds.StatusRejectedMalicious, domain.SubmissionFailed, false, false},
 		"delivered":         {isds.StatusDelivered, domain.SubmissionDelivered, true, true},
 		"delivered fiction": {isds.StatusDeliveredByFiction, domain.SubmissionDelivered, true, true},
 		"delivered login":   {isds.StatusDeliveredByLogin, domain.SubmissionDelivered, true, true},
@@ -804,6 +826,9 @@ func TestFilingService_RefreshStatuses(t *testing.T) {
 			}
 			if (len(h.doc.markCalls) == 1) != tc.wantFiled {
 				t.Errorf("document marked filed %d times, want filed=%v", len(h.doc.markCalls), tc.wantFiled)
+			}
+			if res.DocumentFiled != tc.wantFiled {
+				t.Errorf("DocumentFiled = %v, want %v", res.DocumentFiled, tc.wantFiled)
 			}
 			if res.Submission.HasReceipt != tc.wantReceipt {
 				t.Errorf("HasReceipt = %v, want %v", res.Submission.HasReceipt, tc.wantReceipt)

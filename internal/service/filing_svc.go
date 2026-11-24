@@ -26,6 +26,9 @@ const maxStoredErrorRunes = 500
 
 // FilingDocument is one kind of generated filing the service can send.
 type FilingDocument interface {
+	// IsFiled reports whether the document is already filed. It does not
+	// change the document.
+	IsFiled(ctx context.Context, id int64) (bool, error)
 	// RegenerateXML regenerates the filing XML from the current data, stores
 	// it with the document and returns it. An empty result is an error.
 	RegenerateXML(ctx context.Context, id int64) ([]byte, error)
@@ -279,6 +282,15 @@ func (s *FilingService) prepare(ctx context.Context, kind domain.FilingKind, id 
 	if err != nil {
 		return nil, err
 	}
+	// A filed document is neither regenerated nor sent again; regenerating
+	// would also overwrite the XML that was filed.
+	filed, err := doc.IsFiled(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("reading the state of %s %d: %w", kind, id, err)
+	}
+	if filed {
+		return nil, fmt.Errorf("preparing %s %d: %w", kind, id, domain.ErrFilingAlreadyFiled)
+	}
 	xmlData, err := doc.RegenerateXML(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("regenerating XML of %s %d: %w", kind, id, err)
@@ -454,6 +466,9 @@ func (s *FilingService) Send(ctx context.Context, kind domain.FilingKind, id int
 	if err := s.tokens.consume(req.ConfirmToken, p.binding(kind, id, env), req.AcceptWarnings); err != nil {
 		return nil, fmt.Errorf("sending %s %d: %w", kind, id, err)
 	}
+	if err := s.refuseAfterProductionSend(ctx, kind, id); err != nil {
+		return nil, err
+	}
 
 	// Past this point the message may leave: a closed client connection must
 	// neither abort it nor stop its record from being written.
@@ -518,6 +533,25 @@ func (s *FilingService) Send(ctx context.Context, kind domain.FilingKind, id int
 	return stored, nil
 }
 
+// refuseAfterProductionSend refuses a send of a document that already has a
+// sent or delivered production submission. The unique index only compares
+// identical bytes; regenerated XML of changed data would slip past it.
+func (s *FilingService) refuseAfterProductionSend(ctx context.Context, kind domain.FilingKind, id int64) error {
+	subs, err := s.repo.ListByDocument(ctx, kind, id)
+	if err != nil {
+		return fmt.Errorf("listing submissions of %s %d: %w", kind, id, err)
+	}
+	for _, sub := range subs {
+		if sub.Environment != string(secrets.ISDSEnvironmentProduction) {
+			continue
+		}
+		if sub.Status == domain.SubmissionSent || sub.Status == domain.SubmissionDelivered {
+			return fmt.Errorf("sending %s %d: %w", kind, id, domain.ErrFilingAlreadySent)
+		}
+	}
+	return nil
+}
+
 // classifySendError decides whether a failed CreateMessage definitively did
 // not send (failed, may be retried) or may have left (unknown, blocks a
 // resend until the user checks the data box).
@@ -547,10 +581,10 @@ func describeSendError(err error) string {
 // FilingRefreshResult is the outcome of a delivery refresh.
 type FilingRefreshResult struct {
 	Submission *domain.FilingSubmission
-	// DocumentFiled is true when the document is filed. It is false when the
-	// message is delivered but the document could not be marked filed
-	// (refreshing again retries it), and always false for a test-environment
-	// submission, which never changes the document.
+	// DocumentFiled is true only for a delivered production submission whose
+	// document is filed. It is false for every other state, when the document
+	// could not be marked filed (refreshing again retries it), and always for a
+	// test-environment submission, which never changes the document.
 	DocumentFiled bool
 }
 
@@ -566,7 +600,7 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 	case domain.SubmissionSent, domain.SubmissionDelivered, domain.SubmissionUndeliverable:
 	default:
 		return nil, fmt.Errorf("refreshing submission %d: %w", submissionID,
-			&domain.UserMessageError{Message: "U tohoto odeslání není číslo zprávy, stav doručení nelze zjistit."})
+			&domain.UserMessageError{Message: "U tohoto odeslání není platné číslo zprávy, stav doručení nelze zjistit. Pokud výsledek odeslání nebyl potvrzen, použijte akci resolve."})
 	}
 	env, err := parseFilingEnv(sub.Environment)
 	if err != nil {
@@ -605,7 +639,7 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 	if err != nil {
 		return nil, fmt.Errorf("fetching refreshed submission %d: %w", submissionID, err)
 	}
-	result := &FilingRefreshResult{Submission: updated, DocumentFiled: true}
+	result := &FilingRefreshResult{Submission: updated}
 	if updated.Status == domain.SubmissionDelivered {
 		result.DocumentFiled = s.markFiled(ctx, updated)
 	}
@@ -625,11 +659,15 @@ func (s *FilingService) deliveryState(sub *domain.FilingSubmission, info *isds.D
 		case info.AcceptanceTime != nil:
 			return domain.SubmissionDelivered, info.AcceptanceTime
 		default:
-			now := s.now()
-			return domain.SubmissionDelivered, &now
+			// Delivered without a time from ISDS: the document is not marked
+			// filed until a later refresh learns the time.
+			return domain.SubmissionDelivered, nil
 		}
 	case info.Status == isds.StatusUndeliverable:
 		return domain.SubmissionUndeliverable, nil
+	case info.Status == isds.StatusRejectedMalicious:
+		// A final refusal that leaves the blocking set, so the filing can be sent again.
+		return domain.SubmissionFailed, nil
 	default:
 		return domain.SubmissionSent, nil
 	}
@@ -657,7 +695,12 @@ func (s *FilingService) markFiled(ctx context.Context, sub *domain.FilingSubmiss
 		return false
 	}
 	doc, ok := s.docs[sub.DocumentKind]
-	if !ok || sub.DeliveredAt == nil {
+	if !ok {
+		return false
+	}
+	if sub.DeliveredAt == nil {
+		slog.Warn("delivered submission has no delivery time, the document is not marked filed",
+			"submission_id", sub.ID, "kind", string(sub.DocumentKind), "id", sub.DocumentID)
 		return false
 	}
 	err := doc.MarkFiledAt(ctx, sub.DocumentID, *sub.DeliveredAt)
@@ -672,6 +715,101 @@ func (s *FilingService) markFiled(ctx context.Context, sub *domain.FilingSubmiss
 		return false
 	}
 	return true
+}
+
+// The actions of FilingService.Resolve.
+const (
+	// ResolveAttach records the message id the user found in the sent folder
+	// of the data box.
+	ResolveAttach = "attach"
+	// ResolveNotSent records the user's confirmation that nothing was sent.
+	ResolveNotSent = "notSent"
+)
+
+// notSentReason is the text kept with a submission the user declared unsent.
+const notSentReason = "Uživatel potvrdil, že zpráva v datové schránce neodešla."
+
+// FilingResolveRequest is the user's decision about a submission whose
+// outcome is unknown.
+type FilingResolveRequest struct {
+	Action string
+	// DmID is the message id for ResolveAttach.
+	DmID string
+}
+
+// Resolve settles a sending or unknown submission on the user's explicit word.
+// Attaching a message id turns it into a sent submission that Refresh then
+// follows; declaring it unsent releases the document for a new preview and
+// send. ISDS is not contacted.
+func (s *FilingService) Resolve(ctx context.Context, submissionID int64, req FilingResolveRequest) (*domain.FilingSubmission, error) {
+	dmID := strings.TrimSpace(req.DmID)
+	switch req.Action {
+	case ResolveAttach:
+		if !isds.ValidMessageID(dmID) {
+			return nil, fmt.Errorf("resolving submission %d: %w", submissionID,
+				&domain.UserMessageError{Message: "Číslo zprávy (dmID) musí mít 1 až 20 číslic."})
+		}
+	case ResolveNotSent:
+		if dmID != "" {
+			return nil, fmt.Errorf("resolving submission %d: %w", submissionID,
+				&domain.UserMessageError{Message: "K potvrzení, že zpráva neodešla, se číslo zprávy nezadává."})
+		}
+	default:
+		return nil, fmt.Errorf("resolving submission %d: %w", submissionID,
+			&domain.UserMessageError{Message: "Neznámá akce, použijte attach nebo notSent."})
+	}
+
+	sub, err := s.repo.GetByID(ctx, submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching submission %d for resolution: %w", submissionID, err)
+	}
+	if sub.Status != domain.SubmissionUnknown && sub.Status != domain.SubmissionSending {
+		return nil, fmt.Errorf("resolving submission %d: %w", submissionID, domain.ErrSubmissionNotResolvable)
+	}
+	// A sending submission of a send that is running right now is not stuck.
+	if !s.acquire(sub.DocumentKind, sub.DocumentID) {
+		return nil, fmt.Errorf("resolving submission %d: %w", submissionID, domain.ErrFilingSendInProgress)
+	}
+	defer s.release(sub.DocumentKind, sub.DocumentID)
+
+	action := "isds_resolve_not_sent"
+	if req.Action == ResolveAttach {
+		action = "isds_resolve_attach"
+		err = s.repo.ResolveSent(ctx, sub.ID, dmID, s.now())
+	} else {
+		err = s.repo.ResolveNotSent(ctx, sub.ID, notSentReason)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("resolving submission %d: %w", submissionID, err)
+	}
+
+	slog.Info("ISDS submission resolved by the user",
+		"submission_id", sub.ID, "kind", string(sub.DocumentKind), "id", sub.DocumentID,
+		"environment", sub.Environment, "resolution", req.Action, "previous_status", string(sub.Status))
+	if s.audit != nil {
+		s.audit.Log(ctx, "filing_submission", sub.ID, action, nil, nil)
+	}
+	resolved, err := s.repo.GetByID(ctx, sub.ID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching resolved submission %d: %w", submissionID, err)
+	}
+	return resolved, nil
+}
+
+// RecoverInterrupted turns sending submissions older than the ISDS request
+// timeout into unknown. A send that old cannot still be running, so its
+// outcome is unknown; the user settles it with Resolve. It runs once at
+// startup and returns how many submissions changed.
+func (s *FilingService) RecoverInterrupted(ctx context.Context) (int64, error) {
+	n, err := s.repo.MarkStaleSendingUnknown(ctx, s.now().Add(-isds.DefaultTimeout),
+		"Odesílání bylo přerušeno dřív, než se znal výsledek.")
+	if err != nil {
+		return 0, fmt.Errorf("recovering interrupted submissions: %w", err)
+	}
+	if n > 0 {
+		slog.Warn("interrupted ISDS submissions marked unknown", "count", n)
+	}
+	return n, nil
 }
 
 // List returns the submissions of one document, newest first.

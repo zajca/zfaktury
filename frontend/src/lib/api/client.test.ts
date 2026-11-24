@@ -337,6 +337,21 @@ describe('filingApi', () => {
 		expect(headers['X-ZFaktury-Confirm']).toBe('1');
 	});
 
+	it('resolves a submission with the confirm header and the chosen action', async () => {
+		mockFetch.mockImplementation(async () => jsonResponse({ id: 12, status: 'sent' }));
+
+		await filingApi.resolve(12, { action: 'attach', dmId: '424242' });
+		let call = lastCall();
+		expect(call.url).toBe('/api/v1/filings/submissions/12/resolve');
+		expect(call.init.method).toBe('POST');
+		expect(call.headers['X-ZFaktury-Confirm']).toBe('1');
+		expect(JSON.parse(call.init.body as string)).toEqual({ action: 'attach', dmId: '424242' });
+
+		await filingApi.resolve(12, { action: 'notSent' });
+		call = lastCall();
+		expect(JSON.parse(call.init.body as string)).toEqual({ action: 'notSent' });
+	});
+
 	it('builds the receipt download URL', () => {
 		expect(filingApi.receiptUrl(12)).toBe('/api/v1/filings/submissions/12/receipt.zfo');
 	});

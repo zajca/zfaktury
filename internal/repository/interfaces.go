@@ -355,6 +355,13 @@ type FilingSubmissionRepo interface {
 	ListByDocument(ctx context.Context, kind domain.FilingKind, documentID int64) ([]domain.FilingSubmission, error)
 	MarkSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error
 	MarkFailed(ctx context.Context, id int64, status domain.FilingSubmissionStatus, errorText string) error
+	// ResolveSent and ResolveNotSent settle a sending or unknown submission on
+	// the user's word; another status is domain.ErrSubmissionNotResolvable.
+	ResolveSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error
+	ResolveNotSent(ctx context.Context, id int64, errorText string) error
+	// MarkStaleSendingUnknown moves sending submissions created before the
+	// cutoff to unknown and returns how many changed.
+	MarkStaleSendingUnknown(ctx context.Context, createdBefore time.Time, errorText string) (int64, error)
 	UpdateDelivery(ctx context.Context, id int64, status domain.FilingSubmissionStatus, dmMessageStatus int, deliveredAt *time.Time) error
 	SaveReceipt(ctx context.Context, id int64, zfo []byte) error
 	GetReceipt(ctx context.Context, id int64) ([]byte, error)

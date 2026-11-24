@@ -222,8 +222,8 @@ func TestFilingSubmissionRepository_StateGuards(t *testing.T) {
 	if err := repo.UpdateDelivery(ctx, sub.ID, domain.SubmissionDelivered, 4, nil); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("UpdateDelivery of a sending row = %v, want ErrNotFound", err)
 	}
-	if err := repo.UpdateDelivery(ctx, sub.ID, domain.SubmissionFailed, 4, nil); !errors.Is(err, domain.ErrInvalidInput) {
-		t.Errorf("UpdateDelivery with a failed status = %v", err)
+	if err := repo.UpdateDelivery(ctx, sub.ID, domain.SubmissionUnknown, 4, nil); !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("UpdateDelivery with an unknown status = %v", err)
 	}
 	if err := repo.MarkSent(ctx, sub.ID, "333", time.Now()); err != nil {
 		t.Fatal(err)

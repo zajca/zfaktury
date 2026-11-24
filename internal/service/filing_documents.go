@@ -15,6 +15,17 @@ import (
 type filingDocument struct {
 	regenerate  func(ctx context.Context, id int64) ([]byte, error)
 	markFiledAt func(ctx context.Context, id int64, at time.Time) error
+	status      func(ctx context.Context, id int64) (string, error)
+}
+
+// IsFiled reports whether the document is already filed. It reads the stored
+// status only and never regenerates anything.
+func (d filingDocument) IsFiled(ctx context.Context, id int64) (bool, error) {
+	status, err := d.status(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return status == domain.FilingStatusFiled, nil
 }
 
 func (d filingDocument) RegenerateXML(ctx context.Context, id int64) ([]byte, error) {
@@ -63,6 +74,13 @@ func NewFilingDocuments(
 				_, err := vatReturn.MarkFiledAt(ctx, id, at)
 				return err
 			},
+			status: func(ctx context.Context, id int64) (string, error) {
+				vr, err := vatReturn.GetByID(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				return vr.Status, nil
+			},
 		},
 		domain.FilingKindControlStatement: filingDocument{
 			regenerate: func(ctx context.Context, id int64) ([]byte, error) {
@@ -73,6 +91,13 @@ func NewFilingDocuments(
 				return control.GenerateXML(ctx, id, dic)
 			},
 			markFiledAt: control.MarkFiledAt,
+			status: func(ctx context.Context, id int64) (string, error) {
+				cs, err := control.GetByID(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				return cs.Status, nil
+			},
 		},
 		domain.FilingKindVIESSummary: filingDocument{
 			regenerate: func(ctx context.Context, id int64) ([]byte, error) {
@@ -86,6 +111,13 @@ func NewFilingDocuments(
 				return vies.GetXMLData(ctx, id)
 			},
 			markFiledAt: vies.MarkFiledAt,
+			status: func(ctx context.Context, id int64) (string, error) {
+				vs, err := vies.GetByID(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				return vs.Status, nil
+			},
 		},
 		domain.FilingKindIncomeTax: filingDocument{
 			regenerate: func(ctx context.Context, id int64) ([]byte, error) {
@@ -99,6 +131,13 @@ func NewFilingDocuments(
 				_, err := incomeTax.MarkFiledAt(ctx, id, at)
 				return err
 			},
+			status: func(ctx context.Context, id int64) (string, error) {
+				itr, err := incomeTax.GetByID(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				return itr.Status, nil
+			},
 		},
 		domain.FilingKindSocialInsurance: filingDocument{
 			regenerate: func(ctx context.Context, id int64) ([]byte, error) {
@@ -111,6 +150,13 @@ func NewFilingDocuments(
 			markFiledAt: func(ctx context.Context, id int64, at time.Time) error {
 				_, err := social.MarkFiledAt(ctx, id, at)
 				return err
+			},
+			status: func(ctx context.Context, id int64) (string, error) {
+				sio, err := social.GetByID(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				return sio.Status, nil
 			},
 		},
 	}

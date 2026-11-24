@@ -32,6 +32,14 @@ const (
 	maxXSDFindings = 20
 )
 
+const (
+	// msgFilingBlockedHint tells the user how to get out of a send whose
+	// outcome is not known.
+	msgFilingBlockedHint = "Podání se znovu neodešle, dokud výsledek nepotvrdíte: zkontrolujte odeslané zprávy v datové schránce a podle nálezu u odeslání použijte akci resolve (attach s číslem zprávy, nebo notSent), případně podání podejte ručně přes EPO."
+
+	msgFilingBlocked = "Toto podání už bylo do tohoto prostředí odesláno, nebo se výsledek dřívějšího odeslání nepodařilo zjistit. " + msgFilingBlockedHint
+)
+
 // filingOp names the action a request performs, so a failure is explained in
 // terms of that action.
 type filingOp string
@@ -40,6 +48,7 @@ const (
 	opPreview   filingOp = "preview"
 	opSend      filingOp = "send"
 	opRefresh   filingOp = "refresh"
+	opResolve   filingOp = "resolve"
 	opLoginTest filingOp = "login-test"
 	opRead      filingOp = "read"
 )
@@ -71,6 +80,7 @@ func (h *FilingHandler) Routes() chi.Router {
 		w.Post("/{kind}/{id}/isds/preview", h.Preview)
 		w.Post("/{kind}/{id}/isds/send", h.Send)
 		w.Post("/submissions/{sid}/refresh", h.Refresh)
+		w.Post("/submissions/{sid}/resolve", h.Resolve)
 	})
 	return r
 }
@@ -83,6 +93,11 @@ type filingSendRequest struct {
 	Environment    string `json:"environment"`
 	ConfirmToken   string `json:"confirmToken"`
 	AcceptWarnings bool   `json:"acceptWarnings"`
+}
+
+type filingResolveRequest struct {
+	Action string `json:"action"`
+	DmID   string `json:"dmId"`
 }
 
 type filingPreviewResponse struct {
@@ -288,6 +303,25 @@ func (h *FilingHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Resolve handles POST /submissions/{sid}/resolve: the user settles a
+// submission whose outcome is unknown. ISDS is not contacted.
+func (h *FilingHandler) Resolve(w http.ResponseWriter, r *http.Request) {
+	sid, ok := parseSubmissionID(w, r)
+	if !ok {
+		return
+	}
+	var req filingResolveRequest
+	if !decodeFilingBody(w, r, &req) {
+		return
+	}
+	sub, err := h.svc.Resolve(r.Context(), sid, service.FilingResolveRequest{Action: req.Action, DmID: req.DmID})
+	if err != nil {
+		respondFilingError(w, err, opResolve)
+		return
+	}
+	respondJSON(w, http.StatusOK, filingSubmissionToResponse(*sub))
+}
+
 // Receipt handles GET /submissions/{sid}/receipt.zfo.
 func (h *FilingHandler) Receipt(w http.ResponseWriter, r *http.Request) {
 	sid, ok := parseSubmissionID(w, r)
@@ -364,12 +398,16 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 	case errors.Is(err, domain.ErrWarningsNotAccepted):
 		respondError(w, http.StatusUnprocessableEntity, "Kontrola podání vrátila upozornění. Odeslání vyžaduje jejich výslovné potvrzení.")
 	case errors.Is(err, domain.ErrFilingAlreadySent):
-		respondError(w, http.StatusConflict, "Toto podání už bylo do tohoto prostředí odesláno, nebo se výsledek dřívějšího odeslání nepodařilo spolehlivě zjistit. Zkontrolujte odeslané zprávy v datové schránce.")
+		respondError(w, http.StatusConflict, msgFilingBlocked)
+	case errors.Is(err, domain.ErrFilingAlreadyFiled):
+		respondError(w, http.StatusConflict, "Podání je už označeno jako podané, nelze ho znovu připravit ani odeslat.")
+	case errors.Is(err, domain.ErrSubmissionNotResolvable):
+		respondError(w, http.StatusConflict, "Toto odeslání nečeká na potvrzení výsledku.")
 	case errors.Is(err, domain.ErrFilingSendInProgress):
 		respondError(w, http.StatusConflict, "Odesílání tohoto podání právě probíhá.")
 	case errors.Is(err, domain.ErrFilingRecordFailed):
 		slog.Error("filing sent but not recorded", "error", err)
-		respondError(w, http.StatusInternalServerError, "Zpráva byla datovou schránkou přijata, ale záznam o odeslání se nepodařilo uložit. Neodesílejte podání znovu, zkontrolujte odeslané zprávy v datové schránce.")
+		respondError(w, http.StatusInternalServerError, "Zpráva byla datovou schránkou přijata, ale záznam o odeslání se nepodařilo uložit. Neodesílejte podání znovu. Najděte zprávu mezi odeslanými v datové schránce a její číslo doplňte u odeslání (akce resolve), nebo podání podejte ručně přes EPO.")
 	case errors.Is(err, domain.ErrXMLNotGenerated):
 		respondError(w, http.StatusConflict, "Nejdřív vygenerujte XML.")
 	case errors.Is(err, domain.ErrISDSCredentialsMissing):
@@ -389,6 +427,8 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 		respondError(w, http.StatusUnprocessableEntity, "Datová schránka odmítla přihlašovací údaje. Zkontrolujte je v nastavení a otestujte přihlášení.")
 	case errors.As(err, &statusErr):
 		respondError(w, http.StatusUnprocessableEntity, fmt.Sprintf("Datová schránka požadavek odmítla (kód %s).", statusErr.Code))
+	case errors.Is(err, isds.ErrSOAPFault) && op == opSend:
+		respondError(w, http.StatusBadGateway, "Datová schránka zprávu odmítla, nic nebylo odesláno. Podání lze po chvíli odeslat znovu.")
 	case errors.Is(err, isds.ErrISDSTimeout):
 		respondError(w, http.StatusGatewayTimeout, unavailableMessage(op, "Datová schránka neodpověděla včas."))
 	case errors.Is(err, isds.ErrISDSUnavailable), errors.Is(err, isds.ErrUnexpectedResponse),
@@ -408,7 +448,7 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 		respondError(w, http.StatusBadRequest, "Neplatný požadavek.")
 	default:
 		slog.Error("filing request failed", "operation", string(op), "error", err)
-		respondError(w, http.StatusInternalServerError, "internal server error")
+		respondError(w, http.StatusInternalServerError, "Při zpracování podání došlo k vnitřní chybě.")
 	}
 }
 
@@ -417,7 +457,7 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 func unavailableMessage(op filingOp, lead string) string {
 	switch op {
 	case opSend:
-		return lead + " Odeslání se nepodařilo potvrdit, zpráva mohla odejít. Zkontrolujte odeslané zprávy v datové schránce, podání se do té doby znovu neodešle."
+		return lead + " Odeslání se nepodařilo potvrdit, zpráva mohla odejít. " + msgFilingBlockedHint
 	case opRefresh:
 		return lead + " Stav doručení se nepodařilo zjistit, zkuste to později."
 	case opLoginTest:

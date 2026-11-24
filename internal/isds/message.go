@@ -32,6 +32,10 @@ var (
 	messageIDPattern = regexp.MustCompile(`^[0-9]{1,20}$`)
 )
 
+// ValidMessageID reports whether s has the format of an ISDS message id
+// (dmID): 1 to 20 digits.
+func ValidMessageID(s string) bool { return messageIDPattern.MatchString(s) }
+
 // FileMetaType is the dmFileMetaType of a message file.
 type FileMetaType string
 

@@ -751,9 +751,12 @@ export interface FilingSubmission {
 
 export interface FilingRefreshResult {
 	submission: FilingSubmission;
-	/** False when the message is delivered but the document could not be marked filed. */
+	/** True only when the document is filed: a delivered production submission. */
 	documentFiled: boolean;
 }
+
+/** What the user found in the data box about a submission with an unknown outcome. */
+export type FilingResolution = { action: 'attach'; dmId: string } | { action: 'notSent' };
 
 export const filingApi = {
 	preview(kind: FilingKind, id: number, environment: ISDSEnvironment) {
@@ -785,6 +788,15 @@ export const filingApi = {
 		return request<FilingRefreshResult>(`/filings/submissions/${submissionId}/refresh`, {
 			method: 'POST',
 			body: JSON.stringify({}),
+			headers: ISDS_CONFIRM_HEADERS
+		});
+	},
+
+	/** Settles a sending or unknown submission; ISDS is not contacted. */
+	resolve(submissionId: number, resolution: FilingResolution) {
+		return request<FilingSubmission>(`/filings/submissions/${submissionId}/resolve`, {
+			method: 'POST',
+			body: JSON.stringify(resolution),
 			headers: ISDS_CONFIRM_HEADERS
 		});
 	},

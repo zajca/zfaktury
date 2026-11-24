@@ -446,6 +446,10 @@ func wireRouter(cfg *config.Config, db *sql.DB) (*chi.Mux, error) {
 	if err != nil {
 		return nil, fmt.Errorf("wiring the filing service: %w", err)
 	}
+	// A send interrupted by a crash or a restart has an unknown outcome.
+	if _, err := filingSvc.RecoverInterrupted(context.Background()); err != nil {
+		return nil, fmt.Errorf("recovering interrupted filings: %w", err)
+	}
 
 	// Wire dashboard and report repos/services.
 	dashboardRepo := repository.NewDashboardRepository(db)

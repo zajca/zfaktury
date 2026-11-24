@@ -5,6 +5,7 @@
 package epo
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/xml"
@@ -37,9 +38,24 @@ const (
 	// FormPathPrefix is the path every form link must live under.
 	FormPathPrefix = "/dpr/"
 
+	// ZIPEntryName is the name of the single XML entry in a compressed
+	// submission. EPO accepts a ZIP holding exactly one XML file and does not
+	// document a required entry name.
+	ZIPEntryName = "podani.xml"
+
 	submissionPath = "/epo_podani"
 	testModeCode   = "TEST_REZIM"
 	debugBodyBytes = 200
+)
+
+// Packaging selects how the XML is put into the request body.
+type Packaging int
+
+const (
+	// PackagingPlain sends the XML bytes as they are.
+	PackagingPlain Packaging = iota
+	// PackagingZIP sends a ZIP archive holding the XML as its only entry.
+	PackagingZIP
 )
 
 // Finding types reported by EPO (Podatelna EPO v1.11, Priloha 3).
@@ -214,8 +230,8 @@ func (c *Client) AllowedHost() string { return c.allowedHost }
 // OpenForm uploads the XML with otevriFormular=1 and returns the validated
 // link to the prefilled EPO form. EPO answering with findings yields a
 // *RejectedError.
-func (c *Client) OpenForm(ctx context.Context, xmlData []byte) (string, error) {
-	res, err := c.post(ctx, "otevriFormular", xmlData)
+func (c *Client) OpenForm(ctx context.Context, xmlData []byte, packaging Packaging) (string, error) {
+	res, err := c.post(ctx, "otevriFormular", xmlData, packaging)
 	if err != nil {
 		return "", err
 	}
@@ -237,8 +253,8 @@ func (c *Client) OpenForm(ctx context.Context, xmlData []byte) (string, error) {
 // TEST_REZIM marker is removed from the returned findings. A response that
 // carries neither the marker nor a blocking finding is an error, so an
 // unexpected answer is never read as success.
-func (c *Client) Check(ctx context.Context, xmlData []byte) ([]Finding, error) {
-	res, err := c.post(ctx, "test", xmlData)
+func (c *Client) Check(ctx context.Context, xmlData []byte, packaging Packaging) ([]Finding, error) {
+	res, err := c.post(ctx, "test", xmlData, packaging)
 	if err != nil {
 		return nil, err
 	}
@@ -302,13 +318,17 @@ func (c *Client) unexpected(res *parsed) error {
 	return ErrUnexpectedResponse
 }
 
-func (c *Client) post(ctx context.Context, mode string, xmlData []byte) (*parsed, error) {
+func (c *Client) post(ctx context.Context, mode string, xmlData []byte, packaging Packaging) (*parsed, error) {
 	if err := c.validateInput(xmlData); err != nil {
+		return nil, err
+	}
+	payload, err := c.pack(xmlData, packaging)
+	if err != nil {
 		return nil, err
 	}
 
 	endpoint := c.baseURL + submissionPath + "?" + mode + "=1"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(xmlData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("creating EPO request: %w", err)
 	}
@@ -325,7 +345,7 @@ func (c *Client) post(ctx context.Context, mode string, xmlData []byte) (*parsed
 	slog.Debug("EPO call",
 		"mode", mode,
 		"status", resp.StatusCode,
-		"request_bytes", len(xmlData),
+		"request_bytes", len(payload),
 		"duration_ms", time.Since(start).Milliseconds(),
 	)
 
@@ -344,6 +364,39 @@ func (c *Client) post(ctx context.Context, mode string, xmlData []byte) (*parsed
 	res := &parsed{status: resp.StatusCode, body: body}
 	parseBody(res)
 	return res, nil
+}
+
+// pack builds the request body from XML that already passed validateInput.
+func (c *Client) pack(xmlData []byte, packaging Packaging) ([]byte, error) {
+	switch packaging {
+	case PackagingPlain:
+		return xmlData, nil
+	case PackagingZIP:
+		return c.zipXML(xmlData)
+	default:
+		return nil, fmt.Errorf("%w: unknown packaging %d", ErrInvalidXML, packaging)
+	}
+}
+
+// zipXML wraps the XML in a ZIP archive with one deflated entry. The archive
+// is held to the same size limit as the XML.
+func (c *Client) zipXML(xmlData []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: ZIPEntryName, Method: zip.Deflate})
+	if err != nil {
+		return nil, fmt.Errorf("creating ZIP entry: %w", err)
+	}
+	if _, err := w.Write(xmlData); err != nil {
+		return nil, fmt.Errorf("writing ZIP entry: %w", err)
+	}
+	if err := zw.Close(); err != nil {
+		return nil, fmt.Errorf("closing ZIP archive: %w", err)
+	}
+	if int64(buf.Len()) > c.maxRequestBytes {
+		return nil, fmt.Errorf("%w: ZIP archive of %d bytes exceeds the %d byte limit", ErrInvalidXML, buf.Len(), c.maxRequestBytes)
+	}
+	return buf.Bytes(), nil
 }
 
 func (c *Client) validateInput(xmlData []byte) error {

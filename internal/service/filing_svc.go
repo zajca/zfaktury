@@ -39,7 +39,7 @@ type FilingDocument interface {
 
 // FilingEPOChecker is the part of the EPO client the pre-send check uses.
 type FilingEPOChecker interface {
-	Check(ctx context.Context, xmlData []byte) ([]epo.Finding, error)
+	Check(ctx context.Context, xmlData []byte, packaging epo.Packaging) ([]epo.Finding, error)
 }
 
 // FilingXSDChecker validates XML against an embedded schema.
@@ -152,10 +152,15 @@ func NewFilingService(cfg FilingServiceConfig) (*FilingService, error) {
 // checked before sending, and the subject and file name of the data message.
 // The ISDS side prescribes neither a subject nor a file name for tax filings,
 // so these are plain Czech descriptions with ASCII file names.
+//
+// epoPackaging applies to the EPO check only: the data message always carries
+// the plain XML, because the mandatory compression of the control statement
+// does not apply to sending through a data box.
 type filingKindInfo struct {
-	recipient  isds.RecipientKind
-	annotation string
-	fileName   string
+	recipient    isds.RecipientKind
+	annotation   string
+	fileName     string
+	epoPackaging epo.Packaging
 }
 
 var filingKinds = map[domain.FilingKind]filingKindInfo{
@@ -168,6 +173,8 @@ var filingKinds = map[domain.FilingKind]filingKindInfo{
 		recipient:  isds.RecipientKindTaxOffice,
 		annotation: "Kontrolní hlášení k dani z přidané hodnoty (DPHKH1)",
 		fileName:   "DPHKH1.xml",
+		// EPO's check rejects an uncompressed control statement.
+		epoPackaging: epo.PackagingZIP,
 	},
 	domain.FilingKindVIESSummary: {
 		recipient:  isds.RecipientKindTaxOffice,
@@ -345,7 +352,7 @@ func (s *FilingService) check(ctx context.Context, kind domain.FilingKind, p *pr
 		return nil, nil
 	}
 
-	findings, err := s.epo.Check(ctx, p.xml)
+	findings, err := s.epo.Check(ctx, p.xml, p.info.epoPackaging)
 	if err != nil {
 		return nil, fmt.Errorf("checking %s with EPO: %w", kind, err)
 	}

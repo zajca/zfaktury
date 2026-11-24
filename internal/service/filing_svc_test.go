@@ -81,11 +81,14 @@ type fakeFilingEPO struct {
 	err      error
 	calls    int
 	got      []byte
+
+	packaging epo.Packaging
 }
 
-func (f *fakeFilingEPO) Check(_ context.Context, xmlData []byte) ([]epo.Finding, error) {
+func (f *fakeFilingEPO) Check(_ context.Context, xmlData []byte, packaging epo.Packaging) ([]epo.Finding, error) {
 	f.calls++
 	f.got = xmlData
+	f.packaging = packaging
 	return f.findings, f.err
 }
 
@@ -284,8 +287,9 @@ func newFilingHarness(t *testing.T) *filingHarness {
 	}
 	svc, err := NewFilingService(FilingServiceConfig{
 		Documents: map[domain.FilingKind]FilingDocument{
-			domain.FilingKindVATReturn:       h.doc,
-			domain.FilingKindSocialInsurance: h.doc,
+			domain.FilingKindVATReturn:        h.doc,
+			domain.FilingKindControlStatement: h.doc,
+			domain.FilingKindSocialInsurance:  h.doc,
 		},
 		Repo:  h.repo,
 		Audit: NewAuditService(h.audit),
@@ -374,6 +378,42 @@ func TestFilingService_PreviewSocialInsuranceUsesCSSZAndXSD(t *testing.T) {
 	}
 	if h.xsd.calls != 1 || h.xsd.schema != xsdcheck.SchemaOSVC25 || h.epo.calls != 0 {
 		t.Errorf("checks: xsd %d (%v), epo %d", h.xsd.calls, h.xsd.schema, h.epo.calls)
+	}
+}
+
+// The pre-send EPO check of a control statement is compressed, while the data
+// message itself is not (EPO exempts data-box sending from compression).
+func TestFilingService_ControlStatementCheckIsCompressedAndMessageIsPlain(t *testing.T) {
+	h := newFilingHarness(t)
+	env := "test"
+	p, err := h.svc.Preview(context.Background(), domain.FilingKindControlStatement, 7, env)
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	if h.epo.packaging != epo.PackagingZIP {
+		t.Errorf("EPO check packaging = %d, want ZIP", h.epo.packaging)
+	}
+
+	if _, err := h.svc.Send(context.Background(), domain.FilingKindControlStatement, 7,
+		FilingSendRequest{Environment: env, ConfirmToken: p.ConfirmToken}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if len(h.client.created) != 1 || len(h.client.created[0].Files) != 1 {
+		t.Fatalf("created messages = %+v, want one message with one file", h.client.created)
+	}
+	file := h.client.created[0].Files[0]
+	if file.Name != "DPHKH1.xml" || string(file.Content) != filingTestXML {
+		t.Errorf("data message file = %q, want the plain DPHKH1.xml", file.Name)
+	}
+}
+
+func TestFilingService_VATReturnCheckIsPlain(t *testing.T) {
+	h := newFilingHarness(t)
+	if _, err := h.svc.Preview(context.Background(), domain.FilingKindVATReturn, 7, "test"); err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	if h.epo.packaging != epo.PackagingPlain {
+		t.Errorf("EPO check packaging = %d, want plain", h.epo.packaging)
 	}
 }
 

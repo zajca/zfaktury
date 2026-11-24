@@ -66,7 +66,7 @@ type fakeFilingEPO struct {
 	err      error
 }
 
-func (f *fakeFilingEPO) Check(context.Context, []byte) ([]epo.Finding, error) {
+func (f *fakeFilingEPO) Check(context.Context, []byte, epo.Packaging) ([]epo.Finding, error) {
 	return f.findings, f.err
 }
 

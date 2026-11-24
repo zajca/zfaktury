@@ -22,6 +22,16 @@ const (
 	EPOKindIncomeTax        EPOKind = "income-tax-return"
 )
 
+// Packaging returns how the kind's XML is sent to EPO. The control statement
+// must be compressed before it is signed (EPO structure description DPHKH1,
+// "Komprimace podání"); every other kind is sent as plain XML.
+func (k EPOKind) Packaging() epo.Packaging {
+	if k == EPOKindControlStatement {
+		return epo.PackagingZIP
+	}
+	return epo.PackagingPlain
+}
+
 // EPOXMLSource returns the stored XML of one document.
 type EPOXMLSource interface {
 	GetXMLData(ctx context.Context, id int64) ([]byte, error)
@@ -29,8 +39,8 @@ type EPOXMLSource interface {
 
 // EPOClient is the part of the EPO client the service uses.
 type EPOClient interface {
-	Check(ctx context.Context, xmlData []byte) ([]epo.Finding, error)
-	OpenForm(ctx context.Context, xmlData []byte) (string, error)
+	Check(ctx context.Context, xmlData []byte, packaging epo.Packaging) ([]epo.Finding, error)
+	OpenForm(ctx context.Context, xmlData []byte, packaging epo.Packaging) (string, error)
 }
 
 // EPOFormLink is the result of a successful open-form request. The URL is a
@@ -90,7 +100,7 @@ func (s *EPOService) OpenForm(ctx context.Context, kind EPOKind, id int64) (*EPO
 		slog.Info("EPO open-form finished", attrs...)
 	}
 
-	findings, err := s.client.Check(ctx, xmlData)
+	findings, err := s.client.Check(ctx, xmlData, kind.Packaging())
 	if err != nil {
 		log("error", 0, err)
 		return nil, fmt.Errorf("checking %s %d with EPO: %w", kind, id, err)
@@ -102,7 +112,7 @@ func (s *EPOService) OpenForm(ctx context.Context, kind EPOKind, id int64) (*EPO
 		}
 	}
 
-	link, err := s.client.OpenForm(ctx, xmlData)
+	link, err := s.client.OpenForm(ctx, xmlData, kind.Packaging())
 	if err != nil {
 		var rejected *epo.RejectedError
 		if errors.As(err, &rejected) {

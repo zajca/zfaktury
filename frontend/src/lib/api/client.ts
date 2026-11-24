@@ -1042,6 +1042,9 @@ export interface IncomeTaxReturn {
 	credit_basic: number;
 	credit_spouse: number;
 	credit_disability: number;
+	credit_disability_12: number;
+	credit_disability_3: number;
+	credit_disability_ztpp: number;
 	credit_student: number;
 	total_credits: number;
 	tax_after_credits: number;
@@ -1305,6 +1308,7 @@ export interface TaxPersonalCredits {
 	is_student: boolean;
 	student_months: number;
 	disability_level: number;
+	ztpp: boolean;
 	credit_student: number;
 	credit_disability: number;
 	created_at: string;
@@ -1412,7 +1416,7 @@ export const taxCreditsApi = {
 	},
 	upsertPersonal(
 		year: number,
-		data: { is_student: boolean; student_months: number; disability_level: number }
+		data: { is_student: boolean; student_months: number; disability_level: number; ztpp: boolean }
 	) {
 		return put<TaxPersonalCredits>(`/tax-credits/${year}/personal`, data);
 	},

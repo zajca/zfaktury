@@ -45,6 +45,7 @@
 	let isStudent = $state(false);
 	let studentMonths = $state(12);
 	let disabilityLevel = $state(0);
+	let ztpp = $state(false);
 
 	// Child form
 	let showChildForm = $state(false);
@@ -98,10 +99,12 @@
 				isStudent = summary.personal.is_student;
 				studentMonths = summary.personal.student_months;
 				disabilityLevel = summary.personal.disability_level;
+				ztpp = summary.personal.ztpp;
 			} else {
 				isStudent = false;
 				studentMonths = 12;
 				disabilityLevel = 0;
+				ztpp = false;
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
@@ -176,7 +179,8 @@
 			await taxCreditsApi.upsertPersonal(selectedYear, {
 				is_student: isStudent,
 				student_months: isStudent ? studentMonths : 0,
-				disability_level: disabilityLevel
+				disability_level: disabilityLevel,
+				ztpp
 			});
 			await loadData();
 		} catch (e) {
@@ -490,6 +494,7 @@
 				bind:isStudent
 				bind:studentMonths
 				bind:disabilityLevel
+				bind:ztpp
 				{summary}
 				{taxConstants}
 				{saving}

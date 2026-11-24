@@ -430,6 +430,27 @@
 						</dd>
 					{/if}
 
+					{#if data.credit_disability_12 > 0}
+						<dt class="text-secondary">Sleva na invaliditu 1. a 2. stupně</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.credit_disability_12)}
+						</dd>
+					{/if}
+
+					{#if data.credit_disability_3 > 0}
+						<dt class="text-secondary">Sleva na invaliditu 3. stupně</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.credit_disability_3)}
+						</dd>
+					{/if}
+
+					{#if data.credit_disability_ztpp > 0}
+						<dt class="text-secondary">Sleva pro držitele ZTP/P</dt>
+						<dd class="text-right font-medium text-primary tabular-nums">
+							{formatCZK(data.credit_disability_ztpp)}
+						</dd>
+					{/if}
+
 					<dt class="text-secondary">Celkové slevy</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{formatCZK(data.total_credits)}

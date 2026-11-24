@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -50,17 +51,18 @@ func TestFilingSubmissionRepository_ResolveSentAndNotSent(t *testing.T) {
 			if err := repo.Create(ctx, sub); err != nil {
 				t.Fatal(err)
 			}
-			if err := repo.ResolveSent(ctx, sub.ID, "4242", at); err != nil {
+			dmID := fmt.Sprintf("42%d", i)
+			if err := repo.ResolveSent(ctx, sub.ID, dmID, at); err != nil {
 				t.Fatalf("ResolveSent: %v", err)
 			}
 			got, _ := repo.GetByID(ctx, sub.ID)
-			if got.Status != domain.SubmissionSent || got.DmID != "4242" || got.SentAt == nil || !got.SentAt.Equal(at) || got.ErrorText != "" {
+			if got.Status != domain.SubmissionSent || got.DmID != dmID || got.SentAt == nil || !got.SentAt.Equal(at) || got.ErrorText != "" {
 				t.Errorf("resolved = %+v", got)
 			}
 			if err := repo.ResolveSent(ctx, sub.ID, "4243", at); !errors.Is(err, domain.ErrSubmissionNotResolvable) {
 				t.Errorf("second resolve = %v, want ErrSubmissionNotResolvable", err)
 			}
-			if got, _ := repo.GetByID(ctx, sub.ID); got.DmID != "4242" {
+			if got, _ := repo.GetByID(ctx, sub.ID); got.DmID != dmID {
 				t.Errorf("a refused resolve changed the message id to %q", got.DmID)
 			}
 		})
@@ -136,6 +138,41 @@ func TestFilingSubmissionRepository_MarkStaleSendingUnknown(t *testing.T) {
 	// Unknown still blocks the same bytes.
 	if err := repo.Create(ctx, newSubmission(sha("a"))); !errors.Is(err, domain.ErrFilingAlreadySent) {
 		t.Errorf("Create over an unknown row = %v, want ErrFilingAlreadySent", err)
+	}
+}
+
+func TestFilingSubmissionRepository_ResolveSentRefusesAMessageIDOfAnotherSubmission(t *testing.T) {
+	repo := NewFilingSubmissionRepository(testutil.NewTestDB(t))
+	ctx := context.Background()
+	at := time.Date(2026, 11, 24, 10, 0, 0, 0, time.UTC)
+
+	first := newSubmission(sha("a"))
+	if err := repo.Create(ctx, first); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ResolveSent(ctx, first.ID, "777", at); err != nil {
+		t.Fatal(err)
+	}
+
+	second := newSubmission(sha("b"))
+	if err := repo.Create(ctx, second); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ResolveSent(ctx, second.ID, "777", at); !errors.Is(err, domain.ErrMessageIDInUse) {
+		t.Fatalf("same id, same environment = %v, want ErrMessageIDInUse", err)
+	}
+	if got, _ := repo.GetByID(ctx, second.ID); got.Status != domain.SubmissionSending || got.DmID != "" {
+		t.Errorf("a refused attach changed the row: %+v", got)
+	}
+
+	// Message ids of the test and production services are separate spaces.
+	prod := newSubmission(sha("c"))
+	prod.Environment = "production"
+	if err := repo.Create(ctx, prod); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ResolveSent(ctx, prod.ID, "777", at); err != nil {
+		t.Errorf("same id, other environment: %v", err)
 	}
 }
 

@@ -8,6 +8,7 @@
           <dbIDSender>xyz7654</dbIDSender>
           <dmSender>Fake Sender</dmSender>
           <dbIDRecipient>abc1234</dbIDRecipient>
+          <dmAnnotation>Fake annotation</dmAnnotation>
         </dmDm>
         <dmHash algorithm="SHA-512">ZmFrZQ==</dmHash>
         <dmQTimestamp>ZmFrZQ==</dmQTimestamp>

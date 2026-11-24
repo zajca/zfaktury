@@ -105,7 +105,20 @@ func (c *fakeISDSClient) CreateMessage(_ context.Context, m isds.MessageInput) (
 }
 
 func (c *fakeISDSClient) GetDeliveryInfo(context.Context, string) (*isds.DeliveryInfo, error) {
-	return c.delivery, nil
+	if c.delivery == nil || len(c.created) == 0 {
+		return c.delivery, nil
+	}
+	// The evidence names the last message the fake was asked to create, as
+	// ISDS does for the message id of that send.
+	info := *c.delivery
+	last := c.created[len(c.created)-1]
+	if info.RecipientBoxID == "" {
+		info.RecipientBoxID = last.RecipientBoxID
+	}
+	if info.Annotation == "" {
+		info.Annotation = last.Annotation
+	}
+	return &info, nil
 }
 
 func (c *fakeISDSClient) SignedSentMessageDownload(context.Context, string) ([]byte, error) {
@@ -551,9 +564,9 @@ func TestFilingHandler_SOAPFaultOnSendSaysNothingWasSent(t *testing.T) {
 	}
 }
 
-func TestFilingHandler_UnknownOutcomeMessagesPointToResolveOrEPO(t *testing.T) {
+func TestFilingHandler_UnknownOutcomeMessagesPointToConfirmingOrEPO(t *testing.T) {
 	for name, err := range map[string]error{
-		"blocked":     domain.ErrFilingAlreadySent,
+		"blocked":     domain.ErrFilingOutcomeUnknown,
 		"transport":   fmt.Errorf("x: %w", isds.ErrISDSUnavailable),
 		"timeout":     fmt.Errorf("x: %w: %w", isds.ErrISDSTimeout, isds.ErrISDSUnavailable),
 		"not stored":  domain.ErrFilingRecordFailed,
@@ -563,10 +576,62 @@ func TestFilingHandler_UnknownOutcomeMessagesPointToResolveOrEPO(t *testing.T) {
 			w := httptest.NewRecorder()
 			respondFilingError(w, err, opSend)
 			body := w.Body.String()
-			if !strings.Contains(body, "resolve") || !strings.Contains(body, "EPO") || !strings.Contains(body, "datové schránce") {
+			if !strings.Contains(body, "číslo") || !strings.Contains(body, "EPO") || !strings.Contains(body, "datové schránce") {
 				t.Errorf("message does not tell how to proceed: %s", body)
 			}
 		})
+	}
+}
+
+// Messages are Czech prose for the user: no API action names, and a send that
+// already went out is not told to confirm anything.
+func TestFilingHandler_BlockedSendMessagesAreSeparateAndPlainCzech(t *testing.T) {
+	for name, err := range map[string]error{
+		"unknown":    domain.ErrFilingOutcomeUnknown,
+		"sent":       domain.ErrFilingAlreadySent,
+		"transport":  fmt.Errorf("x: %w", isds.ErrISDSUnavailable),
+		"not stored": domain.ErrFilingRecordFailed,
+		"in use":     domain.ErrMessageIDInUse,
+		"mismatch":   domain.ErrMessageMismatch,
+	} {
+		w := httptest.NewRecorder()
+		respondFilingError(w, err, opSend)
+		for _, apiWord := range []string{"resolve", "attach", "notSent"} {
+			if strings.Contains(w.Body.String(), apiWord) {
+				t.Errorf("%s: message contains the API word %q: %s", name, apiWord, w.Body.String())
+			}
+		}
+	}
+
+	sent := httptest.NewRecorder()
+	respondFilingError(sent, fmt.Errorf("x: %w", domain.ErrFilingAlreadySent), opSend)
+	unknown := httptest.NewRecorder()
+	respondFilingError(unknown, fmt.Errorf("x: %w", domain.ErrFilingOutcomeUnknown), opSend)
+	if sent.Code != http.StatusConflict || unknown.Code != http.StatusConflict {
+		t.Fatalf("statuses = %d, %d, want 409", sent.Code, unknown.Code)
+	}
+	if sent.Body.String() == unknown.Body.String() {
+		t.Error("a delivered or sent filing and an unsettled one get the same message")
+	}
+	if strings.Contains(sent.Body.String(), "potvrďte") || !strings.Contains(sent.Body.String(), "obnovením stavu") {
+		t.Errorf("already-sent message = %s, want the delivery check and no confirmation", sent.Body.String())
+	}
+	if !strings.Contains(unknown.Body.String(), "potvrďte, že žádná zpráva neodešla") {
+		t.Errorf("unknown-outcome message = %s", unknown.Body.String())
+	}
+
+	for name, tc := range map[string]struct {
+		err  error
+		want string
+	}{
+		"in use":   {domain.ErrMessageIDInUse, "jinému odeslání"},
+		"mismatch": {domain.ErrMessageMismatch, "nepatří k tomuto odeslání"},
+	} {
+		w := httptest.NewRecorder()
+		respondFilingError(w, fmt.Errorf("x: %w", tc.err), opRefresh)
+		if w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), tc.want) {
+			t.Errorf("%s = %d %s", name, w.Code, w.Body.String())
+		}
 	}
 }
 

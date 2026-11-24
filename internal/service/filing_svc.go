@@ -466,7 +466,7 @@ func (s *FilingService) Send(ctx context.Context, kind domain.FilingKind, id int
 	if err := s.tokens.consume(req.ConfirmToken, p.binding(kind, id, env), req.AcceptWarnings); err != nil {
 		return nil, fmt.Errorf("sending %s %d: %w", kind, id, err)
 	}
-	if err := s.refuseAfterProductionSend(ctx, kind, id); err != nil {
+	if err := s.refuseBlockedSend(ctx, kind, id, env.name, p.sha256); err != nil {
 		return nil, err
 	}
 
@@ -533,20 +533,29 @@ func (s *FilingService) Send(ctx context.Context, kind domain.FilingKind, id int
 	return stored, nil
 }
 
-// refuseAfterProductionSend refuses a send of a document that already has a
-// sent or delivered production submission. The unique index only compares
-// identical bytes; regenerated XML of changed data would slip past it.
-func (s *FilingService) refuseAfterProductionSend(ctx context.Context, kind domain.FilingKind, id int64) error {
+// refuseBlockedSend refuses a send of a document that has a production
+// submission which went out (sent, delivered) or may have (sending, unknown).
+// The unique index only compares identical bytes; regenerated XML of changed
+// data would slip past it. A user who knows nothing left releases the document
+// with Resolve. The same bytes in the target environment are refused in the
+// same way, so the unique index is only a backstop and the caller learns
+// which of the two cases applies.
+func (s *FilingService) refuseBlockedSend(ctx context.Context, kind domain.FilingKind, id int64, envName, sha string) error {
 	subs, err := s.repo.ListByDocument(ctx, kind, id)
 	if err != nil {
 		return fmt.Errorf("listing submissions of %s %d: %w", kind, id, err)
 	}
 	for _, sub := range subs {
-		if sub.Environment != string(secrets.ISDSEnvironmentProduction) {
+		production := sub.Environment == string(secrets.ISDSEnvironmentProduction)
+		sameBytes := sub.Environment == envName && sub.XMLSHA256 == sha
+		if !production && !sameBytes {
 			continue
 		}
-		if sub.Status == domain.SubmissionSent || sub.Status == domain.SubmissionDelivered {
+		switch sub.Status {
+		case domain.SubmissionSent, domain.SubmissionDelivered:
 			return fmt.Errorf("sending %s %d: %w", kind, id, domain.ErrFilingAlreadySent)
+		case domain.SubmissionSending, domain.SubmissionUnknown:
+			return fmt.Errorf("sending %s %d: %w", kind, id, domain.ErrFilingOutcomeUnknown)
 		}
 	}
 	return nil
@@ -600,7 +609,7 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 	case domain.SubmissionSent, domain.SubmissionDelivered, domain.SubmissionUndeliverable:
 	default:
 		return nil, fmt.Errorf("refreshing submission %d: %w", submissionID,
-			&domain.UserMessageError{Message: "U tohoto odeslání není platné číslo zprávy, stav doručení nelze zjistit. Pokud výsledek odeslání nebyl potvrzen, použijte akci resolve."})
+			&domain.UserMessageError{Message: "U tohoto odeslání není platné číslo zprávy, stav doručení nelze zjistit. Nejdřív potvrďte výsledek odeslání: uveďte číslo zprávy nalezené v datové schránce, nebo potvrďte, že zpráva neodešla."})
 	}
 	env, err := parseFilingEnv(sub.Environment)
 	if err != nil {
@@ -620,6 +629,16 @@ func (s *FilingService) Refresh(ctx context.Context, submissionID int64) (*Filin
 	info, err := client.GetDeliveryInfo(ctx, sub.DmID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching the delivery state of submission %d: %w", submissionID, err)
+	}
+
+	// The message id may come from the user (Resolve): the evidence counts only
+	// for a message that went to this recipient with this subject.
+	if info.RecipientBoxID != sub.RecipientBoxID || info.Annotation != sub.DmAnnotation {
+		slog.Warn("ISDS message does not match the submission, delivery evidence ignored",
+			"submission_id", sub.ID, "dm_id", sub.DmID,
+			"recipient_matches", info.RecipientBoxID == sub.RecipientBoxID,
+			"annotation_matches", info.Annotation == sub.DmAnnotation)
+		return nil, fmt.Errorf("refreshing submission %d: %w", submissionID, domain.ErrMessageMismatch)
 	}
 
 	status, deliveredAt := s.deliveryState(sub, info)
@@ -756,7 +775,7 @@ func (s *FilingService) Resolve(ctx context.Context, submissionID int64, req Fil
 		}
 	default:
 		return nil, fmt.Errorf("resolving submission %d: %w", submissionID,
-			&domain.UserMessageError{Message: "Neznámá akce, použijte attach nebo notSent."})
+			&domain.UserMessageError{Message: "Neznámá akce potvrzení odeslání."})
 	}
 
 	sub, err := s.repo.GetByID(ctx, submissionID)

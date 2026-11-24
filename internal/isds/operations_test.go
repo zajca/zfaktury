@@ -111,6 +111,9 @@ func TestGetDeliveryInfo(t *testing.T) {
 	if info.MessageID != "1234567890" || info.Status != StatusDelivered || !info.Status.Delivered() {
 		t.Errorf("info = %+v", info)
 	}
+	if info.RecipientBoxID != "abc1234" || info.Annotation != "Fake annotation" {
+		t.Errorf("envelope = recipient %q, annotation %q", info.RecipientBoxID, info.Annotation)
+	}
 	wantTime := time.Date(2026, 11, 24, 10, 15, 30, 123_000_000, time.FixedZone("", 3600))
 	if info.DeliveryTime == nil || !info.DeliveryTime.Equal(wantTime) {
 		t.Errorf("DeliveryTime = %v, want %v", info.DeliveryTime, wantTime)

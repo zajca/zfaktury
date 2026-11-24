@@ -68,8 +68,8 @@ func TestFilingService_ResolveNotSentReleasesTheDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := FilingSendRequest{Environment: "production", ConfirmToken: p.ConfirmToken}
-	if _, err := h.svc.Send(context.Background(), domain.FilingKindVATReturn, 7, req); !errors.Is(err, domain.ErrFilingAlreadySent) {
-		t.Fatalf("send while unknown = %v, want ErrFilingAlreadySent", err)
+	if _, err := h.svc.Send(context.Background(), domain.FilingKindVATReturn, 7, req); !errors.Is(err, domain.ErrFilingOutcomeUnknown) {
+		t.Fatalf("send while unknown = %v, want ErrFilingOutcomeUnknown", err)
 	}
 
 	got, err := h.svc.Resolve(context.Background(), sub.ID, FilingResolveRequest{Action: ResolveNotSent})
@@ -355,4 +355,142 @@ func TestFilingService_VirusStatusReleasesTheDocumentForANewSend(t *testing.T) {
 		t.Fatalf("Refresh = %+v, %v, want a failed submission", res, err)
 	}
 	h.previewSend(t, "production")
+}
+
+func TestFilingService_UnsettledProductionSendBlocksChangedBytes(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	sendWithUnknownOutcome(t, h)
+
+	// Changed data gives other bytes, which the unique index alone lets through.
+	h.doc.setXML("<Pisemnost><DPHDP3>fake-body-2</DPHDP3></Pisemnost>")
+	p, err := h.svc.Preview(ctx, domain.FilingKindVATReturn, 7, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := len(h.client.created)
+	_, err = h.svc.Send(ctx, domain.FilingKindVATReturn, 7, FilingSendRequest{Environment: "production", ConfirmToken: p.ConfirmToken})
+	if !errors.Is(err, domain.ErrFilingOutcomeUnknown) || errors.Is(err, domain.ErrFilingAlreadySent) {
+		t.Fatalf("Send = %v, want ErrFilingOutcomeUnknown only", err)
+	}
+	if len(h.client.created) != created {
+		t.Errorf("CreateMessage was called %d more times", len(h.client.created)-created)
+	}
+}
+
+func TestFilingService_SendingProductionRowBlocksChangedBytes(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	// The row of an interrupted send that the startup sweep has not reached yet.
+	if err := h.repo.Create(ctx, &domain.FilingSubmission{
+		DocumentKind: domain.FilingKindVATReturn, DocumentID: 7, Channel: domain.FilingChannelISDS,
+		Environment: "production", RecipientBoxID: "7nyn2d9", RecipientName: "x", DmAnnotation: "x",
+		FileName: "x.xml", XMLSHA256: sha256Hex("older bytes"), Status: domain.SubmissionSending,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	p, err := h.svc.Preview(ctx, domain.FilingKindVATReturn, 7, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.svc.Send(ctx, domain.FilingKindVATReturn, 7, FilingSendRequest{Environment: "production", ConfirmToken: p.ConfirmToken})
+	if !errors.Is(err, domain.ErrFilingOutcomeUnknown) || len(h.client.created) != 0 {
+		t.Errorf("Send = %v after %d CreateMessage calls, want ErrFilingOutcomeUnknown and none", err, len(h.client.created))
+	}
+}
+
+func TestFilingService_NotSentReleasesTheDocumentForChangedBytes(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	sub := sendWithUnknownOutcome(t, h)
+	if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveNotSent}); err != nil {
+		t.Fatal(err)
+	}
+	h.doc.setXML("<Pisemnost><DPHDP3>fake-body-2</DPHDP3></Pisemnost>")
+	h.previewSend(t, "production")
+}
+
+func TestFilingService_SameBytesOfAnUnsettledTestSendAreRefusedAsUnknown(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	h.client.createErr = fmt.Errorf("CreateMessage: %w", isds.ErrISDSUnavailable)
+	p, err := h.svc.Preview(ctx, domain.FilingKindVATReturn, 7, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = h.svc.Send(ctx, domain.FilingKindVATReturn, 7, FilingSendRequest{Environment: "test", ConfirmToken: p.ConfirmToken})
+	h.client.createErr = nil
+
+	p, err = h.svc.Preview(ctx, domain.FilingKindVATReturn, 7, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.svc.Send(ctx, domain.FilingKindVATReturn, 7, FilingSendRequest{Environment: "test", ConfirmToken: p.ConfirmToken})
+	if !errors.Is(err, domain.ErrFilingOutcomeUnknown) {
+		t.Errorf("Send = %v, want ErrFilingOutcomeUnknown", err)
+	}
+}
+
+func TestFilingService_ResolveAttachRefusesAMessageIDOfAnotherSubmission(t *testing.T) {
+	ctx := context.Background()
+	h := newFilingHarness(t)
+	h.client.createID = "1234567890"
+	h.previewSend(t, "production") // holds message id 1234567890
+
+	other := &domain.FilingSubmission{
+		DocumentKind: domain.FilingKindVATReturn, DocumentID: 8, Channel: domain.FilingChannelISDS,
+		Environment: "production", RecipientBoxID: "7nyn2d9", RecipientName: "x", DmAnnotation: "x",
+		FileName: "x.xml", XMLSHA256: sha256Hex("another"), Status: domain.SubmissionUnknown,
+	}
+	if err := h.repo.Create(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := h.svc.Resolve(ctx, other.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "1234567890"})
+	if !errors.Is(err, domain.ErrMessageIDInUse) {
+		t.Fatalf("Resolve = %v, want ErrMessageIDInUse", err)
+	}
+	if got, _ := h.repo.GetByID(ctx, other.ID); got.Status != domain.SubmissionUnknown || got.DmID != "" {
+		t.Errorf("a refused attach changed the submission: %+v", got)
+	}
+	if _, err := h.svc.Resolve(ctx, other.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "1234567891"}); err != nil {
+		t.Errorf("Resolve with a free message id: %v", err)
+	}
+}
+
+func TestFilingService_RefreshIgnoresAMessageOfAnotherRecipientOrSubject(t *testing.T) {
+	ctx := context.Background()
+	at := time.Date(2026, 11, 24, 12, 7, 0, 0, time.UTC)
+	for name, mutate := range map[string]func(*isds.DeliveryInfo){
+		"other recipient": func(i *isds.DeliveryInfo) { i.RecipientBoxID = "zzzzzzz" },
+		"other subject":   func(i *isds.DeliveryInfo) { i.Annotation = "Jiná zpráva" },
+		"no recipient":    func(i *isds.DeliveryInfo) { i.RecipientBoxID = "" },
+		"no subject":      func(i *isds.DeliveryInfo) { i.Annotation = "" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newFilingHarness(t)
+			sub := sendWithUnknownOutcome(t, h)
+			if _, err := h.svc.Resolve(ctx, sub.ID, FilingResolveRequest{Action: ResolveAttach, DmID: "987654321"}); err != nil {
+				t.Fatal(err)
+			}
+			created := h.client.created[len(h.client.created)-1]
+			info := deliveredInfo(isds.StatusDelivered, &at)
+			info.RecipientBoxID, info.Annotation = created.RecipientBoxID, created.Annotation
+			mutate(info)
+			h.client.delivery, h.client.deliveryExact = info, true
+			h.client.zfo = []byte("zfo")
+
+			_, err := h.svc.Refresh(ctx, sub.ID)
+			if !errors.Is(err, domain.ErrMessageMismatch) {
+				t.Fatalf("Refresh = %v, want ErrMessageMismatch", err)
+			}
+			if len(h.doc.markCalls) != 0 || h.client.zfoHit != 0 {
+				t.Errorf("a foreign message filed the document (%v) or its receipt was downloaded (%d)", h.doc.markCalls, h.client.zfoHit)
+			}
+			got, _ := h.repo.GetByID(ctx, sub.ID)
+			if got.Status != domain.SubmissionSent || got.DeliveredAt != nil || got.DmMessageStatus != nil || got.HasReceipt {
+				t.Errorf("a foreign message changed the submission: %+v", got)
+			}
+		})
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -57,7 +58,11 @@ type DeliveryEvent struct {
 
 // DeliveryInfo is the delivery evidence of a sent message.
 type DeliveryInfo struct {
-	MessageID      string
+	MessageID string
+	// RecipientBoxID and Annotation come from the message envelope (dbIDRecipient
+	// and dmAnnotation) and identify which message the evidence belongs to.
+	RecipientBoxID string
+	Annotation     string
 	Status         MessageStatus
 	DeliveryTime   *time.Time
 	AcceptanceTime *time.Time
@@ -118,6 +123,8 @@ type createMessageResponse struct {
 type deliveryInfoResponse struct {
 	Delivery *struct {
 		ID             string `xml:"dmDm>dmID"`
+		RecipientBoxID string `xml:"dmDm>dbIDRecipient"`
+		Annotation     string `xml:"dmDm>dmAnnotation"`
 		DeliveryTime   string `xml:"dmDeliveryTime"`
 		AcceptanceTime string `xml:"dmAcceptanceTime"`
 		Status         int    `xml:"dmMessageStatus"`
@@ -209,8 +216,10 @@ func (c *Client) GetDeliveryInfo(ctx context.Context, dmID string) (*DeliveryInf
 	}
 
 	info := &DeliveryInfo{
-		MessageID: resp.Delivery.ID,
-		Status:    MessageStatus(resp.Delivery.Status),
+		MessageID:      resp.Delivery.ID,
+		RecipientBoxID: strings.TrimSpace(resp.Delivery.RecipientBoxID),
+		Annotation:     strings.TrimSpace(resp.Delivery.Annotation),
+		Status:         MessageStatus(resp.Delivery.Status),
 	}
 	if !info.Status.Valid() {
 		// A status the client does not know is kept as received and counts as

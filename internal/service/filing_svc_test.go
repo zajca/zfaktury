@@ -119,13 +119,16 @@ type fakeISDSClient struct {
 	createEnter chan struct{} // receives once CreateMessage is entered
 	delivery    *isds.DeliveryInfo
 	deliveryErr error
-	deliveryHit int
-	zfo         []byte
-	zfoErr      error
-	zfoHit      int
-	owner       *isds.OwnerInfo
-	user        *isds.UserInfo
-	ownerErr    error
+	// deliveryExact returns delivery as given, without filling in the
+	// recipient and annotation of the last created message.
+	deliveryExact bool
+	deliveryHit   int
+	zfo           []byte
+	zfoErr        error
+	zfoHit        int
+	owner         *isds.OwnerInfo
+	user          *isds.UserInfo
+	ownerErr      error
 }
 
 func (c *fakeISDSClient) CreateMessage(_ context.Context, m isds.MessageInput) (string, error) {
@@ -148,7 +151,20 @@ func (c *fakeISDSClient) GetDeliveryInfo(_ context.Context, _ string) (*isds.Del
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.deliveryHit++
-	return c.delivery, c.deliveryErr
+	if c.delivery == nil || c.deliveryExact || len(c.created) == 0 {
+		return c.delivery, c.deliveryErr
+	}
+	// The evidence names the last message the fake was asked to create, as
+	// ISDS does for the message id of that send.
+	info := *c.delivery
+	last := c.created[len(c.created)-1]
+	if info.RecipientBoxID == "" {
+		info.RecipientBoxID = last.RecipientBoxID
+	}
+	if info.Annotation == "" {
+		info.Annotation = last.Annotation
+	}
+	return &info, c.deliveryErr
 }
 
 func (c *fakeISDSClient) SignedSentMessageDownload(_ context.Context, _ string) ([]byte, error) {
@@ -702,8 +718,8 @@ func TestFilingService_SendFailureOutcomes(t *testing.T) {
 			if tc.canResend && err != nil {
 				t.Errorf("resend after a definite failure: %v", err)
 			}
-			if !tc.canResend && !errors.Is(err, domain.ErrFilingAlreadySent) {
-				t.Errorf("resend after an unknown outcome = %v, want ErrFilingAlreadySent", err)
+			if !tc.canResend && !errors.Is(err, domain.ErrFilingOutcomeUnknown) {
+				t.Errorf("resend after an unknown outcome = %v, want ErrFilingOutcomeUnknown", err)
 			}
 		})
 	}

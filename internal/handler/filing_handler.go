@@ -35,9 +35,15 @@ const (
 const (
 	// msgFilingBlockedHint tells the user how to get out of a send whose
 	// outcome is not known.
-	msgFilingBlockedHint = "Podání se znovu neodešle, dokud výsledek nepotvrdíte: zkontrolujte odeslané zprávy v datové schránce a podle nálezu u odeslání použijte akci resolve (attach s číslem zprávy, nebo notSent), případně podání podejte ručně přes EPO."
+	msgFilingBlockedHint = "Podání se znovu neodešle, dokud výsledek nepotvrdíte: zkontrolujte odeslané zprávy v datové schránce a u odeslání buď uveďte číslo nalezené zprávy, nebo potvrďte, že žádná zpráva neodešla. Případně podání podejte ručně přes EPO."
 
-	msgFilingBlocked = "Toto podání už bylo do tohoto prostředí odesláno, nebo se výsledek dřívějšího odeslání nepodařilo zjistit. " + msgFilingBlockedHint
+	// msgFilingOutcomeUnknown answers a send blocked by an earlier send of
+	// unsettled outcome.
+	msgFilingOutcomeUnknown = "Výsledek dřívějšího odeslání tohoto podání není znám, zpráva mohla odejít. " + msgFilingBlockedHint
+
+	// msgFilingAlreadySent answers a send blocked by an earlier send that went
+	// out; there is nothing to confirm, only the delivery state to check.
+	msgFilingAlreadySent = "Toto podání už bylo odesláno a znovu se neodešle. Stav doručení zjistíte u odeslání obnovením stavu, případně v datové schránce."
 )
 
 // filingOp names the action a request performs, so a failure is explained in
@@ -397,8 +403,14 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 		respondError(w, http.StatusConflict, "Potvrzení vypršelo, bylo už použito, nebo se od náhledu změnilo podání, prostředí či příjemce. Zobrazte náhled znovu.")
 	case errors.Is(err, domain.ErrWarningsNotAccepted):
 		respondError(w, http.StatusUnprocessableEntity, "Kontrola podání vrátila upozornění. Odeslání vyžaduje jejich výslovné potvrzení.")
+	case errors.Is(err, domain.ErrFilingOutcomeUnknown):
+		respondError(w, http.StatusConflict, msgFilingOutcomeUnknown)
 	case errors.Is(err, domain.ErrFilingAlreadySent):
-		respondError(w, http.StatusConflict, msgFilingBlocked)
+		respondError(w, http.StatusConflict, msgFilingAlreadySent)
+	case errors.Is(err, domain.ErrMessageIDInUse):
+		respondError(w, http.StatusConflict, "Toto číslo zprávy už patří k jinému odeslání. Zkontrolujte ho v datové schránce.")
+	case errors.Is(err, domain.ErrMessageMismatch):
+		respondError(w, http.StatusConflict, "Zpráva s tímto číslem v datové schránce nepatří k tomuto odeslání (jiný příjemce nebo předmět), stav doručení se nepřevzal. Zkontrolujte číslo zprávy v odeslaných zprávách.")
 	case errors.Is(err, domain.ErrFilingAlreadyFiled):
 		respondError(w, http.StatusConflict, "Podání je už označeno jako podané, nelze ho znovu připravit ani odeslat.")
 	case errors.Is(err, domain.ErrSubmissionNotResolvable):
@@ -407,7 +419,7 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 		respondError(w, http.StatusConflict, "Odesílání tohoto podání právě probíhá.")
 	case errors.Is(err, domain.ErrFilingRecordFailed):
 		slog.Error("filing sent but not recorded", "error", err)
-		respondError(w, http.StatusInternalServerError, "Zpráva byla datovou schránkou přijata, ale záznam o odeslání se nepodařilo uložit. Neodesílejte podání znovu. Najděte zprávu mezi odeslanými v datové schránce a její číslo doplňte u odeslání (akce resolve), nebo podání podejte ručně přes EPO.")
+		respondError(w, http.StatusInternalServerError, "Zpráva byla datovou schránkou přijata, ale záznam o odeslání se nepodařilo uložit. Neodesílejte podání znovu. Najděte zprávu mezi odeslanými v datové schránce a její číslo doplňte u odeslání, nebo podání podejte ručně přes EPO.")
 	case errors.Is(err, domain.ErrXMLNotGenerated):
 		respondError(w, http.StatusConflict, "Nejdřív vygenerujte XML.")
 	case errors.Is(err, domain.ErrISDSCredentialsMissing):

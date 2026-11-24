@@ -158,36 +158,47 @@ func (r *FilingSubmissionRepository) MarkFailed(ctx context.Context, id int64, s
 
 // ResolveSent attaches the message id the user found in the data box to a
 // submission whose outcome was unknown and moves it to sent. Only a sending or
-// unknown submission is resolved.
+// unknown submission is resolved, and not with a message id that another
+// submission of the same environment already holds (domain.ErrMessageIDInUse).
 func (r *FilingSubmissionRepository) ResolveSent(ctx context.Context, id int64, dmID string, sentAt time.Time) error {
-	return r.resolve(ctx, id, "resolving filing submission as sent", `
+	return r.resolve(ctx, id, "resolving filing submission as sent", domain.ErrMessageIDInUse, `
 		UPDATE filing_submissions SET dm_id = ?, status = ?, sent_at = ?, error_text = ''
-		WHERE id = ? AND status IN (?, ?) AND deleted_at IS NULL`,
-		dmID, string(domain.SubmissionSent), sentAt.UTC().Format(time.RFC3339))
+		WHERE id = ? AND status IN (?, ?) AND deleted_at IS NULL
+		AND NOT EXISTS (
+			SELECT 1 FROM filing_submissions o
+			WHERE o.dm_id = ? AND o.id <> filing_submissions.id
+			AND o.environment = filing_submissions.environment AND o.deleted_at IS NULL)`,
+		[]any{dmID, string(domain.SubmissionSent), sentAt.UTC().Format(time.RFC3339)}, []any{dmID})
 }
 
 // ResolveNotSent records the user's confirmation that nothing left the data
 // box and moves a sending or unknown submission to failed, which releases the
 // same bytes for a new send.
 func (r *FilingSubmissionRepository) ResolveNotSent(ctx context.Context, id int64, errorText string) error {
-	return r.resolve(ctx, id, "resolving filing submission as not sent", `
+	return r.resolve(ctx, id, "resolving filing submission as not sent", nil, `
 		UPDATE filing_submissions SET status = ?, error_text = ?
 		WHERE id = ? AND status IN (?, ?) AND deleted_at IS NULL`,
-		string(domain.SubmissionFailed), errorText)
+		[]any{string(domain.SubmissionFailed), errorText}, nil)
 }
 
-// resolve runs a resolving update; the trailing arguments of the statement
-// are the sending and unknown statuses. A submission that is missing is
-// domain.ErrNotFound, one in another status domain.ErrSubmissionNotResolvable.
-func (r *FilingSubmissionRepository) resolve(ctx context.Context, id int64, what, query string, args ...any) error {
-	args = append(args, id, string(domain.SubmissionSending), string(domain.SubmissionUnknown))
+// resolve runs a resolving update. The statement takes head, then the id and
+// the sending and unknown statuses, then tail. A submission that is missing is
+// domain.ErrNotFound, one in another status domain.ErrSubmissionNotResolvable;
+// a resolvable one the update still skipped is reported as conflict.
+func (r *FilingSubmissionRepository) resolve(ctx context.Context, id int64, what string, conflict error, query string, head, tail []any) error {
+	args := append(head, id, string(domain.SubmissionSending), string(domain.SubmissionUnknown))
+	args = append(args, tail...)
 	err := r.updateOne(ctx, what, query, args...)
 	if !errors.Is(err, domain.ErrNotFound) {
 		return err
 	}
 	// updateOne reports "no row matched"; tell a missing row from a wrong state.
-	if _, getErr := r.GetByID(ctx, id); getErr != nil {
+	sub, getErr := r.GetByID(ctx, id)
+	if getErr != nil {
 		return getErr
+	}
+	if conflict != nil && (sub.Status == domain.SubmissionSending || sub.Status == domain.SubmissionUnknown) {
+		return fmt.Errorf("%s: %w", what, conflict)
 	}
 	return fmt.Errorf("%s: %w", what, domain.ErrSubmissionNotResolvable)
 }

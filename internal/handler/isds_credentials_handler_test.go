@@ -111,6 +111,16 @@ func assertNoSecret(t *testing.T, what, text string) {
 	}
 }
 
+// assertNoLoginInLogs fails when captured log output carries the password or
+// the username; responses may legitimately echo the username, logs may not.
+func assertNoLoginInLogs(t *testing.T, logs string) {
+	t.Helper()
+	assertNoSecret(t, "log output", logs)
+	if strings.Contains(logs, testISDSUsername) {
+		t.Errorf("log output contains the username: %s", logs)
+	}
+}
+
 func TestISDSCredentials_Lifecycle(t *testing.T) {
 	logs := captureLogs(t)
 	r := newISDSRouter(t, false, "127.0.0.1")
@@ -181,10 +191,7 @@ func TestISDSCredentials_Lifecycle(t *testing.T) {
 	}
 
 	// Neither the password nor the username appears in any log line.
-	assertNoSecret(t, "log output", logs.String())
-	if strings.Contains(logs.String(), testISDSUsername) {
-		t.Errorf("log output contains the username: %s", logs.String())
-	}
+	assertNoLoginInLogs(t, logs.String())
 }
 
 func TestISDSCredentials_ChangingStateRequiresContentTypeAndConfirmHeader(t *testing.T) {
@@ -306,7 +313,31 @@ func TestISDSCredentials_KeyringUnavailable(t *testing.T) {
 		}
 		assertNoSecret(t, q.method+" response", w.Body.String())
 	}
-	assertNoSecret(t, "log output", logs.String())
+	assertNoLoginInLogs(t, logs.String())
+}
+
+func TestISDSCredentials_KeyringLocked(t *testing.T) {
+	logs := captureLogs(t)
+	r := newISDSRouter(t, false, "127.0.0.1")
+	keyring.MockInitWithError(errors.New("failed to unlock correct collection '/org/freedesktop/secrets/aliases/login'"))
+
+	for _, q := range []isdsReq{{method: http.MethodGet}, validPut("test")} {
+		w := q.do(r)
+		if w.Code != http.StatusServiceUnavailable {
+			t.Errorf("%s status = %d, want 503, body: %s", q.method, w.Code, w.Body.String())
+		}
+		var body errorResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decoding error body: %v", err)
+		}
+		if !strings.Contains(body.Error, "zamčená") {
+			t.Errorf("%s: expected the locked-keyring message, got %q", q.method, body.Error)
+		}
+		if strings.Contains(body.Error, "Spusťte službu") || strings.Contains(body.Error, "failed to unlock") {
+			t.Errorf("%s: wrong or leaking message: %q", q.method, body.Error)
+		}
+	}
+	assertNoLoginInLogs(t, logs.String())
 }
 
 func TestISDSCredentials_Validation(t *testing.T) {

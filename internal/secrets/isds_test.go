@@ -116,17 +116,68 @@ func TestISDSStore_MissingEntry(t *testing.T) {
 	}
 }
 
-func TestISDSStore_StatusWithOnlyUsername(t *testing.T) {
+func TestISDSStore_StatusWithOnlyPassword(t *testing.T) {
 	useMock(t)
-	if err := keyring.Set("zfaktury", "isds/test/username", "orphan"); err != nil {
+	if err := keyring.Set("zfaktury", "isds/test/password", "orphan-secret"); err != nil {
 		t.Fatal(err)
 	}
 	status, err := NewISDSStore().Status(ISDSEnvironmentTest)
-	if err != nil || status.Configured || status.Username != "orphan" {
-		t.Errorf("Status = %+v, %v; want unconfigured with username", status, err)
+	if err != nil || status.Configured || status.Username != "" {
+		t.Errorf("Status = %+v, %v; want unconfigured", status, err)
 	}
 	if _, err := NewISDSStore().Load(ISDSEnvironmentTest); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Load error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestISDSStore_StatusNeverReadsPassword(t *testing.T) {
+	useMock(t)
+	store := NewISDSStore()
+	if err := store.Save(ISDSEnvironmentTest, ISDSCredentials{Username: "sender-user", Password: "Sample-Pass-1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	var read []string
+	getSecret = func(service, user string) (string, error) {
+		read = append(read, user)
+		return keyring.Get(service, user)
+	}
+	t.Cleanup(func() { getSecret = keyring.Get })
+
+	status, err := store.Status(ISDSEnvironmentTest)
+	if err != nil || !status.Configured || status.Username != "sender-user" {
+		t.Fatalf("Status = %+v, %v", status, err)
+	}
+	if len(read) != 1 || read[0] != "isds/test/username" {
+		t.Errorf("Status read %v, want only isds/test/username", read)
+	}
+}
+
+func TestISDSStore_SaveTrimsUsername(t *testing.T) {
+	useMock(t)
+	store := NewISDSStore()
+	if err := store.Save(ISDSEnvironmentTest, ISDSCredentials{Username: "  sender-user\t", Password: "Sample-Pass-1"}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	loaded, err := store.Load(ISDSEnvironmentTest)
+	if err != nil || loaded.Username != "sender-user" {
+		t.Errorf("Load = %+v, %v; want trimmed username", loaded, err)
+	}
+}
+
+func TestISDSStore_LockedKeyring(t *testing.T) {
+	useBrokenKeyring(t, errors.New("failed to unlock correct collection '/org/freedesktop/secrets/aliases/login'"))
+	store := NewISDSStore()
+
+	_, statusErr := store.Status(ISDSEnvironmentTest)
+	saveErr := store.Save(ISDSEnvironmentTest, ISDSCredentials{Username: "u", Password: "p"})
+	for name, err := range map[string]error{"Status": statusErr, "Save": saveErr} {
+		if !errors.Is(err, domain.ErrKeyringLocked) {
+			t.Errorf("%s error = %v, want ErrKeyringLocked", name, err)
+		}
+		if errors.Is(err, domain.ErrKeyringUnavailable) {
+			t.Errorf("%s: a locked keyring must not report as unavailable", name)
+		}
 	}
 }
 
@@ -171,11 +222,11 @@ func TestRedact(t *testing.T) {
 	}
 }
 
-func TestISDSStore_SaveRollsBackUsername(t *testing.T) {
+func TestISDSStore_SaveRollsBackPassword(t *testing.T) {
 	useMock(t)
-	// Only the password write fails, after the username write succeeded.
+	// Only the username write fails, after the password write succeeded.
 	setSecret = func(service, user, password string) error {
-		if strings.HasSuffix(user, "/password") {
+		if strings.HasSuffix(user, "/username") {
 			return keyring.ErrSetDataTooBig
 		}
 		return keyring.Set(service, user, password)
@@ -188,6 +239,9 @@ func TestISDSStore_SaveRollsBackUsername(t *testing.T) {
 	}
 	if status, _ := NewISDSStore().Status(ISDSEnvironmentTest); status.Configured || status.Username != "" {
 		t.Errorf("a failed save left state behind: %+v", status)
+	}
+	if _, err := keyring.Get("zfaktury", "isds/test/password"); !errors.Is(err, keyring.ErrNotFound) {
+		t.Errorf("the password was not rolled back: %v", err)
 	}
 }
 

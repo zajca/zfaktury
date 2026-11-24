@@ -44,6 +44,7 @@ func (s *ISDSCredentialsService) Save(rawEnv string, creds secrets.ISDSCredentia
 	if err != nil {
 		return fmt.Errorf("saving ISDS credentials: %w", err)
 	}
+	creds = creds.Normalize()
 	if err := creds.Validate(); err != nil {
 		return fmt.Errorf("saving ISDS credentials: %w", err)
 	}

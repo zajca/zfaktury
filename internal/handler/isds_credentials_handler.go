@@ -31,12 +31,13 @@ const (
 )
 
 const (
-	msgISDSNotLoopback = "Přihlašovací údaje datové schránky lze spravovat jen tehdy, když aplikace naslouchá na místní adrese (127.0.0.1)."
-	msgISDSBadHost     = "Požadavek na přihlašovací údaje datové schránky musí mířit na místní adresu aplikace."
-	msgISDSNoConfirm   = "Požadavek nemá potvrzovací hlavičku " + isdsConfirmHeader + "."
-	msgISDSNotJSON     = "Požadavek musí mít Content-Type application/json."
-	msgISDSBadBody     = "Neplatné tělo požadavku."
-	msgISDSKeyring     = "Systémová klíčenka není dostupná, proto se přihlašovací údaje nedají uložit ani načíst. Spusťte službu klíčenky (například GNOME Keyring nebo KeePassXC s podporou Secret Service) a zkuste to znovu. Údaje se nikdy neukládají mimo klíčenku."
+	msgISDSNotLoopback   = "Přihlašovací údaje datové schránky lze spravovat jen tehdy, když aplikace naslouchá na místní adrese (127.0.0.1)."
+	msgISDSBadHost       = "Požadavek na přihlašovací údaje datové schránky musí mířit na místní adresu aplikace."
+	msgISDSNoConfirm     = "Požadavek nemá potvrzovací hlavičku " + isdsConfirmHeader + "."
+	msgISDSNotJSON       = "Požadavek musí mít Content-Type application/json."
+	msgISDSBadBody       = "Neplatné tělo požadavku."
+	msgISDSKeyringLocked = "Systémová klíčenka zůstala zamčená, odemknutí se nezdařilo nebo bylo zrušeno. Odemkněte klíčenku a zkuste to znovu. Údaje se nikdy neukládají mimo klíčenku."
+	msgISDSKeyring       = "Systémová klíčenka není dostupná, proto se přihlašovací údaje nedají uložit ani načíst. Spusťte službu klíčenky (například GNOME Keyring nebo KeePassXC s podporou Secret Service) a zkuste to znovu. Údaje se nikdy neukládají mimo klíčenku."
 )
 
 // ISDSCredentialsHandler manages the data-box login stored in the OS keyring.
@@ -126,6 +127,10 @@ func (h *ISDSCredentialsHandler) Delete(w http.ResponseWriter, r *http.Request) 
 // respondError maps service errors to responses. Error text from the keyring
 // layer is never forwarded.
 func (h *ISDSCredentialsHandler) respondError(w http.ResponseWriter, err error) {
+	if errors.Is(err, domain.ErrKeyringLocked) {
+		respondError(w, http.StatusServiceUnavailable, msgISDSKeyringLocked)
+		return
+	}
 	if errors.Is(err, domain.ErrKeyringUnavailable) {
 		respondError(w, http.StatusServiceUnavailable, msgISDSKeyring)
 		return

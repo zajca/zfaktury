@@ -78,6 +78,14 @@ func NewISDSStore() *ISDSStore {
 // setSecret writes one keyring item; tests replace it to fail a single write.
 var setSecret = keyring.Set
 
+// getSecret reads one keyring item; tests replace it to observe which items are read.
+var getSecret = keyring.Get
+
+// unlockFailedText is what go-keyring's Secret Service backend reports when
+// the unlock prompt was dismissed or refused. The library exposes no sentinel
+// for it, so the message text is the only signal.
+const unlockFailedText = "failed to unlock correct collection"
+
 func itemKey(env ISDSEnvironment, field string) string {
 	return "isds/" + string(env) + "/" + field
 }
@@ -106,10 +114,19 @@ func hasControlRune(s string) bool {
 	return strings.IndexFunc(s, unicode.IsControl) >= 0
 }
 
-// Save stores the login for env. When writing the password fails after the
-// username was written, the username is removed again so a half-saved login
-// never reports as configured.
+// Normalize trims the username; surrounding whitespace is never part of a
+// data-box login name.
+func (c ISDSCredentials) Normalize() ISDSCredentials {
+	c.Username = strings.TrimSpace(c.Username)
+	return c
+}
+
+// Save stores the login for env. The password is written first and the
+// username last: the username entry is the marker that a complete login
+// exists, so Status never has to read the password. When writing the username
+// fails, the password is removed again.
 func (s *ISDSStore) Save(env ISDSEnvironment, creds ISDSCredentials) error {
+	creds = creds.Normalize()
 	if err := creds.Validate(); err != nil {
 		return err
 	}
@@ -117,12 +134,12 @@ func (s *ISDSStore) Save(env ISDSEnvironment, creds ISDSCredentials) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := setSecret(keyringService, itemKey(env, "username"), creds.Username); err != nil {
+	if err := setSecret(keyringService, itemKey(env, "password"), creds.Password); err != nil {
 		return mapKeyringError("saving", env, err, creds)
 	}
-	if err := setSecret(keyringService, itemKey(env, "password"), creds.Password); err != nil {
-		if rollbackErr := keyring.Delete(keyringService, itemKey(env, "username")); rollbackErr != nil && !errors.Is(rollbackErr, keyring.ErrNotFound) {
-			slog.Warn("rolling back ISDS username failed", "environment", env)
+	if err := setSecret(keyringService, itemKey(env, "username"), creds.Username); err != nil {
+		if rollbackErr := keyring.Delete(keyringService, itemKey(env, "password")); rollbackErr != nil && !errors.Is(rollbackErr, keyring.ErrNotFound) {
+			slog.Warn("rolling back ISDS password failed", "environment", env)
 		}
 		return mapKeyringError("saving", env, err, creds)
 	}
@@ -132,40 +149,34 @@ func (s *ISDSStore) Save(env ISDSEnvironment, creds ISDSCredentials) error {
 // Load returns the stored login for env, or domain.ErrNotFound when either
 // part is missing.
 func (s *ISDSStore) Load(env ISDSEnvironment) (ISDSCredentials, error) {
-	username, err := keyring.Get(keyringService, itemKey(env, "username"))
+	username, err := getSecret(keyringService, itemKey(env, "username"))
 	if err != nil {
 		return ISDSCredentials{}, mapKeyringError("reading", env, err, ISDSCredentials{})
 	}
-	password, err := keyring.Get(keyringService, itemKey(env, "password"))
+	password, err := getSecret(keyringService, itemKey(env, "password"))
 	if err != nil {
 		return ISDSCredentials{}, mapKeyringError("reading", env, err, ISDSCredentials{Username: username})
 	}
 	return ISDSCredentials{Username: username, Password: password}, nil
 }
 
-// Status reports whether a complete login is stored for env and its username.
-// A missing entry is not an error.
+// Status reports whether a login is stored for env and its username. It
+// reads only the username marker, never the password, so opening the settings
+// page does not fetch the secret. A missing entry is not an error.
 func (s *ISDSStore) Status(env ISDSEnvironment) (ISDSStatus, error) {
-	username, err := keyring.Get(keyringService, itemKey(env, "username"))
+	username, err := getSecret(keyringService, itemKey(env, "username"))
 	if errors.Is(err, keyring.ErrNotFound) {
 		return ISDSStatus{}, nil
 	}
 	if err != nil {
 		return ISDSStatus{}, mapKeyringError("reading", env, err, ISDSCredentials{})
 	}
-
-	_, err = keyring.Get(keyringService, itemKey(env, "password"))
-	if errors.Is(err, keyring.ErrNotFound) {
-		return ISDSStatus{Username: username}, nil
-	}
-	if err != nil {
-		return ISDSStatus{}, mapKeyringError("reading", env, err, ISDSCredentials{Username: username})
-	}
 	return ISDSStatus{Configured: true, Username: username}, nil
 }
 
-// Delete removes both entries for env. Entries that are already absent are
-// not an error.
+// Delete removes both entries for env, the username marker first so an
+// interrupted delete never leaves a login that reports as configured.
+// Entries that are already absent are not an error.
 func (s *ISDSStore) Delete(env ISDSEnvironment) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -189,6 +200,9 @@ func mapKeyringError(op string, env ISDSEnvironment, err error, creds ISDSCreden
 	case errors.Is(err, keyring.ErrSetDataTooBig):
 		return fmt.Errorf("%s ISDS credentials for %s: %w", op, env,
 			&domain.UserMessageError{Message: "Přihlašovací údaje jsou pro systémovou klíčenku příliš dlouhé."})
+	case strings.Contains(err.Error(), unlockFailedText):
+		slog.Warn("keyring unlock failed", "operation", op, "environment", env)
+		return fmt.Errorf("%s ISDS credentials for %s: %w", op, env, domain.ErrKeyringLocked)
 	default:
 		slog.Warn("keyring operation failed",
 			"operation", op, "environment", env, "error", redact(err.Error(), creds))

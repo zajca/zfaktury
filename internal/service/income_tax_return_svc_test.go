@@ -399,8 +399,8 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 	if result.CreditBasic != constants.BasicCredit {
 		t.Errorf("CreditBasic = %d, want %d", result.CreditBasic, constants.BasicCredit)
 	}
-	if result.TaxRuleSetID != "cz-dpfo-2025.v2" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v2", result.TaxRuleSetID)
+	if result.TaxRuleSetID != "cz-dpfo-2025.v3" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v3", result.TaxRuleSetID)
 	}
 	if result.TaxRuleSetStatus != "final" {
 		t.Errorf("TaxRuleSetStatus = %q, want final", result.TaxRuleSetStatus)
@@ -506,8 +506,8 @@ func TestIncomeTaxReturnService_Recalculate_ProvisionalRuleSetWarning(t *testing
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
-	if result.TaxRuleSetID != "cz-dpfo-2026.v1-provisional" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v1-provisional", result.TaxRuleSetID)
+	if result.TaxRuleSetID != "cz-dpfo-2026.v2-provisional" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v2-provisional", result.TaxRuleSetID)
 	}
 	if result.TaxRuleSetStatus != "provisional" {
 		t.Errorf("TaxRuleSetStatus = %q, want provisional", result.TaxRuleSetStatus)

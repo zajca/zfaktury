@@ -16,10 +16,28 @@ var (
 	digitsPracUFO = regexp.MustCompile(`^\d{4}$`)
 )
 
+// Document names used in the validation error message.
+const (
+	TaxpayerDocVATReturn        = "přiznání k DPH"
+	TaxpayerDocControlStatement = "kontrolního hlášení k DPH"
+	TaxpayerDocVIESSummary      = "souhrnného hlášení VIES"
+)
+
 // ValidateTaxpayerInfo verifies that all fields required by the EPO DPHDP3 schema
 // are present and well-formed. Returns ErrInvalidInput with a list of human-readable
 // problems (in Czech, since this surfaces directly to the user) on failure.
 func ValidateTaxpayerInfo(info TaxpayerInfo) error {
+	return validateTaxpayer(info, TaxpayerDocVATReturn, true)
+}
+
+// ValidateTaxpayerIdentity checks the taxpayer block shared by DPHDP3, DPHKH1 and
+// DPHSHV: everything ValidateTaxpayerInfo checks except the NACE code, which only
+// the VAT return carries. document names the filing in the error message.
+func ValidateTaxpayerIdentity(info TaxpayerInfo, document string) error {
+	return validateTaxpayer(info, document, false)
+}
+
+func validateTaxpayer(info TaxpayerInfo, document string, requireOKEC bool) error {
 	var problems []string
 
 	required := []struct {
@@ -35,7 +53,12 @@ func ValidateTaxpayerInfo(info TaxpayerInfo) error {
 		{"Číslo popisné", info.HouseNum},
 		{"Kód FÚ (c_ufo)", info.UFOCode},
 		{"Kód pracoviště FÚ (c_pracufo)", info.PracUFO},
-		{"NACE kód hlavní činnosti (c_okec)", info.OKEC},
+	}
+	if requireOKEC {
+		required = append(required, struct {
+			label string
+			value string
+		}{"NACE kód hlavní činnosti (c_okec)", info.OKEC})
 	}
 	for _, r := range required {
 		if strings.TrimSpace(r.value) == "" {
@@ -46,7 +69,7 @@ func ValidateTaxpayerInfo(info TaxpayerInfo) error {
 	if info.DIC != "" && !digitsDIC.MatchString(info.DIC) {
 		problems = append(problems, "DIČ musí být 8-10 číslic (bez prefixu CZ)")
 	}
-	if info.OKEC != "" && !digitsOKEC.MatchString(info.OKEC) {
+	if requireOKEC && info.OKEC != "" && !digitsOKEC.MatchString(info.OKEC) {
 		problems = append(problems, "NACE kód musí být přesně 5 číslic (např. 62010)")
 	}
 	if info.ZIP != "" && !digitsPSC.MatchString(strings.ReplaceAll(info.ZIP, " ", "")) {
@@ -62,5 +85,5 @@ func ValidateTaxpayerInfo(info TaxpayerInfo) error {
 	if len(problems) == 0 {
 		return nil
 	}
-	return fmt.Errorf("nelze vygenerovat XML přiznání k DPH: %s: %w", strings.Join(problems, "; "), domain.ErrInvalidInput)
+	return fmt.Errorf("nelze vygenerovat XML %s: %s: %w", document, strings.Join(problems, "; "), domain.ErrInvalidInput)
 }

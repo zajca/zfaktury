@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -197,7 +198,7 @@ func (m *vcMockContactRepo) GetByID(_ context.Context, id int64) (*domain.Contac
 
 func TestVATControlStatementService_Create(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil, nil)
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -218,7 +219,7 @@ func TestVATControlStatementService_Create(t *testing.T) {
 
 func TestVATControlStatementService_Create_Duplicate(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil, nil)
 
 	cs1 := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -240,7 +241,7 @@ func TestVATControlStatementService_Create_Duplicate(t *testing.T) {
 
 func TestVATControlStatementService_Create_InvalidMonth(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil, nil)
 
 	cs := &domain.VATControlStatement{
 		Period: domain.TaxPeriod{Year: 2025, Month: 13},
@@ -253,7 +254,7 @@ func TestVATControlStatementService_Create_InvalidMonth(t *testing.T) {
 
 func TestVATControlStatementService_Delete_Filed(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil, nil)
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -363,7 +364,7 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 		},
 	}
 
-	svc := NewVATControlStatementService(csRepo, invoiceRepo, expenseRepo, contactRepo, nil)
+	svc := NewVATControlStatementService(csRepo, invoiceRepo, expenseRepo, contactRepo, nil, nil)
 
 	// Create the control statement.
 	cs := &domain.VATControlStatement{
@@ -437,7 +438,7 @@ func TestVATControlStatementService_Recalculate(t *testing.T) {
 
 func TestVATControlStatementService_MarkFiled(t *testing.T) {
 	repo := newMockVATControlStatementRepo()
-	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil)
+	svc := NewVATControlStatementService(repo, &vcMockInvoiceRepo{}, &vcMockExpenseRepo{}, &vcMockContactRepo{}, nil, nil)
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -468,7 +469,7 @@ func setupVATControlSvc(t *testing.T) (*VATControlStatementService, *sql.DB) {
 	invRepo := repository.NewInvoiceRepository(db)
 	expRepo := repository.NewExpenseRepository(db)
 	contactRepo := repository.NewContactRepository(db)
-	svc := NewVATControlStatementService(csRepo, invRepo, expRepo, contactRepo, nil)
+	svc := NewVATControlStatementService(csRepo, invRepo, expRepo, contactRepo, repository.NewSettingsRepository(db), nil)
 	return svc, db
 }
 
@@ -612,9 +613,8 @@ func TestVATControlStatementService_GenerateXML_Basic(t *testing.T) {
 	ctx := context.Background()
 
 	// Insert DIC setting.
-	_, err := db.ExecContext(ctx, "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
-	if err != nil {
-		t.Fatalf("inserting DIC setting: %v", err)
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
 	}
 
 	cs := &domain.VATControlStatement{
@@ -625,12 +625,17 @@ func TestVATControlStatementService_GenerateXML_Basic(t *testing.T) {
 		t.Fatalf("Create() error: %v", err)
 	}
 
-	xmlData, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	xmlData, err := svc.GenerateXML(ctx, cs.ID)
 	if err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
 	if len(xmlData) == 0 {
 		t.Error("GenerateXML() returned empty XML")
+	}
+	for _, want := range []string{`c_ufo="451"`, `c_pracufo="3001"`, `typ_ds="F"`, `jmeno="Jan"`, `prijmeni="Novák"`, `ulice="Hlavní"`, `naz_obce="Praha"`, `psc="11000"`, `dic="12345678"`} {
+		if !strings.Contains(string(xmlData), want) {
+			t.Errorf("control statement XML lacks %s:\n%s", want, xmlData)
+		}
 	}
 
 	// Verify XML is stored on the statement.
@@ -647,10 +652,8 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 	svc, db := setupVATControlSvc(t)
 	ctx := context.Background()
 
-	// Insert DIC setting.
-	_, err := db.ExecContext(ctx, "INSERT INTO settings (key, value, updated_at) VALUES ('dic', 'CZ12345678', datetime('now'))")
-	if err != nil {
-		t.Fatalf("inserting DIC setting: %v", err)
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
 	}
 
 	// Create a contact with CZ DIC.
@@ -671,7 +674,7 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 		},
 	})
 	// Update delivery date and status.
-	_, err = db.ExecContext(ctx, "UPDATE invoices SET delivery_date = ?, status = ? WHERE id = ?",
+	_, err := db.ExecContext(ctx, "UPDATE invoices SET delivery_date = ?, status = ? WHERE id = ?",
 		march15.Format("2006-01-02"), domain.InvoiceStatusSent, inv.ID)
 	if err != nil {
 		t.Fatalf("updating invoice: %v", err)
@@ -691,7 +694,7 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 	}
 
 	// Generate XML with lines.
-	xmlData, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	xmlData, err := svc.GenerateXML(ctx, cs.ID)
 	if err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
@@ -710,8 +713,12 @@ func TestVATControlStatementService_GenerateXML_WithLines(t *testing.T) {
 }
 
 func TestVATControlStatementService_GetXMLData(t *testing.T) {
-	svc, _ := setupVATControlSvc(t)
+	svc, db := setupVATControlSvc(t)
 	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
 
 	cs := &domain.VATControlStatement{
 		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
@@ -729,7 +736,7 @@ func TestVATControlStatementService_GetXMLData(t *testing.T) {
 		t.Errorf("GetXMLData() before generation = %d bytes, want 0", len(empty))
 	}
 
-	generated, err := svc.GenerateXML(ctx, cs.ID, "CZ12345678")
+	generated, err := svc.GenerateXML(ctx, cs.ID)
 	if err != nil {
 		t.Fatalf("GenerateXML() error: %v", err)
 	}
@@ -758,8 +765,54 @@ func TestVATControlStatementService_GenerateXML_NotFound(t *testing.T) {
 	svc, _ := setupVATControlSvc(t)
 	ctx := context.Background()
 
-	_, err := svc.GenerateXML(ctx, 9999, "CZ12345678")
+	_, err := svc.GenerateXML(ctx, 9999)
 	if err == nil {
 		t.Error("GenerateXML() should return error for non-existent ID")
+	}
+}
+
+func TestVATControlStatementService_GenerateXML_MissingSettings(t *testing.T) {
+	ctx := context.Background()
+
+	cases := map[string]struct {
+		drop    string
+		wantErr error
+		wantMsg string
+	}{
+		"c_ufo": {drop: "c_ufo", wantErr: domain.ErrInvalidInput, wantMsg: "c_ufo"},
+		"dic":   {drop: "dic", wantErr: domain.ErrMissingSetting, wantMsg: "DIC"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc, db := setupVATControlSvc(t)
+			if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+				t.Fatalf("inserting taxpayer settings: %v", err)
+			}
+			if _, err := db.ExecContext(ctx, "DELETE FROM settings WHERE key = ?", tc.drop); err != nil {
+				t.Fatalf("deleting setting: %v", err)
+			}
+			cs := &domain.VATControlStatement{
+				Period:     domain.TaxPeriod{Year: 2025, Month: 3},
+				FilingType: domain.FilingTypeRegular,
+			}
+			if err := svc.Create(ctx, cs); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			_, err := svc.GenerateXML(ctx, cs.ID)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("GenerateXML() error = %v, want %v", err, tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantMsg) {
+				t.Errorf("error should mention %q, got: %v", tc.wantMsg, err)
+			}
+			updated, err := svc.GetByID(ctx, cs.ID)
+			if err != nil {
+				t.Fatalf("GetByID() error: %v", err)
+			}
+			if len(updated.XMLData) != 0 {
+				t.Error("no XML should be stored when generation is refused")
+			}
+		})
 	}
 }

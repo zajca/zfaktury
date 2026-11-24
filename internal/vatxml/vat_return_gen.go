@@ -85,11 +85,11 @@ func (g *VATReturnGenerator) Generate(vr *domain.VATReturn, info TaxpayerInfo) (
 				Ulice:    info.Street,
 				NazObce:  info.City,
 				PSC:      info.ZIP,
-				Stat:     "ČESKÁ REPUBLIKA",
+				Stat:     TaxpayerCountry,
 				CPop:     info.HouseNum,
 				Jmeno:    info.FirstName,
 				Prijmeni: info.LastName,
-				TypDS:    "F",
+				TypDS:    TaxpayerTypeNaturalPerson,
 			},
 			Veta1: &Veta1{
 				Obrat23: obrat23,

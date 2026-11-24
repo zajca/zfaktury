@@ -14,11 +14,24 @@ type KHVetaD struct {
 	KHDPHForm string   `xml:"khdph_forma,attr"`
 }
 
-// KHVetaP contains taxpayer identification for control statement.
+// KHVetaP contains taxpayer identification for the control statement, as
+// defined by the DPHKH1 structure (dphkh1_epo2.xsd). c_ufo, dic and typ_ds are
+// required; the remaining natural-person and address attributes are optional.
 type KHVetaP struct {
-	XMLName xml.Name `xml:"VetaP"`
-	DIC     string   `xml:"dic,attr"`
-	Type    string   `xml:"typ_ds,attr"`
+	XMLName  xml.Name `xml:"VetaP"`
+	CUfo     string   `xml:"c_ufo,attr"`
+	CPracufo string   `xml:"c_pracufo,attr,omitempty"`
+	DIC      string   `xml:"dic,attr"`
+	Type     string   `xml:"typ_ds,attr"`
+	Jmeno    string   `xml:"jmeno,attr,omitempty"`
+	Prijmeni string   `xml:"prijmeni,attr,omitempty"`
+	Ulice    string   `xml:"ulice,attr,omitempty"`
+	CPop     string   `xml:"c_pop,attr,omitempty"`
+	NazObce  string   `xml:"naz_obce,attr,omitempty"`
+	PSC      string   `xml:"psc,attr,omitempty"`
+	Stat     string   `xml:"stat,attr,omitempty"`
+	Email    string   `xml:"email,attr,omitempty"`
+	CTelef   string   `xml:"c_telef,attr,omitempty"`
 }
 
 // VetaA4 represents an individual output transaction above 10,000 CZK.
@@ -86,7 +99,6 @@ type VetaC struct {
 // ControlStatementXML is the serializable root structure for control statement XML.
 type ControlStatementXML struct {
 	XMLName xml.Name `xml:"Pisemnost"`
-	Xmlns   string   `xml:"xmlns,attr"`
 	DPHKH   DPHKH1   `xml:"DPHKH1"`
 }
 

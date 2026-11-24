@@ -1,6 +1,9 @@
 package vatxml
 
 import (
+	"encoding/xml"
+	"errors"
+	"maps"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,7 +46,7 @@ func TestVIESSummaryGenerator_Generate(t *testing.T) {
 	}
 
 	gen := &VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, lines, "CZ12345678")
+	xmlData, err := gen.Generate(vs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -55,17 +58,14 @@ func TestVIESSummaryGenerator_Generate(t *testing.T) {
 		t.Error("XML should start with declaration")
 	}
 
-	// Check root element.
-	if !strings.Contains(xmlStr, "<Pisemnost") {
-		t.Error("XML should contain Pisemnost root element")
-	}
-	if !strings.Contains(xmlStr, "xmlns=") {
-		t.Error("XML should have xmlns attribute")
+	// Check root element. The DPHSHV schema declares no namespace.
+	if !strings.Contains(xmlStr, "<Pisemnost>") {
+		t.Error("XML should contain a namespace-less Pisemnost root element")
 	}
 
 	// Check VetaD attributes.
-	if !strings.Contains(xmlStr, `k_daph="B"`) {
-		t.Error("regular filing type should produce k_daph='B'")
+	if !strings.Contains(xmlStr, `shvies_forma="R"`) {
+		t.Error("regular filing type should produce shvies_forma='R'")
 	}
 	if !strings.Contains(xmlStr, `rok="2025"`) {
 		t.Error("XML should contain year 2025")
@@ -73,31 +73,28 @@ func TestVIESSummaryGenerator_Generate(t *testing.T) {
 	if !strings.Contains(xmlStr, `ctvrt="1"`) {
 		t.Error("XML should contain quarter 1")
 	}
-	if !strings.Contains(xmlStr, `dic_odb="12345678"`) {
-		t.Error("XML should contain filer DIC without CZ prefix")
-	}
 
-	// Check VetaP lines.
+	// Check VetaR lines.
 	if !strings.Contains(xmlStr, `k_stat="SK"`) {
 		t.Error("XML should contain SK country code")
 	}
-	if !strings.Contains(xmlStr, `dic_odbe="1234567890"`) {
+	if !strings.Contains(xmlStr, `c_vat="1234567890"`) {
 		t.Error("XML should contain SK partner DIC without prefix")
 	}
-	if !strings.Contains(xmlStr, `k_plneni="3"`) {
+	if !strings.Contains(xmlStr, `k_pln_eu="3"`) {
 		t.Error("XML should contain service code 3")
 	}
-	if !strings.Contains(xmlStr, `obrat="15000"`) {
+	if !strings.Contains(xmlStr, `pln_hodnota="15000"`) {
 		t.Error("XML should contain amount 15000 for SK partner")
 	}
 
 	if !strings.Contains(xmlStr, `k_stat="DE"`) {
 		t.Error("XML should contain DE country code")
 	}
-	if !strings.Contains(xmlStr, `dic_odbe="987654321"`) {
+	if !strings.Contains(xmlStr, `c_vat="987654321"`) {
 		t.Error("XML should contain DE partner DIC without prefix")
 	}
-	if !strings.Contains(xmlStr, `obrat="25001"`) {
+	if !strings.Contains(xmlStr, `pln_hodnota="25001"`) {
 		t.Error("XML should round 25000.50 to 25001 whole CZK")
 	}
 }
@@ -116,15 +113,15 @@ func TestVIESSummaryGenerator_Generate_Corrective(t *testing.T) {
 	}
 
 	gen := &VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, nil, "CZ87654321")
+	xmlData, err := gen.Generate(vs, nil, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	xmlStr := string(xmlData)
 
-	if !strings.Contains(xmlStr, `k_daph="O"`) {
-		t.Error("corrective filing type should produce k_daph='O'")
+	if !strings.Contains(xmlStr, `shvies_forma="N"`) {
+		t.Error("corrective filing type should produce shvies_forma='N'")
 	}
 	if !strings.Contains(xmlStr, `ctvrt="2"`) {
 		t.Error("XML should contain quarter 2")
@@ -145,27 +142,88 @@ func TestVIESSummaryGenerator_Generate_Supplementary(t *testing.T) {
 	}
 
 	gen := &VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, nil, "12345678")
+	xmlData, err := gen.Generate(vs, nil, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	xmlStr := string(xmlData)
 
-	if !strings.Contains(xmlStr, `k_daph="N"`) {
-		t.Error("supplementary filing type should produce k_daph='N'")
+	if !strings.Contains(xmlStr, `shvies_forma="N"`) {
+		t.Error("supplementary filing type should produce shvies_forma='N'")
 	}
-	// DIC without CZ prefix should be passed through as-is.
-	if !strings.Contains(xmlStr, `dic_odb="12345678"`) {
-		t.Error("DIC without country prefix should be used as-is")
+	if !strings.Contains(xmlStr, `dic="8001010006"`) {
+		t.Error("taxpayer DIC should be emitted without country prefix")
 	}
 }
 
 func TestVIESSummaryGenerator_Generate_NilSummary(t *testing.T) {
 	gen := &VIESSummaryGenerator{}
-	_, err := gen.Generate(nil, nil, "CZ12345678")
+	_, err := gen.Generate(nil, nil, testTaxpayerInfo())
 	if err == nil {
 		t.Error("expected error for nil summary")
+	}
+}
+
+func TestVIESSummaryGenerator_Generate_TaxpayerBlock(t *testing.T) {
+	vs := &domain.VIESSummary{
+		Period:     domain.TaxPeriod{Year: 2025, Quarter: 1},
+		FilingType: domain.FilingTypeRegular,
+	}
+
+	xmlData, err := (&VIESSummaryGenerator{}).Generate(vs, nil, testTaxpayerInfo())
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+
+	var doc struct {
+		VetaD struct {
+			Attrs []xml.Attr `xml:",any,attr"`
+		} `xml:"DPHSHV>VetaD"`
+		VetaP struct {
+			Attrs []xml.Attr `xml:",any,attr"`
+		} `xml:"DPHSHV>VetaP"`
+	}
+	if err := xml.Unmarshal(xmlData, &doc); err != nil {
+		t.Fatalf("unmarshalling generated XML: %v", err)
+	}
+	attrs := func(in []xml.Attr) map[string]string {
+		out := map[string]string{}
+		for _, a := range in {
+			out[a.Name.Local] = a.Value
+		}
+		return out
+	}
+
+	wantD := map[string]string{
+		"dokument": "SHV", "k_uladis": "DPH", "rok": "2025", "ctvrt": "1", "shvies_forma": "R",
+	}
+	if got := attrs(doc.VetaD.Attrs); !maps.Equal(got, wantD) {
+		t.Errorf("VetaD = %v, want %v", got, wantD)
+	}
+
+	wantP := map[string]string{
+		"c_ufo": "464", "c_pracufo": "3305", "dic": "8001010006",
+		"typ_ds": TaxpayerTypeNaturalPerson, "jmeno": "Jan", "prijmeni": "Testovaci",
+		"ulice": "Testovaci", "c_pop": "1", "naz_obce": "Praha", "psc": "11000",
+		"stat": TaxpayerCountry,
+	}
+	if got := attrs(doc.VetaP.Attrs); !maps.Equal(got, wantP) {
+		t.Errorf("VetaP = %v, want %v", got, wantP)
+	}
+}
+
+func TestVIESSummaryGenerator_Generate_MissingUFO(t *testing.T) {
+	vs := &domain.VIESSummary{Period: domain.TaxPeriod{Year: 2025, Quarter: 1}}
+
+	info := testTaxpayerInfo()
+	info.UFOCode = ""
+	_, err := (&VIESSummaryGenerator{}).Generate(vs, nil, info)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("Generate() without c_ufo: err = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "c_ufo") {
+		t.Errorf("error should name c_ufo, got: %v", err)
 	}
 }
 
@@ -216,11 +274,11 @@ func TestVIESFilingTypeCode(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{domain.FilingTypeRegular, "B"},
-		{domain.FilingTypeCorrective, "O"},
+		{domain.FilingTypeRegular, "R"},
+		{domain.FilingTypeCorrective, "N"},
 		{domain.FilingTypeSupplementary, "N"},
-		{"", "B"},
-		{"unknown", "B"},
+		{"", "R"},
+		{"unknown", "R"},
 	}
 
 	for _, tt := range tests {
@@ -263,7 +321,7 @@ func TestVIESSummary_Golden_Regular(t *testing.T) {
 		},
 	}
 
-	xmlData, err := gen.Generate(vs, lines, "CZ80010100")
+	xmlData, err := gen.Generate(vs, lines, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}
@@ -285,7 +343,7 @@ func TestVIESSummary_Golden_Empty(t *testing.T) {
 		Status:     domain.FilingStatusReady,
 	}
 
-	xmlData, err := gen.Generate(vs, nil, "CZ80010100")
+	xmlData, err := gen.Generate(vs, nil, testTaxpayerInfo())
 	if err != nil {
 		t.Fatalf("Generate() error: %v", err)
 	}

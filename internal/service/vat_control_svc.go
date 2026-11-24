@@ -17,6 +17,7 @@ type VATControlStatementService struct {
 	invoices repository.InvoiceRepo
 	expenses repository.ExpenseRepo
 	contacts repository.ContactRepo
+	settings repository.SettingsRepo
 	xmlGen   *vatxml.ControlStatementGenerator
 	audit    *AuditService
 }
@@ -27,6 +28,7 @@ func NewVATControlStatementService(
 	invoices repository.InvoiceRepo,
 	expenses repository.ExpenseRepo,
 	contacts repository.ContactRepo,
+	settings repository.SettingsRepo,
 	audit *AuditService,
 ) *VATControlStatementService {
 	return &VATControlStatementService{
@@ -34,6 +36,7 @@ func NewVATControlStatementService(
 		invoices: invoices,
 		expenses: expenses,
 		contacts: contacts,
+		settings: settings,
 		xmlGen:   vatxml.NewControlStatementGenerator(),
 		audit:    audit,
 	}
@@ -385,12 +388,20 @@ func (s *VATControlStatementService) buildExpenseLines(ctx context.Context, csID
 	return lines, nil
 }
 
-// GenerateXML generates and stores the XML for a control statement.
-// The dic parameter is the taxpayer's DIC (e.g. "CZ12345678").
-func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, dic string) ([]byte, error) {
+// GenerateXML generates and stores the XML for a control statement. The taxpayer
+// block is read from settings, the same source the VAT return uses.
+func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64) ([]byte, error) {
 	cs, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching control statement for XML generation: %w", err)
+	}
+
+	info, err := buildTaxpayerInfo(ctx, s.settings)
+	if err != nil {
+		return nil, fmt.Errorf("building taxpayer info for XML generation: %w", err)
+	}
+	if err := vatxml.ValidateTaxpayerIdentity(info, vatxml.TaxpayerDocControlStatement); err != nil {
+		return nil, err
 	}
 
 	lines, err := s.repo.GetLines(ctx, id)
@@ -398,7 +409,7 @@ func (s *VATControlStatementService) GenerateXML(ctx context.Context, id int64, 
 		return nil, fmt.Errorf("fetching lines for XML generation: %w", err)
 	}
 
-	xmlData, err := s.xmlGen.Generate(cs, lines, dic)
+	xmlData, err := s.xmlGen.Generate(cs, lines, info)
 	if err != nil {
 		return nil, fmt.Errorf("generating control statement XML: %w", err)
 	}

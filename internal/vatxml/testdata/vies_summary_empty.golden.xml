@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Pisemnost xmlns="http://adis.mfcr.cz/rozhranni/">
+<Pisemnost>
   <DPHSHV>
-    <VetaD k_daph="B" rok="2025" ctvrt="2" dic_odb="80010100"></VetaD>
+    <VetaD dokument="SHV" k_uladis="DPH" rok="2025" ctvrt="2" shvies_forma="R"></VetaD>
+    <VetaP c_ufo="464" c_pracufo="3305" dic="8001010006" typ_ds="F" jmeno="Jan" prijmeni="Testovaci" ulice="Testovaci" c_pop="1" naz_obce="Praha" psc="11000" stat="ČESKÁ REPUBLIKA"></VetaP>
   </DPHSHV>
 </Pisemnost>

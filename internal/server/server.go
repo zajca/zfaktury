@@ -298,8 +298,8 @@ func wireRouter(cfg *config.Config, db *sql.DB) (*chi.Mux, error) {
 	recurringExpenseSvc := service.NewRecurringExpenseService(recurringExpenseRepo, expenseSvc, auditSvc)
 
 	vatReturnSvc := service.NewVATReturnService(vatReturnRepo, invoiceRepo, expenseRepo, settingsRepo, auditSvc)
-	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, auditSvc)
-	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, auditSvc)
+	vatControlSvc := service.NewVATControlStatementService(vatControlRepo, invoiceRepo, expenseRepo, contactRepo, settingsRepo, auditSvc)
+	viesSvc := service.NewVIESSummaryService(viesRepo, invoiceRepo, contactRepo, settingsRepo, auditSvc)
 
 	taxYearSettingsSvc := service.NewTaxYearSettingsService(taxYearSettingsRepo, taxPrepaymentRepo, auditSvc)
 
@@ -431,7 +431,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) (*chi.Mux, error) {
 		return nil, fmt.Errorf("configuring the XSD check: %w", err)
 	}
 	filingSvc, err := service.NewFilingService(service.FilingServiceConfig{
-		Documents:   service.NewFilingDocuments(vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc, settingsSvc),
+		Documents:   service.NewFilingDocuments(vatReturnSvc, vatControlSvc, viesSvc, incomeTaxSvc, socialInsuranceSvc),
 		Repo:        repository.NewFilingSubmissionRepository(db),
 		Recipients:  recipients,
 		Settings:    settingsSvc,

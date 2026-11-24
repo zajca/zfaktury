@@ -275,7 +275,7 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 		return nil, fmt.Errorf("fetching vat_return for XML generation: %w", err)
 	}
 
-	info, err := s.buildTaxpayerInfo(ctx)
+	info, err := buildTaxpayerInfo(ctx, s.settingsRepo)
 	if err != nil {
 		return nil, fmt.Errorf("building taxpayer info for XML generation: %w", err)
 	}
@@ -302,10 +302,11 @@ func (s *VATReturnService) GenerateXML(ctx context.Context, id int64) (*domain.V
 	return vr, nil
 }
 
-// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo.
-func (s *VATReturnService) buildTaxpayerInfo(ctx context.Context) (vatxml.TaxpayerInfo, error) {
+// buildTaxpayerInfo fetches all required settings and builds a TaxpayerInfo. It
+// is shared by the VAT return, control statement and VIES summary generators.
+func buildTaxpayerInfo(ctx context.Context, settingsRepo repository.SettingsRepo) (vatxml.TaxpayerInfo, error) {
 	getSetting := func(key string) string {
-		val, err := s.settingsRepo.Get(ctx, key)
+		val, err := settingsRepo.Get(ctx, key)
 		if err != nil {
 			return ""
 		}

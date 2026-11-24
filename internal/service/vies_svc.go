@@ -16,6 +16,7 @@ type VIESSummaryService struct {
 	repo     repository.VIESSummaryRepo
 	invoices repository.InvoiceRepo
 	contacts repository.ContactRepo
+	settings repository.SettingsRepo
 	audit    *AuditService
 }
 
@@ -24,12 +25,14 @@ func NewVIESSummaryService(
 	repo repository.VIESSummaryRepo,
 	invoices repository.InvoiceRepo,
 	contacts repository.ContactRepo,
+	settings repository.SettingsRepo,
 	audit *AuditService,
 ) *VIESSummaryService {
 	return &VIESSummaryService{
 		repo:     repo,
 		invoices: invoices,
 		contacts: contacts,
+		settings: settings,
 		audit:    audit,
 	}
 }
@@ -239,11 +242,20 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 	return nil
 }
 
-// GenerateXML generates the EPO XML for a VIES summary and stores it.
-func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic string) error {
+// GenerateXML generates the EPO XML for a VIES summary and stores it. The
+// taxpayer block is read from settings, the same source the VAT return uses.
+func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64) error {
 	vs, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for XML generation: %w", err)
+	}
+
+	info, err := buildTaxpayerInfo(ctx, s.settings)
+	if err != nil {
+		return fmt.Errorf("building taxpayer info for XML generation: %w", err)
+	}
+	if err := vatxml.ValidateTaxpayerIdentity(info, vatxml.TaxpayerDocVIESSummary); err != nil {
+		return err
 	}
 
 	lines, err := s.repo.GetLines(ctx, id)
@@ -252,7 +264,7 @@ func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic stri
 	}
 
 	gen := vatxml.VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, lines, dic)
+	xmlData, err := gen.Generate(vs, lines, info)
 	if err != nil {
 		return fmt.Errorf("generating VIES XML: %w", err)
 	}

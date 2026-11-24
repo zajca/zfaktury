@@ -217,10 +217,10 @@ func NewRouter(
 		vatReturnHandler := NewVATReturnHandler(vatReturnSvc)
 		api.Mount("/vat-returns", vatReturnHandler.Routes())
 
-		vatControlHandler := NewVATControlStatementHandler(vatControlSvc, settingsSvc)
+		vatControlHandler := NewVATControlStatementHandler(vatControlSvc)
 		api.Mount("/vat-control-statements", vatControlHandler.Routes())
 
-		viesHandler := NewVIESHandler(viesSvc, settingsSvc)
+		viesHandler := NewVIESHandler(viesSvc)
 		api.Mount("/vies-summaries", viesHandler.Routes())
 
 		incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc).Bundle(incomeTaxBundleSvc)

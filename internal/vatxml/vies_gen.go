@@ -23,53 +23,68 @@ func stripCountryPrefix(dic string) string {
 	return dic
 }
 
-// viesFilingTypeCode maps domain filing type to VIES EPO codes.
-// VIES uses different codes: B=regular, O=corrective, N=supplementary.
+// viesFilingTypeCode maps domain filing type to the shvies_forma code:
+// R=regular, N=follow-up (the schema has no separate corrective form).
 func viesFilingTypeCode(filingType string) string {
 	switch filingType {
-	case domain.FilingTypeCorrective:
-		return "O"
-	case domain.FilingTypeSupplementary:
+	case domain.FilingTypeCorrective, domain.FilingTypeSupplementary:
 		return "N"
 	default:
-		return "B"
+		return "R"
 	}
 }
 
-// Generate produces the EPO XML for a VIES summary.
+// Generate produces the EPO XML for a VIES summary. The taxpayer is validated
+// with ValidateTaxpayerIdentity.
 func (g *VIESSummaryGenerator) Generate(
 	vs *domain.VIESSummary,
 	lines []domain.VIESSummaryLine,
-	dic string,
+	info TaxpayerInfo,
 ) ([]byte, error) {
 	if vs == nil {
-		return nil, fmt.Errorf("VIES summary is nil")
+		return nil, fmt.Errorf("VIES summary is nil: %w", domain.ErrInvalidInput)
 	}
-
-	filerDIC := stripCountryPrefix(dic)
+	if err := ValidateTaxpayerIdentity(info, TaxpayerDocVIESSummary); err != nil {
+		return nil, err
+	}
 
 	vetaD := VIESVetaD{
-		KDaph:  viesFilingTypeCode(vs.FilingType),
-		Rok:    vs.Period.Year,
-		Ctvrt:  vs.Period.Quarter,
-		DICOdb: filerDIC,
+		Dokument:    "SHV",
+		KUladis:     "DPH",
+		Rok:         vs.Period.Year,
+		Ctvrt:       vs.Period.Quarter,
+		ShviesForma: viesFilingTypeCode(vs.FilingType),
 	}
 
-	var vetaP []VIESVetaP
+	vetaP := VIESVetaP{
+		CUfo:     info.UFOCode,
+		CPracufo: info.PracUFO,
+		DIC:      info.DIC,
+		TypDS:    TaxpayerTypeNaturalPerson,
+		Jmeno:    info.FirstName,
+		Prijmeni: info.LastName,
+		Ulice:    info.Street,
+		CPop:     info.HouseNum,
+		NazObce:  info.City,
+		PSC:      info.ZIP,
+		Stat:     TaxpayerCountry,
+	}
+
+	var vetaR []VIESVetaR
 	for _, line := range lines {
-		vetaP = append(vetaP, VIESVetaP{
-			KStat:   line.CountryCode,
-			DICOdbe: stripCountryPrefix(line.PartnerDIC),
-			KPlneni: line.ServiceCode,
-			Obrat:   ToWholeCZK(line.TotalAmount),
+		vetaR = append(vetaR, VIESVetaR{
+			KStat:      line.CountryCode,
+			CVat:       stripCountryPrefix(line.PartnerDIC),
+			KPlnEU:     line.ServiceCode,
+			PlnHodnota: ToWholeCZK(line.TotalAmount),
 		})
 	}
 
 	pisemnost := VIESPisemnost{
-		Xmlns: "http://adis.mfcr.cz/rozhranni/",
 		DPHSHV: DPHSHV{
 			VetaD: vetaD,
 			VetaP: vetaP,
+			VetaR: vetaR,
 		},
 	}
 

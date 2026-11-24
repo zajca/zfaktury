@@ -2,47 +2,52 @@ package vatxml
 
 import "encoding/xml"
 
-// EPO XML types for Souhrnne hlaseni (VIES Recapitulative Statement).
-// These types represent the Czech tax authority EPO format for VIES reporting.
+// EPO XML types for Souhrnne hlaseni (VIES Recapitulative Statement), following
+// the DPHSHV structure (dphshv_epo2.xsd).
 
 // VIESPisemnost is the root XML element for a VIES summary submission.
 type VIESPisemnost struct {
 	XMLName xml.Name `xml:"Pisemnost"`
-	Xmlns   string   `xml:"xmlns,attr"`
 	DPHSHV  DPHSHV   `xml:"DPHSHV"`
 }
 
 // DPHSHV is the main container for a VIES summary (Souhrnne hlaseni k DPH).
 type DPHSHV struct {
 	VetaD VIESVetaD   `xml:"VetaD"`
-	VetaP []VIESVetaP `xml:"VetaP,omitempty"`
+	VetaP VIESVetaP   `xml:"VetaP"`
 	VetaR []VIESVetaR `xml:"VetaR,omitempty"`
 }
 
 // VIESVetaD contains header information about the filing.
 type VIESVetaD struct {
-	// Filing metadata.
-	KDaph  string `xml:"k_daph,attr"`  // Filing type: B=regular, O=corrective, N=supplementary
-	Rok    int    `xml:"rok,attr"`     // Year
-	Ctvrt  int    `xml:"ctvrt,attr"`   // Quarter (1-4)
-	DICOdb string `xml:"dic_odb,attr"` // VAT ID of the filer (without CZ prefix)
+	Dokument    string `xml:"dokument,attr"`     // Document type, always SHV
+	KUladis     string `xml:"k_uladis,attr"`     // Tax code, always DPH
+	Rok         int    `xml:"rok,attr"`          // Year
+	Ctvrt       int    `xml:"ctvrt,attr"`        // Quarter (1-4)
+	ShviesForma string `xml:"shvies_forma,attr"` // Filing form: R=regular, N=follow-up
 }
 
-// VIESVetaP contains a line for goods deliveries to EU partners.
-// Not typically used for service providers, included for completeness.
+// VIESVetaP contains the taxpayer identification. c_ufo, dic and typ_ds are
+// required by the schema; the rest is optional.
 type VIESVetaP struct {
-	KStat   string `xml:"k_stat,attr"`   // Country code (2-letter)
-	DICOdbe string `xml:"dic_odbe,attr"` // Partner VAT ID (without country prefix)
-	KPlneni string `xml:"k_plneni,attr"` // Type of supply: 0=goods, 1=triangular, 3=services
-	Obrat   int64  `xml:"obrat,attr"`    // Amount in whole CZK
+	CUfo     string `xml:"c_ufo,attr"`
+	CPracufo string `xml:"c_pracufo,attr,omitempty"`
+	DIC      string `xml:"dic,attr"`
+	TypDS    string `xml:"typ_ds,attr"`
+	Jmeno    string `xml:"jmeno,attr,omitempty"`
+	Prijmeni string `xml:"prijmeni,attr,omitempty"`
+	Ulice    string `xml:"ulice,attr,omitempty"`
+	CPop     string `xml:"c_pop,attr,omitempty"`
+	NazObce  string `xml:"naz_obce,attr,omitempty"`
+	PSC      string `xml:"psc,attr,omitempty"`
+	Stat     string `xml:"stat,attr,omitempty"`
 }
 
-// VIESVetaR contains a correction/amendment line.
+// VIESVetaR contains one line of the summary: the totals for one EU partner and
+// type of supply.
 type VIESVetaR struct {
-	KStat   string `xml:"k_stat,attr"`   // Country code (2-letter)
-	DICOdbe string `xml:"dic_odbe,attr"` // Partner VAT ID (without country prefix)
-	KPlneni string `xml:"k_plneni,attr"` // Type of supply
-	Obrat   int64  `xml:"obrat,attr"`    // Corrected amount in whole CZK
-	RokOpr  int    `xml:"rok_opr,attr"`  // Original year being corrected
-	CtvOpr  int    `xml:"ctv_opr,attr"`  // Original quarter being corrected
+	KStat      string `xml:"k_stat,attr"`      // Country code (2-letter)
+	CVat       string `xml:"c_vat,attr"`       // Partner VAT ID (without country prefix)
+	KPlnEU     string `xml:"k_pln_eu,attr"`    // Type of supply: 0=goods, 1=transfer, 2=triangular, 3=services
+	PlnHodnota int64  `xml:"pln_hodnota,attr"` // Total value in whole CZK
 }

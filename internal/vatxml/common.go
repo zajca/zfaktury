@@ -26,6 +26,14 @@ func (f *XMLFloat) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
+// TaxpayerTypeNaturalPerson is the typ_ds value (F = fyzicka osoba) declared by the
+// DPHDP3, DPHKH1 and DPHSHV generators. ZFaktury serves sole proprietors only.
+const TaxpayerTypeNaturalPerson = "F"
+
+// TaxpayerCountry is the stat value (EPO "zeme" code list, naz_zeme_c25) of the
+// taxpayer's address.
+const TaxpayerCountry = "ČESKÁ REPUBLIKA"
+
 // DPHFilingTypeCode converts a domain filing type to the DPHDP3 dapdph_forma code.
 // regular -> "B" (radne), corrective -> "O" (opravne), supplementary -> "D" (dodatecne).
 func DPHFilingTypeCode(ft string) string {

@@ -270,6 +270,18 @@ func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64, dic stri
 	return nil
 }
 
+// GetXMLData retrieves the stored XML data for a VIES summary.
+func (s *VIESSummaryService) GetXMLData(ctx context.Context, id int64) ([]byte, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("VIES summary ID is required: %w", domain.ErrInvalidInput)
+	}
+	vs, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetching VIES summary for XML data: %w", err)
+	}
+	return vs.XMLData, nil
+}
+
 // MarkFiled marks a VIES summary as filed.
 func (s *VIESSummaryService) MarkFiled(ctx context.Context, id int64) error {
 	vs, err := s.repo.GetByID(ctx, id)

@@ -64,6 +64,7 @@ func NewRouter(
 	emailSender *email.EmailSender,
 	auditSvc *service.AuditService,
 	backupSvc *service.BackupService,
+	epoSvc *service.EPOService,
 	cfg RouterConfig,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -212,6 +213,11 @@ func NewRouter(
 
 		incomeTaxHandler := NewIncomeTaxHandler(incomeTaxSvc).Bundle(incomeTaxBundleSvc)
 		api.Mount("/income-tax-returns", incomeTaxHandler.Routes())
+
+		if epoSvc != nil {
+			epoHandler := NewEPOHandler(epoSvc)
+			api.Mount("/epo", epoHandler.Routes())
+		}
 
 		socialInsuranceHandler := NewSocialInsuranceHandler(socialInsuranceSvc)
 		api.Mount("/social-insurance", socialInsuranceHandler.Routes())

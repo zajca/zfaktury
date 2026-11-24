@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestExpandHome(t *testing.T) {
@@ -100,6 +101,55 @@ func TestWriteTemplate(t *testing.T) {
 	}
 	if len(data) == 0 {
 		t.Error("template file is empty")
+	}
+}
+
+func TestLoad_EPOSection(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+	content := `
+data_dir = "` + dir + `"
+
+[epo]
+base_url = "http://127.0.0.1:9999/dpr"
+allowed_host = "epo.example.test"
+timeout = "7s"
+max_request_bytes = 1000
+max_response_bytes = 2000
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	want := EPOConfig{
+		BaseURL:          "http://127.0.0.1:9999/dpr",
+		AllowedHost:      "epo.example.test",
+		Timeout:          7 * time.Second,
+		MaxRequestBytes:  1000,
+		MaxResponseBytes: 2000,
+	}
+	if cfg.EPO != want {
+		t.Errorf("EPO config = %+v, want %+v", cfg.EPO, want)
+	}
+}
+
+func TestLoad_EPOSectionOptional(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfgPath, []byte(`data_dir = "`+dir+`"`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.EPO != (EPOConfig{}) {
+		t.Errorf("EPO config = %+v, want zero value so package defaults apply", cfg.EPO)
 	}
 }
 

@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8"?><Chyby><Chyba Typ="P" Zkr="PODANO_PO_LHUTE" Polozka="d_poddp" Oddil="VetaD" Radek="" DoplInfo=""><Text>Ověřte, zda není podání podáváno po lhůtě.</Text></Chyba><Chyba Typ="I" Zkr="TEST_REZIM" Polozka="" Oddil="" Radek="" DoplInfo=""><Text>Podání nebylo přijato, protože bylo odesláno v testovacím režimu.</Text></Chyba></Chyby>

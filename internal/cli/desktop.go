@@ -7,6 +7,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/zajca/zfaktury/internal/desktop"
+	"github.com/zajca/zfaktury/internal/epo"
 	"github.com/zajca/zfaktury/internal/server"
 )
 
@@ -27,6 +28,10 @@ func runDesktop(cmd *cobra.Command, args []string) error {
 	}
 
 	downloadSvc := &desktop.DownloadService{Handler: srvApp.Router()}
+	// The client resolves the configured allowed host against the package default.
+	browserSvc := &desktop.BrowserService{
+		AllowedHost: epo.NewClient(epo.WithAllowedHost(srvApp.Config().EPO.AllowedHost)).AllowedHost(),
+	}
 
 	// Wails serves requests through AssetOptions.Handler directly,
 	// no separate HTTP server needed.
@@ -37,6 +42,7 @@ func runDesktop(cmd *cobra.Command, args []string) error {
 		},
 		Services: []application.Service{
 			application.NewService(downloadSvc),
+			application.NewService(browserSvc),
 		},
 		OnShutdown: func() {
 			srvApp.Close()

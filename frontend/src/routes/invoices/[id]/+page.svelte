@@ -125,6 +125,11 @@
 			notes: invoice.notes,
 			internal_notes: invoice.internal_notes
 		};
+		if (invoice.issue_date && invoice.due_date) {
+			const diff =
+				(new Date(invoice.due_date).getTime() - new Date(invoice.issue_date).getTime()) / 86400000;
+			dueDateOffset = Math.round(diff);
+		}
 		items = (invoice.items ?? []).map((item) => ({
 			description: item.description,
 			quantity: fromHalere(item.quantity),

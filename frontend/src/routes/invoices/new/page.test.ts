@@ -145,6 +145,29 @@ describe('Invoice Create', () => {
 		expect(dateInputs.length).toBeGreaterThanOrEqual(3);
 	});
 
+	it('sets issue, delivery and due dates from the last-day-of-previous-month button', async () => {
+		render(Page);
+		await fireEvent.click(screen.getByRole('button', { name: 'Poslední den minulého měsíce' }));
+
+		// System time is 2026-03-10, the default due offset is 14 days.
+		expect(document.getElementById('issue_date')).toHaveValue('2026-02-28');
+		expect(document.getElementById('delivery_date')).toHaveValue('2026-02-28');
+		expect(document.getElementById('due_date')).toHaveValue('2026-03-14');
+	});
+
+	it('keeps the edited due offset when using the last-day-of-previous-month button', async () => {
+		render(Page);
+		// Issue date 2026-03-10 with due date 30 days later sets the offset to 30.
+		await fireEvent.input(document.getElementById('due_date') as HTMLInputElement, {
+			target: { value: '2026-04-09' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Poslední den minulého měsíce' }));
+
+		expect(document.getElementById('issue_date')).toHaveValue('2026-02-28');
+		expect(document.getElementById('delivery_date')).toHaveValue('2026-02-28');
+		expect(document.getElementById('due_date')).toHaveValue('2026-03-30');
+	});
+
 	it('renders payment method select', () => {
 		render(Page);
 		expect(screen.getByText('Bankovní převod')).toBeInTheDocument();

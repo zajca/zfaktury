@@ -170,6 +170,33 @@ describe('Invoice detail page', () => {
 		expect(screen.getByText('Zrušit')).toBeInTheDocument();
 	});
 
+	it('last-day-of-previous-month button keeps the loaded draft due offset', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-03-10T12:00:00Z'));
+		try {
+			// 30-day payment terms: issue 2026-03-01, due 2026-03-31.
+			mockFetch.mockResolvedValueOnce(jsonResponse({ ...sampleInvoice, due_date: '2026-03-31' }));
+
+			render(Page);
+
+			await waitFor(() => {
+				expect(screen.getByText('Upravit')).toBeInTheDocument();
+			});
+
+			mockFetch.mockResolvedValueOnce(jsonResponse({ data: [], total: 0, limit: 1000, offset: 0 }));
+			await fireEvent.click(screen.getByText('Upravit'));
+
+			const button = await screen.findByRole('button', { name: 'Poslední den minulého měsíce' });
+			await fireEvent.click(button);
+
+			expect(document.getElementById('edit-issue')).toHaveValue('2026-02-28');
+			expect(document.getElementById('edit-delivery')).toHaveValue('2026-02-28');
+			expect(document.getElementById('edit-due')).toHaveValue('2026-03-30');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('delete with confirmation calls invoicesApi.delete', async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(sampleInvoice));
 

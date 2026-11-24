@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <CreateMessageResponse xmlns="http://isds.czechpoint.cz/v20">
+      <dmStatus>
+        <dmStatusCode>0004</dmStatusCode>
+        <dmStatusMessage>Fake rejection: recipient box does not accept the message</dmStatusMessage>
+        <dmStatusRefNumber>REF-FAKE-1</dmStatusRefNumber>
+      </dmStatus>
+    </CreateMessageResponse>
+  </soap:Body>
+</soap:Envelope>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <CreateMessageResponse xmlns="http://isds.czechpoint.cz/v20">
+      <dmID>1234567890</dmID>
+      <dmStatus>
+        <dmStatusCode>0000</dmStatusCode>
+        <dmStatusMessage>Zprava byla prijata</dmStatusMessage>
+      </dmStatus>
+    </CreateMessageResponse>
+  </soap:Body>
+</soap:Envelope>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+  <Body>
+    <CreateMessage xmlns="http://isds.czechpoint.cz/v20">
+      <dmEnvelope>
+        <dbIDRecipient>abc1234</dbIDRecipient>
+        <dmToHands>Fake Hands</dmToHands>
+        <dmAnnotation>Fake filing</dmAnnotation>
+        <dmSenderRefNumber>REF-1</dmSenderRefNumber>
+        <dmSenderIdent>IDENT-1</dmSenderIdent>
+        <dmPersonalDelivery>true</dmPersonalDelivery>
+      </dmEnvelope>
+      <dmFiles>
+        <dmFile dmMimeType="application/xml" dmFileMetaType="main" dmFileDescr="filing.xml">
+          <dmEncodedContent>PGEvPg==</dmEncodedContent>
+        </dmFile>
+        <dmFile dmMimeType="application/pdf" dmFileMetaType="enclosure" dmFileDescr="note &amp; more.pdf">
+          <dmEncodedContent>JVBERg==</dmEncodedContent>
+        </dmFile>
+      </dmFiles>
+    </CreateMessage>
+  </Body>
+</Envelope>

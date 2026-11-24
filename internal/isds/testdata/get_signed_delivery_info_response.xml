@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetSignedDeliveryInfoResponse xmlns="http://isds.czechpoint.cz/v20">
+      <dmSignature>ZmFrZS16Zm8=</dmSignature>
+      <dmStatus>
+        <dmStatusCode>0000</dmStatusCode>
+        <dmStatusMessage>Provedeno uspesne.</dmStatusMessage>
+      </dmStatus>
+    </GetSignedDeliveryInfoResponse>
+  </soap:Body>
+</soap:Envelope>

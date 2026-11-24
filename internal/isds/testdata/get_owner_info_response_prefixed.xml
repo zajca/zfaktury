@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns2="http://isds.czechpoint.cz/v20">
+  <S:Body>
+    <ns2:GetOwnerInfoFromLogin2Response>
+      <ns2:dbOwnerInfo>
+        <ns2:dbID>abc1234</ns2:dbID>
+        <ns2:dbType>PFO</ns2:dbType>
+        <ns2:firmName>Fake Firm</ns2:firmName>
+      </ns2:dbOwnerInfo>
+      <ns2:dbStatus>
+        <ns2:dbStatusCode>0000</ns2:dbStatusCode>
+        <ns2:dbStatusMessage>ok</ns2:dbStatusMessage>
+      </ns2:dbStatus>
+    </ns2:GetOwnerInfoFromLogin2Response>
+  </S:Body>
+</S:Envelope>

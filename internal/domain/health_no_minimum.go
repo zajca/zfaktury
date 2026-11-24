@@ -18,21 +18,21 @@ const (
 // activity and that a reason is given exactly when some months are set.
 func ValidateHealthNoMinimum(activity, noMinimum ActivityMonths, reason HealthNoMinimumReason) error {
 	if noMinimum > FullYearActivityMonths {
-		return fmt.Errorf("měsíce bez minima obsahují měsíc mimo leden až prosinec: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "měsíce bez minima obsahují měsíc mimo leden až prosinec"}
 	}
 	if noMinimum&^activity != 0 {
-		return fmt.Errorf("měsíce bez minima musí být měsíce činnosti: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "měsíce bez minima musí být měsíce činnosti"}
 	}
 	switch reason {
 	case HealthNoMinimumNone, HealthNoMinimumEmployee, HealthNoMinimumStateInsured, HealthNoMinimumZTP, HealthNoMinimumRetirementAge:
 	default:
-		return fmt.Errorf("neznámý důvod, proč minimum neplatí: %q: %w", reason, ErrInvalidInput)
+		return &UserMessageError{Message: fmt.Sprintf("neznámý důvod, proč minimum neplatí: %q", reason)}
 	}
 	if noMinimum != 0 && reason == HealthNoMinimumNone {
-		return fmt.Errorf("vyberte důvod, proč minimum neplatí: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "vyberte důvod, proč minimum neplatí"}
 	}
 	if noMinimum == 0 && reason != HealthNoMinimumNone {
-		return fmt.Errorf("důvod, proč minimum neplatí, vyžaduje alespoň jeden měsíc: %w", ErrInvalidInput)
+		return &UserMessageError{Message: "důvod, proč minimum neplatí, vyžaduje alespoň jeden měsíc"}
 	}
 	return nil
 }

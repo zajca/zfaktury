@@ -546,6 +546,15 @@ func TestHealthInsurance_SetNoMinimum_MonthsWithoutReason(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
 	}
+	var resp struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if want := "vyberte důvod, proč minimum neplatí"; resp.Error != want {
+		t.Errorf("error = %q, want %q", resp.Error, want)
+	}
 }
 
 func TestHealthInsurance_SetNoMinimum_Clear(t *testing.T) {

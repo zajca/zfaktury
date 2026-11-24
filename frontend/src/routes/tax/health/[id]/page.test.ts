@@ -171,6 +171,27 @@ describe('health insurance overview detail page', () => {
 		expect(JSON.parse(call?.[1].body as string)).toEqual({ months: [7], reason: 'employee' });
 	});
 
+	it('shows only the Czech sentence when the reason is missing', async () => {
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/no-minimum')) {
+				return Promise.resolve(jsonResponse({ error: 'vyberte důvod, proč minimum neplatí' }, 400));
+			}
+			if (url.includes('/tax-constants')) {
+				return Promise.resolve(jsonResponse({ error: 'not found' }, 404));
+			}
+			return Promise.resolve(jsonResponse(makeOverview()));
+		});
+
+		await renderPage();
+		await fireEvent.click(screen.getByRole('button', { name: 'Upravit' }));
+		await fireEvent.click(screen.getByLabelText('červenec'));
+		await fireEvent.click(screen.getByRole('button', { name: 'Uložit' }));
+
+		await waitFor(() => {
+			expect(toasts.some((t) => t.message === 'vyberte důvod, proč minimum neplatí')).toBe(true);
+		});
+	});
+
 	it('saves the months through the activity-months endpoint', async () => {
 		mockApi({ updateOverview: makeOverview({ activity_months: [1, 7, 8, 9, 10, 11, 12] }) });
 

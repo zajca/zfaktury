@@ -286,8 +286,9 @@ describe('social insurance overview detail page', () => {
 
 		await renderPage();
 
-		const minimum = screen.getByText('Minimální vyměřovací základ');
+		const minimum = screen.getByText('Minimální vyměřovací základ (ř. 27, nejvyšší ze tří součtů)');
 		expect(minimum.nextElementSibling).toHaveTextContent(/163\s?770/);
+		expect(screen.queryByText('Minimální vyměřovací základ')).not.toBeInTheDocument();
 	});
 
 	it('says when the secondary income did not reach the decisive amount', async () => {

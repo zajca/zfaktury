@@ -418,7 +418,11 @@
 						</dd>
 					{/if}
 
-					<dt class="text-secondary">Minimální vyměřovací základ</dt>
+					<dt class="text-secondary">
+						{mixedYear
+							? 'Minimální vyměřovací základ (ř. 27, nejvyšší ze tří součtů)'
+							: 'Minimální vyměřovací základ'}
+					</dt>
 					<dd class="text-right font-medium text-primary tabular-nums">
 						{formatCZK(mixedYear ? data.final_assessment_base : data.min_assessment_base)}
 					</dd>

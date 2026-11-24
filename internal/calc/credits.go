@@ -17,26 +17,41 @@ func ComputeSpouseCredit(spouseIncome domain.Amount, monthsClaimed int, spouseZT
 	return credit
 }
 
+// PersonalCreditsResult holds the personal credits per EPO row.
+type PersonalCreditsResult struct {
+	Disability12   domain.Amount // 1st/2nd degree (row 66)
+	Disability3    domain.Amount // 3rd degree (row 67)
+	DisabilityZTPP domain.Amount // ZTP/P holder (row 68)
+	Student        domain.Amount
+}
+
+// Disability returns the sum of the three disability credits.
+func (r PersonalCreditsResult) Disability() domain.Amount {
+	return r.Disability12 + r.Disability3 + r.DisabilityZTPP
+}
+
 // ComputePersonalCredits computes disability and student credits.
-// disabilityLevel: 1 = first/second degree, 2 = third degree, 3 = ZTP/P holder, 0 = none.
+// disabilityLevel is one of the domain.DisabilityLevel* constants; ztpp adds the
+// ZTP/P credit on top of the degree credit.
 // Student credit is proportional to studentMonths (out of 12).
-func ComputePersonalCredits(disabilityLevel int, isStudent bool, studentMonths int, constants TaxYearConstants) (disability, student domain.Amount) {
+func ComputePersonalCredits(disabilityLevel int, ztpp bool, isStudent bool, studentMonths int, constants TaxYearConstants) PersonalCreditsResult {
+	var res PersonalCreditsResult
+
 	switch disabilityLevel {
-	case 1:
-		disability = constants.DisabilityCredit1
-	case 2:
-		disability = constants.DisabilityCredit3
-	case 3:
-		disability = constants.DisabilityZTPP
-	default:
-		disability = 0
+	case domain.DisabilityLevel1And2:
+		res.Disability12 = constants.DisabilityCredit1
+	case domain.DisabilityLevel3:
+		res.Disability3 = constants.DisabilityCredit3
+	}
+	if ztpp {
+		res.DisabilityZTPP = constants.DisabilityZTPP
 	}
 
 	if isStudent && studentMonths > 0 {
-		student = constants.StudentCredit.Multiply(float64(studentMonths) / 12.0)
+		res.Student = constants.StudentCredit.Multiply(float64(studentMonths) / 12.0)
 	}
 
-	return disability, student
+	return res
 }
 
 // ChildCreditInput describes a single child for benefit computation.

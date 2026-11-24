@@ -108,80 +108,50 @@ func TestComputePersonalCredits(t *testing.T) {
 	tests := []struct {
 		name            string
 		disabilityLevel int
+		ztpp            bool
 		isStudent       bool
 		studentMonths   int
-		wantDisability  domain.Amount
+		want12          domain.Amount
+		want3           domain.Amount
+		wantZTPP        domain.Amount
+		wantSum         domain.Amount
 		wantStudent     domain.Amount
 	}{
+		{name: "no disability"},
+		{name: "level 1", disabilityLevel: 1, want12: domain.NewAmount(2_520, 0), wantSum: domain.NewAmount(2_520, 0)},
+		{name: "level 2", disabilityLevel: 2, want3: domain.NewAmount(5_040, 0), wantSum: domain.NewAmount(5_040, 0)},
+		{name: "ZTP/P only", ztpp: true, wantZTPP: domain.NewAmount(16_140, 0), wantSum: domain.NewAmount(16_140, 0)},
 		{
-			name:            "disability level 0",
-			disabilityLevel: 0,
-			isStudent:       false,
-			studentMonths:   0,
-			wantDisability:  0,
-			wantStudent:     0,
+			name: "level 2 with ZTP/P", disabilityLevel: 2, ztpp: true,
+			want3: domain.NewAmount(5_040, 0), wantZTPP: domain.NewAmount(16_140, 0), wantSum: domain.NewAmount(21_180, 0),
 		},
-		{
-			name:            "disability level 1",
-			disabilityLevel: 1,
-			isStudent:       false,
-			studentMonths:   0,
-			wantDisability:  domain.NewAmount(2_520, 0),
-			wantStudent:     0,
-		},
-		{
-			name:            "disability level 2",
-			disabilityLevel: 2,
-			isStudent:       false,
-			studentMonths:   0,
-			wantDisability:  domain.NewAmount(5_040, 0),
-			wantStudent:     0,
-		},
-		{
-			name:            "disability level 3 ZTPP",
-			disabilityLevel: 3,
-			isStudent:       false,
-			studentMonths:   0,
-			wantDisability:  domain.NewAmount(16_140, 0),
-			wantStudent:     0,
-		},
-		{
-			name:            "student 12 months",
-			disabilityLevel: 0,
-			isStudent:       true,
-			studentMonths:   12,
-			wantDisability:  0,
-			wantStudent:     domain.NewAmount(4_020, 0),
-		},
-		{
-			name:            "student 6 months proportional",
-			disabilityLevel: 0,
-			isStudent:       true,
-			studentMonths:   6,
-			wantDisability:  0,
-			wantStudent:     domain.NewAmount(2_010, 0),
-		},
-		{
-			name:            "not student returns 0",
-			disabilityLevel: 0,
-			isStudent:       false,
-			studentMonths:   6,
-			wantDisability:  0,
-			wantStudent:     0,
-		},
+		{name: "student 12 months", isStudent: true, studentMonths: 12, wantStudent: domain.NewAmount(4_020, 0)},
+		{name: "student 6 months proportional", isStudent: true, studentMonths: 6, wantStudent: domain.NewAmount(2_010, 0)},
+		{name: "not student returns 0", studentMonths: 6},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotD, gotS := ComputePersonalCredits(tt.disabilityLevel, tt.isStudent, tt.studentMonths, c)
-			if gotD != tt.wantDisability {
-				t.Errorf("disability = %v, want %v", gotD, tt.wantDisability)
+			got := ComputePersonalCredits(tt.disabilityLevel, tt.ztpp, tt.isStudent, tt.studentMonths, c)
+			if got.Disability12 != tt.want12 || got.Disability3 != tt.want3 || got.DisabilityZTPP != tt.wantZTPP {
+				t.Errorf("disability rows = %v/%v/%v, want %v/%v/%v",
+					got.Disability12, got.Disability3, got.DisabilityZTPP, tt.want12, tt.want3, tt.wantZTPP)
 			}
-			if gotS != tt.wantStudent {
-				t.Errorf("student = %v, want %v", gotS, tt.wantStudent)
+			if got.Disability() != tt.wantSum {
+				t.Errorf("Disability() = %v, want %v", got.Disability(), tt.wantSum)
+			}
+			if got.Student != tt.wantStudent {
+				t.Errorf("student = %v, want %v", got.Student, tt.wantStudent)
 			}
 		})
 	}
+
+	t.Run("student with zero rule-set constant is 0", func(t *testing.T) {
+		got := ComputePersonalCredits(0, false, true, 12, TaxYearConstants{})
+		if got.Student != 0 {
+			t.Errorf("student = %v, want 0", got.Student)
+		}
+	})
 }
 
 func TestComputeChildBenefit(t *testing.T) {

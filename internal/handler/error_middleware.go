@@ -19,6 +19,8 @@ func mapDomainError(w http.ResponseWriter, err error) {
 	var noRules *taxrules.NoRuleSetError
 	var userMessage *domain.UserMessageError
 	switch {
+	case errors.Is(err, domain.ErrMissingSetting) && errors.As(err, &userMessage):
+		respondError(w, http.StatusUnprocessableEntity, userMessage.Message)
 	case errors.As(err, &userMessage):
 		respondError(w, http.StatusBadRequest, userMessage.Message)
 	case errors.As(err, &noRules):

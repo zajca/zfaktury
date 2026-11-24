@@ -99,7 +99,7 @@ func TestVIESSummaryGenerator_Generate(t *testing.T) {
 	}
 }
 
-func TestVIESSummaryGenerator_Generate_Corrective(t *testing.T) {
+func TestVIESSummaryGenerator_Generate_Corrective_Refused(t *testing.T) {
 	vs := &domain.VIESSummary{
 		ID: 2,
 		Period: domain.TaxPeriod{
@@ -112,23 +112,10 @@ func TestVIESSummaryGenerator_Generate_Corrective(t *testing.T) {
 		UpdatedAt:  time.Now(),
 	}
 
-	gen := &VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, nil, testTaxpayerInfo())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	xmlStr := string(xmlData)
-
-	if !strings.Contains(xmlStr, `shvies_forma="N"`) {
-		t.Error("corrective filing type should produce shvies_forma='N'")
-	}
-	if !strings.Contains(xmlStr, `ctvrt="2"`) {
-		t.Error("XML should contain quarter 2")
-	}
+	assertVIESFollowUpRefused(t, vs)
 }
 
-func TestVIESSummaryGenerator_Generate_Supplementary(t *testing.T) {
+func TestVIESSummaryGenerator_Generate_Supplementary_Refused(t *testing.T) {
 	vs := &domain.VIESSummary{
 		ID: 3,
 		Period: domain.TaxPeriod{
@@ -141,19 +128,24 @@ func TestVIESSummaryGenerator_Generate_Supplementary(t *testing.T) {
 		UpdatedAt:  time.Now(),
 	}
 
-	gen := &VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, nil, testTaxpayerInfo())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assertVIESFollowUpRefused(t, vs)
+}
 
-	xmlStr := string(xmlData)
-
-	if !strings.Contains(xmlStr, `shvies_forma="N"`) {
-		t.Error("supplementary filing type should produce shvies_forma='N'")
+func assertVIESFollowUpRefused(t *testing.T, vs *domain.VIESSummary) {
+	t.Helper()
+	xmlData, err := (&VIESSummaryGenerator{}).Generate(vs, nil, testTaxpayerInfo())
+	if err == nil {
+		t.Fatalf("filing type %q should be refused, got XML:\n%s", vs.FilingType, xmlData)
 	}
-	if !strings.Contains(xmlStr, `dic="8001010006"`) {
-		t.Error("taxpayer DIC should be emitted without country prefix")
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("error should wrap ErrInvalidInput, got %v", err)
+	}
+	var userMessage *domain.UserMessageError
+	if !errors.As(err, &userMessage) || !strings.Contains(userMessage.Message, "ručně v EPO") {
+		t.Errorf("error should carry the Czech user message, got %v", err)
+	}
+	if xmlData != nil {
+		t.Error("no XML should be returned for a refused summary")
 	}
 }
 
@@ -269,23 +261,43 @@ func TestVIESAmountToWholeCZK(t *testing.T) {
 	}
 }
 
-func TestVIESFilingTypeCode(t *testing.T) {
+func TestToCeilCZK(t *testing.T) {
 	tests := []struct {
-		input    string
-		expected string
+		input    domain.Amount
+		expected int64
 	}{
-		{domain.FilingTypeRegular, "R"},
-		{domain.FilingTypeCorrective, "N"},
-		{domain.FilingTypeSupplementary, "N"},
-		{"", "R"},
-		{"unknown", "R"},
+		{domain.NewAmount(85500, 0), 85500},
+		{domain.NewAmount(85500, 1), 85501}, // 85500.01 -> 85501
+		{domain.NewAmount(100, 49), 101},    // 100.49 -> 101
+		{domain.NewAmount(100, 50), 101},
+		{domain.NewAmount(100, 99), 101},
+		{domain.NewAmount(0, 0), 0},
+		{domain.Amount(-10050), -100}, // -100.50 -> -100 (towards zero)
+		{domain.Amount(-10000), -100},
 	}
 
 	for _, tt := range tests {
-		result := viesFilingTypeCode(tt.input)
-		if result != tt.expected {
-			t.Errorf("viesFilingTypeCode(%q) = %q, want %q", tt.input, result, tt.expected)
+		if got := toCeilCZK(tt.input); got != tt.expected {
+			t.Errorf("toCeilCZK(%d) = %d, want %d", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestVIESSummaryGenerator_Generate_PlnHodnotaRoundsUp(t *testing.T) {
+	vs := &domain.VIESSummary{
+		Period:     domain.TaxPeriod{Year: 2025, Quarter: 1},
+		FilingType: domain.FilingTypeRegular,
+	}
+	lines := []domain.VIESSummaryLine{
+		{CountryCode: "DE", PartnerDIC: "DE123456789", ServiceCode: "3", TotalAmount: domain.NewAmount(85500, 1)},
+	}
+
+	xmlData, err := (&VIESSummaryGenerator{}).Generate(vs, lines, testTaxpayerInfo())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(string(xmlData), `pln_hodnota="85501"`) {
+		t.Errorf("85500.01 CZK should give pln_hodnota=85501, got:\n%s", xmlData)
 	}
 }
 

@@ -24,7 +24,7 @@ type VIESVetaD struct {
 	KUladis     string `xml:"k_uladis,attr"`     // Tax code, always DPH
 	Rok         int    `xml:"rok,attr"`          // Year
 	Ctvrt       int    `xml:"ctvrt,attr"`        // Quarter (1-4)
-	ShviesForma string `xml:"shvies_forma,attr"` // Filing form: R=regular, N=follow-up
+	ShviesForma string `xml:"shvies_forma,attr"` // Filing form: R=regular (N is not generated)
 }
 
 // VIESVetaP contains the taxpayer identification. c_ufo, dic and typ_ds are

@@ -23,19 +23,29 @@ func stripCountryPrefix(dic string) string {
 	return dic
 }
 
-// viesFilingTypeCode maps domain filing type to the shvies_forma code:
-// R=regular, N=follow-up (the schema has no separate corrective form).
-func viesFilingTypeCode(filingType string) string {
-	switch filingType {
-	case domain.FilingTypeCorrective, domain.FilingTypeSupplementary:
-		return "N"
-	default:
-		return "R"
+// viesFormRegular is the shvies_forma code of a regular summary. A follow-up
+// summary (N) corrects earlier rows through storno rows, which are not
+// generated, so only the regular form is produced.
+const viesFormRegular = "R"
+
+// msgVIESFollowUpUnsupported is the user-facing text for a corrective or
+// supplementary summary.
+const msgVIESFollowUpUnsupported = "Následné souhrnné hlášení zatím nelze vygenerovat, podejte ho ručně v EPO."
+
+// toCeilCZK converts halere to whole CZK rounded up, as DPHSHV requires for
+// pln_hodnota. Integer arithmetic only. A negative total is rounded towards
+// zero (-85500.01 CZK gives -85500), which is the ceiling.
+func toCeilCZK(a domain.Amount) int64 {
+	whole := int64(a) / 100
+	if int64(a)%100 > 0 {
+		whole++
 	}
+	return whole
 }
 
-// Generate produces the EPO XML for a VIES summary. The taxpayer is validated
-// with ValidateTaxpayerIdentity.
+// Generate produces the EPO XML for a regular VIES summary. Corrective and
+// supplementary summaries are refused. The taxpayer is validated with
+// ValidateTaxpayerIdentity.
 func (g *VIESSummaryGenerator) Generate(
 	vs *domain.VIESSummary,
 	lines []domain.VIESSummaryLine,
@@ -43,6 +53,9 @@ func (g *VIESSummaryGenerator) Generate(
 ) ([]byte, error) {
 	if vs == nil {
 		return nil, fmt.Errorf("VIES summary is nil: %w", domain.ErrInvalidInput)
+	}
+	if vs.FilingType == domain.FilingTypeCorrective || vs.FilingType == domain.FilingTypeSupplementary {
+		return nil, &domain.UserMessageError{Message: msgVIESFollowUpUnsupported}
 	}
 	if err := ValidateTaxpayerIdentity(info, TaxpayerDocVIESSummary); err != nil {
 		return nil, err
@@ -53,7 +66,7 @@ func (g *VIESSummaryGenerator) Generate(
 		KUladis:     "DPH",
 		Rok:         vs.Period.Year,
 		Ctvrt:       vs.Period.Quarter,
-		ShviesForma: viesFilingTypeCode(vs.FilingType),
+		ShviesForma: viesFormRegular,
 	}
 
 	vetaP := VIESVetaP{
@@ -76,7 +89,7 @@ func (g *VIESSummaryGenerator) Generate(
 			KStat:      line.CountryCode,
 			CVat:       stripCountryPrefix(line.PartnerDIC),
 			KPlnEU:     line.ServiceCode,
-			PlnHodnota: ToWholeCZK(line.TotalAmount),
+			PlnHodnota: toCeilCZK(line.TotalAmount),
 		})
 	}
 

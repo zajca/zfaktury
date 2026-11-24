@@ -966,6 +966,41 @@ func TestVIES_GenerateXML_NotFound(t *testing.T) {
 	}
 }
 
+func TestVIES_GenerateXML_FollowUpRefused(t *testing.T) {
+	ctx := context.Background()
+
+	for _, filingType := range []string{domain.FilingTypeCorrective, domain.FilingTypeSupplementary} {
+		t.Run(filingType, func(t *testing.T) {
+			svc, db := newVIESSvc(t)
+			if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+				t.Fatalf("inserting taxpayer settings: %v", err)
+			}
+			vs := validVIESSummary()
+			vs.FilingType = filingType
+			if err := svc.Create(ctx, vs); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+
+			err := svc.GenerateXML(ctx, vs.ID)
+			var userMessage *domain.UserMessageError
+			if !errors.As(err, &userMessage) || !strings.Contains(userMessage.Message, "ručně v EPO") {
+				t.Fatalf("GenerateXML() error = %v, want the follow-up user message", err)
+			}
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Errorf("error should wrap ErrInvalidInput, got %v", err)
+			}
+
+			stored, err := svc.GetByID(ctx, vs.ID)
+			if err != nil {
+				t.Fatalf("GetByID() error: %v", err)
+			}
+			if len(stored.XMLData) != 0 {
+				t.Error("no XML should be stored for a refused summary")
+			}
+		})
+	}
+}
+
 func TestVIES_GenerateXML_MissingSettings(t *testing.T) {
 	ctx := context.Background()
 

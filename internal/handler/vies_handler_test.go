@@ -268,6 +268,41 @@ func TestVIESHandler_GenerateXML_NoDIC(t *testing.T) {
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
 	}
+	if !strings.Contains(w.Body.String(), "V nastavení chybí DIČ.") {
+		t.Errorf("body should carry the missing-DIC message, got: %s", w.Body.String())
+	}
+}
+
+func TestVIESHandler_GenerateXML_FollowUpRefused(t *testing.T) {
+	r, db := setupVIESRouter(t)
+
+	if err := insertVATTaxpayerSettings(db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
+	body := `{"year":2025,"quarter":1,"filing_type":"corrective"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/vies-summaries", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("creating corrective summary: status = %d, body = %s", w.Code, w.Body.String())
+	}
+	var created viesSummaryResponse
+	if err := json.NewDecoder(w.Body).Decode(&created); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/vies-summaries/%d/generate-xml", created.ID), nil)
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "ručně v EPO") {
+		t.Errorf("body should carry the follow-up message, got: %s", w.Body.String())
+	}
 }
 
 func TestVIESHandler_GenerateXML_MissingUFO(t *testing.T) {

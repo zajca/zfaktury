@@ -313,13 +313,12 @@ func buildTaxpayerInfo(ctx context.Context, settingsRepo repository.SettingsRepo
 		return val
 	}
 
-	dic := getSetting(SettingDIC)
-	if dic == "" {
-		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation, configure it in settings: %w", domain.ErrMissingSetting)
+	// The XML formats carry the DIČ without the CZ prefix.
+	dicNum := strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(getSetting(SettingDIC))), "CZ")
+	if dicNum == "" {
+		return vatxml.TaxpayerInfo{}, fmt.Errorf("DIC is required for XML generation: %w: %w", domain.ErrMissingSetting,
+			&domain.UserMessageError{Message: "V nastavení chybí DIČ."})
 	}
-
-	// Strip CZ prefix for DPHDP3 format.
-	dicNum := strings.TrimPrefix(dic, "CZ")
 
 	return vatxml.TaxpayerInfo{
 		DIC:       dicNum,

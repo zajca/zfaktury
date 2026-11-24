@@ -49,6 +49,15 @@ func stripDICPrefix(dic string) string {
 	return dic
 }
 
+// childRow returns a pointer to v when children are claimed and nil otherwise, so
+// rows 72, 73 and 76 are empty without a child and present (0 included) with one.
+func childRow(claimed bool, v int64) *int64 {
+	if !claimed {
+		return nil
+	}
+	return &v
+}
+
 // splitChildBenefit splits child benefit into the sleva component (form ř.73)
 // and the daňový bonus component (ř.76). Sleva eats tax up to its remaining value;
 // any excess child benefit becomes a refundable bonus.
@@ -380,11 +389,11 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 			MDetiZtpp:     cm.DetiZtpp,
 			MDetiZtpp2:    cm.DetiZtpp2,
 			MDetiZtpp3:    cm.DetiZtpp3,
-			KcDazvyhod:    childBenefit,
-			KcSlevy35c:    slevy35c,
+			KcDazvyhod:    childRow(len(children) > 0, childBenefit),
+			KcSlevy35c:    childRow(len(children) > 0, slevy35c),
 			DaSlevy35c:    taxAfter35c,
 			KcDanCelk:     danCelk,
-			KcDanbonus:    danbonus,
+			KcDanbonus:    childRow(len(children) > 0, danbonus),
 			KcDanPoDb:     danPoDb,
 			KcDbPoOdpd:    dbPoOdpd,
 			KcZalpred:     ToWholeCZK(itr.Prepayments),

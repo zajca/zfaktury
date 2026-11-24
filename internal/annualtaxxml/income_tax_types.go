@@ -55,11 +55,12 @@ type DPFOVetaD struct {
 	//   - ř.62 (sleva podle §35 odst.1 -- zaměstnanci ZTP) = da_slevy (NOT for OSVC)
 	//   - ř.63 (sleva podle §35a/35b -- investiční pobídky) = sleva_rp (NOT for OSVC)
 	//   - ř.64 (základní sleva na poplatníka §35ba 1a) = kc_op15_1a
-	// Rows EPO computes itself (ř.61, ř.70, ř.73-77a, ř.84, ř.91) are always emitted,
-	// "0" included: a missing item is compared as an empty value and trips the formula
-	// controls (codes 108, 191, 354). Claimed optional items (credit rows with months,
-	// ř.54, ř.72) are left out when nothing is claimed: EPO expects ř.72 empty without
-	// a child (code 181) (PodatelnaEPO.pdf, p.3).
+	// Rows EPO computes itself (ř.61, ř.70, ř.74, ř.75, ř.77, ř.77a, ř.84, ř.91) are
+	// always emitted, "0" included: a missing item is compared as an empty value and
+	// trips the formula controls (codes 108, 354). Claimed optional items (credit rows
+	// with months, ř.54) are left out when nothing is claimed. Rows 72, 73 and 76 are
+	// pointers: nil without a child (EPO expects them empty, codes 181, 184, 191),
+	// present, 0 included, when children are claimed (verified in the EPO portal).
 	KcDztrata int64  `xml:"kc_dztrata,attr"` // ř. 61 -- daňová ztráta (zaokr. nahoru, bez znaménka mínus)
 	DaSlezap  string `xml:"da_slezap,attr"`  // ř. 58 -- daň podle §16 (formát "Kc.00", decimal 2 frac digits)
 	DaCelod13 int64  `xml:"da_celod13,attr"` // ř. 60 -- daň celkem zaokrouhlená na celé Kč nahoru
@@ -93,21 +94,21 @@ type DPFOVetaD struct {
 	// the child order (1st/2nd/3rd+); ztpp variants apply the ZTP/P doubling.
 	// EPO formula: kc_dazvyhod = (m_deti × 1267 + m_deti2 × 1860 + m_deti3 × 2320)
 	//             + 2 × (m_detiztpp × 1267 + m_detiztpp2 × 1860 + m_detiztpp3 × 2320)
-	MDeti      int   `xml:"m_deti,attr,omitempty"`      // měsíců s 1. dítětem (běžným)
-	MDeti2     int   `xml:"m_deti2,attr,omitempty"`     // měsíců s 2. dítětem (běžným)
-	MDeti3     int   `xml:"m_deti3,attr,omitempty"`     // měsíců s 3+ dítětem (běžným)
-	MDetiZtpp  int   `xml:"m_detiztpp,attr,omitempty"`  // měsíců s 1. dítětem ZTP/P
-	MDetiZtpp2 int   `xml:"m_detiztpp2,attr,omitempty"` // měsíců s 2. dítětem ZTP/P
-	MDetiZtpp3 int   `xml:"m_detiztpp3,attr,omitempty"` // měsíců s 3+ dítětem ZTP/P
-	KcDazvyhod int64 `xml:"kc_dazvyhod,attr,omitempty"` // ř. 72 -- daňové zvýhodnění na děti (prázdné bez dítěte, kód 181)
-	KcSlevy35c int64 `xml:"kc_slevy35c,attr"`           // ř. 73 -- sleva na děti uplatněná do výše daně
-	DaSlevy35c int64 `xml:"da_slevy35c,attr"`           // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
-	KcDanCelk  int64 `xml:"kc_dan_celk,attr"`           // ř. 75 -- daň celkem (= ř.74 + ř.74a)
-	KcDanbonus int64 `xml:"kc_danbonus,attr"`           // ř. 76 -- daňový bonus (= ř.72 - ř.73)
-	KcDanPoDb  int64 `xml:"kc_dan_po_db,attr"`          // ř. 77 -- daň celkem po úpravě o bonus (= ř.75 - ř.76, min 0)
-	KcDbPoOdpd int64 `xml:"kc_db_po_odpd,attr"`         // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
-	KcZalpred  int64 `xml:"kc_zalpred,attr"`            // ř. 84 -- úhrn sražených záloh
-	KcZbyvpred int64 `xml:"kc_zbyvpred,attr"`           // ř. 91 -- zbývá doplatit / přeplatek
+	MDeti      int    `xml:"m_deti,attr,omitempty"`      // měsíců s 1. dítětem (běžným)
+	MDeti2     int    `xml:"m_deti2,attr,omitempty"`     // měsíců s 2. dítětem (běžným)
+	MDeti3     int    `xml:"m_deti3,attr,omitempty"`     // měsíců s 3+ dítětem (běžným)
+	MDetiZtpp  int    `xml:"m_detiztpp,attr,omitempty"`  // měsíců s 1. dítětem ZTP/P
+	MDetiZtpp2 int    `xml:"m_detiztpp2,attr,omitempty"` // měsíců s 2. dítětem ZTP/P
+	MDetiZtpp3 int    `xml:"m_detiztpp3,attr,omitempty"` // měsíců s 3+ dítětem ZTP/P
+	KcDazvyhod *int64 `xml:"kc_dazvyhod,attr,omitempty"` // ř. 72 -- daňové zvýhodnění na děti (jen s dítětem)
+	KcSlevy35c *int64 `xml:"kc_slevy35c,attr,omitempty"` // ř. 73 -- sleva na děti uplatněná do výše daně (jen s dítětem)
+	DaSlevy35c int64  `xml:"da_slevy35c,attr"`           // ř. 74 -- daň po slevě podle § 35c (= ř.71 - ř.73)
+	KcDanCelk  int64  `xml:"kc_dan_celk,attr"`           // ř. 75 -- daň celkem (= ř.74 + ř.74a)
+	KcDanbonus *int64 `xml:"kc_danbonus,attr,omitempty"` // ř. 76 -- daňový bonus (= ř.72 - ř.73, jen s dítětem)
+	KcDanPoDb  int64  `xml:"kc_dan_po_db,attr"`          // ř. 77 -- daň celkem po úpravě o bonus (= ř.75 - ř.76, min 0)
+	KcDbPoOdpd int64  `xml:"kc_db_po_odpd,attr"`         // ř. 77a -- daňový bonus po odpočtu daně (= ř.76 - ř.75, min 0)
+	KcZalpred  int64  `xml:"kc_zalpred,attr"`            // ř. 84 -- úhrn sražených záloh
+	KcZbyvpred int64  `xml:"kc_zbyvpred,attr"`           // ř. 91 -- zbývá doplatit / přeplatek
 
 	// §6 employment income (závislá činnost) -- omitempty so taxpayers without
 	// employment income emit XML identical to the pre-§6-support output.

@@ -728,8 +728,8 @@ func TestFilingHandler_NoSecretsInResponsesOrLogs(t *testing.T) {
 	f.send(p2.ConfirmToken, "test", true)
 
 	all := strings.Join(f.responses, "\n") + f.logs.String()
-	for _, secret := range []string{testISDSUsername, testISDSPassword, "fake-body-1", "<Pisemnost>", p.ConfirmToken, p2.ConfirmToken} {
-		if strings.Contains(all, secret) && !(secret == p.ConfirmToken || secret == p2.ConfirmToken) {
+	for _, secret := range []string{testISDSUsername, testISDSPassword, "fake-body-1", "<Pisemnost>"} {
+		if strings.Contains(all, secret) {
 			t.Errorf("a response or log line contains %q", secret)
 		}
 	}

@@ -170,6 +170,12 @@ type HealthInsuranceOverview struct {
 	Difference       Amount
 	NewMonthlyPrepay Amount
 
+	NoMinimumMonths   ActivityMonths        // months of activity without the minimum base (§ 3a odst. 3); 0 = none
+	NoMinimumReason   HealthNoMinimumReason // why the minimum does not apply in NoMinimumMonths
+	FilingMethod      FilingMethod          // filing method of the last recalculation
+	AdvanceStartMonth int                   // month of Year+1 the new advance starts; 0 = not calculated
+	Warnings          []string              // Warning* tokens of the last calculation
+
 	XMLData   []byte
 	Status    string
 	FiledAt   *time.Time

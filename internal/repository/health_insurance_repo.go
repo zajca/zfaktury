@@ -24,6 +24,7 @@ func NewHealthInsuranceOverviewRepository(db *sql.DB) *HealthInsuranceOverviewRe
 const healthInsuranceColumns = `id, year, filing_type, activity_months, total_revenue, total_expenses,
 	tax_base, assessment_base, min_assessment_base, final_assessment_base,
 	insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
+	no_minimum_months, no_minimum_reason, filing_method, advance_start_month, warnings,
 	xml_data, status, filed_at, created_at, updated_at`
 
 // scanHealthInsuranceOverview scans a HealthInsuranceOverview from a row.
@@ -32,19 +33,30 @@ func scanHealthInsuranceOverview(s scanner) (*domain.HealthInsuranceOverview, er
 	var filedAtStr sql.NullString
 	var createdAtStr, updatedAtStr string
 	var xmlData []byte
-	var activityMonths int64
+	var activityMonths, noMinimumMonths int64
+	var noMinimumReason, filingMethod, warnings string
 
 	err := s.Scan(
 		&hi.ID, &hi.Year, &hi.FilingType, &activityMonths,
 		&hi.TotalRevenue, &hi.TotalExpenses,
 		&hi.TaxBase, &hi.AssessmentBase, &hi.MinAssessmentBase, &hi.FinalAssessmentBase,
 		&hi.InsuranceRate, &hi.TotalInsurance, &hi.Prepayments, &hi.Difference, &hi.NewMonthlyPrepay,
+		&noMinimumMonths, &noMinimumReason, &filingMethod, &hi.AdvanceStartMonth, &warnings,
 		&xmlData, &hi.Status, &filedAtStr,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	// Unlike activity months, an empty set of months without minimum is valid.
+	if noMinimumMonths < 0 || noMinimumMonths > int64(domain.FullYearActivityMonths) {
+		return nil, fmt.Errorf("no_minimum_months %d out of range 0..4095", noMinimumMonths)
+	}
+	hi.NoMinimumMonths = domain.ActivityMonths(noMinimumMonths)
+	hi.NoMinimumReason = domain.HealthNoMinimumReason(noMinimumReason)
+	hi.FilingMethod = domain.FilingMethod(filingMethod)
+	hi.Warnings = splitWarnings(warnings)
 
 	months, err := activityMonthsFromDB(activityMonths)
 	if err != nil {
@@ -83,11 +95,13 @@ func (r *HealthInsuranceOverviewRepository) Create(ctx context.Context, hi *doma
 			year, filing_type, activity_months, total_revenue, total_expenses,
 			tax_base, assessment_base, min_assessment_base, final_assessment_base,
 			insurance_rate, total_insurance, prepayments, difference, new_monthly_prepay,
+			no_minimum_months, no_minimum_reason, filing_method, advance_start_month, warnings,
 			xml_data, status, filed_at, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		hi.Year, hi.FilingType, int64(hi.ActivityMonths), hi.TotalRevenue, hi.TotalExpenses,
 		hi.TaxBase, hi.AssessmentBase, hi.MinAssessmentBase, hi.FinalAssessmentBase,
 		hi.InsuranceRate, hi.TotalInsurance, hi.Prepayments, hi.Difference, hi.NewMonthlyPrepay,
+		int64(hi.NoMinimumMonths), string(hi.NoMinimumReason), string(hi.FilingMethod), hi.AdvanceStartMonth, joinWarnings(hi.Warnings),
 		nil, hi.Status, nil,
 		hi.CreatedAt.Format(time.RFC3339), hi.UpdatedAt.Format(time.RFC3339),
 	)
@@ -117,11 +131,13 @@ func (r *HealthInsuranceOverviewRepository) Update(ctx context.Context, hi *doma
 			year = ?, filing_type = ?, activity_months = ?, total_revenue = ?, total_expenses = ?,
 			tax_base = ?, assessment_base = ?, min_assessment_base = ?, final_assessment_base = ?,
 			insurance_rate = ?, total_insurance = ?, prepayments = ?, difference = ?, new_monthly_prepay = ?,
+			no_minimum_months = ?, no_minimum_reason = ?, filing_method = ?, advance_start_month = ?, warnings = ?,
 			xml_data = ?, status = ?, filed_at = ?, updated_at = ?
 		WHERE id = ?`,
 		hi.Year, hi.FilingType, int64(hi.ActivityMonths), hi.TotalRevenue, hi.TotalExpenses,
 		hi.TaxBase, hi.AssessmentBase, hi.MinAssessmentBase, hi.FinalAssessmentBase,
 		hi.InsuranceRate, hi.TotalInsurance, hi.Prepayments, hi.Difference, hi.NewMonthlyPrepay,
+		int64(hi.NoMinimumMonths), string(hi.NoMinimumReason), string(hi.FilingMethod), hi.AdvanceStartMonth, joinWarnings(hi.Warnings),
 		hi.XMLData, hi.Status, filedAt,
 		hi.UpdatedAt.Format(time.RFC3339), hi.ID,
 	)

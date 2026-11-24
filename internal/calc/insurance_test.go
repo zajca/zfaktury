@@ -689,6 +689,65 @@ func TestSocialAdvancePeriods(t *testing.T) {
 	}
 }
 
+func TestCalculateInsuranceHealthAdvanceFloorAndExemptMonths(t *testing.T) {
+	czk := func(v int64) domain.Amount { return domain.NewAmount(v, 0) }
+	min2025 := domain.NewAmount(23_278, 50)
+	floor := func(min domain.Amount) *AdvanceBaseBounds { return &AdvanceBaseBounds{MinMonthly: min} }
+	min2026 := domain.NewAmount(24_483, 50)
+
+	tests := []struct {
+		name        string
+		revenue     domain.Amount
+		minMonthly  domain.Amount
+		exempt      int
+		bounds      *AdvanceBaseBounds
+		wantFinal   domain.Amount
+		wantTotal   domain.Amount
+		wantAdvance domain.Amount
+	}{
+		{"2025 no income, no floor", 0, min2025, 0, nil, czk(279_342), czk(37_712), czk(3_143)},
+		{"2025 no income, 2026 floor", 0, min2025, 0, floor(min2026), czk(279_342), czk(37_712), czk(3_306)},
+		{"2024 no income, 2025 floor", 0, domain.NewAmount(21_983, 50), 0, floor(min2025), czk(263_802), czk(35_614), czk(3_143)},
+		{"2024 no income, no floor", 0, domain.NewAmount(21_983, 50), 0, nil, czk(263_802), czk(35_614), czk(2_968)},
+		{"high income stays above the floor", czk(1_200_000), min2025, 0, floor(min2026), czk(600_000), czk(81_000), czk(6_750)},
+		{"six exempt months", czk(100_000), min2025, 6, floor(min2026), czk(139_671), czk(18_856), czk(3_306)},
+		{"six exempt months, no floor", czk(100_000), min2025, 6, nil, czk(139_671), czk(18_856), czk(1_572)},
+		{"all months exempt", czk(100_000), min2025, 12, nil, czk(50_000), czk(6_750), czk(563)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := CalculateInsurance(InsuranceInput{
+				Revenue:             tt.revenue,
+				MinMonthlyBase:      tt.minMonthly,
+				RatePermille:        135,
+				RoundPremiumUp:      true,
+				ActivityMonths:      12,
+				MinimumExemptMonths: tt.exempt,
+				AdvanceBounds:       tt.bounds,
+			})
+			if err != nil {
+				t.Fatalf("CalculateInsurance error: %v", err)
+			}
+			if result.FinalAssessmentBase != tt.wantFinal {
+				t.Errorf("FinalAssessmentBase = %d, want %d", result.FinalAssessmentBase, tt.wantFinal)
+			}
+			if result.TotalInsurance != tt.wantTotal {
+				t.Errorf("TotalInsurance = %d, want %d", result.TotalInsurance, tt.wantTotal)
+			}
+			if result.NewMonthlyPrepay != tt.wantAdvance {
+				t.Errorf("NewMonthlyPrepay = %d, want %d", result.NewMonthlyPrepay, tt.wantAdvance)
+			}
+		})
+	}
+
+	for _, exempt := range []int{-1, 13} {
+		_, err := CalculateInsurance(InsuranceInput{MinMonthlyBase: min2025, RatePermille: 135, RoundPremiumUp: true, ActivityMonths: 12, MinimumExemptMonths: exempt})
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("exempt %d error = %v, want ErrInvalidInput", exempt, err)
+		}
+	}
+}
+
 func TestCalculateInsuranceWithPaymentYearBounds(t *testing.T) {
 	result, err := CalculateInsurance(InsuranceInput{
 		Revenue:                domain.NewAmount(100_000, 0),

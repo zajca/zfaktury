@@ -16,6 +16,12 @@ describe('insuranceWarningText', () => {
 		expect(insuranceWarningText('advance_differs_from_xml', 2025)).toContain('podán dříve');
 	});
 
+	it('explains that health advances are not required', () => {
+		const text = insuranceWarningText('health_advance_not_required', 2025);
+		expect(text).toContain('v roce 2026 nejsou povinné');
+		expect(text).toContain('za rok 2025');
+	});
+
 	it('returns an unknown token unchanged', () => {
 		expect(insuranceWarningText('something_new', 2025)).toBe('something_new');
 	});

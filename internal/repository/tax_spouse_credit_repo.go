@@ -21,7 +21,7 @@ func NewTaxSpouseCreditRepository(db *sql.DB) *TaxSpouseCreditRepository {
 }
 
 // taxSpouseCreditColumns is the list of columns to select for a TaxSpouseCredit row.
-const taxSpouseCreditColumns = `id, year, spouse_name, spouse_birth_number, spouse_income, spouse_ztp, months_claimed, credit_amount, created_at, updated_at`
+const taxSpouseCreditColumns = `id, year, spouse_name, spouse_birth_number, spouse_income, spouse_ztp, months_claimed, child_under3_months, credit_amount, created_at, updated_at`
 
 // scanTaxSpouseCredit scans a TaxSpouseCredit from a row.
 func scanTaxSpouseCredit(s scanner) (*domain.TaxSpouseCredit, error) {
@@ -31,7 +31,7 @@ func scanTaxSpouseCredit(s scanner) (*domain.TaxSpouseCredit, error) {
 
 	err := s.Scan(
 		&c.ID, &c.Year, &c.SpouseName, &c.SpouseBirthNumber,
-		&c.SpouseIncome, &spouseZTP, &c.MonthsClaimed, &c.CreditAmount,
+		&c.SpouseIncome, &spouseZTP, &c.MonthsClaimed, &c.ChildUnder3Months, &c.CreditAmount,
 		&createdAtStr, &updatedAtStr,
 	)
 	if err != nil {
@@ -64,10 +64,10 @@ func (r *TaxSpouseCreditRepository) Upsert(ctx context.Context, credit *domain.T
 	}
 
 	result, err := r.db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO tax_spouse_credits (year, spouse_name, spouse_birth_number, spouse_income, spouse_ztp, months_claimed, credit_amount, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT OR REPLACE INTO tax_spouse_credits (year, spouse_name, spouse_birth_number, spouse_income, spouse_ztp, months_claimed, child_under3_months, credit_amount, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		credit.Year, credit.SpouseName, credit.SpouseBirthNumber,
-		credit.SpouseIncome, spouseZTP, credit.MonthsClaimed, credit.CreditAmount,
+		credit.SpouseIncome, spouseZTP, credit.MonthsClaimed, credit.ChildUnder3Months, credit.CreditAmount,
 		credit.CreatedAt.Format(time.RFC3339), credit.UpdatedAt.Format(time.RFC3339),
 	)
 	if err != nil {

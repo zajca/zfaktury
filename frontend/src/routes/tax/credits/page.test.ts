@@ -25,7 +25,9 @@ const summary = {
 		is_student: false,
 		student_months: 0,
 		disability_level: 2,
+		disability_months: 12,
 		ztpp: false,
+		ztpp_months: 12,
 		credit_student: 0,
 		credit_disability: 504000,
 		created_at: '2026-04-01T00:00:00Z',
@@ -104,8 +106,106 @@ describe('Tax credits page - personal credits', () => {
 				is_student: false,
 				student_months: 0,
 				disability_level: 2,
-				ztpp: true
+				disability_months: 12,
+				ztpp: true,
+				ztpp_months: 12
 			});
+		});
+	});
+});
+
+describe('Tax credits page - spouse credits', () => {
+	it('saves the child-under-3 months together with the spouse credit', async () => {
+		const summaryWithSpouse = {
+			...summary,
+			spouse: {
+				id: 1,
+				year: 2025,
+				spouse_name: 'Jana Novakova',
+				spouse_birth_number: '8555012345',
+				spouse_income: 5000000,
+				spouse_ztp: false,
+				months_claimed: 12,
+				child_under3_months: 6,
+				credit_amount: 1242000,
+				created_at: '2026-04-01T00:00:00Z',
+				updated_at: '2026-04-01T00:00:00Z'
+			}
+		};
+		mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+			if (url.includes('/spouse') && init?.method === 'PUT') {
+				return Promise.resolve(jsonResponse({}));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants));
+			}
+			if (url.includes('/tax-credits/')) {
+				return Promise.resolve(jsonResponse(summaryWithSpouse));
+			}
+			return Promise.resolve(jsonResponse([]));
+		});
+
+		render(Page);
+
+		// The spouse form is shown because summary.spouse exists; its Uložit button
+		// is the second one on the page (after the personal credits card).
+		const saveButtons = (await screen.findAllByRole('button', { name: 'Uložit' })) as HTMLElement[];
+		expect(saveButtons.length).toBeGreaterThanOrEqual(2);
+		await fireEvent.click(saveButtons[1]);
+
+		await waitFor(() => {
+			const put = mockFetch.mock.calls.find(
+				([url, init]) => String(url).includes('/spouse') && init?.method === 'PUT'
+			);
+			expect(put).toBeTruthy();
+			expect(JSON.parse(put![1].body as string)).toEqual({
+				spouse_name: 'Jana Novakova',
+				spouse_birth_number: '8555012345',
+				spouse_income: 5000000,
+				spouse_ztp: false,
+				months_claimed: 12,
+				child_under3_months: 6
+			});
+		});
+	});
+
+	it('defaults the child-under-3 months of a new spouse record to 0', async () => {
+		mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+			if (url.includes('/spouse') && init?.method === 'PUT') {
+				return Promise.resolve(jsonResponse({}));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants));
+			}
+			if (url.includes('/tax-credits/')) {
+				return Promise.resolve(jsonResponse(summary)); // spouse: null
+			}
+			return Promise.resolve(jsonResponse([]));
+		});
+
+		render(Page);
+
+		// Open the spouse form via its Přidat button.
+		const spouseHeading = await screen.findByRole('heading', { name: /Manžel\/ka/ });
+		const headerButtons = Array.from(
+			spouseHeading.parentElement?.querySelectorAll('button') ?? []
+		) as HTMLElement[];
+		const addButton = headerButtons.find((b) => b.textContent === 'Přidat');
+		expect(addButton).toBeTruthy();
+		await fireEvent.click(addButton as HTMLElement);
+
+		// The second Uložit button belongs to the spouse card.
+		const saveButtons = (await screen.findAllByRole('button', { name: 'Uložit' })) as HTMLElement[];
+		await fireEvent.click(saveButtons[1]);
+
+		await waitFor(() => {
+			const put = mockFetch.mock.calls.find(
+				([url, init]) => String(url).includes('/spouse') && init?.method === 'PUT'
+			);
+			expect(put).toBeTruthy();
+			const body = JSON.parse(put![1].body as string);
+			expect(body.child_under3_months).toBe(0);
+			expect(body.months_claimed).toBe(12);
 		});
 	});
 });

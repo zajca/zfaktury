@@ -10,7 +10,9 @@
 		isStudent = $bindable(),
 		studentMonths = $bindable(),
 		disabilityLevel = $bindable(),
+		disabilityMonths = $bindable(),
 		ztpp = $bindable(),
+		ztppMonths = $bindable(),
 		summary,
 		taxConstants,
 		saving,
@@ -19,7 +21,9 @@
 		isStudent: boolean;
 		studentMonths: number;
 		disabilityLevel: number;
+		disabilityMonths: number;
 		ztpp: boolean;
+		ztppMonths: number;
 		summary: TaxCreditsSummary | null;
 		taxConstants: TaxConstants | null;
 		saving: boolean;
@@ -60,6 +64,10 @@
 				value={disabilityLevel}
 				onchange={(e: Event) => {
 					disabilityLevel = Number((e.currentTarget as HTMLSelectElement).value);
+					// A credit switched on with stored months 0 (saved while off) defaults to a full year.
+					if (disabilityLevel !== 0 && disabilityMonths === 0) {
+						disabilityMonths = 12;
+					}
 				}}
 			>
 				<option value={0}>Žádná</option>
@@ -67,10 +75,52 @@
 				<option value={2}>3. stupeň</option>
 			</Select>
 		</div>
+		{#if disabilityLevel !== 0}
+			<div>
+				<label for="disability-months" class="text-xs text-tertiary">Měsíce (invalidita)</label>
+				<Select
+					id="disability-months"
+					value={disabilityMonths}
+					onchange={(e: Event) => {
+						disabilityMonths = Number((e.currentTarget as HTMLSelectElement).value);
+					}}
+				>
+					{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
+						<option value={m}>{m}</option>
+					{/each}
+				</Select>
+			</div>
+		{/if}
 		<label class="flex items-center gap-2 text-sm text-primary">
-			<input type="checkbox" bind:checked={ztpp} class="rounded border-border" />
+			<input
+				type="checkbox"
+				bind:checked={ztpp}
+				onchange={() => {
+					// ZTP/P switched on with stored months 0 (saved while off) defaults to a full year.
+					if (ztpp && ztppMonths === 0) {
+						ztppMonths = 12;
+					}
+				}}
+				class="rounded border-border"
+			/>
 			Držitel průkazu ZTP/P
 		</label>
+		{#if ztpp}
+			<div>
+				<label for="ztpp-months" class="text-xs text-tertiary">Měsíce (ZTP/P)</label>
+				<Select
+					id="ztpp-months"
+					value={ztppMonths}
+					onchange={(e: Event) => {
+						ztppMonths = Number((e.currentTarget as HTMLSelectElement).value);
+					}}
+				>
+					{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
+						<option value={m}>{m}</option>
+					{/each}
+				</Select>
+			</div>
+		{/if}
 	</div>
 	{#if summary?.personal}
 		<div class="mt-3 flex gap-6 text-sm text-tertiary">

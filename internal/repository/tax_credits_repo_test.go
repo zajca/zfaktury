@@ -445,6 +445,42 @@ func TestTaxPersonalCreditsRepository_ZTPP_RoundTrip(t *testing.T) {
 	}
 }
 
+// TestTaxCreditsRepository_MonthsRoundTrip covers the credit-months columns added in
+// migration 045: spouse child_under3_months, personal disability_months and ztpp_months.
+func TestTaxCreditsRepository_MonthsRoundTrip(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	spouseRepo := NewTaxSpouseCreditRepository(db)
+	personalRepo := NewTaxPersonalCreditsRepository(db)
+	ctx := context.Background()
+
+	if err := spouseRepo.Upsert(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana", MonthsClaimed: 12, ChildUnder3Months: 6,
+	}); err != nil {
+		t.Fatalf("spouse Upsert() error: %v", err)
+	}
+	gotSpouse, err := spouseRepo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("spouse GetByYear() error: %v", err)
+	}
+	if gotSpouse.ChildUnder3Months != 6 {
+		t.Errorf("ChildUnder3Months = %d, want 6", gotSpouse.ChildUnder3Months)
+	}
+
+	if err := personalRepo.Upsert(ctx, &domain.TaxPersonalCredits{
+		Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 6,
+		ZTPP: true, ZTPPMonths: 9,
+	}); err != nil {
+		t.Fatalf("personal Upsert() error: %v", err)
+	}
+	gotPersonal, err := personalRepo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("personal GetByYear() error: %v", err)
+	}
+	if gotPersonal.DisabilityMonths != 6 || gotPersonal.ZTPPMonths != 9 {
+		t.Errorf("months = %d/%d, want 6/9", gotPersonal.DisabilityMonths, gotPersonal.ZTPPMonths)
+	}
+}
+
 func TestTaxPersonalCreditsRepository_Upsert_Replace(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	repo := NewTaxPersonalCreditsRepository(db)

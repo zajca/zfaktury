@@ -439,6 +439,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 	// kc_dazvyhod = sum over m_deti* slots × per-order amounts.
 	var children []domain.TaxChildCredit
 	var spouse *domain.TaxSpouseCredit
+	var personal *domain.TaxPersonalCredits
 	if s.taxCreditsSvc != nil {
 		children, err = s.taxCreditsSvc.ListChildren(ctx, itr.Year)
 		if err != nil {
@@ -452,6 +453,14 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 			}
 			spouse = nil
 		}
+		// The personal credits record supplies the months of the disability rows 66-68.
+		personal, err = s.taxCreditsSvc.GetPersonal(ctx, itr.Year)
+		if err != nil {
+			if !errors.Is(err, domain.ErrNotFound) {
+				return nil, fmt.Errorf("fetching personal credits for XML generation: %w", err)
+			}
+			personal = nil
+		}
 	}
 
 	if s.taxCreditsSvc != nil {
@@ -461,24 +470,45 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		}
 		constants := rules.Constants
 
+		spouseCredit, personalResult, credErr := s.taxCreditsSvc.ComputeCreditsWithConstants(ctx, itr.Year, constants)
+		if credErr != nil {
+			return nil, fmt.Errorf("computing credits for income_tax_return XML generation: %w", credErr)
+		}
+
 		// Legacy returns calculated before migration 037 store only the aggregate
 		// disability credit. Re-derive the per-degree components from the stored
 		// personal credits so the generator can emit rows 66/67/68. The components
 		// are persisted together with the XML by the Update call below.
 		if itr.CreditDisability > 0 && itr.CreditDisability12 == 0 && itr.CreditDisability3 == 0 && itr.CreditDisabilityZTPP == 0 {
-			_, personal, credErr := s.taxCreditsSvc.ComputeCreditsWithConstants(ctx, itr.Year, constants)
-			if credErr != nil {
-				return nil, fmt.Errorf("computing credits for income_tax_return XML generation: %w", credErr)
-			}
-			if personal.Disability() != itr.CreditDisability {
+			if personalResult.Disability() != itr.CreditDisability {
 				if itr.Status == domain.FilingStatusFiled {
 					return nil, fmt.Errorf("uložená sleva na invaliditu neodpovídá aktuálnímu nastavení osobních slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
 				}
 				return nil, fmt.Errorf("přiznání bylo spočteno starší verzí, přepočítejte ho: %w", domain.ErrInvalidInput)
 			}
-			itr.CreditDisability12 = personal.Disability12
-			itr.CreditDisability3 = personal.Disability3
-			itr.CreditDisabilityZTPP = personal.DisabilityZTPP
+			itr.CreditDisability12 = personalResult.Disability12
+			itr.CreditDisability3 = personalResult.Disability3
+			itr.CreditDisabilityZTPP = personalResult.DisabilityZTPP
+		}
+
+		// The stored spouse credit and disability components must match a fresh
+		// computation from the current credit records, otherwise the XML rows
+		// 65-68 would not back the stored totals.
+		if spouseCredit != itr.CreditSpouse {
+			// A spouse record stored before migration 045 has child_under3_months = 0,
+			// so the message names the field the owner has to fill in.
+			if itr.Status == domain.FilingStatusFiled {
+				return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání: %w", domain.ErrInvalidInput)
+		}
+		if personalResult.Disability12 != itr.CreditDisability12 ||
+			personalResult.Disability3 != itr.CreditDisability3 ||
+			personalResult.DisabilityZTPP != itr.CreditDisabilityZTPP {
+			if itr.Status == domain.FilingStatusFiled {
+				return nil, fmt.Errorf("uložená sleva na invaliditu neodpovídá aktuálnímu nastavení osobních slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání: %w", domain.ErrInvalidInput)
 		}
 
 		// The stored child benefit must match the child data that feeds the m_deti*
@@ -495,7 +525,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		}
 	}
 
-	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children, spouse)
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children, spouse, personal)
 	if err != nil {
 		return nil, fmt.Errorf("generating income_tax_return XML: %w", err)
 	}

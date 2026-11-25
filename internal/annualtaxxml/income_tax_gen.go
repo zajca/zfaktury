@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
@@ -171,11 +172,6 @@ func aggregateChildMonths(children []domain.TaxChildCredit) childMonths {
 	return m
 }
 
-// disabilityMonths is the month count emitted for the disability rows 66-68: the
-// model has no partial-year disability, and the calc grants the full annual amount,
-// which equals 12 times the monthly amount.
-const disabilityMonths = 12
-
 // creditRows holds the whole-CZK amounts and month counts of the §35ba credit rows
 // 65a-68 and the spouse identity of rows 65a/65b.
 type creditRows struct {
@@ -198,8 +194,9 @@ func (c creditRows) sum() int64 {
 }
 
 // buildCreditRows maps the credits of the return to the DPFDP7 rows 65a-68. It
-// rejects data that has no row or that the snapshot cannot back.
-func buildCreditRows(itr *domain.IncomeTaxReturn, spouse *domain.TaxSpouseCredit) (creditRows, error) {
+// rejects data that has no row or that the snapshot cannot back. The month counts of
+// rows 66-68 come from the personal credits record.
+func buildCreditRows(itr *domain.IncomeTaxReturn, spouse *domain.TaxSpouseCredit, personal *domain.TaxPersonalCredits) (creditRows, error) {
 	var rows creditRows
 
 	if itr.CreditStudent > 0 {
@@ -215,37 +212,46 @@ func buildCreditRows(itr *domain.IncomeTaxReturn, spouse *domain.TaxSpouseCredit
 		}
 		rows.SpouseFirst, rows.SpouseLast = splitPersonName(spouse.SpouseName)
 		rows.SpouseRC = stripBirthNumberSeparators(spouse.SpouseBirthNumber)
+		// Rows 65a/65b carry the effective months, the same cap the calc applies (§ 35bb odst. 2).
+		effectiveMonths := calc.SpouseEffectiveMonths(itr.Year, spouse.MonthsClaimed, spouse.ChildUnder3Months)
 		if spouse.SpouseZTP {
 			rows.Manztpp = ToWholeCZK(itr.CreditSpouse)
-			rows.MManz = spouse.MonthsClaimed
+			rows.MManz = effectiveMonths
 		} else {
 			rows.Op15_1c = ToWholeCZK(itr.CreditSpouse)
-			rows.MVyzmanzl = spouse.MonthsClaimed
+			rows.MVyzmanzl = effectiveMonths
 		}
 	}
 
+	if itr.CreditDisability12 > 0 || itr.CreditDisability3 > 0 || itr.CreditDisabilityZTPP > 0 {
+		if personal == nil {
+			return rows, fmt.Errorf("sleva na invaliditu vyžaduje údaje o osobních slevách: %w", domain.ErrInvalidInput)
+		}
+	}
 	if itr.CreditDisability12 > 0 {
 		rows.Op15_1d = ToWholeCZK(itr.CreditDisability12)
-		rows.MCinvduch = disabilityMonths
+		rows.MCinvduch = personal.DisabilityMonths
 	}
 	if itr.CreditDisability3 > 0 {
 		rows.Op15_1e1 = ToWholeCZK(itr.CreditDisability3)
-		rows.MInvduch = disabilityMonths
+		rows.MInvduch = personal.DisabilityMonths
 	}
 	if itr.CreditDisabilityZTPP > 0 {
 		rows.Op15_1e2 = ToWholeCZK(itr.CreditDisabilityZTPP)
-		rows.MZtpp = disabilityMonths
+		rows.MZtpp = personal.ZTPPMonths
 	}
 	return rows, nil
 }
 
 // GenerateIncomeTaxXML produces EPO XML bytes from an IncomeTaxReturn, settings map,
-// the list of child-credit entries used by the §35c calculation and the spouse
-// record behind the spouse credit (nil when none is claimed). The children
-// slice is required by EPO's ř.72 formula control even though the aggregate amount
-// is already in itr.ChildBenefit -- omitting it triggers a "kc_dazvyhod neodpovídá
-// výpočtu" warning. The spouse supplies the identity and months of rows 65a/65b.
-func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]string, children []domain.TaxChildCredit, spouse *domain.TaxSpouseCredit) ([]byte, error) {
+// the list of child-credit entries used by the §35c calculation, the spouse
+// record behind the spouse credit (nil when none is claimed) and the personal
+// credits record behind the disability months of rows 66-68 (nil when no disability
+// credit is claimed). The children slice is required by EPO's ř.72 formula control
+// even though the aggregate amount is already in itr.ChildBenefit -- omitting it
+// triggers a "kc_dazvyhod neodpovídá výpočtu" warning. The spouse supplies the
+// identity and months of rows 65a/65b.
+func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]string, children []domain.TaxChildCredit, spouse *domain.TaxSpouseCredit, personal *domain.TaxPersonalCredits) ([]byte, error) {
 	if itr == nil {
 		return nil, fmt.Errorf("income tax return is nil: %w", domain.ErrInvalidInput)
 	}
@@ -317,7 +323,7 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	daSlezap := fmt.Sprintf("%d.00", dan16)
 	daCelod13 := dan16
 
-	rows, err := buildCreditRows(itr, spouse)
+	rows, err := buildCreditRows(itr, spouse, personal)
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,7 @@ type TaxSpouseCredit struct {
 	SpouseIncome      Amount // if < 6800000 halere -> credit applies
 	SpouseZTP         bool   // ZTP/P holder -> doubled credit
 	MonthsClaimed     int    // 1-12
+	ChildUnder3Months int    // 0-12: months at whose start a dependent child under 3 lived in the common household (§ 35bb odst. 2, 2024+)
 	CreditAmount      Amount // computed by service
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
@@ -48,7 +49,9 @@ type TaxPersonalCredits struct {
 	IsStudent        bool
 	StudentMonths    int    // 1-12
 	DisabilityLevel  int    // one of the DisabilityLevel* constants
+	DisabilityMonths int    // 1-12 when DisabilityLevel is set, ignored otherwise (rows 66/67)
 	ZTPP             bool   // ZTP/P holder (EPO row 68), claimed on top of the degree credit
+	ZTPPMonths       int    // 1-12 when ZTPP is set, ignored otherwise (row 68)
 	CreditStudent    Amount // computed by service
 	CreditDisability Amount // computed by service
 	CreatedAt        time.Time

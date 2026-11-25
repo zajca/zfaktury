@@ -454,6 +454,47 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		}
 	}
 
+	if s.taxCreditsSvc != nil {
+		rules, ruleErr := taxrules.GetRuleSet(itr.Year)
+		if ruleErr != nil {
+			return nil, fmt.Errorf("getting tax rule set for income_tax_return XML generation: %w", ruleErr)
+		}
+		constants := rules.Constants
+
+		// Legacy returns calculated before migration 037 store only the aggregate
+		// disability credit. Re-derive the per-degree components from the stored
+		// personal credits so the generator can emit rows 66/67/68. The components
+		// are persisted together with the XML by the Update call below.
+		if itr.CreditDisability > 0 && itr.CreditDisability12 == 0 && itr.CreditDisability3 == 0 && itr.CreditDisabilityZTPP == 0 {
+			_, personal, credErr := s.taxCreditsSvc.ComputeCreditsWithConstants(ctx, itr.Year, constants)
+			if credErr != nil {
+				return nil, fmt.Errorf("computing credits for income_tax_return XML generation: %w", credErr)
+			}
+			if personal.Disability() != itr.CreditDisability {
+				if itr.Status == domain.FilingStatusFiled {
+					return nil, fmt.Errorf("uložená sleva na invaliditu neodpovídá aktuálnímu nastavení osobních slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+				}
+				return nil, fmt.Errorf("přiznání bylo spočteno starší verzí, přepočítejte ho: %w", domain.ErrInvalidInput)
+			}
+			itr.CreditDisability12 = personal.Disability12
+			itr.CreditDisability3 = personal.Disability3
+			itr.CreditDisabilityZTPP = personal.DisabilityZTPP
+		}
+
+		// The stored child benefit must match the child data that feeds the m_deti*
+		// slots, otherwise EPO rejects the ř.72 control (code 181).
+		childBenefit, credErr := s.taxCreditsSvc.ComputeChildBenefitWithConstants(ctx, itr.Year, constants)
+		if credErr != nil {
+			return nil, fmt.Errorf("computing child benefit for income_tax_return XML generation: %w", credErr)
+		}
+		if childBenefit != itr.ChildBenefit {
+			if itr.Status == domain.FilingStatusFiled {
+				return nil, fmt.Errorf("údaje o dětech neodpovídají podanému přiznání, přiznání nelze znovu vygenerovat: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("údaje o dětech se od posledního přepočtu změnily, přepočítejte přiznání: %w", domain.ErrInvalidInput)
+		}
+	}
+
 	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children, spouse)
 	if err != nil {
 		return nil, fmt.Errorf("generating income_tax_return XML: %w", err)

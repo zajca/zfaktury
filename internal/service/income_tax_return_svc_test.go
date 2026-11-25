@@ -1927,11 +1927,11 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			// a spouse mismatch names the child-under-3 field to fill in
-			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+			// a spouse mismatch not caused by missing child-under-3 months gets the general message
+			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
 		},
 		{
-			name:   "filed spouse child months changed",
+			name:   "filed spouse months changed",
 			status: domain.FilingStatusFiled,
 			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
 				if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
@@ -1941,7 +1941,7 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+			wantMessage: "přiznání nelze bez obnovení nastavení znovu vygenerovat",
 		},
 	}
 	for _, tc := range cases {
@@ -2092,5 +2092,79 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged(t *testing.T) {
 	}
 	if !strings.Contains(xml, `m_cinvduch="6"`) {
 		t.Errorf("XML missing m_cinvduch=\"6\":\n%s", xml)
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_DraftSpouseCreditMismatch pins both branches of
+// the draft spouse guard: when the mismatch is caused by child-under-3 months below the
+// claimed months (2024+), the refusal names that field; otherwise it uses the general
+// recalculate message. The mutated spouse record is written through the repository
+// because UpsertSpouse refuses MonthsClaimed > ChildUnder3Months.
+func TestIncomeTaxReturnService_GenerateXML_DraftSpouseChildMonthsMissing(t *testing.T) {
+	cases := []struct {
+		name        string
+		mutate      func(t *testing.T, spouse *domain.TaxSpouseCredit)
+		wantMessage string
+	}{
+		{
+			name: "child months below claimed months names the field",
+			mutate: func(t *testing.T, spouse *domain.TaxSpouseCredit) {
+				spouse.ChildUnder3Months = 6
+			},
+			wantMessage: "vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání",
+		},
+		{
+			name: "other mismatch gets the general recalculate message",
+			mutate: func(t *testing.T, spouse *domain.TaxSpouseCredit) {
+				// Income at/above the limit zeroes the fresh credit while the child
+				// months still cover the claimed months.
+				spouse.SpouseIncome = domain.NewAmount(68_000, 0)
+			},
+			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+			ctx := context.Background()
+			seedFinancniUradCode(t, db)
+
+			if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+				Year: 2025, SpouseName: "Jana", SpouseBirthNumber: "8555012345",
+				SpouseIncome: domain.NewAmount(50_000, 0), MonthsClaimed: 12, ChildUnder3Months: 12,
+			}); err != nil {
+				t.Fatalf("UpsertSpouse() error: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			recalc, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			if recalc.CreditSpouse <= 0 {
+				t.Fatalf("CreditSpouse = %d, want > 0", recalc.CreditSpouse)
+			}
+
+			spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+			spouse, err := spouseRepo.GetByYear(ctx, 2025)
+			if err != nil {
+				t.Fatalf("GetByYear(spouse) error: %v", err)
+			}
+			tc.mutate(t, spouse)
+			if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+				t.Fatalf("repo Upsert(spouse) error: %v", err)
+			}
+
+			_, err = svc.GenerateXML(ctx, itr.ID)
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			if !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Errorf("GenerateXML() error = %v, want message containing %q", err, tc.wantMessage)
+			}
+		})
 	}
 }

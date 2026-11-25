@@ -819,3 +819,228 @@ func TestVATControlStatementService_GenerateXML_MissingSettings(t *testing.T) {
 		})
 	}
 }
+
+// setInvoiceSentOn marks a seeded invoice sent and moves all its dates to d.
+func setInvoiceSentOn(t *testing.T, db *sql.DB, ctx context.Context, id int64, d time.Time) {
+	t.Helper()
+	dateStr := d.Format("2006-01-02")
+	if _, err := db.ExecContext(ctx, "UPDATE invoices SET status = ?, issue_date = ?, due_date = ?, delivery_date = ? WHERE id = ?",
+		domain.InvoiceStatusSent, dateStr, dateStr, dateStr, id); err != nil {
+		t.Fatalf("updating invoice status/dates: %v", err)
+	}
+}
+
+// setupVATControlSvcWithVATReturn wires the control statement service and the
+// VAT return service on the same real SQLite database.
+func setupVATControlSvcWithVATReturn(t *testing.T) (*VATControlStatementService, *VATReturnService, *sql.DB) {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	csRepo := repository.NewVATControlStatementRepository(db)
+	invRepo := repository.NewInvoiceRepository(db)
+	expRepo := repository.NewExpenseRepository(db)
+	contactRepo := repository.NewContactRepository(db)
+	setRepo := repository.NewSettingsRepository(db)
+	svc := NewVATControlStatementService(csRepo, invRepo, expRepo, contactRepo, setRepo, nil)
+	vatSvc := NewVATReturnService(repository.NewVATReturnRepository(db), invRepo, expRepo, setRepo, nil)
+	return svc, vatSvc, db
+}
+
+// khLineSums returns the summed base and VAT of all A4/A5 output lines.
+func khLineSums(lines []domain.VATControlStatementLine) (base, vat domain.Amount) {
+	for _, l := range lines {
+		if l.Section == "A4" || l.Section == "A5" {
+			base = base.Add(l.Base)
+			vat = vat.Add(l.VAT)
+		}
+	}
+	return base, vat
+}
+
+func TestVATControlStatementService_Recalculate_ImportedPositiveCreditNote_AboveThreshold(t *testing.T) {
+	svc, vatSvc, db := setupVATControlSvcWithVATReturn(t)
+	ctx := context.Background()
+
+	contact := testutil.SeedContact(t, db, &domain.Contact{Name: "CZ Customer", DIC: "CZ12345678"})
+	march15 := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+
+	// Invoice above the A4/A5 threshold: base 1_500_000, vat 315_000, total 1_815_000.
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Big", Quantity: 100, UnitPrice: 1500000, VATRatePercent: 21},
+	})
+	setInvoiceSentOn(t, db, ctx, inv.ID, march15)
+
+	// Imported credit note stored positive (Fakturoid "correction"), also above
+	// the threshold: base 1_200_000, vat 252_000, total 1_452_000.
+	cn := testutil.SeedCreditNote(t, db, contact.ID, march15, domain.InvoiceStatusSent, []domain.InvoiceItem{
+		{Description: "Correction", Quantity: 100, UnitPrice: 1200000, VATRatePercent: 21},
+	}, false)
+
+	cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	lines, err := svc.GetLines(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetLines() error: %v", err)
+	}
+
+	var a4 []domain.VATControlStatementLine
+	for _, l := range lines {
+		if l.Section == "A4" {
+			a4 = append(a4, l)
+		}
+	}
+	if len(a4) != 2 {
+		t.Fatalf("expected 2 A4 lines (invoice + credit note), got %d", len(a4))
+	}
+	foundCN := false
+	for _, l := range a4 {
+		if l.DocumentNumber == cn.InvoiceNumber {
+			foundCN = true
+			if l.Base != -1200000 {
+				t.Errorf("credit note A4 base = %d, want -1200000", l.Base)
+			}
+			if l.VAT != -252000 {
+				t.Errorf("credit note A4 VAT = %d, want -252000", l.VAT)
+			}
+		}
+	}
+	if !foundCN {
+		t.Error("no A4 line for the credit note")
+	}
+
+	base, vat := khLineSums(lines)
+	if base != 300000 || vat != 63000 {
+		t.Errorf("sum of A4/A5 lines = base %d vat %d, want base 300000 vat 63000", base, vat)
+	}
+
+	// The sum of KH lines must agree with the VAT return for the same period.
+	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := vatSvc.Create(ctx, vr); err != nil {
+		t.Fatalf("VAT return Create() error: %v", err)
+	}
+	res, err := vatSvc.Recalculate(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("VAT return Recalculate() error: %v", err)
+	}
+	if res.OutputVATBase21 != base {
+		t.Errorf("VAT return OutputVATBase21 = %d, KH line sum = %d", res.OutputVATBase21, base)
+	}
+	if res.OutputVATAmount21 != vat {
+		t.Errorf("VAT return OutputVATAmount21 = %d, KH line sum = %d", res.OutputVATAmount21, vat)
+	}
+}
+
+func TestVATControlStatementService_Recalculate_ImportedPositiveCreditNote_BelowThreshold(t *testing.T) {
+	svc, vatSvc, db := setupVATControlSvcWithVATReturn(t)
+	ctx := context.Background()
+
+	contact := testutil.SeedContact(t, db, &domain.Contact{Name: "CZ Customer", DIC: "CZ12345678"})
+	march15 := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+
+	// Invoice below the threshold: base 500_000, vat 105_000, total 605_000.
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Small", Quantity: 100, UnitPrice: 500000, VATRatePercent: 21},
+	})
+	setInvoiceSentOn(t, db, ctx, inv.ID, march15)
+
+	// Imported credit note stored positive, below the threshold:
+	// base 200_000, vat 42_000, total 242_000.
+	testutil.SeedCreditNote(t, db, contact.ID, march15, domain.InvoiceStatusSent, []domain.InvoiceItem{
+		{Description: "Correction", Quantity: 100, UnitPrice: 200000, VATRatePercent: 21},
+	}, false)
+
+	cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	lines, err := svc.GetLines(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetLines() error: %v", err)
+	}
+
+	var a5 []domain.VATControlStatementLine
+	for _, l := range lines {
+		if l.Section == "A5" {
+			a5 = append(a5, l)
+		}
+	}
+	if len(a5) != 1 {
+		t.Fatalf("expected 1 aggregated A5 line, got %d", len(a5))
+	}
+	if a5[0].Base != 300000 {
+		t.Errorf("A5 base = %d, want 300000 (invoice minus credit note)", a5[0].Base)
+	}
+	if a5[0].VAT != 63000 {
+		t.Errorf("A5 VAT = %d, want 63000 (invoice minus credit note)", a5[0].VAT)
+	}
+
+	base, vat := khLineSums(lines)
+	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := vatSvc.Create(ctx, vr); err != nil {
+		t.Fatalf("VAT return Create() error: %v", err)
+	}
+	res, err := vatSvc.Recalculate(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("VAT return Recalculate() error: %v", err)
+	}
+	if res.OutputVATBase21 != base {
+		t.Errorf("VAT return OutputVATBase21 = %d, KH line sum = %d", res.OutputVATBase21, base)
+	}
+	if res.OutputVATAmount21 != vat {
+		t.Errorf("VAT return OutputVATAmount21 = %d, KH line sum = %d", res.OutputVATAmount21, vat)
+	}
+}
+
+func TestVATControlStatementService_Recalculate_NativeNegativeCreditNote_NotDoubleNegated(t *testing.T) {
+	svc, _, db := setupVATControlSvcWithVATReturn(t)
+	ctx := context.Background()
+
+	contact := testutil.SeedContact(t, db, &domain.Contact{Name: "CZ Customer", DIC: "CZ12345678"})
+	march15 := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Big", Quantity: 100, UnitPrice: 1500000, VATRatePercent: 21},
+	})
+	setInvoiceSentOn(t, db, ctx, inv.ID, march15)
+
+	// Native credit note stored negative, above the threshold.
+	cn := testutil.SeedCreditNote(t, db, contact.ID, march15, domain.InvoiceStatusSent, []domain.InvoiceItem{
+		{Description: "Credit", Quantity: 100, UnitPrice: 1200000, VATRatePercent: 21},
+	}, true)
+
+	cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	lines, err := svc.GetLines(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetLines() error: %v", err)
+	}
+	for _, l := range lines {
+		if l.Section == "A4" && l.DocumentNumber == cn.InvoiceNumber {
+			if l.Base != -1200000 {
+				t.Errorf("native credit note A4 base = %d, want -1200000 (not double-negated)", l.Base)
+			}
+			if l.VAT != -252000 {
+				t.Errorf("native credit note A4 VAT = %d, want -252000", l.VAT)
+			}
+		}
+	}
+	base, vat := khLineSums(lines)
+	if base != 300000 || vat != 63000 {
+		t.Errorf("sum of A4/A5 lines = base %d vat %d, want base 300000 vat 63000", base, vat)
+	}
+}

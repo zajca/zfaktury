@@ -39,16 +39,18 @@ func NewDashboardRepository(db *sql.DB) *DashboardRepository {
 	return &DashboardRepository{db: db}
 }
 
-// RevenueCurrentMonth returns the total revenue (sum of total_amount) for regular invoices
-// delivered in the given year and month.
+// RevenueCurrentMonth returns the total revenue for regular invoices delivered
+// in the given year and month, net of credit notes: a credit note always
+// subtracts (its total counted as -ABS(total_amount), the same -|a| rule as
+// calc.CreditNoteAmount), whatever sign it was stored with.
 func (r *DashboardRepository) RevenueCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error) {
 	ym := fmt.Sprintf("%04d-%02d", year, month)
 	var total int64
 	err := r.db.QueryRowContext(ctx,
-		`SELECT COALESCE(SUM(total_amount), 0)
+		`SELECT COALESCE(SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END), 0)
 		 FROM invoices
 		 WHERE strftime('%Y-%m', delivery_date) = ?
-		   AND type = 'regular'
+		   AND type IN ('regular', 'credit_note')
 		   AND deleted_at IS NULL`, ym).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("querying revenue for %s: %w", ym, err)
@@ -102,15 +104,17 @@ func (r *DashboardRepository) OverdueInvoices(ctx context.Context) (count int, t
 	return count, domain.Amount(totalVal), nil
 }
 
-// MonthlyRevenue returns the monthly revenue breakdown for regular invoices
-// delivered in the given year.
+// MonthlyRevenue returns the monthly revenue breakdown for the given year,
+// net of credit notes (credit notes counted as -ABS(total_amount), the same
+// -|a| rule as calc.CreditNoteAmount).
 func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, year int) ([]MonthlyAmount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT strftime('%m', delivery_date) AS month, SUM(total_amount)
+		`SELECT strftime('%m', delivery_date) AS month,
+		        SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END)
 		 FROM invoices
 		 WHERE strftime('%Y', delivery_date) = ?
-		   AND type = 'regular'
+		   AND type IN ('regular', 'credit_note')
 		   AND deleted_at IS NULL
 		 GROUP BY month`, yearStr)
 	if err != nil {

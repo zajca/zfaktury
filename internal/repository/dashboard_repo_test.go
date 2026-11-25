@@ -344,3 +344,44 @@ func TestDashboardRepo_RecentExpenses_Empty(t *testing.T) {
 		t.Errorf("expected empty slice, got %d items", len(result))
 	}
 }
+
+func TestDashboardRepo_RevenueCurrentMonth_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewDashboardRepository(db)
+	ctx := context.Background()
+
+	_, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	rev, err := repo.RevenueCurrentMonth(ctx, 2025, 3)
+	if err != nil {
+		t.Fatalf("RevenueCurrentMonth() error: %v", err)
+	}
+	if rev != net {
+		t.Errorf("revenue = %d, want %d (net of credit notes)", rev, net)
+	}
+}
+
+func TestDashboardRepo_MonthlyRevenue_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewDashboardRepository(db)
+	ctx := context.Background()
+
+	_, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	result, err := repo.MonthlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("MonthlyRevenue() error: %v", err)
+	}
+	found := false
+	for _, ma := range result {
+		if ma.Month == 3 {
+			found = true
+			if ma.Amount != net {
+				t.Errorf("March revenue = %d, want %d (net of credit notes)", ma.Amount, net)
+			}
+		}
+	}
+	if !found {
+		t.Error("March not found in monthly revenue")
+	}
+}

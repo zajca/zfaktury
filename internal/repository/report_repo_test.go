@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -375,5 +376,152 @@ func TestReportRepo_ProfitLossMonthly_Empty(t *testing.T) {
 	}
 	if len(expenses) != 0 {
 		t.Errorf("expected empty expenses slice, got %d items", len(expenses))
+	}
+}
+
+// seedRevenueWithCreditNotes seeds one regular invoice (total 121000), one
+// native credit note stored negative (total -24200) and one imported credit
+// note stored positive (total 12100, Fakturoid "correction"), all delivered on
+// deliveryDate. It returns the customer ID and the net revenue the reports must
+// show: 121000 - 24200 - 12100 = 84700.
+func seedRevenueWithCreditNotes(t *testing.T, db *sql.DB, ctx context.Context, deliveryDate time.Time) (customerID int64, net domain.Amount) {
+	t.Helper()
+
+	contact := testutil.SeedContact(t, db, nil)
+	dateStr := deliveryDate.Format("2006-01-02")
+
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Item", Quantity: 100, UnitPrice: 100000, VATRatePercent: 21},
+	})
+	if _, err := db.ExecContext(ctx, "UPDATE invoices SET issue_date = ?, delivery_date = ? WHERE id = ?",
+		dateStr, dateStr, inv.ID); err != nil {
+		t.Fatalf("updating invoice dates: %v", err)
+	}
+
+	// Native credit note: stored negative (negated unit prices).
+	testutil.SeedCreditNote(t, db, contact.ID, deliveryDate, domain.InvoiceStatusPaid, []domain.InvoiceItem{
+		{Description: "Credit", Quantity: 100, UnitPrice: 20000, VATRatePercent: 21},
+	}, true)
+	// Imported credit note (Fakturoid "correction"): stored positive.
+	testutil.SeedCreditNote(t, db, contact.ID, deliveryDate, domain.InvoiceStatusPaid, []domain.InvoiceItem{
+		{Description: "Correction", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
+	}, false)
+
+	return contact.ID, inv.TotalAmount - 24200 - 12100
+}
+
+func TestReportRepo_MonthlyRevenue_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewReportRepository(db)
+	ctx := context.Background()
+
+	_, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	result, err := repo.MonthlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("MonthlyRevenue() error: %v", err)
+	}
+	found := false
+	for _, ma := range result {
+		if ma.Month == 3 {
+			found = true
+			if ma.Amount != net {
+				t.Errorf("March revenue = %d, want %d (net of credit notes)", ma.Amount, net)
+			}
+		}
+	}
+	if !found {
+		t.Error("March not found in monthly revenue")
+	}
+}
+
+func TestReportRepo_QuarterlyRevenue_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewReportRepository(db)
+	ctx := context.Background()
+
+	_, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	result, err := repo.QuarterlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("QuarterlyRevenue() error: %v", err)
+	}
+	found := false
+	for _, qa := range result {
+		if qa.Quarter == 1 {
+			found = true
+			if qa.Amount != net {
+				t.Errorf("Q1 revenue = %d, want %d (net of credit notes)", qa.Amount, net)
+			}
+		}
+	}
+	if !found {
+		t.Error("Q1 not found in quarterly revenue")
+	}
+}
+
+func TestReportRepo_YearlyRevenue_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewReportRepository(db)
+	ctx := context.Background()
+
+	_, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	total, err := repo.YearlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("YearlyRevenue() error: %v", err)
+	}
+	if total != net {
+		t.Errorf("yearly revenue = %d, want %d (net of credit notes)", total, net)
+	}
+}
+
+func TestReportRepo_TopCustomers_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewReportRepository(db)
+	ctx := context.Background()
+
+	customerID, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	result, err := repo.TopCustomers(ctx, 2025, 10)
+	if err != nil {
+		t.Fatalf("TopCustomers() error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 customer, got %d", len(result))
+	}
+	if result[0].CustomerID != customerID {
+		t.Errorf("customer ID = %d, want %d", result[0].CustomerID, customerID)
+	}
+	if result[0].Total != net {
+		t.Errorf("customer revenue = %d, want %d (net of credit notes)", result[0].Total, net)
+	}
+	if result[0].InvoiceCount != 3 {
+		t.Errorf("invoice count = %d, want 3 (invoice + 2 credit notes)", result[0].InvoiceCount)
+	}
+}
+
+func TestReportRepo_ProfitLossMonthly_CreditNotesNet(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewReportRepository(db)
+	ctx := context.Background()
+
+	_, net := seedRevenueWithCreditNotes(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	revenue, _, err := repo.ProfitLossMonthly(ctx, 2025)
+	if err != nil {
+		t.Fatalf("ProfitLossMonthly() error: %v", err)
+	}
+	found := false
+	for _, ma := range revenue {
+		if ma.Month == 3 {
+			found = true
+			if ma.Amount != net {
+				t.Errorf("March profit/loss revenue = %d, want %d (net of credit notes)", ma.Amount, net)
+			}
+		}
+	}
+	if !found {
+		t.Error("March not found in profit/loss revenue")
 	}
 }

@@ -10,16 +10,15 @@ import (
 // pragueZone is the zone in which a filing timestamp is turned into a calendar date.
 const pragueZone = "Europe/Prague"
 
-// OverviewDeadline returns the last day for the ČSSZ and health overviews for
-// overviewYear: one month after the income-tax return deadline (§ 15 odst. 1
-// zákona č. 589/1992 Sb., § 24 odst. 2 zákona č. 592/1992 Sb.). The return is
-// due 3 months after the year, 4 months when filed electronically after that,
-// 6 months via a tax advisor (§ 136 zákona č. 280/2009 Sb.); both dates move to
-// the next working day (§ 33 odst. 4). An unset method counts as filed by 1 April,
-// as ČSSZ does when the overview does not say otherwise.
-func OverviewDeadline(overviewYear int, method domain.FilingMethod) (time.Time, error) {
+// IncomeTaxReturnDeadline returns the last day for filing the income-tax
+// return for taxYear: 3 months after the year, 4 months when filed
+// electronically after that, 6 months via a tax advisor (§ 136 zákona č.
+// 280/2009 Sb.), moved to the next working day (§ 33 odst. 4). An unset
+// method counts as filed by 1 April, as ČSSZ does when the overview does not
+// say otherwise.
+func IncomeTaxReturnDeadline(taxYear int, method domain.FilingMethod) (time.Time, error) {
 	if err := method.Validate(); err != nil {
-		return time.Time{}, fmt.Errorf("computing overview deadline: %w", err)
+		return time.Time{}, fmt.Errorf("computing income tax return deadline: %w", err)
 	}
 
 	month := time.April
@@ -30,8 +29,21 @@ func OverviewDeadline(overviewYear int, method domain.FilingMethod) (time.Time, 
 		month = time.July
 	}
 
+	holidays := czechPublicHolidays(taxYear + 1)
+	return nextBusinessDayIn(time.Date(taxYear+1, month, 1, 0, 0, 0, 0, time.UTC), holidays), nil
+}
+
+// OverviewDeadline returns the last day for the ČSSZ and health overviews for
+// overviewYear: one month after the income-tax return deadline (§ 15 odst. 1
+// zákona č. 589/1992 Sb., § 24 odst. 2 zákona č. 592/1992 Sb.), moved to the
+// next working day (§ 33 odst. 4).
+func OverviewDeadline(overviewYear int, method domain.FilingMethod) (time.Time, error) {
+	taxReturn, err := IncomeTaxReturnDeadline(overviewYear, method)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("computing overview deadline: %w", err)
+	}
+
 	holidays := czechPublicHolidays(overviewYear + 1)
-	taxReturn := nextBusinessDayIn(time.Date(overviewYear+1, month, 1, 0, 0, 0, 0, time.UTC), holidays)
 	return nextBusinessDayIn(taxReturn.AddDate(0, 1, 0), holidays), nil
 }
 

@@ -44,7 +44,11 @@ func (h *TaxCalendarHandler) GetCalendar(w http.ResponseWriter, r *http.Request)
 		year = parsed
 	}
 
-	deadlines := h.svc.GetDeadlines(year)
+	deadlines, err := h.svc.GetDeadlines(r.Context(), year)
+	if err != nil {
+		mapDomainError(w, err)
+		return
+	}
 
 	resp := taxCalendarResponse{
 		Year:      year,

@@ -79,7 +79,24 @@ func TestCalculateVATReturn(t *testing.T) {
 			},
 		},
 		{
-			name: "credit note reverses sign",
+			name: "credit note with negative stored amounts reduces output VAT",
+			invoices: []VATInvoiceInput{
+				{
+					Type: "credit_note",
+					Items: []VATItemInput{
+						{Base: -domain.NewAmount(200, 0), VATAmount: -domain.NewAmount(42, 0), VATRatePercent: 21},
+					},
+				},
+			},
+			want: VATResult{
+				OutputVATBase21:   -domain.NewAmount(200, 0),
+				OutputVATAmount21: -domain.NewAmount(42, 0),
+				TotalOutputVAT:    -domain.NewAmount(42, 0),
+				NetVAT:            -domain.NewAmount(42, 0),
+			},
+		},
+		{
+			name: "credit note with positive stored amounts still reduces output VAT",
 			invoices: []VATInvoiceInput{
 				{
 					Type: "credit_note",

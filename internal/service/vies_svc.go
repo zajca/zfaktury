@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/vatxml"
@@ -202,10 +203,11 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 			partnerMap[dic] = pd
 		}
 
-		// Use SubtotalAmount (base, no VAT) for intra-EU services.
-		// Credit notes have negative SubtotalAmount, so they naturally reduce the total.
+		// Use SubtotalAmount (base, no VAT) for intra-EU services. A credit note
+		// always reduces the partner total, whatever sign its stored amount has,
+		// so add its negated absolute value.
 		if inv.Type == domain.InvoiceTypeCreditNote {
-			pd.amount = pd.amount.Sub(inv.SubtotalAmount)
+			pd.amount = pd.amount.Add(calc.CreditNoteAmount(inv.SubtotalAmount))
 		} else {
 			pd.amount = pd.amount.Add(inv.SubtotalAmount)
 		}

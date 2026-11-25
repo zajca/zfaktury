@@ -43,14 +43,13 @@ func CalculateVATReturn(invoices []VATInvoiceInput, expenses []VATExpenseInput) 
 	var r VATResult
 
 	for _, inv := range invoices {
-		sign := domain.Amount(1)
-		if inv.Type == "credit_note" {
-			sign = -1
-		}
-
 		for _, item := range inv.Items {
-			base := item.Base * sign
-			vat := item.VATAmount * sign
+			base := item.Base
+			vat := item.VATAmount
+			if inv.Type == "credit_note" {
+				base = CreditNoteAmount(base)
+				vat = CreditNoteAmount(vat)
+			}
 
 			switch item.VATRatePercent {
 			case 21:

@@ -902,3 +902,79 @@ func TestVATReturnService_Recalculate_PartialBusinessPercent(t *testing.T) {
 		t.Errorf("InputVATAmount21 = %d, want %d", result.InputVATAmount21, expectedVAT)
 	}
 }
+
+// TestVATReturn_Recalculate_FullCreditNoteNetsToZero creates an invoice and a
+// full credit note through InvoiceService.CreateCreditNote on real SQLite, then
+// recalculates a VAT return. The credit note must cancel the invoice output VAT.
+func TestVATReturn_Recalculate_FullCreditNoteNetsToZero(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	ctx := context.Background()
+
+	contactRepo := repository.NewContactRepository(db)
+	contactSvc := NewContactService(contactRepo, nil, nil)
+	sequenceRepo := repository.NewSequenceRepository(db)
+	sequenceSvc := NewSequenceService(sequenceRepo, nil)
+	invoiceRepo := repository.NewInvoiceRepository(db)
+	invoiceSvc := NewInvoiceService(invoiceRepo, contactSvc, sequenceSvc, nil)
+	testutil.SeedInvoiceSequence(t, db, "FV", 2026)
+
+	customer := &domain.Contact{Name: "Test Customer", Type: domain.ContactTypeCompany}
+	if err := contactSvc.Create(ctx, customer); err != nil {
+		t.Fatalf("creating customer: %v", err)
+	}
+
+	today := time.Now()
+	inv := &domain.Invoice{
+		CustomerID:    customer.ID,
+		SequenceID:    1,
+		Type:          domain.InvoiceTypeRegular,
+		IssueDate:     today,
+		DueDate:       today,
+		DeliveryDate:  today,
+		CurrencyCode:  domain.CurrencyCZK,
+		PaymentMethod: "bank_transfer",
+		Items: []domain.InvoiceItem{
+			{Description: "Test service", Quantity: 100, Unit: "hod", UnitPrice: 100000, VATRatePercent: 21},
+		},
+	}
+	if err := invoiceSvc.Create(ctx, inv); err != nil {
+		t.Fatalf("creating invoice: %v", err)
+	}
+	if err := invoiceSvc.MarkAsSent(ctx, inv.ID); err != nil {
+		t.Fatalf("marking invoice sent: %v", err)
+	}
+
+	cn, err := invoiceSvc.CreateCreditNote(ctx, inv.ID, nil, "full refund")
+	if err != nil {
+		t.Fatalf("CreateCreditNote() error: %v", err)
+	}
+	if err := invoiceSvc.MarkAsSent(ctx, cn.ID); err != nil {
+		t.Fatalf("marking credit note sent: %v", err)
+	}
+
+	vatRepo := repository.NewVATReturnRepository(db)
+	expRepo := repository.NewExpenseRepository(db)
+	setRepo := repository.NewSettingsRepository(db)
+	vatSvc := NewVATReturnService(vatRepo, invoiceRepo, expRepo, setRepo, nil)
+
+	quarter := (int(today.Month())-1)/3 + 1
+	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: today.Year(), Quarter: quarter}}
+	if err := vatSvc.Create(ctx, vr); err != nil {
+		t.Fatalf("creating vat_return: %v", err)
+	}
+
+	got, err := vatSvc.Recalculate(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	if got.OutputVATBase21 != 0 {
+		t.Errorf("OutputVATBase21 = %d, want 0", got.OutputVATBase21)
+	}
+	if got.OutputVATAmount21 != 0 {
+		t.Errorf("OutputVATAmount21 = %d, want 0", got.OutputVATAmount21)
+	}
+	if got.TotalOutputVAT != 0 {
+		t.Errorf("TotalOutputVAT = %d, want 0", got.TotalOutputVAT)
+	}
+}

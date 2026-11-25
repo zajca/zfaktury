@@ -64,7 +64,7 @@ func CalculateAnnualTotals(invoices []InvoiceForBase, expenses []ExpenseForBase,
 		}
 
 		if inv.Type == domain.InvoiceTypeCreditNote {
-			result.Revenue = result.Revenue.Sub(inv.SubtotalAmount)
+			result.Revenue = result.Revenue.Add(CreditNoteAmount(inv.SubtotalAmount))
 		} else {
 			result.Revenue = result.Revenue.Add(inv.SubtotalAmount)
 		}

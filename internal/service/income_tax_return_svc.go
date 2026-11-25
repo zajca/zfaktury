@@ -494,12 +494,19 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		// The stored spouse credit and disability components must match a fresh
 		// computation from the current credit records, otherwise the XML rows
 		// 65-68 would not back the stored totals.
-		if spouseCredit != itr.CreditSpouse ||
-			personalResult.Disability12 != itr.CreditDisability12 ||
+		if spouseCredit != itr.CreditSpouse {
+			// A spouse record stored before migration 045 has child_under3_months = 0,
+			// so the message names the field the owner has to fill in.
+			if itr.Status == domain.FilingStatusFiled {
+				return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání: %w", domain.ErrInvalidInput)
+		}
+		if personalResult.Disability12 != itr.CreditDisability12 ||
 			personalResult.Disability3 != itr.CreditDisability3 ||
 			personalResult.DisabilityZTPP != itr.CreditDisabilityZTPP {
 			if itr.Status == domain.FilingStatusFiled {
-				return nil, fmt.Errorf("uložené slevy na manžela/ku nebo invaliditu neodpovídají aktuálnímu nastavení slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+				return nil, fmt.Errorf("uložená sleva na invaliditu neodpovídá aktuálnímu nastavení osobních slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
 			}
 			return nil, fmt.Errorf("údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání: %w", domain.ErrInvalidInput)
 		}

@@ -39,7 +39,7 @@
 	let spouseIncome = $state(0);
 	let spouseZtp = $state(false);
 	let spouseMonths = $state(12);
-	let spouseChildUnder3Months = $state(12);
+	let spouseChildUnder3Months = $state(0);
 	let showSpouseForm = $state(false);
 
 	// Personal form
@@ -127,7 +127,7 @@
 		spouseIncome = 0;
 		spouseZtp = false;
 		spouseMonths = 12;
-		spouseChildUnder3Months = 12;
+		spouseChildUnder3Months = 0;
 		showSpouseForm = false;
 	}
 

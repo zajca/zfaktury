@@ -57,27 +57,44 @@ describe('PersonalCreditsCard', () => {
 		expect(checkbox.checked).toBe(true);
 	});
 
-	it('shows the disability months select only when a level is set', () => {
+	it('shows the disability months select only when a level is set, labelled for it', () => {
 		renderCard(vi.fn(), { disabilityLevel: 0 });
-		expect(screen.queryByText('Měsíce (invalidita)')).toBeNull();
+		expect(screen.queryByLabelText('Měsíce (invalidita)')).toBeNull();
 
 		cleanup();
 		renderCard(vi.fn(), { disabilityLevel: 1 });
-		const label = screen.getByText('Měsíce (invalidita)');
-		const select = label.parentElement?.querySelector('select') as HTMLSelectElement;
-		expect(select).toBeTruthy();
+		const select = screen.getByLabelText('Měsíce (invalidita)') as HTMLSelectElement;
+		expect(select.tagName).toBe('SELECT');
 		expect(Array.from(select.querySelectorAll('option')).map((o) => o.value)).toEqual(
 			Array.from({ length: 12 }, (_, i) => String(i + 1))
 		);
 	});
 
-	it('shows the ZTP/P months select only when ZTP/P is set', async () => {
+	it('shows the ZTP/P months select only when ZTP/P is set, labelled for it', async () => {
 		renderCard(vi.fn(), { ztpp: false });
-		expect(screen.queryByText('Měsíce (ZTP/P)')).toBeNull();
+		expect(screen.queryByLabelText('Měsíce (ZTP/P)')).toBeNull();
 
 		cleanup();
 		renderCard(vi.fn(), { ztpp: true });
-		expect(screen.getByText('Měsíce (ZTP/P)')).toBeTruthy();
+		expect((screen.getByLabelText('Měsíce (ZTP/P)') as HTMLSelectElement).tagName).toBe('SELECT');
+	});
+
+	it('defaults the months to 12 when the credit is switched on with stored months 0', async () => {
+		render(PersonalCreditsCardTestWrapper, {
+			initialLevel: 0,
+			initialDisabilityMonths: 0,
+			initialZtpp: false,
+			initialZtppMonths: 0
+		});
+
+		const levelSelect = screen.getByRole('combobox') as HTMLSelectElement;
+		await fireEvent.change(levelSelect, { target: { value: '1' } });
+		expect(screen.getByTestId('disabilityMonths').textContent).toBe('12');
+		expect((screen.getByLabelText('Měsíce (invalidita)') as HTMLSelectElement).value).toBe('12');
+
+		await fireEvent.click(screen.getByLabelText('Držitel průkazu ZTP/P'));
+		expect(screen.getByTestId('ztppMonths').textContent).toBe('12');
+		expect((screen.getByLabelText('Měsíce (ZTP/P)') as HTMLSelectElement).value).toBe('12');
 	});
 
 	it('updates the bound months and submits via onSave', async () => {

@@ -1343,7 +1343,8 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
+			// a spouse mismatch names the child-under-3 field to fill in
+			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
 		},
 		{
 			name:   "filed spouse child months changed",
@@ -1356,7 +1357,7 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			wantMessage: "přiznání nelze bez obnovení nastavení znovu vygenerovat",
+			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
 		},
 	}
 	for _, tc := range cases {
@@ -1403,6 +1404,69 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 				t.Errorf("GenerateXML() error = %v, want message %q", err, tc.wantMessage)
 			}
 		})
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_LegacyFiledSpouseWithoutChildMonths covers a
+// filed return created before migration 045 with a stored spouse credit: the spouse
+// record has child_under3_months = 0, so the fresh computation is 0 and GenerateXML
+// refuses. The refusal must name the field to fill in (the child-under-3 months on the
+// spouse credit); once they are filled in, generation succeeds again.
+func TestIncomeTaxReturnService_GenerateXML_LegacyFiledSpouseWithoutChildMonths(t *testing.T) {
+	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+	seedFinancniUradCode(t, db)
+
+	if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana", SpouseBirthNumber: "8555012345",
+		SpouseIncome: domain.NewAmount(50_000, 0), MonthsClaimed: 12, ChildUnder3Months: 12,
+	}); err != nil {
+		t.Fatalf("UpsertSpouse() error: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	recalc, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if recalc.CreditSpouse <= 0 {
+		t.Fatalf("CreditSpouse = %d, want > 0", recalc.CreditSpouse)
+	}
+	recalc.Status = domain.FilingStatusFiled
+	if err := svc.repo.Update(ctx, recalc); err != nil {
+		t.Fatalf("persisting return status: %v", err)
+	}
+
+	// Simulate the pre-migration-045 record: child_under3_months = 0, written straight
+	// to the repo (UpsertSpouse would refuse MonthsClaimed 12 > 0).
+	spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+	spouse, err := spouseRepo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetByYear(spouse) error: %v", err)
+	}
+	spouse.ChildUnder3Months = 0
+	if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+		t.Fatalf("repo Upsert(spouse) error: %v", err)
+	}
+
+	_, err = svc.GenerateXML(ctx, itr.ID)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "dítětem do 3 let") {
+		t.Errorf("GenerateXML() error = %v, want it to name the child-under-3 months", err)
+	}
+
+	// With the months filled in, the fresh computation matches again and XML generates.
+	spouse.ChildUnder3Months = 12
+	if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+		t.Fatalf("repo Upsert(spouse) error: %v", err)
+	}
+	if _, err := svc.GenerateXML(ctx, itr.ID); err != nil {
+		t.Errorf("GenerateXML() after filling the child months: %v", err)
 	}
 }
 

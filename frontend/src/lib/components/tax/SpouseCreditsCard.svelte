@@ -94,8 +94,12 @@
 				</Select>
 			</div>
 			<div>
-				<span class="text-xs text-tertiary">Měsíce s dítětem do 3 let ve společné domácnosti</span>
+				<label for="spouse-child-under3-months" class="text-xs text-tertiary"
+					>Měsíce s dítětem do 3 let ve společné domácnosti</label
+				>
 				<Select
+					id="spouse-child-under3-months"
+					aria-describedby="spouse-child-under3-months-hint"
 					value={spouseChildUnder3Months}
 					onchange={(e: Event) => {
 						spouseChildUnder3Months = Number((e.currentTarget as HTMLSelectElement).value);
@@ -105,7 +109,7 @@
 						<option value={m}>{m}</option>
 					{/each}
 				</Select>
-				<p class="mt-1 text-xs text-tertiary">
+				<p id="spouse-child-under3-months-hint" class="mt-1 text-xs text-tertiary">
 					Počítají se jen měsíce, na jejichž počátku bylo dítě mladší 3 let.
 				</p>
 			</div>

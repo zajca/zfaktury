@@ -1392,6 +1392,46 @@ func TestTaxCreditsService_CopyFromYear_EmptySource(t *testing.T) {
 	}
 }
 
+// TestTaxCreditsService_CopyFromYear_ResetsChildUnder3Months covers the review finding
+// M1: the child-under-3 months are a fact about the source year and must not be carried
+// into the target year. The copied spouse record gets ChildUnder3Months = 0 (the value
+// migration 045 gives existing rows), so it computes a 0 spouse credit for 2024+ until
+// the months are entered for the new year.
+func TestTaxCreditsService_CopyFromYear_ResetsChildUnder3Months(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	if err := svc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana", SpouseIncome: domain.NewAmount(50000, 0),
+		MonthsClaimed: 12, ChildUnder3Months: 12,
+	}); err != nil {
+		t.Fatalf("UpsertSpouse() error: %v", err)
+	}
+
+	if err := svc.CopyFromYear(ctx, 2025, 2026); err != nil {
+		t.Fatalf("CopyFromYear() error: %v", err)
+	}
+
+	copied, err := svc.GetSpouse(ctx, 2026)
+	if err != nil {
+		t.Fatalf("GetSpouse(2026) error: %v", err)
+	}
+	if copied.MonthsClaimed != 12 {
+		t.Errorf("MonthsClaimed = %d, want 12 (reset)", copied.MonthsClaimed)
+	}
+	if copied.ChildUnder3Months != 0 {
+		t.Errorf("ChildUnder3Months = %d, want 0 (not carried over from 2025)", copied.ChildUnder3Months)
+	}
+
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2026)
+	if err != nil {
+		t.Fatalf("ComputeCredits() error: %v", err)
+	}
+	if spouseCredit != 0 {
+		t.Errorf("spouseCredit for 2026 = %d, want 0 until the child months are entered", spouseCredit)
+	}
+}
+
 // TestTaxCreditsService_ComputeCredits_SpouseWithoutChildUnder3ComputesZero covers a
 // spouse record stored before the child-under-3 months field existed: ChildUnder3Months
 // is 0, so for 2024+ (§ 35bb odst. 2) the credit must compute 0 until the months are

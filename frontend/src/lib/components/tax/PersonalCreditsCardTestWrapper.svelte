@@ -1,12 +1,24 @@
 <script lang="ts">
 	import PersonalCreditsCard from './PersonalCreditsCard.svelte';
 
+	let {
+		initialLevel = 1,
+		initialDisabilityMonths = 12,
+		initialZtpp = true,
+		initialZtppMonths = 12
+	}: {
+		initialLevel?: number;
+		initialDisabilityMonths?: number;
+		initialZtpp?: boolean;
+		initialZtppMonths?: number;
+	} = $props();
+
 	let isStudent = $state(false);
 	let studentMonths = $state(12);
-	let disabilityLevel = $state(1);
-	let disabilityMonths = $state(12);
-	let ztpp = $state(true);
-	let ztppMonths = $state(12);
+	let disabilityLevel = $state(initialLevel);
+	let disabilityMonths = $state(initialDisabilityMonths);
+	let ztpp = $state(initialZtpp);
+	let ztppMonths = $state(initialZtppMonths);
 	let saved = $state(false);
 </script>
 

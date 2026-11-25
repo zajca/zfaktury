@@ -184,13 +184,13 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 		return fmt.Errorf("disability months must be 0-12: %w", domain.ErrInvalidInput)
 	}
 	if credits.DisabilityLevel != domain.DisabilityLevelNone && credits.DisabilityMonths < 1 {
-		return fmt.Errorf("disability months must be 1-12 when a disability level is set: %w", domain.ErrInvalidInput)
+		return fmt.Errorf("počet měsíců invalidity musí být 1-12, když je zvolen stupeň invalidity: %w", domain.ErrInvalidInput)
 	}
 	if credits.ZTPPMonths < 0 || credits.ZTPPMonths > 12 {
 		return fmt.Errorf("ZTP/P months must be 0-12: %w", domain.ErrInvalidInput)
 	}
 	if credits.ZTPP && credits.ZTPPMonths < 1 {
-		return fmt.Errorf("ZTP/P months must be 1-12 when ZTP/P is claimed: %w", domain.ErrInvalidInput)
+		return fmt.Errorf("počet měsíců ZTP/P musí být 1-12, když je průkaz ZTP/P uplatněn: %w", domain.ErrInvalidInput)
 	}
 	var existing *domain.TaxPersonalCredits
 	if s.audit != nil {
@@ -480,6 +480,9 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newSpouse.ID = 0
 			newSpouse.Year = targetYear
 			newSpouse.MonthsClaimed = 12
+			// The child-under-3 months are a fact about the source year and must not
+			// be carried over; the target record starts like a migrated row (0).
+			newSpouse.ChildUnder3Months = 0
 			newSpouse.CreditAmount = 0
 			if err := s.spouseRepo.Upsert(ctx, &newSpouse); err != nil {
 				return fmt.Errorf("copying spouse credit: %w", err)

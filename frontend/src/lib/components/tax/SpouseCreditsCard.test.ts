@@ -24,22 +24,27 @@ describe('SpouseCreditsCard', () => {
 			onDelete: () => {}
 		});
 
-		const label = screen.getByText('Měsíce s dítětem do 3 let ve společné domácnosti');
-		const select = label.parentElement?.querySelector('select') as HTMLSelectElement;
-		expect(select).toBeTruthy();
+		const select = screen.getByLabelText(
+			'Měsíce s dítětem do 3 let ve společné domácnosti'
+		) as HTMLSelectElement;
+		expect(select.tagName).toBe('SELECT');
 		const options = Array.from(select.querySelectorAll('option')).map((o) => o.value);
 		expect(options).toEqual(Array.from({ length: 13 }, (_, i) => String(i)));
 		expect(select.value).toBe('6');
-		expect(
-			screen.getByText('Počítají se jen měsíce, na jejichž počátku bylo dítě mladší 3 let.')
-		).toBeTruthy();
+		// The hint is associated with the select via aria-describedby.
+		const hintId = select.getAttribute('aria-describedby');
+		expect(hintId).toBeTruthy();
+		expect(document.getElementById(hintId ?? '')?.textContent).toContain(
+			'Počítají se jen měsíce, na jejichž počátku bylo dítě mladší 3 let.'
+		);
 	});
 
 	it('updates the bound child-under-3 months and submits via onSave', async () => {
 		render(SpouseCreditsCardTestWrapper);
 
-		const label = screen.getByText('Měsíce s dítětem do 3 let ve společné domácnosti');
-		const select = label.parentElement?.querySelector('select') as HTMLSelectElement;
+		const select = screen.getByLabelText(
+			'Měsíce s dítětem do 3 let ve společné domácnosti'
+		) as HTMLSelectElement;
 		await fireEvent.change(select, { target: { value: '6' } });
 		expect(screen.getByTestId('childUnder3Months').textContent).toBe('6');
 

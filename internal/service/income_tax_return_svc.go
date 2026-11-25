@@ -203,16 +203,19 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.CapitalIncomeTax = summary.CapitalIncomeTax
 		itr.CapitalIncomeNet = summary.CapitalIncomeNet
 		// § 10 gross/expenses stored on the return are the taxable-only pair
-		// (exempt income is not declared, § 4 ZDP), so Příloha č. 2's
-		// uhrn_rozdil10 equals ř.40 (kc_zd10). The investments page keeps the
-		// full totals from the year summary.
-		itr.OtherIncomeGross = summary.OtherIncomeTaxableGross
-		itr.OtherIncomeExpenses = summary.OtherIncomeTaxableExpenses
+		// (exempt income is not declared, § 4 ZDP), truncated to whole CZK.
+		// Příloha č. 2 rows and ř.40 are whole CZK and must agree, so the
+		// stored § 10 values come from this one rounding instead of letting
+		// the XML generator round the halere-level net separately. The
+		// investments page keeps the full totals from the year summary.
+		itr.OtherIncomeGross = truncateToWholeCZK(summary.OtherIncomeTaxableGross)
+		itr.OtherIncomeExpenses = truncateToWholeCZK(summary.OtherIncomeTaxableExpenses)
 		itr.OtherIncomeExempt = summary.OtherIncomeExempt
-		itr.OtherIncomeNet = summary.OtherIncomeNet
 		// § 10 odst. 4 sentence 3: a negative § 10 total never lowers the other
-		// parts of the tax base. Store the floored value so the persisted return
-		// and XML ř.40 carry the same value calc uses for the tax base.
+		// parts of the tax base. The net is computed from the truncated pair and
+		// floored at 0, so the persisted return and XML ř.40 carry the same value
+		// calc uses for the tax base.
+		itr.OtherIncomeNet = itr.OtherIncomeGross - itr.OtherIncomeExpenses
 		if itr.OtherIncomeNet < 0 {
 			itr.OtherIncomeNet = 0
 		}
@@ -409,6 +412,12 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		s.audit.Log(ctx, "income_tax_return", id, "update", nil, itr)
 	}
 	return itr, nil
+}
+
+// truncateToWholeCZK drops the haléře (the same truncation the XML generator's
+// ToWholeCZK applies) and returns the amount in whole-CZK multiples.
+func truncateToWholeCZK(a domain.Amount) domain.Amount {
+	return domain.Amount(int64(a) / 100 * 100)
 }
 
 // GenerateXML generates the DPFO XML for an income tax return.

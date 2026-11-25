@@ -287,12 +287,13 @@ func TestIncomeTaxXML_Section10TriggersPriloha2(t *testing.T) {
 	}
 }
 
-// Příloha č. 2 must declare only taxable § 10 income (§ 4 ZDP — time-test
-// exempt income is not declared). The return stores the taxable-only § 10
-// gross/expenses, and the annex's uhrn_rozdil10 must equal ř.40 (kc_zd10).
-// Scenario behind the stored values: an exempt sale (proceeds 600 CZK, cost
-// 100 CZK, exempt 500 CZK) plus a taxable sale (proceeds 400 CZK, cost
-// 300 CZK) -> the stored return carries gross 400 / expenses 300 / net 100 CZK.
+// Given a return whose stored § 10 values are the taxable-only pair (gross 400 /
+// expenses 300 / net 100 CZK, exempt 500 CZK), the generator must emit Příloha
+// č. 2 with exactly those values on VetaV and the VetaJ row, with
+// uhrn_rozdil10 equal to ř.40 (kc_zd10), and the whole document must validate
+// against the EPO DPFDP7 XSD. The end-to-end regression guard for #86 (an exempt
+// sale staying out of the stored values) lives in the service tests
+// (TestIncomeTaxReturnService_Recalculate_Section10StoresTaxableOnly).
 func TestIncomeTaxXML_Priloha2_ReportsTaxableSection10Only(t *testing.T) {
 	itr := &domain.IncomeTaxReturn{
 		Year:                2025,
@@ -354,9 +355,10 @@ func TestIncomeTaxXML_Priloha2_ReportsTaxableSection10Only(t *testing.T) {
 	}
 }
 
-// Floor-at-0 case: a § 10 loss is stored as net 0 (ř.40 omitted), and Příloha
-// č. 2 caps expenses at gross so uhrn_rozdil10 is 0 as well — the annex and
-// ř.40 agree.
+// Floor-at-0 emission: with stored § 10 values gross 100 / expenses 300 / net 0
+// CZK (a loss floored by Recalculate), the generator caps the annex expenses at
+// gross so uhrn_rozdil10 is 0 while ř.40 (kc_zd10) is omitted — the annex and
+// row 40 agree.
 func TestIncomeTaxXML_Priloha2_Section10LossFloored(t *testing.T) {
 	itr := &domain.IncomeTaxReturn{
 		Year:                2025,

@@ -986,6 +986,90 @@ func TestInvestmentIncomeService_RecalculateFIFO_BuyAfterSaleNotMatched(t *testi
 	}
 }
 
+// A buy dated on the sale date is available to that sale (same-day buy/sell):
+// the merged FIFO timeline queues same-date buys before the sell.
+func TestInvestmentIncomeService_RecalculateFIFO_SameDayBuyAndSell(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	day := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	buy := testSecTx(2025, domain.AssetTypeStock, "SAME", domain.TransactionTypeBuy, day, 100000, 1000000)
+	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := testSecTx(2025, domain.AssetTypeStock, "SAME", domain.TransactionTypeSell, day, 100000, 2000000)
+	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO(2025) error: %v", err)
+	}
+
+	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	if err != nil {
+		t.Fatalf("Get sell: %v", err)
+	}
+	if got.CostBasis != 1000000 {
+		t.Errorf("CostBasis = %d, want 1000000 (same-day buy is matched)", got.CostBasis)
+	}
+	// The buy is not older than the 3-year cutoff for a 2025-06-01 sale.
+	if got.TimeTestExempt {
+		t.Error("TimeTestExempt = true, want false")
+	}
+}
+
+// Above the 2025 exemption limit (40M CZK) the exempt share is partial, so the
+// taxable-only split in GetYearSummary keeps a non-zero taxable gain and
+// TaxableGross - TaxableExpenses still equals OtherIncomeNet exactly.
+// Sale: proceeds 8e9 halere, cost 1e9 halere -> gain 7e9, exempt 3.5e9,
+// taxable gain 3.5e9 halere.
+func TestInvestmentIncomeService_GetYearSummary_PartialExemptionTaxableSplit(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	buy := testSecTx(2025, domain.AssetTypeStock, "BIG", domain.TransactionTypeBuy,
+		time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC), 10000, 1_000_000_000)
+	if err := svc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := testSecTx(2025, domain.AssetTypeStock, "BIG", domain.TransactionTypeSell,
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 10000, 8_000_000_000)
+	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO: %v", err)
+	}
+
+	summary, err := svc.GetYearSummary(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetYearSummary() error: %v", err)
+	}
+
+	// Exempt share = 7e9 * 4e9 / 8e9 = 3.5e9; taxable gain = 3.5e9.
+	if summary.OtherIncomeExempt != 3_500_000_000 {
+		t.Errorf("OtherIncomeExempt = %d, want 3500000000", summary.OtherIncomeExempt)
+	}
+	if summary.OtherIncomeNet != 3_500_000_000 {
+		t.Errorf("OtherIncomeNet = %d, want 3500000000", summary.OtherIncomeNet)
+	}
+	// Taxable expenses = 1e9 * 3.5e9 / 7e9 = 5e8; taxable gross = 5e8 + 3.5e9 = 4e9.
+	if summary.OtherIncomeTaxableExpenses != 500_000_000 {
+		t.Errorf("OtherIncomeTaxableExpenses = %d, want 500000000", summary.OtherIncomeTaxableExpenses)
+	}
+	if summary.OtherIncomeTaxableGross != 4_000_000_000 {
+		t.Errorf("OtherIncomeTaxableGross = %d, want 4000000000", summary.OtherIncomeTaxableGross)
+	}
+	if diff := summary.OtherIncomeTaxableGross - summary.OtherIncomeTaxableExpenses; diff != summary.OtherIncomeNet {
+		t.Errorf("TaxableGross - TaxableExpenses = %d, want OtherIncomeNet %d", diff, summary.OtherIncomeNet)
+	}
+	if summary.OtherIncomeTaxableGross == 0 {
+		t.Error("expected a non-zero taxable share above the exemption limit")
+	}
+}
+
 // The crypto time-test exemption (§ 4 odst. 1 písm. zk), zákon 32/2025 Sb.)
 // applies only to sales on or after 15 Feb 2025, no matter when the coins were
 // bought; earlier crypto sales stay taxable even when held more than 3 years.

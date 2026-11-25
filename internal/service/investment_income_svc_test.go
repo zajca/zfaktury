@@ -969,6 +969,75 @@ func TestInvestmentIncomeService_GetYearSummary_Empty(t *testing.T) {
 	}
 }
 
+// A sale that passes the time test and ends with a loss contributes 0 to the
+// § 10 base (§ 10 odst. 4): no income, no expense, no loss. The stored
+// ComputedGain keeps the real loss so the UI can still show it.
+func TestInvestmentIncomeService_GetYearSummary_ExemptLossSaleContributesZero(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	// Time-test sale with a loss: bought 2015-01-01 for 100 000 halere,
+	// sold 2025-06-01 for 50 000 halere -> computedGain = -50 000.
+	buyOld := testSecTx(2025, domain.AssetTypeStock, "OLD", domain.TransactionTypeBuy,
+		time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC), 100, 100000)
+	if err := svc.CreateSecurityTransaction(ctx, buyOld); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sellOld := testSecTx(2025, domain.AssetTypeStock, "OLD", domain.TransactionTypeSell,
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 100, 50000)
+	if err := svc.CreateSecurityTransaction(ctx, sellOld); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	// Taxable sale with a gain: bought 2024-06-01 for 100 000 halere, sold
+	// 2025-06-02 for 300 000 halere -> gain 200 000 (held < 3 years).
+	buyNew := testSecTx(2025, domain.AssetTypeStock, "NEW", domain.TransactionTypeBuy,
+		time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC), 100, 100000)
+	if err := svc.CreateSecurityTransaction(ctx, buyNew); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sellNew := testSecTx(2025, domain.AssetTypeStock, "NEW", domain.TransactionTypeSell,
+		time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC), 100, 300000)
+	if err := svc.CreateSecurityTransaction(ctx, sellNew); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO: %v", err)
+	}
+
+	gotOld, err := svc.GetSecurityTransaction(ctx, sellOld.ID)
+	if err != nil {
+		t.Fatalf("Get sell: %v", err)
+	}
+	// The stored gain stays the real number so the UI can show the loss.
+	if gotOld.ComputedGain != -50000 {
+		t.Errorf("ComputedGain = %d, want -50000", gotOld.ComputedGain)
+	}
+	if !gotOld.TimeTestExempt {
+		t.Error("expected TimeTestExempt = true for the time-test sale")
+	}
+
+	summary, err := svc.GetYearSummary(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetYearSummary() error: %v", err)
+	}
+
+	// Only the taxable sale counts toward the § 10 base.
+	if summary.OtherIncomeGross != 300000 {
+		t.Errorf("OtherIncomeGross = %d, want 300000", summary.OtherIncomeGross)
+	}
+	if summary.OtherIncomeExpenses != 100000 {
+		t.Errorf("OtherIncomeExpenses = %d, want 100000", summary.OtherIncomeExpenses)
+	}
+	if summary.OtherIncomeExempt != 0 {
+		t.Errorf("OtherIncomeExempt = %d, want 0", summary.OtherIncomeExempt)
+	}
+	if summary.OtherIncomeNet != 200000 {
+		t.Errorf("OtherIncomeNet = %d, want 200000", summary.OtherIncomeNet)
+	}
+}
+
 func TestInvestmentIncomeService_NetAmountCalculation(t *testing.T) {
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()

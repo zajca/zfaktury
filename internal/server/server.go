@@ -456,7 +456,7 @@ func wireRouter(cfg *config.Config, db *sql.DB) (*chi.Mux, error) {
 	dashboardSvc := service.NewDashboardService(dashboardRepo)
 	reportRepo := repository.NewReportRepository(db)
 	reportSvc := service.NewReportService(reportRepo)
-	taxCalendarSvc := service.NewTaxCalendarService()
+	taxCalendarSvc := service.NewTaxCalendarService(taxYearSettingsRepo)
 
 	// Wire CNB client.
 	cnbClient := cnb.NewClient()

@@ -45,6 +45,8 @@ describe('ISDSCredentialsSection', () => {
 		await waitFor(() => {
 			expect(screen.getByTestId('isds-status-test')).toHaveTextContent('Přihlášení uloženo');
 		});
+		expect(screen.getByText('Testovací prostředí')).toBeInTheDocument();
+		expect(screen.getByText('Produkce')).toBeInTheDocument();
 		expect(screen.getByTestId('isds-status-test')).toHaveTextContent('sender-user');
 		expect(screen.getByTestId('isds-status-production')).toHaveTextContent(
 			'Přihlášení není uloženo'

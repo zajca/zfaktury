@@ -86,7 +86,7 @@ func (h *ExportHandler) ExportInvoices(w http.ResponseWriter, r *http.Request) {
 			customerName,
 			formatCSVDate(inv.IssueDate),
 			formatCSVDate(inv.DueDate),
-			formatCSVDate(inv.DeliveryDate),
+			formatCSVDate(inv.TaxableSupplyDate()),
 			formatCSVAmount(inv.SubtotalAmount),
 			formatCSVAmount(inv.VATAmount),
 			formatCSVAmount(inv.TotalAmount),

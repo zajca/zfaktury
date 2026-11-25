@@ -396,6 +396,9 @@ func respondFilingError(w http.ResponseWriter, err error, op filingOp) {
 		respondError(w, http.StatusGatewayTimeout, "EPO neodpovědělo včas, podání nelze ověřit. Nic nebylo odesláno, zkuste to znovu.")
 	case errors.Is(err, epo.ErrEPOUnavailable), errors.Is(err, epo.ErrUnexpectedResponse):
 		respondError(w, http.StatusBadGateway, "EPO je nedostupné, podání nelze ověřit. Nic nebylo odesláno, zkuste to později nebo podání podejte ručně.")
+	case errors.Is(err, epo.ErrPackaging), errors.Is(err, epo.ErrRequestTooLarge):
+		slog.Error("EPO check request could not be packed", "error", err)
+		respondError(w, http.StatusInternalServerError, "Podání se nepodařilo zkontrolovat v EPO. Zkuste to znovu, nebo podání podejte ručně.")
 	case errors.Is(err, epo.ErrInvalidXML):
 		respondError(w, http.StatusUnprocessableEntity, "XML podání nelze zkontrolovat v EPO. Vygenerujte ho znovu.")
 

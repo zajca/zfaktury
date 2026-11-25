@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -417,6 +418,22 @@ func TestEPOOpenForm_StatusMapping(t *testing.T) {
 			}
 			if got := env.fake.count("open"); got != c.wantOpens {
 				t.Errorf("otevriFormular calls = %d, want %d", got, c.wantOpens)
+			}
+		})
+	}
+}
+
+func TestEPOOpenFormError_PackagingAndSizeSentinelsAre500(t *testing.T) {
+	h := NewEPOHandler(nil)
+	for _, sentinel := range []error{epo.ErrPackaging, epo.ErrRequestTooLarge} {
+		t.Run(sentinel.Error(), func(t *testing.T) {
+			w := httptest.NewRecorder()
+			h.respondOpenFormError(w, fmt.Errorf("packing: %w", sentinel))
+			if w.Code != http.StatusInternalServerError {
+				t.Errorf("status = %d, want 500, body: %s", w.Code, w.Body.String())
+			}
+			if strings.Contains(w.Body.String(), "packing") {
+				t.Errorf("body leaks internal error text: %s", w.Body.String())
 			}
 		})
 	}

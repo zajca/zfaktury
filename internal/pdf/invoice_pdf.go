@@ -218,6 +218,12 @@ func (g *InvoicePDFGenerator) addLogo(m core.Maroto, ps PDFSettings) {
 	)
 }
 
+// duzpLabel is the DÚZP line of the invoice header. A missing delivery date
+// falls back to the issue date, so old invoices do not show a zero date.
+func duzpLabel(invoice *domain.Invoice) string {
+	return fmt.Sprintf("DÚZP: %s", invoice.TaxableSupplyDate().Format("02.01.2006"))
+}
+
 func (g *InvoicePDFGenerator) addHeader(m core.Maroto, invoice *domain.Invoice, ps PDFSettings) {
 	typeLabel := invoiceTypeLabel(invoice.Type)
 	baseFontSize := fontSizePoints(ps.FontSize)
@@ -252,7 +258,7 @@ func (g *InvoicePDFGenerator) addHeader(m core.Maroto, invoice *domain.Invoice, 
 				text.New(fmt.Sprintf("Datum splatnosti: %s", invoice.DueDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2}),
 			),
 			col.New(4).Add(
-				text.New(fmt.Sprintf("DÚZP: %s", invoice.DeliveryDate.Format("02.01.2006")), props.Text{Size: baseFontSize - 2, Align: align.Right}),
+				text.New(duzpLabel(invoice), props.Text{Size: baseFontSize - 2, Align: align.Right}),
 			),
 		),
 	)

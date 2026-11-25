@@ -517,6 +517,8 @@ func TestFilingHandler_ErrorMapping(t *testing.T) {
 		{epo.ErrEPOUnavailable, http.StatusBadGateway},
 		{epo.ErrUnexpectedResponse, http.StatusBadGateway},
 		{epo.ErrInvalidXML, http.StatusUnprocessableEntity},
+		{epo.ErrPackaging, http.StatusInternalServerError},
+		{epo.ErrRequestTooLarge, http.StatusInternalServerError},
 		{&epo.RejectedError{Findings: []epo.Finding{{Type: "K"}}}, http.StatusUnprocessableEntity},
 		{xsdcheck.ErrXmllintMissing, http.StatusServiceUnavailable},
 		{xsdcheck.ErrTimeout, http.StatusGatewayTimeout},

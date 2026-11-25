@@ -188,6 +188,13 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 
 	// Step 4b: §8 capital income and §10 other income (investments).
 	if s.investmentSvc != nil {
+		// Recompute FIFO first: results stored by an older build can keep
+		// outdated exemptions (e.g. a crypto sale before 2025-02-15 stored as
+		// time-test exempt). FIFO is a pure function of the transactions and
+		// the current rule set, so recomputing here is always safe.
+		if fifoErr := s.investmentSvc.RecalculateFIFO(ctx, itr.Year); fifoErr != nil {
+			return nil, fmt.Errorf("recalculating FIFO for income_tax_return: %w", fifoErr)
+		}
 		summary, sumErr := s.investmentSvc.GetYearSummary(ctx, itr.Year)
 		if sumErr != nil {
 			return nil, fmt.Errorf("computing investment income for income_tax_return: %w", sumErr)

@@ -1403,3 +1403,85 @@ func TestIncomeTaxReturnService_Recalculate_Section10LossFloored(t *testing.T) {
 		t.Errorf("XML must not carry a negative kc_zd10 (ř.40):\n%s", xmlData)
 	}
 }
+
+// Recalculate must recompute FIFO before reading the year summary: results
+// stored by an older build keep the old exemptions (e.g. a crypto sale before
+// 15 Feb 2025 stored as time-test exempt) until the user presses
+// "Přepočítat FIFO". Here the stale result marks the pre-cutoff crypto sale as
+// exempt; after Recalculate the gain must be fully taxable in the return.
+func TestIncomeTaxReturnService_Recalculate_RecomputesStaleFIFO(t *testing.T) {
+	svc, db := setupIncomeTaxSvc(t)
+	ctx := context.Background()
+
+	securityRepo := repository.NewSecurityTransactionRepository(db)
+	invSvc := NewInvestmentIncomeService(
+		repository.NewCapitalIncomeRepository(db),
+		securityRepo,
+		nil,
+	)
+	svc.SetInvestmentService(invSvc)
+
+	// Crypto bought 2021-01-01 for 100 000 halere, sold 2025-01-10 (before the
+	// 2025-02-15 cutoff) for 300 000 halere -> gain 200 000 halere.
+	buy := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeCrypto,
+		AssetName:       "BTC",
+		TransactionType: domain.TransactionTypeBuy,
+		TransactionDate: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     100000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeCrypto,
+		AssetName:       "BTC",
+		TransactionType: domain.TransactionTypeSell,
+		TransactionDate: time.Date(2025, 1, 10, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     300000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	// Stale FIFO result as the pre-fix code would have stored it: exempt.
+	if err := securityRepo.UpdateFIFOResults(ctx, sell.ID, 100000, 200000, 200000, true); err != nil {
+		t.Fatalf("storing stale FIFO result: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Recalculate without an explicit RecalculateFIFO call.
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// The sale is before the crypto cutoff, so the whole gain is taxable.
+	if result.OtherIncomeNet != 200000 {
+		t.Errorf("OtherIncomeNet = %d, want 200000 (stale exemption must be recomputed)", result.OtherIncomeNet)
+	}
+
+	got, err := invSvc.GetSecurityTransaction(ctx, sell.ID)
+	if err != nil {
+		t.Fatalf("Get sell: %v", err)
+	}
+	if got.TimeTestExempt {
+		t.Error("TimeTestExempt = true, want false after FIFO recompute (sale before 2025-02-15)")
+	}
+	if got.ExemptAmount != 0 {
+		t.Errorf("ExemptAmount = %d, want 0 after FIFO recompute", got.ExemptAmount)
+	}
+}

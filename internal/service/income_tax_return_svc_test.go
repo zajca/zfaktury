@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -1072,4 +1073,220 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// seedFinancniUradCode stores the financial-office code required by the DPFO XML
+// generator (c_ufo_cil).
+func seedFinancniUradCode(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if err := repository.NewSettingsRepository(db).Set(context.Background(), "financni_urad_code", "451"); err != nil {
+		t.Fatalf("seeding financni_urad_code: %v", err)
+	}
+}
+
+// persistLegacyDisability rewrites a recalculated return into its pre-migration-037
+// shape: only the aggregate disability credit is stored, the per-degree
+// components are zero and the return carries the requested status.
+func persistLegacyDisability(t *testing.T, svc *IncomeTaxReturnService, itr *domain.IncomeTaxReturn, status string) {
+	t.Helper()
+	itr.CreditDisability12 = 0
+	itr.CreditDisability3 = 0
+	itr.CreditDisabilityZTPP = 0
+	itr.Status = status
+	if err := svc.repo.Update(context.Background(), itr); err != nil {
+		t.Fatalf("persisting legacy disability return: %v", err)
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_LegacyDisabilityFiled covers a return
+// filed before migration 037. It stores only the aggregate disability credit, so
+// GenerateXML must re-derive the per-degree components from the matching personal
+// credits to emit rows 66/67/68.
+func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilityFiled(t *testing.T) {
+	cases := []struct {
+		name     string
+		level    int
+		ztpp     bool
+		wantAttr string
+	}{
+		{"row66_1st_2nd_degree", domain.DisabilityLevel1And2, false, `kc_op15_1d="2520"`},
+		{"row67_3rd_degree", domain.DisabilityLevel3, false, `kc_op15_1e1="5040"`},
+		{"row68_ztpp", domain.DisabilityLevelNone, true, `kc_op15_1e2="16140"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+			ctx := context.Background()
+			seedFinancniUradCode(t, db)
+
+			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+				Year:            2025,
+				DisabilityLevel: tc.level,
+				ZTPP:            tc.ztpp,
+			}); err != nil {
+				t.Fatalf("UpsertPersonal() error: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			recalc, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			if recalc.CreditDisability <= 0 {
+				t.Fatalf("CreditDisability = %d, want > 0", recalc.CreditDisability)
+			}
+			persistLegacyDisability(t, svc, recalc, domain.FilingStatusFiled)
+
+			got, err := svc.GenerateXML(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("GenerateXML() error: %v", err)
+			}
+			if !strings.Contains(string(got.XMLData), tc.wantAttr) {
+				t.Errorf("XML missing %s:\n%s", tc.wantAttr, got.XMLData)
+			}
+		})
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_LegacyDisabilitySettingsMismatch covers
+// the legacy return whose stored disability credit no longer matches the current
+// personal credit settings. The message depends on the filing status.
+func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilitySettingsMismatch(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      string
+		wantMessage string
+	}{
+		{"filed", domain.FilingStatusFiled, "uložená sleva na invaliditu neodpovídá aktuálnímu nastavení osobních slev"},
+		{"draft", domain.FilingStatusDraft, "přiznání bylo spočteno starší verzí, přepočítejte ho"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+			ctx := context.Background()
+			seedFinancniUradCode(t, db)
+
+			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+				Year:            2025,
+				DisabilityLevel: domain.DisabilityLevel1And2,
+				ZTPP:            true,
+			}); err != nil {
+				t.Fatalf("UpsertPersonal() error: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			recalc, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			persistLegacyDisability(t, svc, recalc, tc.status)
+
+			// Replace the personal credits so the derived total no longer matches.
+			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+				Year:            2025,
+				DisabilityLevel: domain.DisabilityLevel3,
+			}); err != nil {
+				t.Fatalf("UpsertPersonal() error: %v", err)
+			}
+
+			_, err = svc.GenerateXML(ctx, itr.ID)
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			if !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Errorf("GenerateXML() error = %v, want message %q", err, tc.wantMessage)
+			}
+		})
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_ChildAddedAfterRecalculate covers a child
+// added after the last recalculation: the stored child benefit no longer matches
+// the child data that feeds the m_deti* slots.
+func TestIncomeTaxReturnService_GenerateXML_ChildAddedAfterRecalculate(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      string
+		wantMessage string
+	}{
+		{"draft", domain.FilingStatusDraft, "údaje o dětech se od posledního přepočtu změnily, přepočítejte přiznání"},
+		{"filed", domain.FilingStatusFiled, "údaje o dětech neodpovídají podanému přiznání"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+			ctx := context.Background()
+			seedFinancniUradCode(t, db)
+
+			if err := creditsSvc.CreateChild(ctx, &domain.TaxChildCredit{
+				Year: 2025, ChildName: "Dite A", ChildOrder: 1, MonthsClaimed: 12,
+			}); err != nil {
+				t.Fatalf("CreateChild() error: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			recalc, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			recalc.Status = tc.status
+			if err := svc.repo.Update(ctx, recalc); err != nil {
+				t.Fatalf("persisting return status: %v", err)
+			}
+
+			if err := creditsSvc.CreateChild(ctx, &domain.TaxChildCredit{
+				Year: 2025, ChildName: "Dite B", ChildOrder: 2, MonthsClaimed: 12,
+			}); err != nil {
+				t.Fatalf("CreateChild() error: %v", err)
+			}
+
+			_, err = svc.GenerateXML(ctx, itr.ID)
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			if !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Errorf("GenerateXML() error = %v, want message %q", err, tc.wantMessage)
+			}
+		})
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_ChildrenUnchanged is the positive control:
+// when the child data still matches the stored benefit the XML is generated with
+// the m_deti* slots filled.
+func TestIncomeTaxReturnService_GenerateXML_ChildrenUnchanged(t *testing.T) {
+	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+	seedFinancniUradCode(t, db)
+
+	if err := creditsSvc.CreateChild(ctx, &domain.TaxChildCredit{
+		Year: 2025, ChildName: "Dite A", ChildOrder: 1, MonthsClaimed: 12,
+	}); err != nil {
+		t.Fatalf("CreateChild() error: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, itr.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	got, err := svc.GenerateXML(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+	if !strings.Contains(string(got.XMLData), `m_deti="12"`) {
+		t.Errorf("XML missing m_deti slot:\n%s", got.XMLData)
+	}
 }

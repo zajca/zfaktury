@@ -68,6 +68,7 @@ type formulaCase struct {
 	itr      *domain.IncomeTaxReturn
 	children []domain.TaxChildCredit
 	spouse   *domain.TaxSpouseCredit
+	personal *domain.TaxPersonalCredits
 }
 
 func formulaCases() []formulaCase {
@@ -111,11 +112,13 @@ func formulaCases() []formulaCase {
 			name: "full", itr: full,
 			children: []domain.TaxChildCredit{{ChildName: "Petr Novak", BirthNumber: "150310/0005", ChildOrder: 1, MonthsClaimed: 12}},
 			spouse:   &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12},
+			personal: &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 12},
 		},
 		{name: "minimal", itr: minimal},
 		{
 			name: "all credits", itr: allCredits,
-			spouse: &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12},
+			spouse:   &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12},
+			personal: &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel3, ZTPP: true, DisabilityMonths: 12, ZTPPMonths: 12},
 		},
 		{
 			name: "bonus", itr: bonus,
@@ -137,7 +140,7 @@ func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 
 	for _, tc := range formulaCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse)
+			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse, tc.personal)
 			if err != nil {
 				t.Fatalf("GenerateIncomeTaxXML: %v", err)
 			}
@@ -218,7 +221,7 @@ func TestIncomeTaxXML_FormulaConsistency(t *testing.T) {
 
 	t.Run("bonus case values", func(t *testing.T) {
 		tc := formulaCases()[3]
-		data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse)
+		data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse, tc.personal)
 		if err != nil {
 			t.Fatalf("GenerateIncomeTaxXML: %v", err)
 		}
@@ -238,7 +241,7 @@ func TestIncomeTaxXML_ChildRows(t *testing.T) {
 	rows := []string{"kc_dazvyhod", "kc_slevy35c", "kc_danbonus"}
 	for _, tc := range formulaCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse)
+			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse, tc.personal)
 			if err != nil {
 				t.Fatalf("GenerateIncomeTaxXML: %v", err)
 			}
@@ -268,7 +271,7 @@ func TestIncomeTaxXML_ComputedRowsPresentAtZero(t *testing.T) {
 			continue
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse)
+			data, err := GenerateIncomeTaxXML(tc.itr, newCreditTestSettings(), tc.children, tc.spouse, tc.personal)
 			if err != nil {
 				t.Fatalf("GenerateIncomeTaxXML: %v", err)
 			}
@@ -284,10 +287,11 @@ func TestIncomeTaxXML_ComputedRowsPresentAtZero(t *testing.T) {
 
 func TestIncomeTaxXML_DisabilityRows(t *testing.T) {
 	tests := []struct {
-		name   string
-		mutate func(*domain.IncomeTaxReturn)
-		want   map[string]string
-		total  string
+		name     string
+		mutate   func(*domain.IncomeTaxReturn)
+		personal *domain.TaxPersonalCredits
+		want     map[string]string
+		total    string
 	}{
 		{
 			name: "level 1",
@@ -295,8 +299,19 @@ func TestIncomeTaxXML_DisabilityRows(t *testing.T) {
 				i.CreditDisability = domain.NewAmount(2_520, 0)
 				i.CreditDisability12 = domain.NewAmount(2_520, 0)
 			},
-			want:  map[string]string{"kc_op15_1d": "2520", "m_cinvduch": "12"},
-			total: "33360",
+			personal: &domain.TaxPersonalCredits{DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 12},
+			want:     map[string]string{"kc_op15_1d": "2520", "m_cinvduch": "12"},
+			total:    "33360",
+		},
+		{
+			name: "level 1 for 6 months",
+			mutate: func(i *domain.IncomeTaxReturn) {
+				i.CreditDisability = domain.NewAmount(1_260, 0)
+				i.CreditDisability12 = domain.NewAmount(1_260, 0)
+			},
+			personal: &domain.TaxPersonalCredits{DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 6},
+			want:     map[string]string{"kc_op15_1d": "1260", "m_cinvduch": "6"},
+			total:    "32100",
 		},
 		{
 			name: "level 2",
@@ -304,8 +319,9 @@ func TestIncomeTaxXML_DisabilityRows(t *testing.T) {
 				i.CreditDisability = domain.NewAmount(5_040, 0)
 				i.CreditDisability3 = domain.NewAmount(5_040, 0)
 			},
-			want:  map[string]string{"kc_op15_1e1": "5040", "m_invduch": "12"},
-			total: "35880",
+			personal: &domain.TaxPersonalCredits{DisabilityLevel: domain.DisabilityLevel3, DisabilityMonths: 12},
+			want:     map[string]string{"kc_op15_1e1": "5040", "m_invduch": "12"},
+			total:    "35880",
 		},
 		{
 			name: "ZTP/P",
@@ -313,8 +329,19 @@ func TestIncomeTaxXML_DisabilityRows(t *testing.T) {
 				i.CreditDisability = domain.NewAmount(16_140, 0)
 				i.CreditDisabilityZTPP = domain.NewAmount(16_140, 0)
 			},
-			want:  map[string]string{"kc_op15_1e2": "16140", "m_ztpp": "12"},
-			total: "46980",
+			personal: &domain.TaxPersonalCredits{ZTPP: true, ZTPPMonths: 12},
+			want:     map[string]string{"kc_op15_1e2": "16140", "m_ztpp": "12"},
+			total:    "46980",
+		},
+		{
+			name: "ZTP/P for 9 months",
+			mutate: func(i *domain.IncomeTaxReturn) {
+				i.CreditDisability = domain.NewAmount(12_105, 0)
+				i.CreditDisabilityZTPP = domain.NewAmount(12_105, 0)
+			},
+			personal: &domain.TaxPersonalCredits{ZTPP: true, ZTPPMonths: 9},
+			want:     map[string]string{"kc_op15_1e2": "12105", "m_ztpp": "9"},
+			total:    "42945",
 		},
 		{
 			name: "level 2 with ZTP/P",
@@ -323,6 +350,7 @@ func TestIncomeTaxXML_DisabilityRows(t *testing.T) {
 				i.CreditDisability3 = domain.NewAmount(5_040, 0)
 				i.CreditDisabilityZTPP = domain.NewAmount(16_140, 0)
 			},
+			personal: &domain.TaxPersonalCredits{DisabilityLevel: domain.DisabilityLevel3, ZTPP: true, DisabilityMonths: 12, ZTPPMonths: 12},
 			want: map[string]string{
 				"kc_op15_1e1": "5040", "m_invduch": "12", "kc_op15_1e2": "16140", "m_ztpp": "12",
 			},
@@ -340,7 +368,7 @@ func TestIncomeTaxXML_DisabilityRows(t *testing.T) {
 			tt.mutate(itr)
 			itr.TotalCredits = itr.CreditBasic + itr.CreditDisability
 
-			data, err := GenerateIncomeTaxXML(itr, newCreditTestSettings(), nil, nil)
+			data, err := GenerateIncomeTaxXML(itr, newCreditTestSettings(), nil, nil, tt.personal)
 			if err != nil {
 				t.Fatalf("GenerateIncomeTaxXML: %v", err)
 			}
@@ -370,7 +398,7 @@ func TestIncomeTaxXML_SpouseZTPPUsesRow65b(t *testing.T) {
 
 	t.Run("ZTP/P spouse, 12 months", func(t *testing.T) {
 		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12}
-		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(49_680, 0)), newCreditTestSettings(), nil, spouse)
+		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(49_680, 0)), newCreditTestSettings(), nil, spouse, nil)
 		if err != nil {
 			t.Fatalf("GenerateIncomeTaxXML: %v", err)
 		}
@@ -385,7 +413,7 @@ func TestIncomeTaxXML_SpouseZTPPUsesRow65b(t *testing.T) {
 
 	t.Run("regular spouse, 7 months", func(t *testing.T) {
 		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 7}
-		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(14_490, 0)), newCreditTestSettings(), nil, spouse)
+		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(14_490, 0)), newCreditTestSettings(), nil, spouse, nil)
 		if err != nil {
 			t.Fatalf("GenerateIncomeTaxXML: %v", err)
 		}
@@ -425,6 +453,11 @@ func TestIncomeTaxXML_RejectsInconsistentInput(t *testing.T) {
 			i.CreditDisability = domain.NewAmount(2_520, 0)
 			i.TotalCredits += i.CreditDisability
 		}, nil},
+		{"disability amount without personal credits record", func(i *domain.IncomeTaxReturn) {
+			i.CreditDisability = domain.NewAmount(2_520, 0)
+			i.CreditDisability12 = domain.NewAmount(2_520, 0)
+			i.TotalCredits += i.CreditDisability
+		}, nil},
 		{"total credits differ from rows", func(i *domain.IncomeTaxReturn) {
 			i.TotalCredits += domain.NewAmount(1_000, 0)
 		}, nil},
@@ -445,7 +478,7 @@ func TestIncomeTaxXML_RejectsInconsistentInput(t *testing.T) {
 			if tt.settings != nil {
 				settings = tt.settings()
 			}
-			_, err := GenerateIncomeTaxXML(itr, settings, nil, nil)
+			_, err := GenerateIncomeTaxXML(itr, settings, nil, nil, nil)
 			if !errors.Is(err, domain.ErrInvalidInput) {
 				t.Errorf("error = %v, want ErrInvalidInput", err)
 			}
@@ -461,7 +494,7 @@ func TestIncomeTaxXML_UcSoust(t *testing.T) {
 		CreditBasic: domain.NewAmount(30_840, 0), TotalCredits: domain.NewAmount(30_840, 0),
 	}
 
-	data, err := GenerateIncomeTaxXML(itr, newCreditTestSettings(), nil, nil)
+	data, err := GenerateIncomeTaxXML(itr, newCreditTestSettings(), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -470,7 +503,7 @@ func TestIncomeTaxXML_UcSoust(t *testing.T) {
 	}
 
 	itr.FlatRatePercent = 60
-	data, err = GenerateIncomeTaxXML(itr, newCreditTestSettings(), nil, nil)
+	data, err = GenerateIncomeTaxXML(itr, newCreditTestSettings(), nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}

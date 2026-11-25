@@ -132,7 +132,7 @@ func TestComputePersonalCredits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ComputePersonalCredits(tt.disabilityLevel, tt.ztpp, tt.isStudent, tt.studentMonths, c)
+			got := ComputePersonalCredits(tt.disabilityLevel, 12, tt.ztpp, 12, tt.isStudent, tt.studentMonths, c)
 			if got.Disability12 != tt.want12 || got.Disability3 != tt.want3 || got.DisabilityZTPP != tt.wantZTPP {
 				t.Errorf("disability rows = %v/%v/%v, want %v/%v/%v",
 					got.Disability12, got.Disability3, got.DisabilityZTPP, tt.want12, tt.want3, tt.wantZTPP)
@@ -147,11 +147,44 @@ func TestComputePersonalCredits(t *testing.T) {
 	}
 
 	t.Run("student with zero rule-set constant is 0", func(t *testing.T) {
-		got := ComputePersonalCredits(0, false, true, 12, TaxYearConstants{})
+		got := ComputePersonalCredits(0, 0, false, 0, true, 12, TaxYearConstants{})
 		if got.Student != 0 {
 			t.Errorf("student = %v, want 0", got.Student)
 		}
 	})
+}
+
+// TestComputePersonalCredits_DisabilityMonths verifies that each disability credit is
+// scaled by its months out of 12 (§ 35ba odst. 3), the same pattern as the student credit.
+func TestComputePersonalCredits_DisabilityMonths(t *testing.T) {
+	c := testConstants()
+
+	tests := []struct {
+		name             string
+		disabilityLevel  int
+		disabilityMonths int
+		ztpp             bool
+		ztppMonths       int
+		want12           domain.Amount
+		want3            domain.Amount
+		wantZTPP         domain.Amount
+	}{
+		{name: "level 1/2 for 6 months", disabilityLevel: 1, disabilityMonths: 6, want12: domain.NewAmount(1_260, 0)},
+		{name: "level 3 for 3 months", disabilityLevel: 2, disabilityMonths: 3, want3: domain.NewAmount(1_260, 0)},
+		{name: "ZTP/P for 9 months", ztpp: true, ztppMonths: 9, wantZTPP: domain.NewAmount(12_105, 0)},
+		{name: "level 1/2 full year", disabilityLevel: 1, disabilityMonths: 12, want12: domain.NewAmount(2_520, 0)},
+		{name: "months ignored without a level or flag", disabilityMonths: 6, ztppMonths: 9},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ComputePersonalCredits(tt.disabilityLevel, tt.disabilityMonths, tt.ztpp, tt.ztppMonths, false, 0, c)
+			if got.Disability12 != tt.want12 || got.Disability3 != tt.want3 || got.DisabilityZTPP != tt.wantZTPP {
+				t.Errorf("disability rows = %v/%v/%v, want %v/%v/%v",
+					got.Disability12, got.Disability3, got.DisabilityZTPP, tt.want12, tt.want3, tt.wantZTPP)
+			}
+		})
+	}
 }
 
 func TestComputeChildBenefit(t *testing.T) {

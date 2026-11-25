@@ -174,6 +174,18 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 	if credits.DisabilityLevel < domain.DisabilityLevelNone || credits.DisabilityLevel > domain.DisabilityLevelMaximum {
 		return fmt.Errorf("disability level must be 0-2: %w", domain.ErrInvalidInput)
 	}
+	if credits.DisabilityMonths < 0 || credits.DisabilityMonths > 12 {
+		return fmt.Errorf("disability months must be 0-12: %w", domain.ErrInvalidInput)
+	}
+	if credits.DisabilityLevel != domain.DisabilityLevelNone && credits.DisabilityMonths < 1 {
+		return fmt.Errorf("disability months must be 1-12 when a disability level is set: %w", domain.ErrInvalidInput)
+	}
+	if credits.ZTPPMonths < 0 || credits.ZTPPMonths > 12 {
+		return fmt.Errorf("ZTP/P months must be 0-12: %w", domain.ErrInvalidInput)
+	}
+	if credits.ZTPP && credits.ZTPPMonths < 1 {
+		return fmt.Errorf("ZTP/P months must be 1-12 when ZTP/P is claimed: %w", domain.ErrInvalidInput)
+	}
 	var existing *domain.TaxPersonalCredits
 	if s.audit != nil {
 		existing, _ = s.personalRepo.GetByYear(ctx, credits.Year)
@@ -314,7 +326,7 @@ func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, yea
 		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("fetching personal credits for compute: %w", err)
 	}
 	if personal != nil {
-		personalResult = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.ZTPP, personal.IsStudent, personal.StudentMonths, constants)
+		personalResult = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.DisabilityMonths, personal.ZTPP, personal.ZTPPMonths, personal.IsStudent, personal.StudentMonths, constants)
 	}
 
 	return spouseCredit, personalResult, nil

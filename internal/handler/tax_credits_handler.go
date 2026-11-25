@@ -55,6 +55,7 @@ type taxSpouseCreditRequest struct {
 	SpouseIncome      int64  `json:"spouse_income"`
 	SpouseZTP         bool   `json:"spouse_ztp"`
 	MonthsClaimed     int    `json:"months_claimed"`
+	ChildUnder3Months int    `json:"child_under3_months"`
 }
 
 type taxSpouseCreditResponse struct {
@@ -65,6 +66,7 @@ type taxSpouseCreditResponse struct {
 	SpouseIncome      int64  `json:"spouse_income"`
 	SpouseZTP         bool   `json:"spouse_ztp"`
 	MonthsClaimed     int    `json:"months_claimed"`
+	ChildUnder3Months int    `json:"child_under3_months"`
 	CreditAmount      int64  `json:"credit_amount"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
@@ -92,10 +94,12 @@ type taxChildCreditResponse struct {
 }
 
 type taxPersonalCreditsRequest struct {
-	IsStudent       bool `json:"is_student"`
-	StudentMonths   int  `json:"student_months"`
-	DisabilityLevel int  `json:"disability_level"`
-	ZTPP            bool `json:"ztpp"`
+	IsStudent        bool `json:"is_student"`
+	StudentMonths    int  `json:"student_months"`
+	DisabilityLevel  int  `json:"disability_level"`
+	DisabilityMonths int  `json:"disability_months"`
+	ZTPP             bool `json:"ztpp"`
+	ZTPPMonths       int  `json:"ztpp_months"`
 }
 
 type taxPersonalCreditsResponse struct {
@@ -103,7 +107,9 @@ type taxPersonalCreditsResponse struct {
 	IsStudent        bool   `json:"is_student"`
 	StudentMonths    int    `json:"student_months"`
 	DisabilityLevel  int    `json:"disability_level"`
+	DisabilityMonths int    `json:"disability_months"`
 	ZTPP             bool   `json:"ztpp"`
+	ZTPPMonths       int    `json:"ztpp_months"`
 	CreditStudent    int64  `json:"credit_student"`
 	CreditDisability int64  `json:"credit_disability"`
 	CreatedAt        string `json:"created_at"`
@@ -121,6 +127,7 @@ func spouseCreditFromDomain(sc *domain.TaxSpouseCredit) taxSpouseCreditResponse 
 		SpouseIncome:      int64(sc.SpouseIncome),
 		SpouseZTP:         sc.SpouseZTP,
 		MonthsClaimed:     sc.MonthsClaimed,
+		ChildUnder3Months: sc.ChildUnder3Months,
 		CreditAmount:      int64(sc.CreditAmount),
 		CreatedAt:         sc.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:         sc.UpdatedAt.Format(time.RFC3339),
@@ -148,7 +155,9 @@ func personalCreditsFromDomain(pc *domain.TaxPersonalCredits) taxPersonalCredits
 		IsStudent:        pc.IsStudent,
 		StudentMonths:    pc.StudentMonths,
 		DisabilityLevel:  pc.DisabilityLevel,
+		DisabilityMonths: pc.DisabilityMonths,
 		ZTPP:             pc.ZTPP,
+		ZTPPMonths:       pc.ZTPPMonths,
 		CreditStudent:    int64(pc.CreditStudent),
 		CreditDisability: int64(pc.CreditDisability),
 		CreatedAt:        pc.CreatedAt.Format(time.RFC3339),
@@ -256,6 +265,7 @@ func (h *TaxCreditsHandler) UpsertSpouse(w http.ResponseWriter, r *http.Request)
 		SpouseIncome:      domain.Amount(req.SpouseIncome),
 		SpouseZTP:         req.SpouseZTP,
 		MonthsClaimed:     req.MonthsClaimed,
+		ChildUnder3Months: req.ChildUnder3Months,
 	}
 
 	if err := h.svc.UpsertSpouse(r.Context(), sc); err != nil {
@@ -410,11 +420,13 @@ func (h *TaxCreditsHandler) UpsertPersonal(w http.ResponseWriter, r *http.Reques
 	}
 
 	pc := &domain.TaxPersonalCredits{
-		Year:            year,
-		IsStudent:       req.IsStudent,
-		StudentMonths:   req.StudentMonths,
-		DisabilityLevel: req.DisabilityLevel,
-		ZTPP:            req.ZTPP,
+		Year:             year,
+		IsStudent:        req.IsStudent,
+		StudentMonths:    req.StudentMonths,
+		DisabilityLevel:  req.DisabilityLevel,
+		DisabilityMonths: req.DisabilityMonths,
+		ZTPP:             req.ZTPP,
+		ZTPPMonths:       req.ZTPPMonths,
 	}
 
 	if err := h.svc.UpsertPersonal(r.Context(), pc); err != nil {

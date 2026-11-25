@@ -662,9 +662,11 @@ func TestIncomeTaxReturnService_Recalculate_DisabilityRowsSnapshot(t *testing.T)
 	ctx := context.Background()
 
 	if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-		Year:            2025,
-		DisabilityLevel: domain.DisabilityLevel1And2,
-		ZTPP:            true,
+		Year:             2025,
+		DisabilityLevel:  domain.DisabilityLevel1And2,
+		DisabilityMonths: 12,
+		ZTPP:             true,
+		ZTPPMonths:       12,
 	}); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
@@ -1120,9 +1122,11 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilityFiled(t *testing.T) 
 			seedFinancniUradCode(t, db)
 
 			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-				Year:            2025,
-				DisabilityLevel: tc.level,
-				ZTPP:            tc.ztpp,
+				Year:             2025,
+				DisabilityLevel:  tc.level,
+				DisabilityMonths: 12,
+				ZTPP:             tc.ztpp,
+				ZTPPMonths:       12,
 			}); err != nil {
 				t.Fatalf("UpsertPersonal() error: %v", err)
 			}
@@ -1170,9 +1174,11 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilitySettingsMismatch(t *
 			seedFinancniUradCode(t, db)
 
 			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-				Year:            2025,
-				DisabilityLevel: domain.DisabilityLevel1And2,
-				ZTPP:            true,
+				Year:             2025,
+				DisabilityLevel:  domain.DisabilityLevel1And2,
+				DisabilityMonths: 12,
+				ZTPP:             true,
+				ZTPPMonths:       12,
 			}); err != nil {
 				t.Fatalf("UpsertPersonal() error: %v", err)
 			}
@@ -1189,8 +1195,9 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilitySettingsMismatch(t *
 
 			// Replace the personal credits so the derived total no longer matches.
 			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-				Year:            2025,
-				DisabilityLevel: domain.DisabilityLevel3,
+				Year:             2025,
+				DisabilityLevel:  domain.DisabilityLevel3,
+				DisabilityMonths: 12,
 			}); err != nil {
 				t.Fatalf("UpsertPersonal() error: %v", err)
 			}

@@ -424,8 +424,9 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel1(t *testing.T) {
 	ctx := context.Background()
 
 	personal := &domain.TaxPersonalCredits{
-		Year:            2025,
-		DisabilityLevel: 1,
+		Year:             2025,
+		DisabilityLevel:  1,
+		DisabilityMonths: 12,
 	}
 	if err := svc.UpsertPersonal(ctx, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
@@ -447,8 +448,9 @@ func TestTaxCreditsService_ComputeCredits_DisabilityLevel2(t *testing.T) {
 	ctx := context.Background()
 
 	personal := &domain.TaxPersonalCredits{
-		Year:            2025,
-		DisabilityLevel: 2,
+		Year:             2025,
+		DisabilityLevel:  2,
+		DisabilityMonths: 12,
 	}
 	if err := svc.UpsertPersonal(ctx, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
@@ -475,7 +477,7 @@ func TestTaxCreditsService_ComputeCredits_ZTPPOnly(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
-	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{Year: 2025, ZTPP: true}); err != nil {
+	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{Year: 2025, ZTPP: true, ZTPPMonths: 12}); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
@@ -494,7 +496,7 @@ func TestTaxCreditsService_ComputeCredits_Level2WithZTPP(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
-	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel3, ZTPP: true}); err != nil {
+	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel3, DisabilityMonths: 12, ZTPP: true, ZTPPMonths: 12}); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
 
@@ -550,10 +552,11 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 
 	// Student + disability level 1.
 	personal := &domain.TaxPersonalCredits{
-		Year:            2025,
-		IsStudent:       true,
-		StudentMonths:   10,
-		DisabilityLevel: 1,
+		Year:             2025,
+		IsStudent:        true,
+		StudentMonths:    10,
+		DisabilityLevel:  1,
+		DisabilityMonths: 12,
 	}
 	if err := svc.UpsertPersonal(ctx, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
@@ -840,10 +843,11 @@ func TestTaxCreditsService_GetPersonal(t *testing.T) {
 	ctx := context.Background()
 
 	personal := &domain.TaxPersonalCredits{
-		Year:            2025,
-		IsStudent:       true,
-		StudentMonths:   10,
-		DisabilityLevel: 2,
+		Year:             2025,
+		IsStudent:        true,
+		StudentMonths:    10,
+		DisabilityLevel:  2,
+		DisabilityMonths: 12,
 	}
 	if err := svc.UpsertPersonal(ctx, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
@@ -1195,12 +1199,14 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	}
 
 	personal := &domain.TaxPersonalCredits{
-		Year:            2024,
-		IsStudent:       true,
-		StudentMonths:   6,
-		DisabilityLevel: 2,
-		ZTPP:            true,
-		CreditStudent:   domain.NewAmount(77777, 0),
+		Year:             2024,
+		IsStudent:        true,
+		StudentMonths:    6,
+		DisabilityLevel:  2,
+		DisabilityMonths: 12,
+		ZTPP:             true,
+		ZTPPMonths:       12,
+		CreditStudent:    domain.NewAmount(77777, 0),
 	}
 	if err := svc.UpsertPersonal(ctx, personal); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
@@ -1369,5 +1375,113 @@ func TestTaxCreditsService_CopyFromYear_EmptySource(t *testing.T) {
 	children, _ := svc.ListChildren(ctx, 2025)
 	if len(children) != 0 {
 		t.Errorf("expected 0 children, got %d", len(children))
+	}
+}
+
+// TestTaxCreditsService_ComputeCredits_SpouseWithoutChildUnder3ComputesZero covers a
+// spouse record stored before the child-under-3 months field existed: ChildUnder3Months
+// is 0, so for 2024+ (§ 35bb odst. 2) the credit must compute 0 until the months are
+// filled in. The record is written through the repository to bypass service validation.
+func TestTaxCreditsService_ComputeCredits_SpouseWithoutChildUnder3ComputesZero(t *testing.T) {
+	svc, db := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	if err := repository.NewTaxSpouseCreditRepository(db).Upsert(ctx, &domain.TaxSpouseCredit{
+		Year:          2025,
+		SpouseName:    "Jana",
+		SpouseIncome:  domain.NewAmount(50000, 0),
+		MonthsClaimed: 12,
+	}); err != nil {
+		t.Fatalf("repo Upsert() error: %v", err)
+	}
+
+	spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
+	if err != nil {
+		t.Fatalf("ComputeCredits() error: %v", err)
+	}
+	if spouseCredit != 0 {
+		t.Errorf("spouseCredit = %d, want 0 for a 2025 record without child-under-3 months", spouseCredit)
+	}
+}
+
+// TestTaxCreditsService_UpsertPersonal_DisabilityMonthsValidation checks the months
+// ranges: 1-12 required when the matching level or ZTP/P flag is set, 0-12 otherwise.
+func TestTaxCreditsService_UpsertPersonal_DisabilityMonthsValidation(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	for _, months := range []int{0, 13, -1} {
+		err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+			Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: months,
+		})
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("level set with disability months=%d: error = %v, want ErrInvalidInput", months, err)
+		}
+	}
+	for _, months := range []int{0, 13, -1} {
+		err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+			Year: 2025, ZTPP: true, ZTPPMonths: months,
+		})
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("ZTP/P set with ztpp months=%d: error = %v, want ErrInvalidInput", months, err)
+		}
+	}
+	// Valid: months set with the level/flag, and months ignored without them.
+	for _, pc := range []*domain.TaxPersonalCredits{
+		{Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 6},
+		{Year: 2025, ZTPP: true, ZTPPMonths: 9},
+		{Year: 2025, DisabilityMonths: 5, ZTPPMonths: 3},
+		{Year: 2024, DisabilityLevel: domain.DisabilityLevel3, DisabilityMonths: 12},
+	} {
+		if err := svc.UpsertPersonal(ctx, pc); err != nil {
+			t.Errorf("UpsertPersonal(%+v) unexpected error: %v", pc, err)
+		}
+	}
+}
+
+// TestTaxCreditsService_ComputeCredits_DisabilityProportionalMonths verifies that the
+// recalculation scales each disability credit by its months out of 12.
+func TestTaxCreditsService_ComputeCredits_DisabilityProportionalMonths(t *testing.T) {
+	cases := []struct {
+		name     string
+		personal *domain.TaxPersonalCredits
+		want12   domain.Amount
+		want3    domain.Amount
+		wantZTPP domain.Amount
+	}{
+		{
+			name:     "level 1/2 for 6 months",
+			personal: &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 6},
+			want12:   domain.NewAmount(1_260, 0),
+		},
+		{
+			name:     "level 3 for 3 months",
+			personal: &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel3, DisabilityMonths: 3},
+			want3:    domain.NewAmount(1_260, 0),
+		},
+		{
+			name:     "ZTP/P for 9 months",
+			personal: &domain.TaxPersonalCredits{Year: 2025, ZTPP: true, ZTPPMonths: 9},
+			wantZTPP: domain.NewAmount(12_105, 0),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := setupTaxCreditsSvc(t)
+			ctx := context.Background()
+
+			if err := svc.UpsertPersonal(ctx, tc.personal); err != nil {
+				t.Fatalf("UpsertPersonal() error: %v", err)
+			}
+			_, personal, err := svc.ComputeCredits(ctx, 2025)
+			if err != nil {
+				t.Fatalf("ComputeCredits() error: %v", err)
+			}
+			if personal.Disability12 != tc.want12 || personal.Disability3 != tc.want3 || personal.DisabilityZTPP != tc.wantZTPP {
+				t.Errorf("rows = %d/%d/%d, want %d/%d/%d",
+					personal.Disability12, personal.Disability3, personal.DisabilityZTPP,
+					tc.want12, tc.want3, tc.wantZTPP)
+			}
+		})
 	}
 }

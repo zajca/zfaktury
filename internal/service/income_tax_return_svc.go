@@ -439,6 +439,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 	// kc_dazvyhod = sum over m_deti* slots × per-order amounts.
 	var children []domain.TaxChildCredit
 	var spouse *domain.TaxSpouseCredit
+	var personal *domain.TaxPersonalCredits
 	if s.taxCreditsSvc != nil {
 		children, err = s.taxCreditsSvc.ListChildren(ctx, itr.Year)
 		if err != nil {
@@ -451,6 +452,14 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 				return nil, fmt.Errorf("fetching spouse credit for XML generation: %w", err)
 			}
 			spouse = nil
+		}
+		// The personal credits record supplies the months of the disability rows 66-68.
+		personal, err = s.taxCreditsSvc.GetPersonal(ctx, itr.Year)
+		if err != nil {
+			if !errors.Is(err, domain.ErrNotFound) {
+				return nil, fmt.Errorf("fetching personal credits for XML generation: %w", err)
+			}
+			personal = nil
 		}
 	}
 
@@ -495,7 +504,7 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		}
 	}
 
-	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children, spouse)
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(itr, settings, children, spouse, personal)
 	if err != nil {
 		return nil, fmt.Errorf("generating income_tax_return XML: %w", err)
 	}

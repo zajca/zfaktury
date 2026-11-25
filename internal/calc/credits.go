@@ -33,18 +33,19 @@ func (r PersonalCreditsResult) Disability() domain.Amount {
 // ComputePersonalCredits computes disability and student credits.
 // disabilityLevel is one of the domain.DisabilityLevel* constants; ztpp adds the
 // ZTP/P credit on top of the degree credit.
-// Student credit is proportional to studentMonths (out of 12).
-func ComputePersonalCredits(disabilityLevel int, ztpp bool, isStudent bool, studentMonths int, constants TaxYearConstants) PersonalCreditsResult {
+// Each disability credit is proportional to its months out of 12 (§ 35ba odst. 3),
+// the same pattern as the student credit.
+func ComputePersonalCredits(disabilityLevel int, disabilityMonths int, ztpp bool, ztppMonths int, isStudent bool, studentMonths int, constants TaxYearConstants) PersonalCreditsResult {
 	var res PersonalCreditsResult
 
 	switch disabilityLevel {
 	case domain.DisabilityLevel1And2:
-		res.Disability12 = constants.DisabilityCredit1
+		res.Disability12 = constants.DisabilityCredit1.Multiply(float64(disabilityMonths) / 12.0)
 	case domain.DisabilityLevel3:
-		res.Disability3 = constants.DisabilityCredit3
+		res.Disability3 = constants.DisabilityCredit3.Multiply(float64(disabilityMonths) / 12.0)
 	}
 	if ztpp {
-		res.DisabilityZTPP = constants.DisabilityZTPP
+		res.DisabilityZTPP = constants.DisabilityZTPP.Multiply(float64(ztppMonths) / 12.0)
 	}
 
 	if isStudent && studentMonths > 0 {

@@ -623,7 +623,7 @@ func TestTaxCredits_DeleteChild_InvalidID(t *testing.T) {
 func TestTaxCredits_UpsertPersonal(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
-	body := `{"is_student":true,"student_months":10,"disability_level":1}`
+	body := `{"is_student":true,"student_months":10,"disability_level":1,"disability_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -666,7 +666,7 @@ func TestTaxCredits_UpsertPersonal_Update(t *testing.T) {
 	}
 
 	// Update.
-	body = `{"is_student":false,"student_months":0,"disability_level":2}`
+	body = `{"is_student":false,"student_months":0,"disability_level":2,"disability_months":12}`
 	req = httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
@@ -732,7 +732,7 @@ func TestTaxCredits_UpsertPersonal_StudentMonthsOutOfRange(t *testing.T) {
 func TestTaxCredits_UpsertPersonal_ZTPPRoundTrip(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
-	body := `{"is_student":false,"student_months":0,"disability_level":2,"ztpp":true}`
+	body := `{"is_student":false,"student_months":0,"disability_level":2,"disability_months":12,"ztpp":true,"ztpp_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

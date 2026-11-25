@@ -251,6 +251,17 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 			remainingQty := sell.Quantity
 			var costBasis domain.Amount
 			allBuysExempt := true
+			// The crypto time-test exemption applies only from CryptoTimeTestFrom;
+			// crypto sales before that calendar date are never exempt.
+			if sell.AssetType == domain.AssetTypeCrypto {
+				covered, err := constants.CryptoTimeTestCovers(sell.TransactionDate)
+				if err != nil {
+					return fmt.Errorf("checking the crypto time-test cutoff for sell %d: %w", sell.ID, err)
+				}
+				if !covered {
+					allBuysExempt = false
+				}
+			}
 			timeTestCutoff := sell.TransactionDate.AddDate(-constants.TimeTestYears, 0, 0)
 
 			for _, buy := range buys {
@@ -316,7 +327,9 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 				exemptAmount = proportionalAmount(r.computedGain, limit, limitedIncome)
 			}
 		}
-		timeTestExempt := exemptAmount > 0
+		// The stored flag records that the sale passed the time test, also when
+		// it ends in a loss; such a loss contributes 0 to the § 10 base.
+		timeTestExempt := r.timeTestMet
 		if err := s.securityRepo.UpdateFIFOResults(ctx, r.sell.ID, r.costBasis, r.computedGain, exemptAmount, timeTestExempt); err != nil {
 			return fmt.Errorf("updating FIFO results for sell %d: %w", r.sell.ID, err)
 		}
@@ -370,6 +383,11 @@ func (s *InvestmentIncomeService) GetYearSummary(ctx context.Context, year int) 
 
 	var otherGross, otherExpenses, otherExempt domain.Amount
 	for _, sell := range sells {
+		// A time-test-exempt sale that ends in a loss contributes 0 to the § 10
+		// base: no income, no expense, no loss (§ 10 odst. 4).
+		if sell.TimeTestExempt && sell.ComputedGain <= 0 {
+			continue
+		}
 		otherGross += sell.TotalAmount - sell.Fees
 		otherExpenses += sell.CostBasis
 		otherExempt += sell.ExemptAmount

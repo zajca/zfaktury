@@ -77,10 +77,16 @@ func CalculateIncomeTax(input IncomeTaxInput) IncomeTaxResult {
 	// Step 5: Tax base = §6 + max(0, §7 + §8 + §10).
 	// §7 (business): TotalRevenue - UsedExpenses
 	// §8 (capital):  CapitalIncomeNet
-	// §10 (other):   OtherIncomeNet
+	// §10 (other):   OtherIncomeNet, floored at 0 — § 10 odst. 4 sentence 3
+	// ("k rozdílu se nepřihlíží") means a negative § 10 total never lowers the
+	// other parts of the tax base.
 	// XSD rule for DPFO ř.42 ("Pokud je ř.41 záporný, uveďte pouze hodnotu z
 	// ř.36"): if úhrn §7+§8+§10 is negative, drop it and use just §6.
-	otherSectionsBase := input.TotalRevenue - result.UsedExpenses + input.CapitalIncomeNet + input.OtherIncomeNet
+	section10Base := input.OtherIncomeNet
+	if section10Base < 0 {
+		section10Base = 0
+	}
+	otherSectionsBase := input.TotalRevenue - result.UsedExpenses + input.CapitalIncomeNet + section10Base
 	if otherSectionsBase < 0 {
 		otherSectionsBase = 0
 	}

@@ -199,6 +199,12 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.OtherIncomeExpenses = summary.OtherIncomeExpenses
 		itr.OtherIncomeExempt = summary.OtherIncomeExempt
 		itr.OtherIncomeNet = summary.OtherIncomeNet
+		// § 10 odst. 4 sentence 3: a negative § 10 total never lowers the other
+		// parts of the tax base. Store the floored value so the persisted return
+		// and XML ř.40 carry the same value calc uses for the tax base.
+		if itr.OtherIncomeNet < 0 {
+			itr.OtherIncomeNet = 0
+		}
 	}
 
 	// Step 4c: §6 employment income aggregation (RFC-016).

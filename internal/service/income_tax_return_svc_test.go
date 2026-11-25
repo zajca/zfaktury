@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/annualtaxxml"
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
@@ -1288,5 +1290,116 @@ func TestIncomeTaxReturnService_GenerateXML_ChildrenUnchanged(t *testing.T) {
 	}
 	if !strings.Contains(string(got.XMLData), `m_deti="12"`) {
 		t.Errorf("XML missing m_deti slot:\n%s", got.XMLData)
+	}
+}
+
+// § 10 odst. 4 sentence 3 ("k rozdílu se nepřihlíží"): a year whose taxable § 10
+// sales net to a loss gets 0 from § 10 into the tax base — the business base is
+// not reduced — and the stored return (hence XML ř.40) carries the floored 0.
+func TestIncomeTaxReturnService_Recalculate_Section10LossFloored(t *testing.T) {
+	svc, db := setupIncomeTaxSvc(t)
+	ctx := context.Background()
+
+	// Wire the investment income service on the same DB.
+	invSvc := NewInvestmentIncomeService(
+		repository.NewCapitalIncomeRepository(db),
+		repository.NewSecurityTransactionRepository(db),
+		nil,
+	)
+	svc.SetInvestmentService(invSvc)
+
+	// Business revenue: one sent invoice of 1 000 000 CZK in 2025.
+	contact := testutil.SeedContact(t, db, nil)
+	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO invoices (
+			invoice_number, type, status,
+			issue_date, due_date, delivery_date, variable_symbol, constant_symbol,
+			customer_id, currency_code, exchange_rate,
+			payment_method, bank_account, bank_code, iban, swift,
+			subtotal_amount, vat_amount, total_amount, paid_amount,
+			notes, internal_notes,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"FV20259999", domain.InvoiceTypeRegular, domain.InvoiceStatusSent,
+		jan15.Format("2006-01-02"), jan15.AddDate(0, 0, 14).Format("2006-01-02"), jan15.Format("2006-01-02"),
+		"", "", contact.ID, "CZK", 100,
+		"bank_transfer", "", "", "", "",
+		domain.NewAmount(1_000_000, 0), 0, domain.NewAmount(1_000_000, 0), 0,
+		"", "",
+		now.Format(time.RFC3339), now.Format(time.RFC3339),
+	)
+	if err != nil {
+		t.Fatalf("inserting invoice: %v", err)
+	}
+
+	// Taxable § 10 loss (held < 3 years): buy 2024-06-01 for 100 000 halere,
+	// sell 2025-06-01 for 50 000 halere -> net -50 000 halere.
+	buy := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "LOSS",
+		TransactionType: domain.TransactionTypeBuy,
+		TransactionDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     100000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "LOSS",
+		TransactionType: domain.TransactionTypeSell,
+		TransactionDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     50000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+	if err := invSvc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// The stored § 10 net is floored at 0.
+	if result.OtherIncomeNet != 0 {
+		t.Errorf("OtherIncomeNet = %d, want 0 (floored at 0)", result.OtherIncomeNet)
+	}
+	// The business base is not reduced by the § 10 loss.
+	wantBase := domain.NewAmount(1_000_000, 0)
+	if result.TaxBase != wantBase {
+		t.Errorf("TaxBase = %d, want %d (business base alone)", result.TaxBase, wantBase)
+	}
+
+	// XML ř.40 carries the same floored value (kc_zd10 is omitted at 0 and
+	// must never be negative).
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(result, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ1234567890",
+		"c_okec":             "62109",
+	}, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	if bytes.Contains(xmlData, []byte(`kc_zd10="-`)) {
+		t.Errorf("XML must not carry a negative kc_zd10 (ř.40):\n%s", xmlData)
 	}
 }

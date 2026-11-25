@@ -496,3 +496,30 @@ func TestTaxDue_BonusUnderpayClaimsRest(t *testing.T) {
 		t.Errorf("TaxDue = %d, want %d (%s CZK)", result.TaxDue, wantDue, wantDue)
 	}
 }
+
+// § 10 odst. 4 sentence 3 ("k rozdílu se nepřihlíží"): a negative § 10 total
+// never lowers the other parts of the tax base, so the § 10 contribution is
+// floored at 0 where it enters otherSectionsBase.
+func TestCalculateIncomeTax_Section10LossFlooredAtZero(t *testing.T) {
+	c := constants2025()
+	input := IncomeTaxInput{
+		TotalRevenue:    domain.NewAmount(1_000_000, 0),
+		ActualExpenses:  0,
+		FlatRatePercent: 0,
+		Constants:       c,
+		OtherIncomeNet:  domain.NewAmount(-50_000, 0),
+	}
+	result := CalculateIncomeTax(input)
+	wantBase := domain.NewAmount(1_000_000, 0) // the business base stands alone
+	if result.TaxBase != wantBase {
+		t.Errorf("TaxBase = %d, want %d (%s CZK)", result.TaxBase, wantBase, wantBase)
+	}
+
+	// A positive § 10 total still enters the base unchanged.
+	input.OtherIncomeNet = domain.NewAmount(50_000, 0)
+	result = CalculateIncomeTax(input)
+	wantBase = domain.NewAmount(1_050_000, 0)
+	if result.TaxBase != wantBase {
+		t.Errorf("TaxBase with positive §10 = %d, want %d (%s CZK)", result.TaxBase, wantBase, wantBase)
+	}
+}

@@ -574,7 +574,59 @@ func TestVIES_Recalculate_CreditNoteReducesAmount(t *testing.T) {
 		domain.InvoiceStatusSent, domain.InvoiceTypeRegular, regularItems,
 	)
 
-	// Credit note: subtotal = 100*100000/100 = 100000 (reduces by this amount)
+	// Credit note: items store a negated unit price, so subtotal = -100000
+	// and it reduces the partner total by 100000.
+	creditItems := []domain.InvoiceItem{
+		{Description: "Correction", Quantity: 100, Unit: "ks", UnitPrice: -100000, VATRatePercent: 0},
+	}
+	seedInvoiceWithDates(t, db, euContact.ID,
+		time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		domain.InvoiceStatusSent, domain.InvoiceTypeCreditNote, creditItems,
+	)
+
+	if err := svc.Recalculate(ctx, vs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	lines, err := svc.GetLines(ctx, vs.ID)
+	if err != nil {
+		t.Fatalf("GetLines() error: %v", err)
+	}
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line, got %d", len(lines))
+	}
+	// 500000 - 100000 = 400000
+	if lines[0].TotalAmount != 400000 {
+		t.Errorf("TotalAmount = %d, want 400000", lines[0].TotalAmount)
+	}
+}
+
+func TestVIES_Recalculate_PositiveCreditNoteReducesAmount(t *testing.T) {
+	svc, db := newVIESSvc(t)
+	ctx := context.Background()
+
+	euContact := testutil.SeedContact(t, db, &domain.Contact{
+		Name: "German GmbH", DIC: "DE999999998", Country: "DE",
+	})
+
+	vs := validVIESSummary()
+	if err := svc.Create(ctx, vs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// Regular invoice: subtotal = 100*500000/100 = 500000
+	regularItems := []domain.InvoiceItem{
+		{Description: "Main service", Quantity: 100, Unit: "ks", UnitPrice: 500000, VATRatePercent: 0},
+	}
+	seedInvoiceWithDates(t, db, euContact.ID,
+		time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+		domain.InvoiceStatusSent, domain.InvoiceTypeRegular, regularItems,
+	)
+
+	// Imported credit note with a positive stored amount must reduce the total
+	// by its absolute value (subtotal = +100000).
 	creditItems := []domain.InvoiceItem{
 		{Description: "Correction", Quantity: 100, Unit: "ks", UnitPrice: 100000, VATRatePercent: 0},
 	}
@@ -798,6 +850,9 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 	}
 
 	// Regular invoice + credit note of the same amount = zero net.
+	creditItems := []domain.InvoiceItem{
+		{Description: "Service", Quantity: 100, Unit: "ks", UnitPrice: -100000, VATRatePercent: 0},
+	}
 	seedInvoiceWithDates(t, db, euContact.ID,
 		time.Date(2025, 1, 10, 0, 0, 0, 0, time.UTC),
 		time.Date(2025, 1, 10, 0, 0, 0, 0, time.UTC),
@@ -806,7 +861,7 @@ func TestVIES_Recalculate_ZeroAmountPartnerSkipped(t *testing.T) {
 	seedInvoiceWithDates(t, db, euContact.ID,
 		time.Date(2025, 1, 20, 0, 0, 0, 0, time.UTC),
 		time.Date(2025, 1, 20, 0, 0, 0, 0, time.UTC),
-		domain.InvoiceStatusSent, domain.InvoiceTypeCreditNote, items,
+		domain.InvoiceStatusSent, domain.InvoiceTypeCreditNote, creditItems,
 	)
 
 	if err := svc.Recalculate(ctx, vs.ID); err != nil {

@@ -67,12 +67,21 @@ func TestCalculateAnnualTotals(t *testing.T) {
 			wantExpenseIDs: nil,
 		},
 		{
-			name: "credit note subtracted from revenue",
+			name: "credit note with negative stored amount subtracted from revenue",
 			invoices: []InvoiceForBase{
-				{ID: 5, Type: domain.InvoiceTypeCreditNote, Status: domain.InvoiceStatusSent, IssueDate: inYear, SubtotalAmount: domain.NewAmount(3000, 0)},
+				{ID: 5, Type: domain.InvoiceTypeCreditNote, Status: domain.InvoiceStatusSent, IssueDate: inYear, SubtotalAmount: -domain.NewAmount(3000, 0)},
 			},
 			wantRevenue:    -domain.NewAmount(3000, 0),
 			wantInvoiceIDs: []int64{5},
+			wantExpenseIDs: nil,
+		},
+		{
+			name: "credit note with positive stored amount still reduces revenue",
+			invoices: []InvoiceForBase{
+				{ID: 8, Type: domain.InvoiceTypeCreditNote, Status: domain.InvoiceStatusSent, IssueDate: inYear, SubtotalAmount: domain.NewAmount(3000, 0)},
+			},
+			wantRevenue:    -domain.NewAmount(3000, 0),
+			wantInvoiceIDs: []int64{8},
 			wantExpenseIDs: nil,
 		},
 		{
@@ -157,7 +166,7 @@ func TestCalculateAnnualTotals(t *testing.T) {
 			invoices: []InvoiceForBase{
 				{ID: 100, Type: domain.InvoiceTypeRegular, Status: domain.InvoiceStatusPaid, IssueDate: inYear, SubtotalAmount: domain.NewAmount(20000, 0)},
 				{ID: 101, Type: domain.InvoiceTypeProforma, Status: domain.InvoiceStatusPaid, IssueDate: inYear, SubtotalAmount: domain.NewAmount(5000, 0)},
-				{ID: 102, Type: domain.InvoiceTypeCreditNote, Status: domain.InvoiceStatusSent, IssueDate: inYear, SubtotalAmount: domain.NewAmount(2000, 0)},
+				{ID: 102, Type: domain.InvoiceTypeCreditNote, Status: domain.InvoiceStatusSent, IssueDate: inYear, SubtotalAmount: -domain.NewAmount(2000, 0)},
 				{ID: 103, Type: domain.InvoiceTypeRegular, Status: domain.InvoiceStatusDraft, IssueDate: inYear, SubtotalAmount: domain.NewAmount(3000, 0)},
 				{ID: 104, Type: domain.InvoiceTypeRegular, Status: domain.InvoiceStatusSent, DeliveryDate: outOfYear, IssueDate: inYear, SubtotalAmount: domain.NewAmount(4000, 0)},
 			},

@@ -1411,6 +1411,395 @@ func TestIncomeTaxReturnService_Recalculate_Section10LossFloored(t *testing.T) {
 	}
 }
 
+// Příloha č. 2 declares only taxable § 10 income (§ 4 ZDP — exempt income is
+// not declared), so the stored return must carry the taxable-only § 10
+// gross/expenses and the XML's uhrn_rozdil10 must equal ř.40 (kc_zd10).
+// Scenario: an exempt sale (proceeds 600 CZK, cost 100 CZK, exempt 500 CZK)
+// plus a taxable sale (proceeds 400 CZK, cost 300 CZK) -> ř.40 = 100 CZK and
+// Příloha 2 reports 400 / 300 / 100, not 1000 / 400 / 600.
+func TestIncomeTaxReturnService_Recalculate_Section10StoresTaxableOnly(t *testing.T) {
+	svc, db := setupIncomeTaxSvc(t)
+	ctx := context.Background()
+
+	invSvc := NewInvestmentIncomeService(
+		repository.NewCapitalIncomeRepository(db),
+		repository.NewSecurityTransactionRepository(db),
+		nil,
+	)
+	svc.SetInvestmentService(invSvc)
+
+	// Time-test-exempt sale with a gain: bought 2015-01-01 for 100 CZK,
+	// sold 2025-06-01 for 600 CZK -> gain 500 CZK, fully exempt.
+	buyOld := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "OLD",
+		TransactionType: domain.TransactionTypeBuy,
+		TransactionDate: time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     10000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, buyOld); err != nil {
+		t.Fatalf("Create buyOld: %v", err)
+	}
+	sellOld := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "OLD",
+		TransactionType: domain.TransactionTypeSell,
+		TransactionDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     60000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, sellOld); err != nil {
+		t.Fatalf("Create sellOld: %v", err)
+	}
+
+	// Taxable sale: bought 2024-06-01 for 300 CZK, sold 2025-06-02 for 400 CZK.
+	buyNew := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "NEW",
+		TransactionType: domain.TransactionTypeBuy,
+		TransactionDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     30000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, buyNew); err != nil {
+		t.Fatalf("Create buyNew: %v", err)
+	}
+	sellNew := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "NEW",
+		TransactionType: domain.TransactionTypeSell,
+		TransactionDate: time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     40000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, sellNew); err != nil {
+		t.Fatalf("Create sellNew: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	// The stored return carries the taxable-only § 10 pair; the exempt sale's
+	// proceeds and costs stay out of it.
+	if result.OtherIncomeGross != 40000 {
+		t.Errorf("OtherIncomeGross = %d, want 40000 (taxable sale only)", result.OtherIncomeGross)
+	}
+	if result.OtherIncomeExpenses != 30000 {
+		t.Errorf("OtherIncomeExpenses = %d, want 30000 (taxable sale only)", result.OtherIncomeExpenses)
+	}
+	if result.OtherIncomeExempt != 50000 {
+		t.Errorf("OtherIncomeExempt = %d, want 50000", result.OtherIncomeExempt)
+	}
+	if result.OtherIncomeNet != 10000 {
+		t.Errorf("OtherIncomeNet = %d, want 10000", result.OtherIncomeNet)
+	}
+
+	// Příloha č. 2 in the XML repeats the taxable pair, and uhrn_rozdil10
+	// equals ř.40 (kc_zd10).
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(result, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ1234567890",
+		"c_okec":             "62109",
+	}, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_zd10="100"`,
+		`kc_prij10="400"`,
+		`kc_vyd10="300"`,
+		`kc_zd10p="100"`,
+		`uhrn_prijmy10="400"`,
+		`uhrn_vydaje10="300"`,
+		`uhrn_rozdil10="100"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
+}
+
+// Review finding M1: the stored § 10 values must come from ONE rounding so that
+// ř.40 (kc_zd10) and Příloha č. 2's uhrn_rozdil10 always agree. The taxable gross
+// and expenses are truncated to whole CZK when stored, and the net is computed
+// from those truncated values. A taxable sale with proceeds 100.60 CZK and cost
+// 50.70 CZK therefore gives gross 100 / expenses 50 / net 50 CZK on both rows
+// (rounding the halere-level net 49.90 CZK separately would put 49 on ř.40).
+func TestIncomeTaxReturnService_Recalculate_Section10SingleRounding(t *testing.T) {
+	tests := []struct {
+		name         string
+		proceeds     domain.Amount // halere
+		cost         domain.Amount // halere
+		wantContains []string
+		wantAbsent   []string
+	}{
+		{
+			name:     "fractional proceeds 100.60 and cost 50.70 CZK truncate to 100/50/50",
+			proceeds: 10060,
+			cost:     5070,
+			wantContains: []string{
+				`kc_zd10="50"`, `kc_prij10="100"`, `kc_vyd10="50"`, `kc_zd10p="50"`, `uhrn_rozdil10="50"`,
+			},
+		},
+		{
+			name:     "near-zero gain 100.00/99.50 CZK agrees between row 40 and the annex",
+			proceeds: 10000,
+			cost:     9950,
+			wantContains: []string{
+				`kc_zd10="1"`, `kc_prij10="100"`, `kc_vyd10="99"`, `uhrn_rozdil10="1"`,
+			},
+		},
+		{
+			name:     "near-zero loss 100.00/100.50 CZK floors row 40 and the annex at 0",
+			proceeds: 10000,
+			cost:     10050,
+			wantContains: []string{
+				`kc_prij10="100"`, `kc_vyd10="100"`, `uhrn_rozdil10="0"`,
+			},
+			wantAbsent: []string{`kc_zd10=`},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, db := setupIncomeTaxSvc(t)
+			ctx := context.Background()
+
+			invSvc := NewInvestmentIncomeService(
+				repository.NewCapitalIncomeRepository(db),
+				repository.NewSecurityTransactionRepository(db),
+				nil,
+			)
+			svc.SetInvestmentService(invSvc)
+
+			// Taxable sale (held < 3 years): buy 2024-06-01, sell 2025-06-01.
+			buy := &domain.SecurityTransaction{
+				Year:            2025,
+				AssetType:       domain.AssetTypeStock,
+				AssetName:       "FRAC",
+				TransactionType: domain.TransactionTypeBuy,
+				TransactionDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+				Quantity:        100,
+				TotalAmount:     tt.cost,
+				CurrencyCode:    "CZK",
+			}
+			if err := invSvc.CreateSecurityTransaction(ctx, buy); err != nil {
+				t.Fatalf("Create buy: %v", err)
+			}
+			sell := &domain.SecurityTransaction{
+				Year:            2025,
+				AssetType:       domain.AssetTypeStock,
+				AssetName:       "FRAC",
+				TransactionType: domain.TransactionTypeSell,
+				TransactionDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC),
+				Quantity:        100,
+				TotalAmount:     tt.proceeds,
+				CurrencyCode:    "CZK",
+			}
+			if err := invSvc.CreateSecurityTransaction(ctx, sell); err != nil {
+				t.Fatalf("Create sell: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{
+				Year:       2025,
+				FilingType: domain.FilingTypeRegular,
+			}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			result, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+
+			xmlData, err := annualtaxxml.GenerateIncomeTaxXML(result, map[string]string{
+				"financni_urad_code": "451",
+				"dic":                "CZ1234567890",
+				"c_okec":             "62109",
+			}, nil, nil, nil)
+			if err != nil {
+				t.Fatalf("GenerateIncomeTaxXML: %v", err)
+			}
+			for _, want := range tt.wantContains {
+				if !bytes.Contains(xmlData, []byte(want)) {
+					t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if bytes.Contains(xmlData, []byte(absent)) {
+					t.Errorf("expected XML NOT to contain %q, got:\n%s", absent, string(xmlData))
+				}
+			}
+		})
+	}
+}
+
+// An exempt-only year (time-test sale with a gain) declares nothing in § 10:
+// after Recalculate the stored taxable gross/expenses/net are 0, so neither
+// ř.40 (kc_zd10) nor Příloha č. 2 (VetaV, priloha2) may appear in the XML.
+func TestIncomeTaxReturnService_Recalculate_Section10ExemptOnlyYearOmitsPriloha2(t *testing.T) {
+	svc, db := setupIncomeTaxSvc(t)
+	ctx := context.Background()
+
+	invSvc := NewInvestmentIncomeService(
+		repository.NewCapitalIncomeRepository(db),
+		repository.NewSecurityTransactionRepository(db),
+		nil,
+	)
+	svc.SetInvestmentService(invSvc)
+
+	// Time-test-exempt sale: bought 2015-01-01 for 100 CZK, sold 2025-06-01 for 600 CZK.
+	buy := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "OLD",
+		TransactionType: domain.TransactionTypeBuy,
+		TransactionDate: time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     10000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "OLD",
+		TransactionType: domain.TransactionTypeSell,
+		TransactionDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     60000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if result.OtherIncomeGross != 0 || result.OtherIncomeExpenses != 0 || result.OtherIncomeNet != 0 {
+		t.Errorf("stored §10 = %d/%d/%d, want 0/0/0 for an exempt-only year",
+			result.OtherIncomeGross, result.OtherIncomeExpenses, result.OtherIncomeNet)
+	}
+
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(result, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ1234567890",
+		"c_okec":             "62109",
+	}, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, absent := range []string{`kc_zd10=`, `<VetaV`, `priloha2=`} {
+		if bytes.Contains(xmlData, []byte(absent)) {
+			t.Errorf("expected XML NOT to contain %q for an exempt-only § 10 year, got:\n%s", absent, string(xmlData))
+		}
+	}
+}
+
+// A net-loss § 10 year through Recalculate + XML: the stored net is floored at 0
+// (ř.40 omitted) and Příloha č. 2 caps expenses at gross, so uhrn_rozdil10 is 0 —
+// both rows agree.
+func TestIncomeTaxReturnService_Recalculate_Section10LossYearAnnexAgrees(t *testing.T) {
+	svc, db := setupIncomeTaxSvc(t)
+	ctx := context.Background()
+
+	invSvc := NewInvestmentIncomeService(
+		repository.NewCapitalIncomeRepository(db),
+		repository.NewSecurityTransactionRepository(db),
+		nil,
+	)
+	svc.SetInvestmentService(invSvc)
+
+	// Taxable sale with a loss: bought 2024-06-01 for 300 CZK, sold 2025-06-01 for 100 CZK.
+	buy := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "LOSS",
+		TransactionType: domain.TransactionTypeBuy,
+		TransactionDate: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     30000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, buy); err != nil {
+		t.Fatalf("Create buy: %v", err)
+	}
+	sell := &domain.SecurityTransaction{
+		Year:            2025,
+		AssetType:       domain.AssetTypeStock,
+		AssetName:       "LOSS",
+		TransactionType: domain.TransactionTypeSell,
+		TransactionDate: time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC),
+		Quantity:        100,
+		TotalAmount:     10000,
+		CurrencyCode:    "CZK",
+	}
+	if err := invSvc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{
+		Year:       2025,
+		FilingType: domain.FilingTypeRegular,
+	}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if result.OtherIncomeNet != 0 {
+		t.Errorf("OtherIncomeNet = %d, want 0 (floored)", result.OtherIncomeNet)
+	}
+
+	xmlData, err := annualtaxxml.GenerateIncomeTaxXML(result, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ1234567890",
+		"c_okec":             "62109",
+	}, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{`kc_prij10="100"`, `kc_vyd10="100"`, `uhrn_rozdil10="0"`} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
+	if bytes.Contains(xmlData, []byte(`kc_zd10=`)) {
+		t.Errorf("kc_zd10 (ř.40) must be omitted at 0, got:\n%s", string(xmlData))
+	}
+}
+
 // Recalculate must recompute FIFO before reading the year summary: results
 // stored by an older build keep the old exemptions (e.g. a crypto sale before
 // 15 Feb 2025 stored as time-test exempt) until the user presses
@@ -1538,11 +1927,11 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			// a spouse mismatch names the child-under-3 field to fill in
-			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+			// a spouse mismatch not caused by missing child-under-3 months gets the general message
+			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
 		},
 		{
-			name:   "filed spouse child months changed",
+			name:   "filed spouse months changed",
 			status: domain.FilingStatusFiled,
 			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
 				if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
@@ -1552,7 +1941,7 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+			wantMessage: "přiznání nelze bez obnovení nastavení znovu vygenerovat",
 		},
 	}
 	for _, tc := range cases {
@@ -1926,5 +2315,79 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged(t *testing.T) {
 	}
 	if !strings.Contains(xml, `m_cinvduch="6"`) {
 		t.Errorf("XML missing m_cinvduch=\"6\":\n%s", xml)
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_DraftSpouseCreditMismatch pins both branches of
+// the draft spouse guard: when the mismatch is caused by child-under-3 months below the
+// claimed months (2024+), the refusal names that field; otherwise it uses the general
+// recalculate message. The mutated spouse record is written through the repository
+// because UpsertSpouse refuses MonthsClaimed > ChildUnder3Months.
+func TestIncomeTaxReturnService_GenerateXML_DraftSpouseChildMonthsMissing(t *testing.T) {
+	cases := []struct {
+		name        string
+		mutate      func(t *testing.T, spouse *domain.TaxSpouseCredit)
+		wantMessage string
+	}{
+		{
+			name: "child months below claimed months names the field",
+			mutate: func(t *testing.T, spouse *domain.TaxSpouseCredit) {
+				spouse.ChildUnder3Months = 6
+			},
+			wantMessage: "vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání",
+		},
+		{
+			name: "other mismatch gets the general recalculate message",
+			mutate: func(t *testing.T, spouse *domain.TaxSpouseCredit) {
+				// Income at/above the limit zeroes the fresh credit while the child
+				// months still cover the claimed months.
+				spouse.SpouseIncome = domain.NewAmount(68_000, 0)
+			},
+			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+			ctx := context.Background()
+			seedFinancniUradCode(t, db)
+
+			if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+				Year: 2025, SpouseName: "Jana", SpouseBirthNumber: "8555012345",
+				SpouseIncome: domain.NewAmount(50_000, 0), MonthsClaimed: 12, ChildUnder3Months: 12,
+			}); err != nil {
+				t.Fatalf("UpsertSpouse() error: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			recalc, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			if recalc.CreditSpouse <= 0 {
+				t.Fatalf("CreditSpouse = %d, want > 0", recalc.CreditSpouse)
+			}
+
+			spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+			spouse, err := spouseRepo.GetByYear(ctx, 2025)
+			if err != nil {
+				t.Fatalf("GetByYear(spouse) error: %v", err)
+			}
+			tc.mutate(t, spouse)
+			if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+				t.Fatalf("repo Upsert(spouse) error: %v", err)
+			}
+
+			_, err = svc.GenerateXML(ctx, itr.ID)
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			if !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Errorf("GenerateXML() error = %v, want message containing %q", err, tc.wantMessage)
+			}
+		})
 	}
 }

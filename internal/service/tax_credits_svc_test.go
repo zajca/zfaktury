@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/calc"
@@ -1553,6 +1554,9 @@ func TestTaxCreditsService_UpsertSpouse_ChildUnder3Validation(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("2025 months 12 > child 6: error = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "počet měsíců s dítětem do 3 let ve společné domácnosti") {
+		t.Errorf("2025 months 12 > child 6: error = %v, want the Czech child-months message", err)
 	}
 	// Child months range.
 	for _, months := range []int{-1, 13} {

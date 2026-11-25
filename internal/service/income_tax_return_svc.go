@@ -202,13 +202,20 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.CapitalIncomeGross = summary.CapitalIncomeGross
 		itr.CapitalIncomeTax = summary.CapitalIncomeTax
 		itr.CapitalIncomeNet = summary.CapitalIncomeNet
-		itr.OtherIncomeGross = summary.OtherIncomeGross
-		itr.OtherIncomeExpenses = summary.OtherIncomeExpenses
+		// § 10 gross/expenses stored on the return are the taxable-only pair
+		// (exempt income is not declared, § 4 ZDP), truncated to whole CZK.
+		// Příloha č. 2 rows and ř.40 are whole CZK and must agree, so the
+		// stored § 10 values come from this one rounding instead of letting
+		// the XML generator round the halere-level net separately. The
+		// investments page keeps the full totals from the year summary.
+		itr.OtherIncomeGross = truncateToWholeCZK(summary.OtherIncomeTaxableGross)
+		itr.OtherIncomeExpenses = truncateToWholeCZK(summary.OtherIncomeTaxableExpenses)
 		itr.OtherIncomeExempt = summary.OtherIncomeExempt
-		itr.OtherIncomeNet = summary.OtherIncomeNet
 		// § 10 odst. 4 sentence 3: a negative § 10 total never lowers the other
-		// parts of the tax base. Store the floored value so the persisted return
-		// and XML ř.40 carry the same value calc uses for the tax base.
+		// parts of the tax base. The net is computed from the truncated pair and
+		// floored at 0, so the persisted return and XML ř.40 carry the same value
+		// calc uses for the tax base.
+		itr.OtherIncomeNet = itr.OtherIncomeGross - itr.OtherIncomeExpenses
 		if itr.OtherIncomeNet < 0 {
 			itr.OtherIncomeNet = 0
 		}
@@ -417,6 +424,12 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	return itr, nil
 }
 
+// truncateToWholeCZK drops the haléře (the same truncation the XML generator's
+// ToWholeCZK applies) and returns the amount in whole-CZK multiples.
+func truncateToWholeCZK(a domain.Amount) domain.Amount {
+	return domain.Amount(int64(a) / 100 * 100)
+}
+
 // GenerateXML generates the DPFO XML for an income tax return.
 func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*domain.IncomeTaxReturn, error) {
 	if id == 0 {
@@ -518,12 +531,21 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		// computation from the current credit records, otherwise the XML rows
 		// 65-68 would not back the stored totals.
 		if spouseCredit != itr.CreditSpouse {
-			// A spouse record stored before migration 045 has child_under3_months = 0,
-			// so the message names the field the owner has to fill in.
+			// The child-months wording applies only when the mismatch is caused by a
+			// spouse record whose claimed months exceed the child-under-3 months
+			// (possible for records stored before migration 045); other causes get
+			// the general filed / recalculate messages.
+			childMonthsCause := spouse != nil && itr.Year >= 2024 && spouse.ChildUnder3Months < spouse.MonthsClaimed
 			if itr.Status == domain.FilingStatusFiled {
-				return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+				if childMonthsCause {
+					return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+				}
+				return nil, fmt.Errorf("uložená sleva na manžela/ku neodpovídá aktuálnímu nastavení slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
 			}
-			return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání: %w", domain.ErrInvalidInput)
+			if childMonthsCause {
+				return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání: %w", domain.ErrInvalidInput)
 		}
 		if personalResult.Disability12 != itr.CreditDisability12 ||
 			personalResult.Disability3 != itr.CreditDisability3 ||

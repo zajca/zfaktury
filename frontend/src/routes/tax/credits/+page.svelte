@@ -39,13 +39,16 @@
 	let spouseIncome = $state(0);
 	let spouseZtp = $state(false);
 	let spouseMonths = $state(12);
+	let spouseChildUnder3Months = $state(12);
 	let showSpouseForm = $state(false);
 
 	// Personal form
 	let isStudent = $state(false);
 	let studentMonths = $state(12);
 	let disabilityLevel = $state(0);
+	let disabilityMonths = $state(12);
 	let ztpp = $state(false);
+	let ztppMonths = $state(12);
 
 	// Child form
 	let showChildForm = $state(false);
@@ -91,6 +94,7 @@
 				spouseIncome = fromHalere(summary.spouse.spouse_income);
 				spouseZtp = summary.spouse.spouse_ztp;
 				spouseMonths = summary.spouse.months_claimed;
+				spouseChildUnder3Months = summary.spouse.child_under3_months;
 				showSpouseForm = true;
 			} else {
 				resetSpouseForm();
@@ -99,12 +103,16 @@
 				isStudent = summary.personal.is_student;
 				studentMonths = summary.personal.student_months;
 				disabilityLevel = summary.personal.disability_level;
+				disabilityMonths = summary.personal.disability_months;
 				ztpp = summary.personal.ztpp;
+				ztppMonths = summary.personal.ztpp_months;
 			} else {
 				isStudent = false;
 				studentMonths = 12;
 				disabilityLevel = 0;
+				disabilityMonths = 12;
 				ztpp = false;
+				ztppMonths = 12;
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Nepodařilo se načíst data';
@@ -119,6 +127,7 @@
 		spouseIncome = 0;
 		spouseZtp = false;
 		spouseMonths = 12;
+		spouseChildUnder3Months = 12;
 		showSpouseForm = false;
 	}
 
@@ -150,7 +159,8 @@
 				spouse_birth_number: spouseBirthNumber,
 				spouse_income: toHalere(spouseIncome),
 				spouse_ztp: spouseZtp,
-				months_claimed: spouseMonths
+				months_claimed: spouseMonths,
+				child_under3_months: spouseChildUnder3Months
 			});
 			await loadData();
 		} catch (e) {
@@ -180,7 +190,9 @@
 				is_student: isStudent,
 				student_months: isStudent ? studentMonths : 0,
 				disability_level: disabilityLevel,
-				ztpp
+				disability_months: disabilityLevel !== 0 ? disabilityMonths : 0,
+				ztpp,
+				ztpp_months: ztpp ? ztppMonths : 0
 			});
 			await loadData();
 		} catch (e) {
@@ -494,7 +506,9 @@
 				bind:isStudent
 				bind:studentMonths
 				bind:disabilityLevel
+				bind:disabilityMonths
 				bind:ztpp
+				bind:ztppMonths
 				{summary}
 				{taxConstants}
 				{saving}
@@ -507,6 +521,7 @@
 				bind:spouseIncome
 				bind:spouseZtp
 				bind:spouseMonths
+				bind:spouseChildUnder3Months
 				bind:showSpouseForm
 				{summary}
 				{taxConstants}

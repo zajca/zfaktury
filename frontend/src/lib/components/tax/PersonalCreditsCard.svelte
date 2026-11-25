@@ -10,7 +10,9 @@
 		isStudent = $bindable(),
 		studentMonths = $bindable(),
 		disabilityLevel = $bindable(),
+		disabilityMonths = $bindable(),
 		ztpp = $bindable(),
+		ztppMonths = $bindable(),
 		summary,
 		taxConstants,
 		saving,
@@ -19,7 +21,9 @@
 		isStudent: boolean;
 		studentMonths: number;
 		disabilityLevel: number;
+		disabilityMonths: number;
 		ztpp: boolean;
+		ztppMonths: number;
 		summary: TaxCreditsSummary | null;
 		taxConstants: TaxConstants | null;
 		saving: boolean;
@@ -67,10 +71,40 @@
 				<option value={2}>3. stupeň</option>
 			</Select>
 		</div>
+		{#if disabilityLevel !== 0}
+			<div>
+				<span class="text-xs text-tertiary">Měsíce (invalidita)</span>
+				<Select
+					value={disabilityMonths}
+					onchange={(e: Event) => {
+						disabilityMonths = Number((e.currentTarget as HTMLSelectElement).value);
+					}}
+				>
+					{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
+						<option value={m}>{m}</option>
+					{/each}
+				</Select>
+			</div>
+		{/if}
 		<label class="flex items-center gap-2 text-sm text-primary">
 			<input type="checkbox" bind:checked={ztpp} class="rounded border-border" />
 			Držitel průkazu ZTP/P
 		</label>
+		{#if ztpp}
+			<div>
+				<span class="text-xs text-tertiary">Měsíce (ZTP/P)</span>
+				<Select
+					value={ztppMonths}
+					onchange={(e: Event) => {
+						ztppMonths = Number((e.currentTarget as HTMLSelectElement).value);
+					}}
+				>
+					{#each Array.from({ length: 12 }, (_, i) => i + 1) as m}
+						<option value={m}>{m}</option>
+					{/each}
+				</Select>
+			</div>
+		{/if}
 	</div>
 	{#if summary?.personal}
 		<div class="mt-3 flex gap-6 text-sm text-tertiary">

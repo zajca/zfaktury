@@ -13,6 +13,7 @@
 		spouseIncome = $bindable(),
 		spouseZtp = $bindable(),
 		spouseMonths = $bindable(),
+		spouseChildUnder3Months = $bindable(),
 		showSpouseForm = $bindable(),
 		summary,
 		taxConstants,
@@ -25,6 +26,7 @@
 		spouseIncome: number;
 		spouseZtp: boolean;
 		spouseMonths: number;
+		spouseChildUnder3Months: number;
 		showSpouseForm: boolean;
 		summary: TaxCreditsSummary | null;
 		taxConstants: TaxConstants | null;
@@ -90,6 +92,24 @@
 						<option value={m}>{m}</option>
 					{/each}
 				</Select>
+			</div>
+			<div>
+				<span class="text-xs text-tertiary"
+					>Měsíce s dítětem do 3 let ve společné domácnosti</span
+				>
+				<Select
+					value={spouseChildUnder3Months}
+					onchange={(e: Event) => {
+						spouseChildUnder3Months = Number((e.currentTarget as HTMLSelectElement).value);
+					}}
+				>
+					{#each Array.from({ length: 13 }, (_, i) => i) as m}
+						<option value={m}>{m}</option>
+					{/each}
+				</Select>
+				<p class="mt-1 text-xs text-tertiary">
+					Počítají se jen měsíce, na jejichž počátku bylo dítě mladší 3 let.
+				</p>
 			</div>
 			<label class="flex items-center gap-2 text-sm text-primary">
 				<input type="checkbox" bind:checked={spouseZtp} class="rounded border-border" />

@@ -656,10 +656,10 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 						.sort(([a], [b]) => Number(b) - Number(a))
 						.map(([pct, cap]) => `- ${pct} %: max ${fmtCZK(cap)}`)
 						.join('\n') +
-					'\n\nPaušální výdaje se hodí, pokud máte nízké skutečné náklady. Pozor: při paušálních výdajích nelze uplatnit slevu na manžela/ku ani daňové zvýhodnění na děti.'
-				: 'Paušální výdaje jsou zjednodušený způsob uplatňování nákladů -- místo evidování každého výdaje si odečtete procento z příjmů. Každé procento má roční strop, který se může lišit podle roku.\n\nPaušální výdaje se hodí, pokud máte nízké skutečné náklady. Pozor: při paušálních výdajích nelze uplatnit slevu na manžela/ku ani daňové zvýhodnění na děti.',
+					'\n\nPaušální výdaje se hodí, pokud máte nízké skutečné náklady.'
+				: 'Paušální výdaje jsou zjednodušený způsob uplatňování nákladů -- místo evidování každého výdaje si odečtete procento z příjmů. Každé procento má roční strop, který se může lišit podle roku.\n\nPaušální výdaje se hodí, pokud máte nízké skutečné náklady.',
 			legal:
-				'Paušální výdaje (výdaje procentem z příjmů) upravuje § 7 odst. 7 zákona č. 586/1992 Sb. Sazby: 80 % (zemědělství, řemesla), 60 % (živnost volná), 40 % (svobodná povolání), 30 % (nájem). Stropy se mění podle roku. Při paušálních výdajích nelze uplatnit slevu na manžela (§ 35ca) ani daňové zvýhodnění na děti (§ 35c odst. 9).'
+				'Paušální výdaje (výdaje procentem z příjmů) upravuje § 7 odst. 7 zákona č. 586/1992 Sb. Sazby: 80 % (zemědělství, řemesla), 60 % (živnost volná), 40 % (svobodná povolání), 30 % (nájem). Stropy se mění podle roku.'
 		},
 
 		'dan-15-23': {
@@ -686,7 +686,7 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 				? `Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Roční částky (${tc.year}):\n\n- 1. dítě: ${fmtCZK(tc.child_benefit_1)}\n- 2. dítě: ${fmtCZK(tc.child_benefit_2)}\n- 3. a další: ${fmtCZK(tc.child_benefit_3_plus)}\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí (od roku 2021 bez ročního stropu).`
 				: 'Daňové zvýhodnění na děti je částka, kterou si odečtete od daně za každé vyživované dítě. Konkrétní výše se liší podle pořadí dítěte a zdaňovacího období.\n\nPokud je dítě držitelem ZTP/P, částka se zdvojnásobuje. Zvýhodnění může vytvořit "daňový bonus" -- pokud je vyšší než vaše daň, stát vám rozdíl vrátí.',
 			legal:
-				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Roční strop daňového bonusu byl od roku 2021 zrušen. Zvýhodnění nelze uplatnit při paušálních výdajích (§ 35c odst. 9).'
+				'Daňové zvýhodnění na vyživované dítě upravuje § 35c zákona č. 586/1992 Sb. Částky se mění podle roku. U dítěte s ZTP/P se částky zdvojnásobují (§ 35c odst. 1). Roční strop daňového bonusu byl od roku 2021 zrušen.'
 		},
 
 		'nezdanitelne-odpocty': {
@@ -710,10 +710,10 @@ export function getHelpTopics(tc?: TaxConstants | null): Record<HelpTopicId, Hel
 		'sleva-na-manzela': {
 			title: 'Sleva na manžela/ku',
 			simple: tc
-				? `Slevu na manžela/ku si můžete uplatnit, pokud váš manžel/ka měl/a za zdaňovací období vlastní roční příjmy nepřesahující ${fmtCZK(tc.spouse_income_limit)}. Do těchto příjmů se nezapočítávají např. rodičovský příspěvek, porodné, dávky státní sociální podpory či stipendia.\n\nSleva činí ${fmtCZK(tc.spouse_credit)} ročně. Pokud je manžel/ka držitelem ZTP/P, sleva se zdvojnásobuje na ${fmtCZK(tc.spouse_credit * 2)}. Sleva se proporcionalizuje podle měsíců -- počítá se od měsíce, na jehož počátku byly podmínky splněny.\n\nDůležité: slevu na manžela/ku NELZE uplatnit, pokud používáte paušální výdaje.`
-				: 'Slevu na manžela/ku si můžete uplatnit, pokud váš manžel/ka měl/a za zdaňovací období nízké vlastní roční příjmy. Do těchto příjmů se nezapočítávají např. rodičovský příspěvek, porodné či stipendia.\n\nKonkrétní výše slevy a limit příjmů závisí na zdaňovacím období. Pokud je manžel/ka držitelem ZTP/P, sleva se zdvojnásobuje. Sleva se proporcionalizuje podle měsíců.\n\nDůležité: slevu na manžela/ku NELZE uplatnit, pokud používáte paušální výdaje.',
+				? `Slevu na manžela/ku si můžete uplatnit, pokud váš manžel/ka měl/a za zdaňovací období vlastní roční příjmy nepřesahující ${fmtCZK(tc.spouse_income_limit)}. Do těchto příjmů se nezapočítávají např. rodičovský příspěvek, porodné, dávky státní sociální podpory či stipendia.\n\nSleva činí ${fmtCZK(tc.spouse_credit)} ročně. Pokud je manžel/ka držitelem ZTP/P, sleva se zdvojnásobuje na ${fmtCZK(tc.spouse_credit * 2)}. Sleva se proporcionalizuje podle měsíců -- počítá se od měsíce, na jehož počátku byly podmínky splněny.`
+				: 'Slevu na manžela/ku si můžete uplatnit, pokud váš manžel/ka měl/a za zdaňovací období nízké vlastní roční příjmy. Do těchto příjmů se nezapočítávají např. rodičovský příspěvek, porodné či stipendia.\n\nKonkrétní výše slevy a limit příjmů závisí na zdaňovacím období. Pokud je manžel/ka držitelem ZTP/P, sleva se zdvojnásobuje. Sleva se proporcionalizuje podle měsíců.',
 			legal:
-				'Sleva na manžela/ku je upravena v § 35ba odst. 1 písm. b) zákona č. 586/1992 Sb. Podmínka: manžel/ka žijící ve společné domácnosti s vlastním ročním příjmem nepřesahujícím zákonem stanovený limit. Do vlastního příjmu se nezapočítávají dávky dle § 35ba odst. 1 písm. b).\n\nU držitele ZTP/P se sleva zdvojnásobuje. Proporcionalizace dle § 35ba odst. 3 -- 1/12 za každý měsíc, na jehož počátku byly podmínky splněny. Při paušálních výdajích (§ 7 odst. 7) nelze slevu uplatnit (§ 35ca).'
+				'Sleva na manžela/ku je upravena v § 35ba odst. 1 písm. b) zákona č. 586/1992 Sb. Podmínka: manžel/ka žijící ve společné domácnosti s vlastním ročním příjmem nepřesahujícím zákonem stanovený limit. Do vlastního příjmu se nezapočítávají dávky dle § 35ba odst. 1 písm. b).\n\nU držitele ZTP/P se sleva zdvojnásobuje. Proporcionalizace dle § 35ba odst. 3 -- 1/12 za každý měsíc, na jehož počátku byly podmínky splněny.'
 		}
 	};
 }

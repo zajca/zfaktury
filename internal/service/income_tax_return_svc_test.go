@@ -664,9 +664,11 @@ func TestIncomeTaxReturnService_Recalculate_DisabilityRowsSnapshot(t *testing.T)
 	ctx := context.Background()
 
 	if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-		Year:            2025,
-		DisabilityLevel: domain.DisabilityLevel1And2,
-		ZTPP:            true,
+		Year:             2025,
+		DisabilityLevel:  domain.DisabilityLevel1And2,
+		DisabilityMonths: 12,
+		ZTPP:             true,
+		ZTPPMonths:       12,
 	}); err != nil {
 		t.Fatalf("UpsertPersonal() error: %v", err)
 	}
@@ -1122,9 +1124,11 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilityFiled(t *testing.T) 
 			seedFinancniUradCode(t, db)
 
 			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-				Year:            2025,
-				DisabilityLevel: tc.level,
-				ZTPP:            tc.ztpp,
+				Year:             2025,
+				DisabilityLevel:  tc.level,
+				DisabilityMonths: 12,
+				ZTPP:             tc.ztpp,
+				ZTPPMonths:       12,
 			}); err != nil {
 				t.Fatalf("UpsertPersonal() error: %v", err)
 			}
@@ -1172,9 +1176,11 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilitySettingsMismatch(t *
 			seedFinancniUradCode(t, db)
 
 			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-				Year:            2025,
-				DisabilityLevel: domain.DisabilityLevel1And2,
-				ZTPP:            true,
+				Year:             2025,
+				DisabilityLevel:  domain.DisabilityLevel1And2,
+				DisabilityMonths: 12,
+				ZTPP:             true,
+				ZTPPMonths:       12,
 			}); err != nil {
 				t.Fatalf("UpsertPersonal() error: %v", err)
 			}
@@ -1191,8 +1197,9 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyDisabilitySettingsMismatch(t *
 
 			// Replace the personal credits so the derived total no longer matches.
 			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
-				Year:            2025,
-				DisabilityLevel: domain.DisabilityLevel3,
+				Year:             2025,
+				DisabilityLevel:  domain.DisabilityLevel3,
+				DisabilityMonths: 12,
 			}); err != nil {
 				t.Fatalf("UpsertPersonal() error: %v", err)
 			}
@@ -1395,7 +1402,7 @@ func TestIncomeTaxReturnService_Recalculate_Section10LossFloored(t *testing.T) {
 		"financni_urad_code": "451",
 		"dic":                "CZ1234567890",
 		"c_okec":             "62109",
-	}, nil, nil)
+	}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateIncomeTaxXML: %v", err)
 	}
@@ -1483,5 +1490,218 @@ func TestIncomeTaxReturnService_Recalculate_RecomputesStaleFIFO(t *testing.T) {
 	}
 	if got.ExemptAmount != 0 {
 		t.Errorf("ExemptAmount = %d, want 0 after FIFO recompute", got.ExemptAmount)
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate covers a
+// spouse or disability credit record changed after the last recalculation: the stored
+// credit amounts no longer match a fresh computation, so XML generation is refused.
+func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      string
+		change      func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context)
+		wantMessage string
+	}{
+		{
+			name:   "draft disability changed",
+			status: domain.FilingStatusDraft,
+			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
+				if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+					Year: 2025, DisabilityLevel: domain.DisabilityLevel3, DisabilityMonths: 12,
+				}); err != nil {
+					t.Fatalf("UpsertPersonal() error: %v", err)
+				}
+			},
+			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
+		},
+		{
+			name:   "filed disability changed",
+			status: domain.FilingStatusFiled,
+			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
+				if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+					Year: 2025, DisabilityLevel: domain.DisabilityLevel3, DisabilityMonths: 12,
+				}); err != nil {
+					t.Fatalf("UpsertPersonal() error: %v", err)
+				}
+			},
+			wantMessage: "přiznání nelze bez obnovení nastavení znovu vygenerovat",
+		},
+		{
+			name:   "draft spouse income changed",
+			status: domain.FilingStatusDraft,
+			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
+				if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+					Year: 2025, SpouseName: "Jana", SpouseIncome: domain.NewAmount(70_000, 0),
+					MonthsClaimed: 12, ChildUnder3Months: 12,
+				}); err != nil {
+					t.Fatalf("UpsertSpouse() error: %v", err)
+				}
+			},
+			// a spouse mismatch names the child-under-3 field to fill in
+			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+		},
+		{
+			name:   "filed spouse child months changed",
+			status: domain.FilingStatusFiled,
+			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
+				if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+					Year: 2025, SpouseName: "Jana", SpouseIncome: domain.NewAmount(50_000, 0),
+					MonthsClaimed: 6, ChildUnder3Months: 6,
+				}); err != nil {
+					t.Fatalf("UpsertSpouse() error: %v", err)
+				}
+			},
+			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+			ctx := context.Background()
+			seedFinancniUradCode(t, db)
+
+			if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+				Year: 2025, SpouseName: "Jana", SpouseIncome: domain.NewAmount(50_000, 0),
+				MonthsClaimed: 12, ChildUnder3Months: 12,
+			}); err != nil {
+				t.Fatalf("UpsertSpouse() error: %v", err)
+			}
+			if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+				Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 12,
+			}); err != nil {
+				t.Fatalf("UpsertPersonal() error: %v", err)
+			}
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create() error: %v", err)
+			}
+			recalc, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate() error: %v", err)
+			}
+			if recalc.CreditSpouse <= 0 || recalc.CreditDisability <= 0 {
+				t.Fatalf("recalculated credits = %d/%d, want both > 0", recalc.CreditSpouse, recalc.CreditDisability)
+			}
+			recalc.Status = tc.status
+			if err := svc.repo.Update(ctx, recalc); err != nil {
+				t.Fatalf("persisting return status: %v", err)
+			}
+
+			tc.change(t, creditsSvc, ctx)
+
+			_, err = svc.GenerateXML(ctx, itr.ID)
+			if !errors.Is(err, domain.ErrInvalidInput) {
+				t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+			}
+			if !strings.Contains(err.Error(), tc.wantMessage) {
+				t.Errorf("GenerateXML() error = %v, want message %q", err, tc.wantMessage)
+			}
+		})
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_LegacyFiledSpouseWithoutChildMonths covers a
+// filed return created before migration 045 with a stored spouse credit: the spouse
+// record has child_under3_months = 0, so the fresh computation is 0 and GenerateXML
+// refuses. The refusal must name the field to fill in (the child-under-3 months on the
+// spouse credit); once they are filled in, generation succeeds again.
+func TestIncomeTaxReturnService_GenerateXML_LegacyFiledSpouseWithoutChildMonths(t *testing.T) {
+	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+	seedFinancniUradCode(t, db)
+
+	if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana", SpouseBirthNumber: "8555012345",
+		SpouseIncome: domain.NewAmount(50_000, 0), MonthsClaimed: 12, ChildUnder3Months: 12,
+	}); err != nil {
+		t.Fatalf("UpsertSpouse() error: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	recalc, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if recalc.CreditSpouse <= 0 {
+		t.Fatalf("CreditSpouse = %d, want > 0", recalc.CreditSpouse)
+	}
+	recalc.Status = domain.FilingStatusFiled
+	if err := svc.repo.Update(ctx, recalc); err != nil {
+		t.Fatalf("persisting return status: %v", err)
+	}
+
+	// Simulate the pre-migration-045 record: child_under3_months = 0, written straight
+	// to the repo (UpsertSpouse would refuse MonthsClaimed 12 > 0).
+	spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+	spouse, err := spouseRepo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetByYear(spouse) error: %v", err)
+	}
+	spouse.ChildUnder3Months = 0
+	if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+		t.Fatalf("repo Upsert(spouse) error: %v", err)
+	}
+
+	_, err = svc.GenerateXML(ctx, itr.ID)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "dítětem do 3 let") {
+		t.Errorf("GenerateXML() error = %v, want it to name the child-under-3 months", err)
+	}
+
+	// With the months filled in, the fresh computation matches again and XML generates.
+	spouse.ChildUnder3Months = 12
+	if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+		t.Fatalf("repo Upsert(spouse) error: %v", err)
+	}
+	if _, err := svc.GenerateXML(ctx, itr.ID); err != nil {
+		t.Errorf("GenerateXML() after filling the child months: %v", err)
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged is the positive control:
+// when the spouse and disability records still match the stored amounts, the XML
+// carries their months (m_vyzmanzl / m_cinvduch).
+func TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged(t *testing.T) {
+	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+	seedFinancniUradCode(t, db)
+
+	if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana Novakova", SpouseBirthNumber: "8555012345",
+		SpouseIncome: domain.NewAmount(50_000, 0), MonthsClaimed: 6, ChildUnder3Months: 12,
+	}); err != nil {
+		t.Fatalf("UpsertSpouse() error: %v", err)
+	}
+	if err := creditsSvc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+		Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 6,
+	}); err != nil {
+		t.Fatalf("UpsertPersonal() error: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, itr.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	got, err := svc.GenerateXML(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() error: %v", err)
+	}
+	xml := string(got.XMLData)
+	if !strings.Contains(xml, `m_vyzmanzl="6"`) {
+		t.Errorf("XML missing m_vyzmanzl=\"6\" (effective child months):\n%s", xml)
+	}
+	if !strings.Contains(xml, `m_cinvduch="6"`) {
+		t.Errorf("XML missing m_cinvduch=\"6\":\n%s", xml)
 	}
 }

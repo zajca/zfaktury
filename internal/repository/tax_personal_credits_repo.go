@@ -21,7 +21,7 @@ func NewTaxPersonalCreditsRepository(db *sql.DB) *TaxPersonalCreditsRepository {
 }
 
 // taxPersonalCreditsColumns is the list of columns to select for a TaxPersonalCredits row.
-const taxPersonalCreditsColumns = `year, is_student, student_months, disability_level, ztpp, credit_student, credit_disability, created_at, updated_at`
+const taxPersonalCreditsColumns = `year, is_student, student_months, disability_level, disability_months, ztpp, ztpp_months, credit_student, credit_disability, created_at, updated_at`
 
 // scanTaxPersonalCredits scans a TaxPersonalCredits from a row.
 func scanTaxPersonalCredits(s scanner) (*domain.TaxPersonalCredits, error) {
@@ -30,7 +30,7 @@ func scanTaxPersonalCredits(s scanner) (*domain.TaxPersonalCredits, error) {
 	var isStudent, ztpp int
 
 	err := s.Scan(
-		&c.Year, &isStudent, &c.StudentMonths, &c.DisabilityLevel, &ztpp,
+		&c.Year, &isStudent, &c.StudentMonths, &c.DisabilityLevel, &c.DisabilityMonths, &ztpp, &c.ZTPPMonths,
 		&c.CreditStudent, &c.CreditDisability,
 		&createdAtStr, &updatedAtStr,
 	)
@@ -70,9 +70,9 @@ func (r *TaxPersonalCreditsRepository) Upsert(ctx context.Context, credits *doma
 	}
 
 	_, err := r.db.ExecContext(ctx, `
-		INSERT OR REPLACE INTO tax_personal_credits (year, is_student, student_months, disability_level, ztpp, credit_student, credit_disability, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		credits.Year, isStudent, credits.StudentMonths, credits.DisabilityLevel, ztpp,
+		INSERT OR REPLACE INTO tax_personal_credits (year, is_student, student_months, disability_level, disability_months, ztpp, ztpp_months, credit_student, credit_disability, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		credits.Year, isStudent, credits.StudentMonths, credits.DisabilityLevel, credits.DisabilityMonths, ztpp, credits.ZTPPMonths,
 		credits.CreditStudent, credits.CreditDisability,
 		credits.CreatedAt.Format(time.RFC3339), credits.UpdatedAt.Format(time.RFC3339),
 	)

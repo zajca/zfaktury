@@ -1537,6 +1537,7 @@ export interface TaxSpouseCredit {
 	spouse_income: number;
 	spouse_ztp: boolean;
 	months_claimed: number;
+	child_under3_months: number;
 	credit_amount: number;
 	created_at: string;
 	updated_at: string;
@@ -1560,7 +1561,9 @@ export interface TaxPersonalCredits {
 	is_student: boolean;
 	student_months: number;
 	disability_level: number;
+	disability_months: number;
 	ztpp: boolean;
+	ztpp_months: number;
 	credit_student: number;
 	credit_disability: number;
 	created_at: string;
@@ -1628,6 +1631,7 @@ export const taxCreditsApi = {
 			spouse_income: number;
 			spouse_ztp: boolean;
 			months_claimed: number;
+			child_under3_months: number;
 		}
 	) {
 		return put<TaxSpouseCredit>(`/tax-credits/${year}/spouse`, data);
@@ -1668,7 +1672,14 @@ export const taxCreditsApi = {
 	},
 	upsertPersonal(
 		year: number,
-		data: { is_student: boolean; student_months: number; disability_level: number; ztpp: boolean }
+		data: {
+			is_student: boolean;
+			student_months: number;
+			disability_level: number;
+			disability_months: number;
+			ztpp: boolean;
+			ztpp_months: number;
+		}
 	) {
 		return put<TaxPersonalCredits>(`/tax-credits/${year}/personal`, data);
 	},

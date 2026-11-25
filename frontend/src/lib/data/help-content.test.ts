@@ -200,5 +200,17 @@ describe('help-content', () => {
 			const keysB = Object.keys(withoutConstants).sort();
 			expect(keysA).toEqual(keysB);
 		});
+
+		it('no help entry cites the repealed flat-rate restriction on credits (§ 35ca)', () => {
+			const allTopics = [helpTopics, getHelpTopics(null), getHelpTopics(mockConstants)];
+			for (const topics of allTopics) {
+				for (const id of Object.keys(topics) as HelpTopicId[]) {
+					for (const text of [topics[id].title, topics[id].simple, topics[id].legal]) {
+						expect(text).not.toContain('§ 35ca');
+						expect(text.toLowerCase()).not.toContain('nelze uplatnit slevu na manžela');
+					}
+				}
+			}
+		});
 	});
 });

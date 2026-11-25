@@ -52,6 +52,12 @@ func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.Tax
 	if credit.MonthsClaimed < 1 || credit.MonthsClaimed > 12 {
 		return fmt.Errorf("months claimed must be 1-12: %w", domain.ErrInvalidInput)
 	}
+	if credit.ChildUnder3Months < 0 || credit.ChildUnder3Months > 12 {
+		return fmt.Errorf("child under 3 months must be 0-12: %w", domain.ErrInvalidInput)
+	}
+	if credit.Year >= 2024 && credit.MonthsClaimed > credit.ChildUnder3Months {
+		return fmt.Errorf("months claimed must not exceed the months with a child under 3 in the common household: %w", domain.ErrInvalidInput)
+	}
 	var existing *domain.TaxSpouseCredit
 	if s.audit != nil {
 		existing, _ = s.spouseRepo.GetByYear(ctx, credit.Year)
@@ -173,6 +179,18 @@ func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.
 	}
 	if credits.DisabilityLevel < domain.DisabilityLevelNone || credits.DisabilityLevel > domain.DisabilityLevelMaximum {
 		return fmt.Errorf("disability level must be 0-2: %w", domain.ErrInvalidInput)
+	}
+	if credits.DisabilityMonths < 0 || credits.DisabilityMonths > 12 {
+		return fmt.Errorf("disability months must be 0-12: %w", domain.ErrInvalidInput)
+	}
+	if credits.DisabilityLevel != domain.DisabilityLevelNone && credits.DisabilityMonths < 1 {
+		return fmt.Errorf("počet měsíců invalidity musí být 1-12, když je zvolen stupeň invalidity: %w", domain.ErrInvalidInput)
+	}
+	if credits.ZTPPMonths < 0 || credits.ZTPPMonths > 12 {
+		return fmt.Errorf("ZTP/P months must be 0-12: %w", domain.ErrInvalidInput)
+	}
+	if credits.ZTPP && credits.ZTPPMonths < 1 {
+		return fmt.Errorf("počet měsíců ZTP/P musí být 1-12, když je průkaz ZTP/P uplatněn: %w", domain.ErrInvalidInput)
 	}
 	var existing *domain.TaxPersonalCredits
 	if s.audit != nil {
@@ -305,7 +323,7 @@ func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, yea
 		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("fetching spouse credit for compute: %w", err)
 	}
 	if spouse != nil {
-		spouseCredit = calc.ComputeSpouseCredit(spouse.SpouseIncome, spouse.MonthsClaimed, spouse.SpouseZTP, constants)
+		spouseCredit = calc.ComputeSpouseCredit(spouse.SpouseIncome, spouse.MonthsClaimed, spouse.ChildUnder3Months, year, spouse.SpouseZTP, constants)
 	}
 
 	// Personal credits (student + disability).
@@ -314,7 +332,7 @@ func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, yea
 		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("fetching personal credits for compute: %w", err)
 	}
 	if personal != nil {
-		personalResult = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.ZTPP, personal.IsStudent, personal.StudentMonths, constants)
+		personalResult = calc.ComputePersonalCredits(personal.DisabilityLevel, personal.DisabilityMonths, personal.ZTPP, personal.ZTPPMonths, personal.IsStudent, personal.StudentMonths, constants)
 	}
 
 	return spouseCredit, personalResult, nil
@@ -462,6 +480,9 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newSpouse.ID = 0
 			newSpouse.Year = targetYear
 			newSpouse.MonthsClaimed = 12
+			// The child-under-3 months are a fact about the source year and must not
+			// be carried over; the target record starts like a migrated row (0).
+			newSpouse.ChildUnder3Months = 0
 			newSpouse.CreditAmount = 0
 			if err := s.spouseRepo.Upsert(ctx, &newSpouse); err != nil {
 				return fmt.Errorf("copying spouse credit: %w", err)

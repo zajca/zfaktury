@@ -790,6 +790,7 @@ func seedTaxCredits(ctx context.Context, svc *service.TaxCreditsService) error {
 		SpouseIncome:      domain.Amount(4500000), // 45 000 CZK (under 68 000 limit)
 		SpouseZTP:         false,
 		MonthsClaimed:     12,
+		ChildUnder3Months: 12, // demo data: pretend a child under 3 in the household all year
 	}); err != nil {
 		return fmt.Errorf("spouse credit: %w", err)
 	}

@@ -1000,6 +1000,73 @@ func TestVATControlStatementService_Recalculate_ImportedPositiveCreditNote_Below
 	}
 }
 
+func TestVATControlStatementService_Recalculate_SkipsProforma(t *testing.T) {
+	svc, vatSvc, db := setupVATControlSvcWithVATReturn(t)
+	ctx := context.Background()
+
+	contact := testutil.SeedContact(t, db, &domain.Contact{Name: "CZ Customer", DIC: "CZ12345678"})
+	march15 := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+
+	// Sent regular invoice below the A4/A5 threshold: base 500_000, vat 105_000.
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Small", Quantity: 100, UnitPrice: 500000, VATRatePercent: 21},
+	})
+	setInvoiceSentOn(t, db, ctx, inv.ID, march15)
+
+	// Sent proforma above the threshold: the KH must skip it like the VAT return does.
+	proforma := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Proforma big", Quantity: 100, UnitPrice: 1500000, VATRatePercent: 21},
+	})
+	dateStr := march15.Format("2006-01-02")
+	if _, err := db.ExecContext(ctx, "UPDATE invoices SET type = ?, status = ?, issue_date = ?, due_date = ?, delivery_date = ? WHERE id = ?",
+		domain.InvoiceTypeProforma, domain.InvoiceStatusSent, dateStr, dateStr, dateStr, proforma.ID); err != nil {
+		t.Fatalf("updating proforma: %v", err)
+	}
+
+	cs := &domain.VATControlStatement{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, cs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, cs.ID); err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+
+	lines, err := svc.GetLines(ctx, cs.ID)
+	if err != nil {
+		t.Fatalf("GetLines() error: %v", err)
+	}
+
+	for _, l := range lines {
+		if l.Section == "A4" {
+			t.Errorf("unexpected A4 line (proforma must be skipped): doc %q base %d", l.DocumentNumber, l.Base)
+		}
+		if l.DocumentNumber == proforma.InvoiceNumber {
+			t.Errorf("proforma %q must not appear in any KH line", proforma.InvoiceNumber)
+		}
+	}
+
+	base, vat := khLineSums(lines)
+	if base != 500000 || vat != 105000 {
+		t.Errorf("sum of A4/A5 lines = base %d vat %d, want base 500000 vat 105000", base, vat)
+	}
+
+	// The KH sums must agree with the VAT return for the same period.
+	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: 2025, Month: 3}, FilingType: domain.FilingTypeRegular}
+	if err := vatSvc.Create(ctx, vr); err != nil {
+		t.Fatalf("VAT return Create() error: %v", err)
+	}
+	res, err := vatSvc.Recalculate(ctx, vr.ID)
+	if err != nil {
+		t.Fatalf("VAT return Recalculate() error: %v", err)
+	}
+	if res.OutputVATBase21 != base {
+		t.Errorf("VAT return OutputVATBase21 = %d, KH line sum = %d", res.OutputVATBase21, base)
+	}
+	if res.OutputVATAmount21 != vat {
+		t.Errorf("VAT return OutputVATAmount21 = %d, KH line sum = %d", res.OutputVATAmount21, vat)
+	}
+}
+
 func TestVATControlStatementService_Recalculate_NativeNegativeCreditNote_NotDoubleNegated(t *testing.T) {
 	svc, _, db := setupVATControlSvcWithVATReturn(t)
 	ctx := context.Background()

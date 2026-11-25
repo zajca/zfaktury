@@ -34,6 +34,12 @@ type CustomerRevenue struct {
 	InvoiceCount int
 }
 
+// revenueStatuses lists the invoice statuses that count as revenue in every
+// revenue query in this package and in dashboard_repo.go: the same set the VAT
+// return, the control statement and the income tax use (sent, paid, overdue).
+// Drafts and cancelled invoices are not revenue.
+const revenueStatuses = "'sent', 'paid', 'overdue'"
+
 // ReportRepository provides read-only aggregate queries for reports.
 type ReportRepository struct {
 	db *sql.DB
@@ -46,7 +52,8 @@ func NewReportRepository(db *sql.DB) *ReportRepository {
 
 // MonthlyRevenue returns revenue grouped by month for the given year, net of
 // credit notes: credit notes are counted as -ABS(total_amount), the same -|a|
-// rule as calc.CreditNoteAmount, whatever sign they were stored with.
+// rule as calc.CreditNoteAmount, whatever sign they were stored with. Only
+// invoices in the revenue statuses (sent/paid/overdue) are included.
 // Grouped by delivery_date.
 func (r *ReportRepository) MonthlyRevenue(ctx context.Context, year int) ([]MonthlyAmount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
@@ -54,7 +61,7 @@ func (r *ReportRepository) MonthlyRevenue(ctx context.Context, year int) ([]Mont
 		SELECT CAST(strftime('%m', delivery_date) AS INTEGER) as month,
 		       COALESCE(SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END), 0) as total
 		FROM invoices
-		WHERE strftime('%Y', delivery_date) = ? AND type IN ('regular', 'credit_note') AND deleted_at IS NULL
+		WHERE strftime('%Y', delivery_date) = ? AND status IN (`+revenueStatuses+`) AND type IN ('regular', 'credit_note') AND deleted_at IS NULL
 		GROUP BY month ORDER BY month`, yearStr)
 	if err != nil {
 		return nil, fmt.Errorf("querying monthly revenue: %w", err)
@@ -74,7 +81,8 @@ func (r *ReportRepository) MonthlyRevenue(ctx context.Context, year int) ([]Mont
 
 // QuarterlyRevenue returns revenue grouped by quarter for the given year, net
 // of credit notes (credit notes counted as -ABS(total_amount), the same -|a|
-// rule as calc.CreditNoteAmount). Grouped by delivery_date.
+// rule as calc.CreditNoteAmount). Only invoices in the revenue statuses
+// (sent/paid/overdue) are included. Grouped by delivery_date.
 func (r *ReportRepository) QuarterlyRevenue(ctx context.Context, year int) ([]QuarterlyAmount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	rows, err := r.db.QueryContext(ctx, `
@@ -85,7 +93,7 @@ func (r *ReportRepository) QuarterlyRevenue(ctx context.Context, year int) ([]Qu
 		    ELSE 4 END as quarter,
 		    COALESCE(SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END), 0) as total
 		FROM invoices
-		WHERE strftime('%Y', delivery_date) = ? AND type IN ('regular', 'credit_note') AND deleted_at IS NULL
+		WHERE strftime('%Y', delivery_date) = ? AND status IN (`+revenueStatuses+`) AND type IN ('regular', 'credit_note') AND deleted_at IS NULL
 		GROUP BY quarter ORDER BY quarter`, yearStr)
 	if err != nil {
 		return nil, fmt.Errorf("querying quarterly revenue: %w", err)
@@ -105,13 +113,14 @@ func (r *ReportRepository) QuarterlyRevenue(ctx context.Context, year int) ([]Qu
 
 // YearlyRevenue returns the total revenue for the given year, net of credit
 // notes (credit notes counted as -ABS(total_amount), the same -|a| rule as
-// calc.CreditNoteAmount). Grouped by delivery_date.
+// calc.CreditNoteAmount). Only invoices in the revenue statuses
+// (sent/paid/overdue) are included. Grouped by delivery_date.
 func (r *ReportRepository) YearlyRevenue(ctx context.Context, year int) (domain.Amount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	var total domain.Amount
 	err := r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END), 0) FROM invoices
-		WHERE strftime('%Y', delivery_date) = ? AND type IN ('regular', 'credit_note') AND deleted_at IS NULL`, yearStr).Scan(&total)
+		WHERE strftime('%Y', delivery_date) = ? AND status IN (`+revenueStatuses+`) AND type IN ('regular', 'credit_note') AND deleted_at IS NULL`, yearStr).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("querying yearly revenue: %w", err)
 	}
@@ -199,13 +208,14 @@ func (r *ReportRepository) CategoryExpenses(ctx context.Context, year int) ([]Ca
 
 // TopCustomers returns the top customers by revenue for the given year, net of
 // credit notes (credit notes counted as -ABS(total_amount), the same -|a| rule
-// as calc.CreditNoteAmount).
+// as calc.CreditNoteAmount). Only invoices in the revenue statuses
+// (sent/paid/overdue) are included.
 func (r *ReportRepository) TopCustomers(ctx context.Context, year int, limit int) ([]CustomerRevenue, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT c.id, c.name, COALESCE(SUM(CASE WHEN i.type = 'credit_note' THEN -ABS(i.total_amount) ELSE i.total_amount END), 0) as total, COUNT(i.id) as invoice_count
 		FROM invoices i JOIN contacts c ON i.customer_id = c.id
-		WHERE strftime('%Y', i.delivery_date) = ? AND i.type IN ('regular', 'credit_note') AND i.deleted_at IS NULL
+		WHERE strftime('%Y', i.delivery_date) = ? AND i.status IN (`+revenueStatuses+`) AND i.type IN ('regular', 'credit_note') AND i.deleted_at IS NULL
 		GROUP BY c.id ORDER BY total DESC LIMIT ?`, yearStr, limit)
 	if err != nil {
 		return nil, fmt.Errorf("querying top customers: %w", err)

@@ -39,10 +39,11 @@ func NewDashboardRepository(db *sql.DB) *DashboardRepository {
 	return &DashboardRepository{db: db}
 }
 
-// RevenueCurrentMonth returns the total revenue for regular invoices delivered
-// in the given year and month, net of credit notes: a credit note always
-// subtracts (its total counted as -ABS(total_amount), the same -|a| rule as
-// calc.CreditNoteAmount), whatever sign it was stored with.
+// RevenueCurrentMonth returns the total revenue for invoices delivered in the
+// given year and month, net of credit notes: a credit note always subtracts
+// (its total counted as -ABS(total_amount), the same -|a| rule as
+// calc.CreditNoteAmount), whatever sign it was stored with. Only invoices in
+// the revenue statuses (sent/paid/overdue) are included.
 func (r *DashboardRepository) RevenueCurrentMonth(ctx context.Context, year int, month int) (domain.Amount, error) {
 	ym := fmt.Sprintf("%04d-%02d", year, month)
 	var total int64
@@ -50,6 +51,7 @@ func (r *DashboardRepository) RevenueCurrentMonth(ctx context.Context, year int,
 		`SELECT COALESCE(SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END), 0)
 		 FROM invoices
 		 WHERE strftime('%Y-%m', delivery_date) = ?
+		   AND status IN (`+revenueStatuses+`)
 		   AND type IN ('regular', 'credit_note')
 		   AND deleted_at IS NULL`, ym).Scan(&total)
 	if err != nil {
@@ -106,7 +108,8 @@ func (r *DashboardRepository) OverdueInvoices(ctx context.Context) (count int, t
 
 // MonthlyRevenue returns the monthly revenue breakdown for the given year,
 // net of credit notes (credit notes counted as -ABS(total_amount), the same
-// -|a| rule as calc.CreditNoteAmount).
+// -|a| rule as calc.CreditNoteAmount). Only invoices in the revenue statuses
+// (sent/paid/overdue) are included.
 func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, year int) ([]MonthlyAmount, error) {
 	yearStr := fmt.Sprintf("%04d", year)
 	rows, err := r.db.QueryContext(ctx,
@@ -114,6 +117,7 @@ func (r *DashboardRepository) MonthlyRevenue(ctx context.Context, year int) ([]M
 		        SUM(CASE WHEN type = 'credit_note' THEN -ABS(total_amount) ELSE total_amount END)
 		 FROM invoices
 		 WHERE strftime('%Y', delivery_date) = ?
+		   AND status IN (`+revenueStatuses+`)
 		   AND type IN ('regular', 'credit_note')
 		   AND deleted_at IS NULL
 		 GROUP BY month`, yearStr)

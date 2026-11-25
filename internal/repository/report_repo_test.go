@@ -41,6 +41,9 @@ func TestReportRepo_MonthlyRevenue_WithData(t *testing.T) {
 	inv2 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Item B", Quantity: 200, UnitPrice: 5000, VATRatePercent: 21},
 	})
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv1.ID)
+	testutil.MarkInvoiceSent(t, db, inv2.ID)
 	threeMonthsAgo := now.AddDate(0, -3, 0)
 	_, err := db.ExecContext(ctx, "UPDATE invoices SET delivery_date = ? WHERE id = ?",
 		threeMonthsAgo.Format("2006-01-02"), inv2.ID)
@@ -232,17 +235,21 @@ func TestReportRepo_TopCustomers_WithData(t *testing.T) {
 	customer2 := testutil.SeedContact(t, db, &domain.Contact{Name: "Small Customer"})
 
 	// Seed 2 invoices for customer1 (higher total).
-	testutil.SeedInvoice(t, db, customer1.ID, []domain.InvoiceItem{
+	inv1 := testutil.SeedInvoice(t, db, customer1.ID, []domain.InvoiceItem{
 		{Description: "Big project", Quantity: 100, UnitPrice: 50000, VATRatePercent: 21},
 	})
-	testutil.SeedInvoice(t, db, customer1.ID, []domain.InvoiceItem{
+	inv2 := testutil.SeedInvoice(t, db, customer1.ID, []domain.InvoiceItem{
 		{Description: "Another project", Quantity: 100, UnitPrice: 30000, VATRatePercent: 21},
 	})
 
 	// Seed 1 invoice for customer2 (lower total).
-	testutil.SeedInvoice(t, db, customer2.ID, []domain.InvoiceItem{
+	inv3 := testutil.SeedInvoice(t, db, customer2.ID, []domain.InvoiceItem{
 		{Description: "Small project", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
 	})
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv1.ID)
+	testutil.MarkInvoiceSent(t, db, inv2.ID)
+	testutil.MarkInvoiceSent(t, db, inv3.ID)
 
 	result, err := repo.TopCustomers(ctx, now.Year(), 10)
 	if err != nil {
@@ -275,9 +282,10 @@ func TestReportRepo_QuarterlyRevenue_WithData(t *testing.T) {
 	now := time.Now()
 	contact := testutil.SeedContact(t, db, nil)
 
-	testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Q service", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
 	})
+	testutil.MarkInvoiceSent(t, db, inv.ID)
 
 	result, err := repo.QuarterlyRevenue(ctx, now.Year())
 	if err != nil {
@@ -340,9 +348,10 @@ func TestReportRepo_ProfitLossMonthly_WithData(t *testing.T) {
 	now := time.Now()
 	contact := testutil.SeedContact(t, db, nil)
 
-	testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Revenue item", Quantity: 100, UnitPrice: 20000, VATRatePercent: 21},
 	})
+	testutil.MarkInvoiceSent(t, db, inv.ID)
 	testutil.SeedExpense(t, db, &domain.Expense{
 		Description: "Cost item",
 		Amount:      domain.NewAmount(5000, 0),
@@ -393,8 +402,8 @@ func seedRevenueWithCreditNotes(t *testing.T, db *sql.DB, ctx context.Context, d
 	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Item", Quantity: 100, UnitPrice: 100000, VATRatePercent: 21},
 	})
-	if _, err := db.ExecContext(ctx, "UPDATE invoices SET issue_date = ?, delivery_date = ? WHERE id = ?",
-		dateStr, dateStr, inv.ID); err != nil {
+	if _, err := db.ExecContext(ctx, "UPDATE invoices SET status = ?, issue_date = ?, delivery_date = ? WHERE id = ?",
+		domain.InvoiceStatusSent, dateStr, dateStr, inv.ID); err != nil {
 		t.Fatalf("updating invoice dates: %v", err)
 	}
 
@@ -498,6 +507,88 @@ func TestReportRepo_TopCustomers_CreditNotesNet(t *testing.T) {
 	}
 	if result[0].InvoiceCount != 3 {
 		t.Errorf("invoice count = %d, want 3 (invoice + 2 credit notes)", result[0].InvoiceCount)
+	}
+}
+
+// seedRevenueExcludingDraftsAndCancelled seeds a sent regular invoice (total
+// 121000) plus documents that must NOT count as revenue: a draft regular
+// invoice (total 60500), a draft credit note stored positive (total 12100,
+// imported style) and a cancelled credit note stored negative (total -24200,
+// native style), all delivered on deliveryDate. It returns the revenue the
+// reports must show: only the sent invoice, 121000.
+func seedRevenueExcludingDraftsAndCancelled(t *testing.T, db *sql.DB, ctx context.Context, deliveryDate time.Time) domain.Amount {
+	t.Helper()
+
+	contact := testutil.SeedContact(t, db, nil)
+	dateStr := deliveryDate.Format("2006-01-02")
+
+	// Sent regular invoice: counts.
+	inv := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Item", Quantity: 100, UnitPrice: 100000, VATRatePercent: 21},
+	})
+	if _, err := db.ExecContext(ctx, "UPDATE invoices SET status = ?, issue_date = ?, delivery_date = ? WHERE id = ?",
+		domain.InvoiceStatusSent, dateStr, dateStr, inv.ID); err != nil {
+		t.Fatalf("updating invoice: %v", err)
+	}
+
+	// Draft regular invoice: must not count.
+	draft := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
+		{Description: "Draft item", Quantity: 100, UnitPrice: 50000, VATRatePercent: 21},
+	})
+	if _, err := db.ExecContext(ctx, "UPDATE invoices SET issue_date = ?, delivery_date = ? WHERE id = ?",
+		dateStr, dateStr, draft.ID); err != nil {
+		t.Fatalf("updating draft invoice dates: %v", err)
+	}
+
+	// Draft credit note stored positive (Fakturoid "correction" style): must not count.
+	testutil.SeedCreditNote(t, db, contact.ID, deliveryDate, domain.InvoiceStatusDraft, []domain.InvoiceItem{
+		{Description: "Draft correction", Quantity: 100, UnitPrice: 10000, VATRatePercent: 21},
+	}, false)
+	// Cancelled credit note stored negative (native style): must not count.
+	testutil.SeedCreditNote(t, db, contact.ID, deliveryDate, domain.InvoiceStatusCancelled, []domain.InvoiceItem{
+		{Description: "Cancelled credit", Quantity: 100, UnitPrice: 20000, VATRatePercent: 21},
+	}, true)
+
+	return inv.TotalAmount
+}
+
+func TestReportRepo_Revenue_ExcludesDraftAndCancelled(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewReportRepository(db)
+	ctx := context.Background()
+
+	want := seedRevenueExcludingDraftsAndCancelled(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	monthly, err := repo.MonthlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("MonthlyRevenue() error: %v", err)
+	}
+	for _, ma := range monthly {
+		if ma.Month == 3 && ma.Amount != want {
+			t.Errorf("March revenue = %d, want %d (only sent/paid/overdue count)", ma.Amount, want)
+		}
+	}
+
+	yearly, err := repo.YearlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("YearlyRevenue() error: %v", err)
+	}
+	if yearly != want {
+		t.Errorf("yearly revenue = %d, want %d (only sent/paid/overdue count)", yearly, want)
+	}
+
+	customers, err := repo.TopCustomers(ctx, 2025, 10)
+	if err != nil {
+		t.Fatalf("TopCustomers() error: %v", err)
+	}
+	if len(customers) != 1 {
+		t.Fatalf("expected 1 customer, got %d", len(customers))
+	}
+	if customers[0].Total != want {
+		t.Errorf("customer revenue = %d, want %d (only sent/paid/overdue count)", customers[0].Total, want)
+	}
+	if customers[0].InvoiceCount != 1 {
+		t.Errorf("invoice count = %d, want 1 (only the sent invoice)", customers[0].InvoiceCount)
 	}
 }
 

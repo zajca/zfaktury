@@ -39,6 +39,9 @@ func TestDashboardRepo_RevenueCurrentMonth_WithData(t *testing.T) {
 	inv2 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Item B", Quantity: 200, UnitPrice: 5000, VATRatePercent: 21},
 	})
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv1.ID)
+	testutil.MarkInvoiceSent(t, db, inv2.ID)
 
 	expectedTotal := inv1.TotalAmount + inv2.TotalAmount
 
@@ -174,6 +177,9 @@ func TestDashboardRepo_MonthlyRevenue_WithData(t *testing.T) {
 	inv2 := testutil.SeedInvoice(t, db, contact.ID, []domain.InvoiceItem{
 		{Description: "Item", Quantity: 100, UnitPrice: 20000, VATRatePercent: 21},
 	})
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv1.ID)
+	testutil.MarkInvoiceSent(t, db, inv2.ID)
 	twoMonthsAgo := now.AddDate(0, -2, 0)
 	_, err := db.ExecContext(ctx, "UPDATE invoices SET delivery_date = ? WHERE id = ?",
 		twoMonthsAgo.Format("2006-01-02"), inv2.ID)
@@ -358,6 +364,32 @@ func TestDashboardRepo_RevenueCurrentMonth_CreditNotesNet(t *testing.T) {
 	}
 	if rev != net {
 		t.Errorf("revenue = %d, want %d (net of credit notes)", rev, net)
+	}
+}
+
+func TestDashboardRepo_Revenue_ExcludesDraftAndCancelled(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	repo := NewDashboardRepository(db)
+	ctx := context.Background()
+
+	want := seedRevenueExcludingDraftsAndCancelled(t, db, ctx, time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC))
+
+	rev, err := repo.RevenueCurrentMonth(ctx, 2025, 3)
+	if err != nil {
+		t.Fatalf("RevenueCurrentMonth() error: %v", err)
+	}
+	if rev != want {
+		t.Errorf("revenue = %d, want %d (only sent/paid/overdue count)", rev, want)
+	}
+
+	monthly, err := repo.MonthlyRevenue(ctx, 2025)
+	if err != nil {
+		t.Fatalf("MonthlyRevenue() error: %v", err)
+	}
+	for _, ma := range monthly {
+		if ma.Month == 3 && ma.Amount != want {
+			t.Errorf("March revenue = %d, want %d (only sent/paid/overdue count)", ma.Amount, want)
+		}
 	}
 }
 

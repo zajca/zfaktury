@@ -89,6 +89,8 @@ func TestDashboardHandler_GetDashboard_WithData(t *testing.T) {
 		},
 	}
 	inv := testutil.SeedInvoice(t, db, contact.ID, items)
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv.ID)
 	// The invoice is seeded with delivery_date = now, so it should appear in current month revenue.
 	_ = inv
 

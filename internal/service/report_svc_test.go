@@ -66,6 +66,9 @@ func TestReportService_RevenueReport_WithData(t *testing.T) {
 		},
 	}
 	inv2 := testutil.SeedInvoice(t, db, contact.ID, items2)
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv1.ID)
+	testutil.MarkInvoiceSent(t, db, inv2.ID)
 
 	report, err := svc.RevenueReport(ctx, year)
 	if err != nil {

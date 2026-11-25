@@ -202,6 +202,10 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 			inv.Status != domain.InvoiceStatusOverdue {
 			continue
 		}
+		// Proformas are not taxable supplies; skip them like the VAT return does.
+		if inv.Type == domain.InvoiceTypeProforma {
+			continue
+		}
 		if supplyDate := inv.TaxableSupplyDate(); !supplyDate.Before(monthStart) && !supplyDate.After(monthEnd) {
 			invoices = append(invoices, inv)
 		}

@@ -314,6 +314,16 @@ func SeedExpense(t *testing.T, db *sql.DB, e *domain.Expense) *domain.Expense {
 	return e
 }
 
+// MarkInvoiceSent sets the invoice status to sent (one of the revenue
+// statuses counted by dashboard and report revenue queries).
+func MarkInvoiceSent(t *testing.T, db *sql.DB, id int64) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), "UPDATE invoices SET status = ? WHERE id = ?",
+		domain.InvoiceStatusSent, id); err != nil {
+		t.Fatalf("marking invoice %d as sent: %v", id, err)
+	}
+}
+
 // SeedInvoiceSequence inserts an invoice sequence into the database.
 func SeedInvoiceSequence(t *testing.T, db *sql.DB, prefix string, year int) int64 {
 	t.Helper()

@@ -198,9 +198,13 @@ func TestReportHandler_TopCustomers(t *testing.T) {
 			VATRatePercent: 21,
 		},
 	}
-	testutil.SeedInvoice(t, db, contact1.ID, items)
-	testutil.SeedInvoice(t, db, contact1.ID, items)
-	testutil.SeedInvoice(t, db, contact2.ID, items)
+	inv1 := testutil.SeedInvoice(t, db, contact1.ID, items)
+	inv2 := testutil.SeedInvoice(t, db, contact1.ID, items)
+	inv3 := testutil.SeedInvoice(t, db, contact2.ID, items)
+	// Revenue counts only sent/paid/overdue invoices.
+	testutil.MarkInvoiceSent(t, db, inv1.ID)
+	testutil.MarkInvoiceSent(t, db, inv2.ID)
+	testutil.MarkInvoiceSent(t, db, inv3.ID)
 
 	r := chi.NewRouter()
 	r.Get("/top-customers", h.TopCustomers)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Pisemnost>
+  <DPHSHV>
+    <VetaD dokument="SHV" k_uladis="DPH" d_poddp="25.04.2025" rok="2025" ctvrt="1" shvies_forma="N"></VetaD>
+    <VetaP c_ufo="464" c_pracufo="3305" dic="8001010006" typ_ds="F" jmeno="Jan" prijmeni="Testovaci" ulice="Testovaci" c_pop="1" naz_obce="Praha" psc="11000" stat="ČESKÁ REPUBLIKA"></VetaP>
+    <VetaR k_storno="A" k_stat="AT" c_vat="33333333333" k_pln_eu="3"></VetaR>
+    <VetaR k_storno="A" k_stat="DE" c_vat="123456789" k_pln_eu="3"></VetaR>
+    <VetaR k_stat="DE" c_vat="123456789" k_pln_eu="3" pln_hodnota="90001"></VetaR>
+    <VetaR k_stat="FR" c_vat="44444444444" k_pln_eu="3" pln_hodnota="12000"></VetaR>
+  </DPHSHV>
+</Pisemnost>

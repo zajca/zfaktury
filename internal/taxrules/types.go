@@ -7,18 +7,43 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	// Embedded tzdata so Europe/Prague loads on every platform, including
+	// Windows builds without system tzdata.
+	_ "time/tzdata"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
-// pragueLocation is the zone in which calendar-date rule values are expressed.
-var pragueLocation = func() *time.Location {
-	loc, err := time.LoadLocation("Europe/Prague")
-	if err != nil {
-		return time.UTC
+// pragueZone returns the Europe/Prague zone used for calendar-date rule
+// values. A load error is returned to the caller; there is no silent fallback.
+func pragueZone() (*time.Location, error) {
+	return time.LoadLocation("Europe/Prague")
+}
+
+// CivilDate is a calendar date without a time of day or zone. Rule values
+// stored as CivilDate serialize identically on every platform, so the rule-set
+// fingerprint stays deterministic.
+type CivilDate struct {
+	Year  int `json:"year"`
+	Month int `json:"month"`
+	Day   int `json:"day"`
+}
+
+// Before reports whether d is an earlier calendar date than o.
+func (d CivilDate) Before(o CivilDate) bool {
+	if d.Year != o.Year {
+		return d.Year < o.Year
 	}
-	return loc
-}()
+	if d.Month != o.Month {
+		return d.Month < o.Month
+	}
+	return d.Day < o.Day
+}
+
+// String returns the ISO 8601 calendar date, e.g. "2025-02-15".
+func (d CivilDate) String() string {
+	return fmt.Sprintf("%04d-%02d-%02d", d.Year, d.Month, d.Day)
+}
 
 // RuleStatus describes how trustworthy a rule set is for final filing.
 type RuleStatus string
@@ -75,7 +100,7 @@ type TaxYearConstants struct {
 	// CryptoTimeTestFrom is the first calendar date (Europe/Prague) on which the
 	// crypto time-test exemption applies; crypto sales before it are never
 	// time-test exempt. Zero means no cutoff is configured.
-	CryptoTimeTestFrom     time.Time
+	CryptoTimeTestFrom     CivilDate
 	SecurityExemptionLimit domain.Amount // max yearly gross time-test income that stays exempt (0 = no limit)
 
 	SpouseIncomeLimit           domain.Amount
@@ -128,22 +153,21 @@ func (r RuleSet) Fingerprint() (string, error) {
 }
 
 // CryptoTimeTestCovers reports whether a crypto sale dated saleDate falls on
-// or after CryptoTimeTestFrom. Calendar dates in Europe/Prague are compared,
-// not instants, so a sale at 00:30 local time on the cutoff day counts as
-// being on the cutoff day. A zero CryptoTimeTestFrom covers every date.
-func (c TaxYearConstants) CryptoTimeTestCovers(saleDate time.Time) bool {
-	if c.CryptoTimeTestFrom.IsZero() {
-		return true
+// or after CryptoTimeTestFrom. The sale's calendar date in Europe/Prague is
+// compared, not the instant, so a sale at 00:30 local time on the cutoff day
+// counts as being on the cutoff day. A zero CryptoTimeTestFrom covers every
+// date.
+func (c TaxYearConstants) CryptoTimeTestCovers(saleDate time.Time) (bool, error) {
+	if c.CryptoTimeTestFrom == (CivilDate{}) {
+		return true, nil
 	}
-	sy, sm, sd := saleDate.In(pragueLocation).Date()
-	fy, fm, fd := c.CryptoTimeTestFrom.In(pragueLocation).Date()
-	if sy != fy {
-		return sy > fy
+	prague, err := pragueZone()
+	if err != nil {
+		return false, fmt.Errorf("loading Europe/Prague for the crypto time-test cutoff: %w", err)
 	}
-	if sm != fm {
-		return sm > fm
-	}
-	return sd >= fd
+	y, m, d := saleDate.In(prague).Date()
+	sale := CivilDate{Year: y, Month: int(m), Day: d}
+	return !sale.Before(c.CryptoTimeTestFrom), nil
 }
 
 // SocialMinAdvanceBaseFor returns the minimum monthly base for a social

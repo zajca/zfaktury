@@ -3,19 +3,18 @@ package taxrules
 import (
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
-// cryptoTimeTestFrom is 15 Feb 2025 (Europe/Prague calendar date): the crypto
-// time-test exemption applies to sales on or after this date, regardless of
-// when the coins were bought.
-var cryptoTimeTestFrom = time.Date(2025, 2, 15, 0, 0, 0, 0, pragueLocation)
+// cryptoTimeTestFrom is 15 Feb 2025, the first calendar date (Europe/Prague)
+// on which the crypto time-test exemption applies, regardless of when the
+// coins were bought.
+var cryptoTimeTestFrom = CivilDate{Year: 2025, Month: 2, Day: 15}
 
 var ruleSets = map[int]RuleSet{
 	2024: {
-		ID:     "cz-dpfo-2024.v5",
+		ID:     "cz-dpfo-2024.v6",
 		Year:   2024,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -68,7 +67,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2025: {
-		ID:     "cz-dpfo-2025.v5",
+		ID:     "cz-dpfo-2025.v6",
 		Year:   2025,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -121,7 +120,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2026: {
-		ID:     "cz-dpfo-2026.v4-provisional",
+		ID:     "cz-dpfo-2026.v5-provisional",
 		Year:   2026,
 		Status: RuleStatusProvisional,
 		Sources: []LegalSource{

@@ -253,8 +253,14 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 			allBuysExempt := true
 			// The crypto time-test exemption applies only from CryptoTimeTestFrom;
 			// crypto sales before that calendar date are never exempt.
-			if sell.AssetType == domain.AssetTypeCrypto && !constants.CryptoTimeTestCovers(sell.TransactionDate) {
-				allBuysExempt = false
+			if sell.AssetType == domain.AssetTypeCrypto {
+				covered, err := constants.CryptoTimeTestCovers(sell.TransactionDate)
+				if err != nil {
+					return fmt.Errorf("checking the crypto time-test cutoff for sell %d: %w", sell.ID, err)
+				}
+				if !covered {
+					allBuysExempt = false
+				}
 			}
 			timeTestCutoff := sell.TransactionDate.AddDate(-constants.TimeTestYears, 0, 0)
 

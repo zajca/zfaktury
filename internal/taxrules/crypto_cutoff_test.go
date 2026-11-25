@@ -5,20 +5,26 @@ import (
 	"time"
 )
 
-// The crypto time-test cutoff is a calendar date in Europe/Prague, compared by
-// calendar date and not by instant: a sale at 00:30 local time on 15 Feb 2025
-// is on the cutoff day and covered.
+// The crypto time-test cutoff is a civil date compared against the sale's
+// calendar date in Europe/Prague, not by instant: a sale at 00:30 local time
+// on 15 Feb 2025 is on the cutoff day and covered.
 func TestCryptoTimeTestCovers_CalendarDates(t *testing.T) {
 	rules, err := GetRuleSet(2025)
 	if err != nil {
 		t.Fatalf("GetRuleSet(2025) error: %v", err)
 	}
 	c := rules.Constants
-	if c.CryptoTimeTestFrom.IsZero() {
+	if c.CryptoTimeTestFrom == (CivilDate{}) {
 		t.Fatal("2025 rule set has no CryptoTimeTestFrom")
 	}
+	if got := c.CryptoTimeTestFrom.String(); got != "2025-02-15" {
+		t.Errorf("CryptoTimeTestFrom = %q, want %q", got, "2025-02-15")
+	}
 
-	prague := pragueLocation
+	prague, err := pragueZone()
+	if err != nil {
+		t.Fatalf("pragueZone() error: %v", err)
+	}
 	tests := []struct {
 		name string
 		date time.Time
@@ -35,7 +41,11 @@ func TestCryptoTimeTestCovers_CalendarDates(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := c.CryptoTimeTestCovers(tt.date); got != tt.want {
+			got, err := c.CryptoTimeTestCovers(tt.date)
+			if err != nil {
+				t.Fatalf("CryptoTimeTestCovers(%s) error: %v", tt.date, err)
+			}
+			if got != tt.want {
 				t.Errorf("CryptoTimeTestCovers(%s) = %v, want %v", tt.date, got, tt.want)
 			}
 		})
@@ -44,7 +54,11 @@ func TestCryptoTimeTestCovers_CalendarDates(t *testing.T) {
 
 func TestCryptoTimeTestCovers_ZeroCutoffCoversEverything(t *testing.T) {
 	var c TaxYearConstants
-	if !c.CryptoTimeTestCovers(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)) {
+	got, err := c.CryptoTimeTestCovers(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("CryptoTimeTestCovers() error: %v", err)
+	}
+	if !got {
 		t.Error("zero CryptoTimeTestFrom should cover every date")
 	}
 }

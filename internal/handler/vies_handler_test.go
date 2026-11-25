@@ -273,7 +273,7 @@ func TestVIESHandler_GenerateXML_NoDIC(t *testing.T) {
 	}
 }
 
-func TestVIESHandler_GenerateXML_FollowUpRefused(t *testing.T) {
+func TestVIESHandler_GenerateXML_FollowUpNoFiledSummary(t *testing.T) {
 	r, db := setupVIESRouter(t)
 
 	if err := insertVATTaxpayerSettings(db); err != nil {
@@ -300,8 +300,8 @@ func TestVIESHandler_GenerateXML_FollowUpRefused(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
 	}
-	if !strings.Contains(w.Body.String(), "ručně v EPO") {
-		t.Errorf("body should carry the follow-up message, got: %s", w.Body.String())
+	if !strings.Contains(w.Body.String(), "Nejprve") {
+		t.Errorf("body should carry the file-the-regular-summary-first message, got: %s", w.Body.String())
 	}
 }
 

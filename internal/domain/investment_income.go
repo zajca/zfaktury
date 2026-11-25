@@ -134,4 +134,10 @@ type InvestmentYearSummary struct {
 	OtherIncomeExpenses Amount
 	OtherIncomeExempt   Amount
 	OtherIncomeNet      Amount
+	// Taxable-only §10 pair stored on the income tax return and reported in
+	// Příloha č. 2 (exempt income is not declared, § 4 ZDP): the exempt share
+	// of each sale's gain is split off proportionally, so
+	// OtherIncomeTaxableGross - OtherIncomeTaxableExpenses == OtherIncomeNet.
+	OtherIncomeTaxableGross    Amount
+	OtherIncomeTaxableExpenses Amount
 }

@@ -275,6 +275,7 @@ type SecurityTransactionRepo interface {
 	ListByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error)
 	ListByDocumentID(ctx context.Context, documentID int64) ([]domain.SecurityTransaction, error)
 	ListBuysForFIFO(ctx context.Context, assetName, assetType string) ([]domain.SecurityTransaction, error)
+	ListSellsForFIFO(ctx context.Context, assetName, assetType string) ([]domain.SecurityTransaction, error)
 	ListSellsByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error)
 	UpdateFIFOResults(ctx context.Context, id int64, costBasis, computedGain, exemptAmount domain.Amount, timeTestExempt bool) error
 	DeleteByDocumentID(ctx context.Context, documentID int64) error

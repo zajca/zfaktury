@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
 	"github.com/zajca/zfaktury/internal/vatxml"
@@ -201,6 +202,10 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 			inv.Status != domain.InvoiceStatusOverdue {
 			continue
 		}
+		// Proformas are not taxable supplies; skip them like the VAT return does.
+		if inv.Type == domain.InvoiceTypeProforma {
+			continue
+		}
 		if supplyDate := inv.TaxableSupplyDate(); !supplyDate.Before(monthStart) && !supplyDate.After(monthEnd) {
 			invoices = append(invoices, inv)
 		}
@@ -235,6 +240,23 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 			totalAbs = domain.Amount(-int64(totalAbs))
 		}
 
+		// A credit note always reduces the control statement, with the same
+		// per-document sign rule the VAT return uses: a credit note stored with
+		// positive amounts (an imported Fakturoid "correction") is flipped to
+		// negative, one stored negative stays negative.
+		factor := domain.Amount(1)
+		if fullInv.Type == domain.InvoiceTypeCreditNote {
+			var calcItems []calc.VATItemInput
+			for _, item := range fullInv.Items {
+				calcItems = append(calcItems, calc.VATItemInput{
+					Base:           domain.Amount(int64(item.Quantity) * int64(item.UnitPrice) / 100),
+					VATAmount:      item.VATAmount,
+					VATRatePercent: item.VATRatePercent,
+				})
+			}
+			factor = calc.CreditNoteDocumentFactor(calcItems)
+		}
+
 		invID := fullInv.ID
 		dppd := fullInv.TaxableSupplyDate().Format("2006-01-02")
 
@@ -248,8 +270,8 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 				agg := rateAgg[item.VATRatePercent]
 				// Item subtotal = quantity * unit_price / 100.
 				itemBase := domain.Amount(int64(item.Quantity) * int64(item.UnitPrice) / 100)
-				agg.base = agg.base.Add(itemBase)
-				agg.vat = agg.vat.Add(item.VATAmount)
+				agg.base = agg.base.Add(itemBase * factor)
+				agg.vat = agg.vat.Add(item.VATAmount * factor)
 				rateAgg[item.VATRatePercent] = agg
 			}
 			for rate, agg := range rateAgg {
@@ -273,8 +295,8 @@ func (s *VATControlStatementService) buildInvoiceLines(ctx context.Context, csID
 				}
 				agg := a5Agg[item.VATRatePercent]
 				itemBase := domain.Amount(int64(item.Quantity) * int64(item.UnitPrice) / 100)
-				agg.base = agg.base.Add(itemBase)
-				agg.vat = agg.vat.Add(item.VATAmount)
+				agg.base = agg.base.Add(itemBase * factor)
+				agg.vat = agg.vat.Add(item.VATAmount * factor)
 				a5Agg[item.VATRatePercent] = agg
 			}
 		}

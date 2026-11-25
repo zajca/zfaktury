@@ -45,7 +45,7 @@ func CalculateVATReturn(invoices []VATInvoiceInput, expenses []VATExpenseInput) 
 	for _, inv := range invoices {
 		factor := domain.Amount(1)
 		if inv.Type == string(domain.InvoiceTypeCreditNote) {
-			factor = creditNoteDocumentFactor(inv.Items)
+			factor = CreditNoteDocumentFactor(inv.Items)
 		}
 		for _, item := range inv.Items {
 			base := item.Base * factor

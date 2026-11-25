@@ -202,6 +202,59 @@ func SeedInvoice(t *testing.T, db *sql.DB, customerID int64, items []domain.Invo
 	return inv
 }
 
+// SeedCreditNote inserts a credit note (type 'credit_note') delivered on the
+// given date. negate=true stores all amounts negative, the way natively created
+// credit notes are stored (negated unit prices); negate=false keeps the
+// amounts positive, the way a Fakturoid "correction" import is stored.
+func SeedCreditNote(t *testing.T, db *sql.DB, customerID int64, deliveryDate time.Time, status string, items []domain.InvoiceItem, negate bool) *domain.Invoice {
+	t.Helper()
+
+	inv := SeedInvoice(t, db, customerID, items)
+
+	// SeedInvoice stored positive totals; apply the requested sign.
+	subtotal := int64(inv.SubtotalAmount)
+	vat := int64(inv.VATAmount)
+	total := int64(inv.TotalAmount)
+	if negate {
+		subtotal, vat, total = -subtotal, -vat, -total
+		inv.SubtotalAmount = -inv.SubtotalAmount
+		inv.VATAmount = -inv.VATAmount
+		inv.TotalAmount = -inv.TotalAmount
+		for i := range inv.Items {
+			inv.Items[i].UnitPrice = -inv.Items[i].UnitPrice
+			inv.Items[i].VATAmount = -inv.Items[i].VATAmount
+			inv.Items[i].TotalAmount = -inv.Items[i].TotalAmount
+		}
+	}
+	inv.Type = domain.InvoiceTypeCreditNote
+	inv.Status = status
+	inv.IssueDate = deliveryDate
+	inv.DueDate = deliveryDate
+	inv.DeliveryDate = deliveryDate
+
+	ctx := context.Background()
+	dateStr := deliveryDate.Format("2006-01-02")
+	_, err := db.ExecContext(ctx, `
+		UPDATE invoices SET type = ?, status = ?, issue_date = ?, due_date = ?, delivery_date = ?,
+			subtotal_amount = ?, vat_amount = ?, total_amount = ?
+		WHERE id = ?`,
+		inv.Type, inv.Status, dateStr, dateStr, dateStr,
+		subtotal, vat, total, inv.ID,
+	)
+	if err != nil {
+		t.Fatalf("updating seeded invoice to credit note: %v", err)
+	}
+	if negate {
+		_, err = db.ExecContext(ctx, `
+			UPDATE invoice_items SET unit_price = -unit_price, vat_amount = -vat_amount, total_amount = -total_amount
+			WHERE invoice_id = ?`, inv.ID)
+		if err != nil {
+			t.Fatalf("negating credit note items: %v", err)
+		}
+	}
+	return inv
+}
+
 // SeedExpense inserts an expense into the database with sensible defaults.
 // Fields from the provided expense override defaults.
 func SeedExpense(t *testing.T, db *sql.DB, e *domain.Expense) *domain.Expense {
@@ -259,6 +312,16 @@ func SeedExpense(t *testing.T, db *sql.DB, e *domain.Expense) *domain.Expense {
 	}
 	e.ID = id
 	return e
+}
+
+// MarkInvoiceSent sets the invoice status to sent (one of the revenue
+// statuses counted by dashboard and report revenue queries).
+func MarkInvoiceSent(t *testing.T, db *sql.DB, id int64) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), "UPDATE invoices SET status = ? WHERE id = ?",
+		domain.InvoiceStatusSent, id); err != nil {
+		t.Fatalf("marking invoice %d as sent: %v", id, err)
+	}
 }
 
 // SeedInvoiceSequence inserts an invoice sequence into the database.

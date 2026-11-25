@@ -1226,6 +1226,171 @@ func TestVIES_GenerateXML_Supplementary_LatestFiledBaseline(t *testing.T) {
 	}
 }
 
+func TestVIES_GenerateXML_Corrective_RecalculatesBeforeDiff(t *testing.T) {
+	svc, db := newVIESSvc(t)
+	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
+	de := testutil.SeedContact(t, db, &domain.Contact{Name: "German GmbH", DIC: "DE444444444", Country: "DE"})
+	sk := testutil.SeedContact(t, db, &domain.Contact{Name: "Slovak s.r.o.", DIC: "SK555555555", Country: "SK"})
+
+	q1 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+	items := []domain.InvoiceItem{
+		{Description: "Consulting", Quantity: 10000, Unit: "hod", UnitPrice: 300000, VATRatePercent: 0}, // 300000 CZK
+	}
+	seedInvoiceWithDates(t, db, de.ID, q1, q1, domain.InvoiceStatusPaid, domain.InvoiceTypeRegular, items)
+	seedInvoiceWithDates(t, db, sk.ID, q1, q1, domain.InvoiceStatusPaid, domain.InvoiceTypeRegular, items)
+
+	// File the regular summary for the quarter with the DE and SK partners.
+	regular := validVIESSummary()
+	if err := svc.Create(ctx, regular); err != nil {
+		t.Fatalf("Create() regular error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, regular.ID); err != nil {
+		t.Fatalf("Recalculate() regular error: %v", err)
+	}
+	if err := svc.GenerateXML(ctx, regular.ID); err != nil {
+		t.Fatalf("GenerateXML() regular error: %v", err)
+	}
+	if err := svc.MarkFiled(ctx, regular.ID); err != nil {
+		t.Fatalf("MarkFiled() regular error: %v", err)
+	}
+
+	// A new partner appears in the quarter after the regular summary was filed.
+	fr := testutil.SeedContact(t, db, &domain.Contact{Name: "French SARL", DIC: "FR666666666", Country: "FR"})
+	seedInvoiceWithDates(t, db, fr.ID, q1, q1, domain.InvoiceStatusPaid, domain.InvoiceTypeRegular, items)
+
+	// The corrective summary has no stored lines yet: GenerateXML must
+	// recompute them from the current invoices before diffing, so the
+	// unchanged DE and SK partners are omitted and get no storno row.
+	corr := validVIESSummary()
+	corr.FilingType = domain.FilingTypeCorrective
+	if err := svc.Create(ctx, corr); err != nil {
+		t.Fatalf("Create() corrective error: %v", err)
+	}
+	if err := svc.GenerateXML(ctx, corr.ID); err != nil {
+		t.Fatalf("GenerateXML() corrective error: %v", err)
+	}
+
+	updated, err := svc.GetByID(ctx, corr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	forma, rows := parseVIESXMLRows(t, updated.XMLData)
+	if forma != "N" {
+		t.Errorf("shvies_forma = %q, want N", forma)
+	}
+	want := []viesXMLRow{
+		{KStat: "FR", CVat: "666666666", KPlnEU: "3", PlnHodnota: "300000"},
+	}
+	if !reflect.DeepEqual(rows, want) {
+		t.Errorf("VetaR = %+v, want %+v (no storno rows for the unchanged DE/SK partners)", rows, want)
+	}
+}
+
+func TestVIES_GenerateXML_Corrective_ReflectsInvoiceChangedAfterRecalculate(t *testing.T) {
+	svc, db := newVIESSvc(t)
+	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
+	euContact := testutil.SeedContact(t, db, &domain.Contact{
+		Name: "German GmbH", DIC: "DE444444444", Country: "DE",
+	})
+
+	q1 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+	itemsA := []domain.InvoiceItem{
+		{Description: "Consulting", Quantity: 10000, Unit: "hod", UnitPrice: 300000, VATRatePercent: 0}, // 300000 CZK
+	}
+	seedInvoiceWithDates(t, db, euContact.ID, q1, q1, domain.InvoiceStatusPaid, domain.InvoiceTypeRegular, itemsA)
+
+	regular := validVIESSummary()
+	if err := svc.Create(ctx, regular); err != nil {
+		t.Fatalf("Create() regular error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, regular.ID); err != nil {
+		t.Fatalf("Recalculate() regular error: %v", err)
+	}
+	if err := svc.GenerateXML(ctx, regular.ID); err != nil {
+		t.Fatalf("GenerateXML() regular error: %v", err)
+	}
+	if err := svc.MarkFiled(ctx, regular.ID); err != nil {
+		t.Fatalf("MarkFiled() regular error: %v", err)
+	}
+
+	corr := validVIESSummary()
+	corr.FilingType = domain.FilingTypeCorrective
+	if err := svc.Create(ctx, corr); err != nil {
+		t.Fatalf("Create() corrective error: %v", err)
+	}
+	if err := svc.Recalculate(ctx, corr.ID); err != nil {
+		t.Fatalf("Recalculate() corrective error: %v", err)
+	}
+
+	// The invoice changes after the corrective's last recalculation; the
+	// generated XML must reflect it, not the stale stored lines.
+	itemsB := []domain.InvoiceItem{
+		{Description: "Consulting", Quantity: 5000, Unit: "hod", UnitPrice: 300000, VATRatePercent: 0}, // 150000 CZK
+	}
+	seedInvoiceWithDates(t, db, euContact.ID, q1, q1, domain.InvoiceStatusPaid, domain.InvoiceTypeRegular, itemsB)
+
+	if err := svc.GenerateXML(ctx, corr.ID); err != nil {
+		t.Fatalf("GenerateXML() corrective error: %v", err)
+	}
+
+	updated, err := svc.GetByID(ctx, corr.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error: %v", err)
+	}
+	forma, rows := parseVIESXMLRows(t, updated.XMLData)
+	if forma != "N" {
+		t.Errorf("shvies_forma = %q, want N", forma)
+	}
+	want := []viesXMLRow{
+		{KStorno: "A", KStat: "DE", CVat: "444444444", KPlnEU: "3", PlnHodnota: ""},
+		{KStat: "DE", CVat: "444444444", KPlnEU: "3", PlnHodnota: "450000"},
+	}
+	if !reflect.DeepEqual(rows, want) {
+		t.Errorf("VetaR = %+v, want %+v", rows, want)
+	}
+}
+
+func TestVIES_GenerateXML_Filed_Refused(t *testing.T) {
+	svc, db := newVIESSvc(t)
+	ctx := context.Background()
+
+	if err := insertVATTaxpayerSettingsSvc(ctx, db); err != nil {
+		t.Fatalf("inserting taxpayer settings: %v", err)
+	}
+
+	vs := validVIESSummary()
+	if err := svc.Create(ctx, vs); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := svc.GenerateXML(ctx, vs.ID); err != nil {
+		t.Fatalf("first GenerateXML() error: %v", err)
+	}
+	if err := svc.MarkFiled(ctx, vs.ID); err != nil {
+		t.Fatalf("MarkFiled() error: %v", err)
+	}
+
+	err := svc.GenerateXML(ctx, vs.ID)
+	if err == nil {
+		t.Fatal("GenerateXML() on a filed summary should be refused, got nil")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("error should wrap ErrInvalidInput, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "filed") {
+		t.Errorf("error should mention the filed status, got %v", err)
+	}
+}
+
 func TestVIES_GenerateXML_MissingSettings(t *testing.T) {
 	ctx := context.Background()
 

@@ -39,7 +39,7 @@
 		<Button variant="primary" size="sm" onclick={onSave} disabled={saving}>Uložit</Button>
 	</div>
 	<div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-		{#if taxConstants && taxConstants.student_credit > 0}
+		{#if !taxConstants || taxConstants.student_credit > 0}
 			<label class="flex items-center gap-2 text-sm text-primary">
 				<input type="checkbox" bind:checked={isStudent} class="rounded border-border" />
 				Student
@@ -59,6 +59,8 @@
 					</Select>
 				</div>
 			{/if}
+		{:else}
+			<p class="text-sm text-tertiary">Sleva na studenta se od roku 2024 neuplatňuje.</p>
 		{/if}
 		<div>
 			<span class="text-xs text-tertiary">Invalidita</span>

@@ -82,6 +82,19 @@ describe('PersonalCreditsCard', () => {
 		expect(screen.queryByLabelText('Student')).toBeNull();
 	});
 
+	it('shows the abolition note in place of the student controls when the credit is 0', () => {
+		renderCard(vi.fn(), { taxConstants: makeTaxConstants(0) });
+
+		expect(screen.getByText('Sleva na studenta se od roku 2024 neuplatňuje.')).toBeTruthy();
+		expect(screen.queryByLabelText('Student')).toBeNull();
+	});
+
+	it('shows the student controls when the tax constants are not loaded', () => {
+		renderCard(vi.fn(), { taxConstants: null });
+
+		expect(screen.getByLabelText('Student')).toBeTruthy();
+	});
+
 	it('hides the student months select even when the stored flag is set, for a zero-credit year', () => {
 		renderCard(vi.fn(), { isStudent: true, taxConstants: makeTaxConstants(0) });
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -854,9 +855,43 @@ func TestTaxCreditsService_UpsertPersonal_StudentRefusedWhenCreditZero(t *testin
 		if !errors.Is(err, domain.ErrInvalidInput) {
 			t.Errorf("year %d: error = %v, want ErrInvalidInput", year, err)
 		}
-		if !strings.Contains(err.Error(), "studentskou slevu nelze od roku 2024 uplatnit") {
-			t.Errorf("year %d: error = %v, want the Czech student-credit message", year, err)
+		wantMsg := fmt.Sprintf("studentskou slevu nelze pro rok %d uplatnit", year)
+		if !strings.Contains(err.Error(), wantMsg) {
+			t.Errorf("year %d: error = %v, want message containing %q", year, err, wantMsg)
 		}
+	}
+}
+
+// TestTaxCreditsService_UpsertPersonal_StaleStudentFlagCleared covers a 2024+ record
+// that already has IsStudent=true (saved before the refusal, or copied): saving the
+// card with the flag cleared — e.g. together with a disability change — succeeds.
+func TestTaxCreditsService_UpsertPersonal_StaleStudentFlagCleared(t *testing.T) {
+	svc, db := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	// Stored through the repository, bypassing the refusal.
+	stale := &domain.TaxPersonalCredits{Year: 2025, IsStudent: true, StudentMonths: 12}
+	if err := repository.NewTaxPersonalCreditsRepository(db).Upsert(ctx, stale); err != nil {
+		t.Fatalf("repo Upsert(stale) error: %v", err)
+	}
+
+	err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+		Year: 2025, IsStudent: false, StudentMonths: 0,
+		DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 12,
+	})
+	if err != nil {
+		t.Fatalf("UpsertPersonal() with the student flag cleared: %v", err)
+	}
+
+	got, err := svc.GetPersonal(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetPersonal() error: %v", err)
+	}
+	if got.IsStudent || got.StudentMonths != 0 {
+		t.Errorf("got IsStudent=%v StudentMonths=%d, want false/0", got.IsStudent, got.StudentMonths)
+	}
+	if got.DisabilityLevel != domain.DisabilityLevel1And2 || got.DisabilityMonths != 12 {
+		t.Errorf("got DisabilityLevel=%d DisabilityMonths=%d, want 1/12", got.DisabilityLevel, got.DisabilityMonths)
 	}
 }
 
@@ -1340,8 +1375,12 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPersonal(2025) error: %v", err)
 	}
-	if !copiedPersonal.IsStudent {
-		t.Error("expected IsStudent=true preserved")
+	// The 2025 rule set has a zero student credit, so the copied record clears the flag.
+	if copiedPersonal.IsStudent {
+		t.Error("expected IsStudent=false cleared (2025 student credit is 0)")
+	}
+	if copiedPersonal.StudentMonths != 0 {
+		t.Errorf("StudentMonths = %d, want 0 (cleared)", copiedPersonal.StudentMonths)
 	}
 	if !copiedPersonal.ZTPP || copiedPersonal.DisabilityLevel != domain.DisabilityLevel3 {
 		t.Errorf("ZTPP=%v level=%d, want true/%d preserved", copiedPersonal.ZTPP, copiedPersonal.DisabilityLevel, domain.DisabilityLevel3)
@@ -1369,6 +1408,36 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 	}
 	if copiedDeds[0].ClaimedAmount != 0 {
 		t.Errorf("ClaimedAmount = %d, want 0 (zeroed)", copiedDeds[0].ClaimedAmount)
+	}
+}
+
+// TestTaxCreditsService_CopyFromYear_ClearsStudentForZeroCreditYear covers copying a
+// record with IsStudent=true into a year whose rule set has a zero student credit
+// (2024+): the copied record must have the flag and months cleared.
+func TestTaxCreditsService_CopyFromYear_ClearsStudentForZeroCreditYear(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	// 2023 has no rule set, so the student flag is accepted there.
+	if err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+		Year: 2023, IsStudent: true, StudentMonths: 10,
+	}); err != nil {
+		t.Fatalf("UpsertPersonal(2023) error: %v", err)
+	}
+
+	if err := svc.CopyFromYear(ctx, 2023, 2024); err != nil {
+		t.Fatalf("CopyFromYear() error: %v", err)
+	}
+
+	got, err := svc.GetPersonal(ctx, 2024)
+	if err != nil {
+		t.Fatalf("GetPersonal(2024) error: %v", err)
+	}
+	if got.IsStudent {
+		t.Error("copied IsStudent = true, want false (the 2024 rule set has a zero student credit)")
+	}
+	if got.StudentMonths != 0 {
+		t.Errorf("copied StudentMonths = %d, want 0", got.StudentMonths)
 	}
 }
 

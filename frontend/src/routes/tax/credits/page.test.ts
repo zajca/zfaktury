@@ -112,6 +112,56 @@ describe('Tax credits page - personal credits', () => {
 			});
 		});
 	});
+
+	it('clears a stale student flag when saving in a year with zero student credit', async () => {
+		const summaryStudent = {
+			...summary,
+			personal: { ...summary.personal, is_student: true, student_months: 6 }
+		};
+		mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+			if (url.includes('/personal') && init?.method === 'PUT') {
+				return Promise.resolve(jsonResponse({}));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants)); // student_credit: 0
+			}
+			if (url.includes('/tax-credits/')) {
+				return Promise.resolve(jsonResponse(summaryStudent));
+			}
+			return Promise.resolve(jsonResponse([]));
+		});
+
+		render(Page);
+
+		// The stored flag is hidden (student_credit 0) and reset on load.
+		await screen.findByLabelText('Držitel průkazu ZTP/P');
+		expect(screen.queryByLabelText('Student')).toBeNull();
+
+		// Change the disability degree and save the personal card.
+		const heading = screen.getByRole('heading', { name: /Osobní slevy/ });
+		const card = heading.parentElement?.parentElement as HTMLElement;
+		const levelSelect = card.querySelector('select') as HTMLSelectElement;
+		await fireEvent.change(levelSelect, { target: { value: '1' } });
+
+		const saveButton = heading.parentElement?.querySelector('button:not([aria-label])');
+		expect(saveButton).toBeTruthy();
+		await fireEvent.click(saveButton as HTMLElement);
+
+		await waitFor(() => {
+			const put = mockFetch.mock.calls.find(
+				([url, init]) => String(url).includes('/personal') && init?.method === 'PUT'
+			);
+			expect(put).toBeTruthy();
+			expect(JSON.parse(put![1].body as string)).toEqual({
+				is_student: false,
+				student_months: 0,
+				disability_level: 1,
+				disability_months: 12,
+				ztpp: false,
+				ztpp_months: 0
+			});
+		});
+	});
 });
 
 describe('Tax credits page - spouse credits', () => {

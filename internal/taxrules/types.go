@@ -75,8 +75,8 @@ type TaxYearConstants struct {
 	// CryptoTimeTestFrom is the first calendar date (Europe/Prague) on which the
 	// crypto time-test exemption applies; crypto sales before it are never
 	// time-test exempt. Zero means no cutoff is configured.
-	CryptoTimeTestFrom              time.Time
-	SecurityExemptionLimit          domain.Amount         // max yearly gross time-test income that stays exempt (0 = no limit)
+	CryptoTimeTestFrom     time.Time
+	SecurityExemptionLimit domain.Amount // max yearly gross time-test income that stays exempt (0 = no limit)
 
 	SpouseIncomeLimit           domain.Amount
 	DeductionCapMortgage        domain.Amount

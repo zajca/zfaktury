@@ -341,6 +341,7 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		CapitalIncomeNet:            itr.CapitalIncomeNet,
 		OtherIncomeNet:              itr.OtherIncomeNet,
 		Section6TaxBase:             itr.Section6TaxBase,
+		Section6GrossIncome:         itr.Section6GrossIncome,
 		Section6AdvanceWithheld:     itr.Section6AdvanceWithheld,
 		Section6WithholdingCredited: itr.Section6WithholdingCredited,
 		Section6MonthlyBonusPaid:    itr.Section6MonthlyBonusPaid,
@@ -361,6 +362,15 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 	}
 	if rules.Status == taxrules.RuleStatusProvisional {
 		itr.Warnings = append(itr.Warnings, domain.WarningTaxRuleSetProvisional)
+	}
+	// § 35c odst. 3/4: when a computed bonus is zeroed by a statutory limit, surface
+	// the reason as an advisory warning (the sleva part is never limited).
+	if excess := childBenefit - taxResult.ChildBenefitSleva; excess > 0 && taxResult.ChildBenefitBonus == 0 {
+		if itr.Section6GrossIncome+itr.TotalRevenue < constants.MinimumWage*6 {
+			itr.Warnings = append(itr.Warnings, domain.WarningChildBonusIncomeTest)
+		} else {
+			itr.Warnings = append(itr.Warnings, domain.WarningChildBonusBelowMinimum)
+		}
 	}
 
 	// Map result back to entity.
@@ -557,6 +567,18 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 				return nil, fmt.Errorf("údaje o dětech neodpovídají podanému přiznání, přiznání nelze znovu vygenerovat: %w", domain.ErrInvalidInput)
 			}
 			return nil, fmt.Errorf("údaje o dětech se od posledního přepočtu změnily, přepočítejte přiznání: %w", domain.ErrInvalidInput)
+		}
+
+		// The stored limited split must match the split recomputed from the stored
+		// inputs under the current rules (§ 35c odst. 3 and 4). A return calculated
+		// before those limits would export ř.73/76 with the new rules while ř.91
+		// (kc_zbyvpred) still carries the stale TaxDue — a self-contradicting XML.
+		sleva, bonus := calc.SplitChildBenefit(itr.TaxAfterCredits, itr.ChildBenefit, itr.Section6GrossIncome, itr.TotalRevenue, constants)
+		if itr.TaxAfterBenefit != itr.TaxAfterCredits-sleva-bonus {
+			if itr.Status == domain.FilingStatusFiled {
+				return nil, fmt.Errorf("uložený daňový bonus neodpovídá podanému přiznání, přiznání nelze znovu vygenerovat: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("přiznání bylo spočteno starší verzí, přepočítejte ho: %w", domain.ErrInvalidInput)
 		}
 	}
 

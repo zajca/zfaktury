@@ -59,19 +59,6 @@ func childRow(claimed bool, v int64) *int64 {
 	return &v
 }
 
-// splitChildBenefit splits child benefit into the sleva component (form ř.73)
-// and the daňový bonus component (ř.76). Sleva eats tax up to its remaining value;
-// any excess child benefit becomes a refundable bonus.
-func splitChildBenefit(taxAfterCredits, childBenefit int64) (slevy35c, danbonus int64) {
-	if taxAfterCredits < 0 {
-		taxAfterCredits = 0
-	}
-	if childBenefit <= taxAfterCredits {
-		return childBenefit, 0
-	}
-	return taxAfterCredits, childBenefit - taxAfterCredits
-}
-
 // aggregateChildMonths buckets each TaxChildCredit by order (1/2/3+) and ZTP flag,
 // summing MonthsClaimed into the matching m_deti* slot. EPO derives kc_dazvyhod (ř.72)
 // from these slots, so an empty slice produces 0 for every slot and an inconsistency
@@ -345,9 +332,21 @@ func GenerateIncomeTaxXML(itr *domain.IncomeTaxReturn, settings map[string]strin
 	if err != nil {
 		return nil, err
 	}
-	slevy35c, danbonus := splitChildBenefit(taxAfter35ba, childBenefit) // ř.73 / ř.76
-	taxAfter35c := taxAfter35ba - slevy35c                              // ř.74
-	danCelk := taxAfter35c                                              // ř.75 (= ř.74 + ř.74a; no separate-base tax tracked)
+	// ř.73 / ř.76 come from the same limited split the return was calculated with
+	// (§ 35c odst. 3: 100 CZK minimum bonus; § 35c odst. 4 + § 21g odst. 1: § 6 + § 7
+	// gross income >= 6x the minimum wage), derived here from the stored return via
+	// calc.SplitChildBenefit — not a second formula.
+	bonusConstants, err := calc.GetTaxConstants(itr.Year)
+	if err != nil {
+		return nil, fmt.Errorf("getting tax constants for the child bonus limits: %w", err)
+	}
+	sleva35cH, danbonusH := calc.SplitChildBenefit(
+		domain.Amount(taxAfter35ba)*100, domain.Amount(childBenefit)*100,
+		itr.Section6GrossIncome, itr.TotalRevenue, bonusConstants)
+	slevy35c := ToWholeCZK(sleva35cH)      // ř.73
+	danbonus := ToWholeCZK(danbonusH)      // ř.76
+	taxAfter35c := taxAfter35ba - slevy35c // ř.74
+	danCelk := taxAfter35c                 // ř.75 (= ř.74 + ř.74a; no separate-base tax tracked)
 	// ř.77 = ř.75 - ř.76 (min 0); ř.77a = ř.76 - ř.75 (min 0). At most one is non-zero.
 	danPoDb := danCelk - danbonus
 	dbPoOdpd := int64(0)

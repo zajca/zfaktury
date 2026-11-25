@@ -402,8 +402,8 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 	if result.CreditBasic != constants.BasicCredit {
 		t.Errorf("CreditBasic = %d, want %d", result.CreditBasic, constants.BasicCredit)
 	}
-	if result.TaxRuleSetID != "cz-dpfo-2025.v6" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v6", result.TaxRuleSetID)
+	if result.TaxRuleSetID != "cz-dpfo-2025.v7" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v7", result.TaxRuleSetID)
 	}
 	if result.TaxRuleSetStatus != "final" {
 		t.Errorf("TaxRuleSetStatus = %q, want final", result.TaxRuleSetStatus)
@@ -509,8 +509,8 @@ func TestIncomeTaxReturnService_Recalculate_ProvisionalRuleSetWarning(t *testing
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
-	if result.TaxRuleSetID != "cz-dpfo-2026.v5-provisional" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v5-provisional", result.TaxRuleSetID)
+	if result.TaxRuleSetID != "cz-dpfo-2026.v6-provisional" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v6-provisional", result.TaxRuleSetID)
 	}
 	if result.TaxRuleSetStatus != "provisional" {
 		t.Errorf("TaxRuleSetStatus = %q, want provisional", result.TaxRuleSetStatus)
@@ -2051,6 +2051,229 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyFiledSpouseWithoutChildMonths(
 	}
 	if _, err := svc.GenerateXML(ctx, itr.ID); err != nil {
 		t.Errorf("GenerateXML() after filling the child months: %v", err)
+	}
+}
+
+// seedSentInvoice2025 inserts a sent 2025 invoice with the given net subtotal, so
+// Recalculate picks it up as §7 revenue for the year.
+func seedSentInvoice2025(t *testing.T, db *sql.DB, number string, subtotal domain.Amount) {
+	t.Helper()
+	contact := testutil.SeedContact(t, db, nil)
+	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+	_, err := db.ExecContext(context.Background(), `
+		INSERT INTO invoices (
+			invoice_number, type, status,
+			issue_date, due_date, delivery_date, variable_symbol, constant_symbol,
+			customer_id, currency_code, exchange_rate,
+			payment_method, bank_account, bank_code, iban, swift,
+			subtotal_amount, vat_amount, total_amount, paid_amount,
+			notes, internal_notes,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		number, domain.InvoiceTypeRegular, domain.InvoiceStatusSent,
+		jan15.Format("2006-01-02"), jan15.AddDate(0, 0, 14).Format("2006-01-02"), jan15.Format("2006-01-02"),
+		"", "", contact.ID, "CZK", 100,
+		"bank_transfer", "", "", "", "",
+		subtotal, 0, subtotal, 0,
+		"", "",
+		now.Format(time.RFC3339), now.Format(time.RFC3339),
+	)
+	if err != nil {
+		t.Fatalf("inserting invoice: %v", err)
+	}
+}
+
+// seedOneChild2025 stores one child credited for all 12 months of 2025
+// (ChildBenefit 15 204 CZK).
+func seedOneChild2025(t *testing.T, creditsSvc *TaxCreditsService) {
+	t.Helper()
+	now := time.Now()
+	child := &domain.TaxChildCredit{
+		Year:          2025,
+		ChildName:     "Anna",
+		BirthNumber:   "0501010001",
+		ChildOrder:    1,
+		MonthsClaimed: 12,
+		ZTP:           false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := creditsSvc.CreateChild(context.Background(), child); err != nil {
+		t.Fatalf("CreateChild: %v", err)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_ChildBonusBelowIncomeThreshold: § 35c odst. 4
+// with § 21g odst. 1 — § 7 revenue 100 000 CZK is below 6 x 20 800 = 124 800 CZK
+// (2025 minimum wage), so the refundable bonus is 0. The stored ChildBenefit (ř.72)
+// keeps the full 15 204 CZK and TaxAfterBenefit is not negative.
+func TestIncomeTaxReturnService_Recalculate_ChildBonusBelowIncomeThreshold(t *testing.T) {
+	svc, creditsSvc, _, db := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedOneChild2025(t, creditsSvc)
+	seedSentInvoice2025(t, db, "FV20250101", domain.NewAmount(100_000, 0))
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	if want := domain.NewAmount(15_204, 0); result.ChildBenefit != want {
+		t.Errorf("ChildBenefit = %d, want %d (ř.72 keeps the full benefit)", result.ChildBenefit, want)
+	}
+	// Tax base 100 000 -> tax 15 000 -> 0 after the basic credit, so sleva = 0 and
+	// the bonus would be the whole 15 204 — but income 100 000 < 124 800 -> bonus 0.
+	if result.TaxAfterBenefit != 0 {
+		t.Errorf("TaxAfterBenefit = %d, want 0 (bonus not claimable below 6x minimum wage)", result.TaxAfterBenefit)
+	}
+	// The zeroed bonus surfaces the reason as an advisory warning.
+	found := false
+	for _, w := range result.Warnings {
+		if w == domain.WarningChildBonusIncomeTest {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Warnings = %v, want %q (income test failed)", result.Warnings, domain.WarningChildBonusIncomeTest)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_ChildBonusAboveIncomeThreshold: § 7 revenue
+// 200 000 CZK reaches 124 800 CZK, so the full 15 204 CZK bonus is refundable and
+// TaxAfterBenefit goes negative.
+func TestIncomeTaxReturnService_Recalculate_ChildBonusAboveIncomeThreshold(t *testing.T) {
+	svc, creditsSvc, _, db := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedOneChild2025(t, creditsSvc)
+	seedSentInvoice2025(t, db, "FV20250102", domain.NewAmount(200_000, 0))
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	want := -domain.NewAmount(15_204, 0)
+	if result.TaxAfterBenefit != want {
+		t.Errorf("TaxAfterBenefit = %d, want %d (bonus paid at income >= 124 800 CZK)", result.TaxAfterBenefit, want)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_ChildBonusSection6IncomeTest: only the §6
+// gross income from an employer certificate counts toward the 6x minimum-wage test
+// (2025: 124 800 CZK) while § 7 revenue is 0 — at the threshold the bonus is paid,
+// 1 CZK below it the bonus is 0.
+func TestIncomeTaxReturnService_Recalculate_ChildBonusSection6IncomeTest(t *testing.T) {
+	tests := []struct {
+		name        string
+		gross6      domain.Amount
+		wantBenefit domain.Amount
+	}{
+		{name: "§6 gross exactly 124 800 CZK -> bonus paid", gross6: domain.NewAmount(124_800, 0), wantBenefit: -domain.NewAmount(15_204, 0)},
+		{name: "§6 gross 124 799 CZK just below -> bonus 0", gross6: domain.NewAmount(124_799, 0), wantBenefit: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, creditsSvc, empRepo, _ := setupIncomeTaxSvcWithEmployment(t)
+			ctx := context.Background()
+
+			seedOneChild2025(t, creditsSvc)
+			seedConfirmedCert(t, empRepo, &domain.EmploymentCertificate{
+				Year:            2025,
+				CertificateType: domain.CertificateAdvance,
+				ContractType:    domain.ContractHPP,
+				EmployerName:    "Acme",
+				EmployerICO:     "12345678",
+				PeriodFrom:      time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+				PeriodTo:        time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
+				GrossIncome:     tt.gross6,
+			})
+
+			itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+			if err := svc.Create(ctx, itr); err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+			result, err := svc.Recalculate(ctx, itr.ID)
+			if err != nil {
+				t.Fatalf("Recalculate: %v", err)
+			}
+			if result.TaxAfterBenefit != tt.wantBenefit {
+				t.Errorf("TaxAfterBenefit = %d, want %d", result.TaxAfterBenefit, tt.wantBenefit)
+			}
+		})
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_RefusesStaleBonusSplit (review M1): a return
+// calculated before the § 35c odst. 3/4 bonus limits stores the unlimited bonus in
+// TaxAfterBenefit/TaxDue. GenerateXML must refuse it with the recalculate message;
+// after Recalculate the export succeeds and ř.76 (kc_danbonus) and ř.91 (kc_zbyvpred)
+// agree.
+func TestIncomeTaxReturnService_GenerateXML_RefusesStaleBonusSplit(t *testing.T) {
+	svc, creditsSvc, _, db := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+	seedFinancniUradCode(t, db)
+	setRepo := repository.NewSettingsRepository(db)
+	for k, v := range map[string]string{"c_okec": "62109", "dic": "CZ1234567890", "first_name": "Jan", "last_name": "Novak", "birth_number": "8001010006"} {
+		if err := setRepo.Set(ctx, k, v); err != nil {
+			t.Fatalf("seeding setting %s: %v", k, err)
+		}
+	}
+
+	seedOneChild2025(t, creditsSvc)
+	// §7 revenue 100 000 CZK is below 124 800 CZK, so the current rules pay no bonus.
+	seedSentInvoice2025(t, db, "FV20250103", domain.NewAmount(100_000, 0))
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.Recalculate(ctx, itr.ID); err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	// Simulate a return stored by the pre-limits build: the unlimited bonus 15 204 CZK.
+	stale := int64(-domain.NewAmount(15_204, 0))
+	if _, err := db.ExecContext(ctx, `UPDATE income_tax_returns SET tax_after_benefit = ?, tax_due = ? WHERE id = ?`, stale, stale, itr.ID); err != nil {
+		t.Fatalf("storing stale values: %v", err)
+	}
+
+	_, err := svc.GenerateXML(ctx, itr.ID)
+	if err == nil {
+		t.Fatal("GenerateXML() on a stale bonus split error = nil, want ErrInvalidInput")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "přepočítejte") {
+		t.Errorf("GenerateXML() error = %q, want the recalculate message", err.Error())
+	}
+
+	// After Recalculate the export succeeds and ř.76 / ř.91 agree (both 0 here:
+	// income 100 000 < 124 800 CZK, so the bonus is 0 and TaxDue is 0).
+	if _, err := svc.Recalculate(ctx, itr.ID); err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+	got, err := svc.GenerateXML(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("GenerateXML() after Recalculate: %v", err)
+	}
+	xml := string(got.XMLData)
+	if !strings.Contains(xml, `kc_danbonus="0"`) {
+		t.Errorf("expected kc_danbonus=\"0\" (ř.76), got:\n%s", xml)
+	}
+	if !strings.Contains(xml, `kc_zbyvpred="0"`) {
+		t.Errorf("expected kc_zbyvpred=\"0\" (ř.91 must agree with ř.76), got:\n%s", xml)
 	}
 }
 

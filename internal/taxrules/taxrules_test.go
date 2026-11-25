@@ -109,6 +109,46 @@ func TestSocialMinAdvanceBaseFor(t *testing.T) {
 	}
 }
 
+func TestValidateRuleSet_MinimumWage(t *testing.T) {
+	for _, year := range SupportedYears() {
+		rules, err := GetRuleSet(year)
+		if err != nil {
+			t.Fatalf("GetRuleSet(%d) error: %v", year, err)
+		}
+		if rules.Constants.MinimumWage <= 0 {
+			t.Errorf("rule set %s has non-positive minimum wage %d", rules.ID, rules.Constants.MinimumWage)
+		}
+		if rules.Constants.MinChildBonus <= 0 {
+			t.Errorf("rule set %s has non-positive minimum child bonus %d", rules.ID, rules.Constants.MinChildBonus)
+		}
+	}
+
+	base, err := GetRuleSet(2025)
+	if err != nil {
+		t.Fatalf("GetRuleSet(2025) error: %v", err)
+	}
+	for _, mw := range []domain.Amount{0, -domain.NewAmount(20_800, 0)} {
+		rules := base
+		rules.Constants.MinimumWage = mw
+		err := ValidateRuleSet(rules)
+		if err == nil {
+			t.Errorf("ValidateRuleSet() with minimum wage %d error = nil, want ErrInvalidInput", mw)
+		} else if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("ValidateRuleSet() with minimum wage %d error = %v, want ErrInvalidInput", mw, err)
+		}
+	}
+	for _, mb := range []domain.Amount{0, -domain.NewAmount(100, 0)} {
+		rules := base
+		rules.Constants.MinChildBonus = mb
+		err := ValidateRuleSet(rules)
+		if err == nil {
+			t.Errorf("ValidateRuleSet() with minimum child bonus %d error = nil, want ErrInvalidInput", mb)
+		} else if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("ValidateRuleSet() with minimum child bonus %d error = %v, want ErrInvalidInput", mb, err)
+		}
+	}
+}
+
 func TestValidateRuleSet_RejectsBadSocialMinAdvanceBases(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -22,6 +22,10 @@ type IncomeTaxInput struct {
 	// dropped when their sum is negative, so §6 alone forms the tax base in that
 	// case (matches the XML generator emission).
 	Section6TaxBase domain.Amount
+	// Section6GrossIncome is the §6 gross income (ř.31). Together with §7 revenue
+	// (TotalRevenue) it forms the income tested against 6x the minimum wage for
+	// the child bonus (§ 35c odst. 4, § 21g odst. 1).
+	Section6GrossIncome domain.Amount
 
 	// Section6 reconciliation values (RFC-016). Following Pokyny DPFO 2025
 	// oddíl 7, ř.91 (kc_zbyvpred = "zbývá doplatit") is computed as
@@ -52,8 +56,12 @@ type IncomeTaxResult struct {
 	CreditBasic     domain.Amount
 	TotalCredits    domain.Amount
 	TaxAfterCredits domain.Amount
-	TaxAfterBenefit domain.Amount
-	TaxDue          domain.Amount
+	// ChildBenefitSleva and ChildBenefitBonus are the limited split of the child
+	// benefit (§ 35c odst. 3 and 4): sleva reduces the tax, bonus is refundable.
+	ChildBenefitSleva domain.Amount
+	ChildBenefitBonus domain.Amount
+	TaxAfterBenefit   domain.Amount
+	TaxDue            domain.Amount
 }
 
 // CalculateIncomeTax performs the full income tax calculation (steps 4-10).
@@ -128,8 +136,13 @@ func CalculateIncomeTax(input IncomeTaxInput) IncomeTaxResult {
 	}
 	result.TaxAfterCredits = taxAfterCredits
 
-	// Step 9: Child benefit (can go negative - it's a bonus).
-	result.TaxAfterBenefit = result.TaxAfterCredits - input.ChildBenefit
+	// Step 9: Child benefit, split into the sleva part and the refundable bonus
+	// limited by § 35c odst. 3 (100 CZK minimum) and § 35c odst. 4 (§ 6 + § 7 gross
+	// income >= 6x the minimum wage). TaxAfterBenefit can go negative - it's a bonus.
+	result.ChildBenefitSleva, result.ChildBenefitBonus = SplitChildBenefit(
+		result.TaxAfterCredits, input.ChildBenefit,
+		input.Section6GrossIncome, input.TotalRevenue, input.Constants)
+	result.TaxAfterBenefit = result.TaxAfterCredits - result.ChildBenefitSleva - result.ChildBenefitBonus
 
 	// Step 10: Reconcile prepayments and §6 withholdings/advances (Pokyny
 	// DPFO 2025 oddíl 7, ř.91 = ř.77 − ř.84 − ř.87 − ř.87a − úhrn záloh §7).

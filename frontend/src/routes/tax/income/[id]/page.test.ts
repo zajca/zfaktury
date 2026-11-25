@@ -303,6 +303,37 @@ describe('Income tax return detail - §6 panel', () => {
 		expect(screen.getByText('Zkontrolujte progresivní sazbu daně 23 %')).toBeInTheDocument();
 	});
 
+	it('renders warning banners for the child bonus limit codes', async () => {
+		const withWarnings = {
+			...baseReturn,
+			warnings: ['child_bonus_income_test', 'child_bonus_below_minimum']
+		};
+
+		mockFetch.mockImplementation((url: string) => {
+			if (url.includes('/income-tax-returns/')) {
+				return Promise.resolve(jsonResponse(withWarnings));
+			}
+			if (url.includes('/tax-constants/')) {
+				return Promise.resolve(jsonResponse(taxConstants));
+			}
+			return Promise.resolve(jsonResponse({}));
+		});
+
+		render(Page);
+
+		await waitFor(() => {
+			expect(screen.getByTestId('warnings-section')).toBeInTheDocument();
+		});
+		const banners = screen.getAllByTestId('warning-banner');
+		expect(banners.length).toBe(2);
+		expect(
+			screen.getByText(
+				'Daňový bonus nelze vyplatit: příjmy podle § 6 a § 7 nedosahují šestinásobku minimální mzdy'
+			)
+		).toBeInTheDocument();
+		expect(screen.getByText('Daňový bonus pod 100 Kč se nevyplácí')).toBeInTheDocument();
+	});
+
 	it('hides warnings section when warnings array is empty', async () => {
 		const noWarnings = { ...baseReturn, warnings: [] };
 

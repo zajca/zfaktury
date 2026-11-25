@@ -464,6 +464,10 @@ func TestTaxDue_SubtractsSection6Withholding(t *testing.T) {
 func TestTaxDue_BonusOverpayReturnsToState(t *testing.T) {
 	c := constants2025()
 	input := IncomeTaxInput{
+		// §7 gross income 200 000 CZK (expenses offset it, tax base stays 0) so the
+		// § 35c odst. 4 income test (>= 124 800 CZK in 2025) passes and the bonus is claimable.
+		TotalRevenue:             domain.NewAmount(200_000, 0),
+		ActualExpenses:           domain.NewAmount(200_000, 0),
 		ChildBenefit:             domain.NewAmount(15_204, 0), // 1 dítě roční nárok
 		Section6MonthlyBonusPaid: domain.NewAmount(18_000, 0), // employer paid more than entitled
 		Constants:                c,
@@ -484,6 +488,10 @@ func TestTaxDue_BonusOverpayReturnsToState(t *testing.T) {
 func TestTaxDue_BonusUnderpayClaimsRest(t *testing.T) {
 	c := constants2025()
 	input := IncomeTaxInput{
+		// §7 gross income 200 000 CZK (expenses offset it, tax base stays 0) so the
+		// § 35c odst. 4 income test (>= 124 800 CZK in 2025) passes and the bonus is claimable.
+		TotalRevenue:             domain.NewAmount(200_000, 0),
+		ActualExpenses:           domain.NewAmount(200_000, 0),
 		ChildBenefit:             domain.NewAmount(15_204, 0),
 		Section6MonthlyBonusPaid: domain.NewAmount(10_000, 0),
 		Constants:                c,
@@ -521,5 +529,141 @@ func TestCalculateIncomeTax_Section10LossFlooredAtZero(t *testing.T) {
 	wantBase = domain.NewAmount(1_050_000, 0)
 	if result.TaxBase != wantBase {
 		t.Errorf("TaxBase with positive §10 = %d, want %d (%s CZK)", result.TaxBase, wantBase, wantBase)
+	}
+}
+
+// § 35c odst. 3 and § 35c odst. 4 with § 21g odst. 1: the refundable child bonus
+// (daňový bonus) is paid only when it reaches 100 CZK and when the taxpayer's
+// § 6 + § 7 gross income reaches 6x the monthly minimum wage on 1 January of
+// the year (2025: 20 800 x 6 = 124 800 CZK). "Income" is the gross příjem
+// (§ 7 revenue, not the partial base after expenses), so high expenses do not
+// block the bonus. The sleva part still reduces the tax to 0 in every case.
+func TestCalculateIncomeTax_ChildBonusStatutoryLimits(t *testing.T) {
+	c := constants2025()
+
+	tests := []struct {
+		name                string
+		input               IncomeTaxInput
+		wantTaxAfterCredit  domain.Amount
+		wantSleva           domain.Amount
+		wantBonus           domain.Amount
+		wantTaxAfterBenefit domain.Amount
+	}{
+		{
+			name: "bonus 99 CZK is below the 100 CZK minimum and becomes 0",
+			input: IncomeTaxInput{
+				TotalRevenue:    domain.NewAmount(200_000, 0),
+				ActualExpenses:  domain.NewAmount(190_000, 0), // base 10 000 CZK -> tax 1 500 -> 0 after credits
+				FlatRatePercent: 0,
+				Constants:       c,
+				ChildBenefit:    domain.NewAmount(99, 0),
+			},
+			// TaxAfterCredits = 0; sleva = 0; excess 99 CZK < 100 CZK -> bonus 0.
+			wantTaxAfterCredit:  0,
+			wantSleva:           0,
+			wantBonus:           0,
+			wantTaxAfterBenefit: 0,
+		},
+		{
+			name: "bonus 100 CZK meets the minimum and is paid",
+			input: IncomeTaxInput{
+				TotalRevenue:    domain.NewAmount(200_000, 0),
+				ActualExpenses:  domain.NewAmount(190_000, 0),
+				FlatRatePercent: 0,
+				Constants:       c,
+				ChildBenefit:    domain.NewAmount(100, 0),
+			},
+			// TaxAfterCredits = 0; sleva = 0; excess 100 CZK >= 100 CZK, income 200 000 >= 124 800 -> bonus 100.
+			wantTaxAfterCredit:  0,
+			wantSleva:           0,
+			wantBonus:           domain.NewAmount(100, 0),
+			wantTaxAfterBenefit: domain.NewAmount(-100, 0),
+		},
+		{
+			name: "income 124 799 CZK (1 CZK below 6x minimum wage 2025) -> bonus 0, sleva still zeroes the tax",
+			input: IncomeTaxInput{
+				TotalRevenue:     domain.NewAmount(124_799, 0),
+				FlatRatePercent:  0,
+				Constants:        c,
+				CapitalIncomeNet: domain.NewAmount(500_000, 0), // §8 adds tax but not §6/§7 income
+				ChildBenefit:     domain.NewAmount(100_000, 0),
+			},
+			// base 624 799 -> rounded 624 700 -> tax 93 705 -> TaxAfterCredits 62 865 CZK.
+			// sleva = 62 865 (tax -> 0); excess 37 135; income 124 799 < 124 800 -> bonus 0.
+			wantTaxAfterCredit:  domain.NewAmount(62_865, 0),
+			wantSleva:           domain.NewAmount(62_865, 0),
+			wantBonus:           0,
+			wantTaxAfterBenefit: 0,
+		},
+		{
+			name: "income exactly 124 800 CZK (6x minimum wage 2025) -> bonus paid",
+			input: IncomeTaxInput{
+				TotalRevenue:     domain.NewAmount(124_800, 0),
+				FlatRatePercent:  0,
+				Constants:        c,
+				CapitalIncomeNet: domain.NewAmount(500_000, 0),
+				ChildBenefit:     domain.NewAmount(100_000, 0),
+			},
+			// base 624 800 -> tax 93 720 -> TaxAfterCredits 62 880 CZK.
+			// sleva = 62 880; excess 37 120 >= 100; income 124 800 >= 124 800 -> bonus 37 120.
+			wantTaxAfterCredit:  domain.NewAmount(62_880, 0),
+			wantSleva:           domain.NewAmount(62_880, 0),
+			wantBonus:           domain.NewAmount(37_120, 0),
+			wantTaxAfterBenefit: domain.NewAmount(-37_120, 0),
+		},
+		{
+			name: "high expenses: partial base below threshold but gross §7 revenue above it -> bonus paid",
+			input: IncomeTaxInput{
+				TotalRevenue:    domain.NewAmount(200_000, 0), // gross counts, not the base
+				ActualExpenses:  domain.NewAmount(195_000, 0), // base 5 000 CZK -> tax 750 -> 0 after credits
+				FlatRatePercent: 0,
+				Constants:       c,
+				ChildBenefit:    domain.NewAmount(15_204, 0),
+			},
+			// TaxAfterCredits = 0; sleva = 0; income 200 000 >= 124 800 -> bonus 15 204 paid.
+			wantTaxAfterCredit:  0,
+			wantSleva:           0,
+			wantBonus:           domain.NewAmount(15_204, 0),
+			wantTaxAfterBenefit: domain.NewAmount(-15_204, 0),
+		},
+		{
+			name: "§6 gross income alone reaches the threshold -> bonus paid",
+			input: IncomeTaxInput{
+				Section6GrossIncome: domain.NewAmount(130_000, 0),
+				Section6TaxBase:     domain.NewAmount(130_000, 0), // base 130 000 -> tax 19 500 -> 0 after credits
+				Constants:           c,
+				ChildBenefit:        domain.NewAmount(15_204, 0),
+			},
+			// income = 130 000 >= 124 800 -> bonus 15 204 paid.
+			wantTaxAfterCredit:  0,
+			wantSleva:           0,
+			wantBonus:           domain.NewAmount(15_204, 0),
+			wantTaxAfterBenefit: domain.NewAmount(-15_204, 0),
+		},
+		{
+			name: "§6 + §7 gross income combined 1 CZK below threshold -> bonus 0",
+			input: IncomeTaxInput{
+				Section6GrossIncome: domain.NewAmount(100_000, 0),
+				Section6TaxBase:     domain.NewAmount(100_000, 0),
+				TotalRevenue:        domain.NewAmount(24_799, 0), // income 124 799 < 124 800
+				Constants:           c,
+				ChildBenefit:        domain.NewAmount(15_204, 0),
+			},
+			// base 124 799 -> tax 18 719 -> 0 after credits; sleva = 0; bonus 0.
+			wantTaxAfterCredit:  0,
+			wantSleva:           0,
+			wantBonus:           0,
+			wantTaxAfterBenefit: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CalculateIncomeTax(tt.input)
+			assertAmount(t, "TaxAfterCredits", tt.wantTaxAfterCredit, got.TaxAfterCredits)
+			assertAmount(t, "ChildBenefitSleva", tt.wantSleva, got.ChildBenefitSleva)
+			assertAmount(t, "ChildBenefitBonus", tt.wantBonus, got.ChildBenefitBonus)
+			assertAmount(t, "TaxAfterBenefit", tt.wantTaxAfterBenefit, got.TaxAfterBenefit)
+		})
 	}
 }

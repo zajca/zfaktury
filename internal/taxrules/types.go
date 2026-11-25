@@ -6,9 +6,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
+
+// pragueLocation is the zone in which calendar-date rule values are expressed.
+var pragueLocation = func() *time.Location {
+	loc, err := time.LoadLocation("Europe/Prague")
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}()
 
 // RuleStatus describes how trustworthy a rule set is for final filing.
 type RuleStatus string
@@ -62,6 +72,10 @@ type TaxYearConstants struct {
 	HealthRate                      int                   // permille*10, e.g. 135 = 13.5%
 	FlatRateCaps                    map[int]domain.Amount // percent -> max halere amount
 	TimeTestYears                   int                   // years to hold for time test exemption
+	// CryptoTimeTestFrom is the first calendar date (Europe/Prague) on which the
+	// crypto time-test exemption applies; crypto sales before it are never
+	// time-test exempt. Zero means no cutoff is configured.
+	CryptoTimeTestFrom              time.Time
 	SecurityExemptionLimit          domain.Amount         // max yearly gross time-test income that stays exempt (0 = no limit)
 
 	SpouseIncomeLimit           domain.Amount
@@ -111,6 +125,25 @@ func (r RuleSet) Fingerprint() (string, error) {
 	}
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:]), nil
+}
+
+// CryptoTimeTestCovers reports whether a crypto sale dated saleDate falls on
+// or after CryptoTimeTestFrom. Calendar dates in Europe/Prague are compared,
+// not instants, so a sale at 00:30 local time on the cutoff day counts as
+// being on the cutoff day. A zero CryptoTimeTestFrom covers every date.
+func (c TaxYearConstants) CryptoTimeTestCovers(saleDate time.Time) bool {
+	if c.CryptoTimeTestFrom.IsZero() {
+		return true
+	}
+	sy, sm, sd := saleDate.In(pragueLocation).Date()
+	fy, fm, fd := c.CryptoTimeTestFrom.In(pragueLocation).Date()
+	if sy != fy {
+		return sy > fy
+	}
+	if sm != fm {
+		return sm > fm
+	}
+	return sd >= fd
 }
 
 // SocialMinAdvanceBaseFor returns the minimum monthly base for a social

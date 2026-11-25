@@ -91,7 +91,7 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 		Name:        "Přiznání k dani z příjmů",
 		Date:        returnDate,
 		Type:        "income_tax",
-		Description: fmt.Sprintf("Termín podání přiznání k dani z příjmů za rok %d; %s", taxYear, methodNote),
+		Description: fmt.Sprintf("Termín podání přiznání k dani z příjmů za rok %d. %s", taxYear, methodNote),
 	})
 
 	// Social insurance overview: one month after the return deadline.
@@ -99,7 +99,7 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 		Name:        "Přehled o příjmech a výdajích pro ČSSZ",
 		Date:        overviewDate,
 		Type:        "social",
-		Description: fmt.Sprintf("Termín podání přehledu o příjmech a výdajích pro ČSSZ za rok %d; %s", taxYear, methodNote),
+		Description: fmt.Sprintf("Termín podání přehledu o příjmech a výdajích pro ČSSZ za rok %d. %s", taxYear, methodNote),
 	})
 
 	// Health insurance overview: one month after the return deadline.
@@ -107,7 +107,7 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 		Name:        "Přehled pro zdravotní pojišťovnu",
 		Date:        overviewDate,
 		Type:        "health",
-		Description: fmt.Sprintf("Termín podání přehledu pro zdravotní pojišťovnu za rok %d; %s", taxYear, methodNote),
+		Description: fmt.Sprintf("Termín podání přehledu pro zdravotní pojišťovnu za rok %d. %s", taxYear, methodNote),
 	})
 
 	// Quarterly income tax advances.
@@ -163,7 +163,7 @@ func filingMethodNote(taxYear int, method domain.FilingMethod) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("filing method for tax year %d: %w", taxYear, err)
 	}
-	return fmt.Sprintf("způsob podání přiznání za rok %d: %s", taxYear, label), nil
+	return fmt.Sprintf("Způsob podání přiznání za rok %d: %s", taxYear, label), nil
 }
 
 // filingMethodLabel maps a stored filing method to its readable Czech label.

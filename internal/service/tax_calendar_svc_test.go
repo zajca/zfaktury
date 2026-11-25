@@ -207,9 +207,9 @@ func TestTaxCalendarService_GetDeadlines_FilingMethod(t *testing.T) {
 	}{
 		{"missing settings row", nil, date(2026, time.April, 1), date(2026, time.May, 4), "pro rok 2025 není nastaven způsob podání"},
 		{"unset method", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodUnset}, date(2026, time.April, 1), date(2026, time.May, 4), "pro rok 2025 není nastaven způsob podání"},
-		{"standard", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}, date(2026, time.April, 1), date(2026, time.May, 4), "způsob podání přiznání za rok 2025: do 1. dubna (papírově nebo elektronicky)"},
-		{"electronic, 1 May is a holiday", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodElectronic}, date(2026, time.May, 4), date(2026, time.June, 4), "způsob podání přiznání za rok 2025: elektronicky po 1. dubnu"},
-		{"advisor", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}, date(2026, time.July, 1), date(2026, time.August, 3), "způsob podání přiznání za rok 2025: daňový poradce po 1. dubnu"},
+		{"standard", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}, date(2026, time.April, 1), date(2026, time.May, 4), "Způsob podání přiznání za rok 2025: do 1. dubna (papírově nebo elektronicky)"},
+		{"electronic, 1 May is a holiday", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodElectronic}, date(2026, time.May, 4), date(2026, time.June, 4), "Způsob podání přiznání za rok 2025: elektronicky po 1. dubnu"},
+		{"advisor", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}, date(2026, time.July, 1), date(2026, time.August, 3), "Způsob podání přiznání za rok 2025: daňový poradce po 1. dubnu"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -366,6 +366,13 @@ func TestTaxCalendarService_GetDeadlines_UnsetNoteWhenDateMoved(t *testing.T) {
 		}
 		if !strings.Contains(d.Description, "Způsob podání lze nastavit v části Daň z příjmů → Zálohy.") {
 			t.Errorf("%s description = %q, want it to point to Daň z příjmů → Zálohy", d.Name, d.Description)
+		}
+		// The note is joined to the deadline sentence with ". ", not "; ".
+		if !strings.Contains(d.Description, "za rok 2023. Termíny počítají") {
+			t.Errorf("%s description = %q, want the note joined with '. '", d.Name, d.Description)
+		}
+		if strings.Contains(d.Description, "; ") {
+			t.Errorf("%s description = %q, must not join sentences with '; '", d.Name, d.Description)
 		}
 		if strings.Contains(d.Description, "filing by 1 April") {
 			t.Errorf("%s description = %q, must not claim the dates assume filing by 1 April", d.Name, d.Description)

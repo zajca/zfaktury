@@ -123,6 +123,23 @@ func scanInvoiceItem(s scanner) (domain.InvoiceItem, error) {
 	return item, err
 }
 
+// scanSequenceRow scans the columns id, prefix, next_number, year,
+// format_pattern of an invoice sequence row.
+func scanSequenceRow(s scanner) (*domain.InvoiceSequence, error) {
+	seq := &domain.InvoiceSequence{}
+	if err := s.Scan(&seq.ID, &seq.Prefix, &seq.NextNumber, &seq.Year, &seq.FormatPattern); err != nil {
+		return nil, err
+	}
+	return seq, nil
+}
+
+// formatSequenceNumber formats the sequence's current counter into an invoice number.
+// NOTE: format_pattern is not yet implemented; using hardcoded format.
+// This must stay consistent with service.FormatPreview.
+func formatSequenceNumber(seq *domain.InvoiceSequence) string {
+	return fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
+}
+
 // Create inserts a new invoice with its items in a single transaction.
 func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) error {
 	now := time.Now()
@@ -135,6 +152,90 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := insertInvoiceTx(ctx, tx, inv); err != nil {
+		return err
+	}
+	if err := insertInvoiceItemsTx(ctx, tx, inv); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing invoice transaction: %w", err)
+	}
+	return nil
+}
+
+// CreateWithNextNumber takes the next number of the sequence and inserts the
+// invoice with its items in a single transaction, so a failed insert rolls
+// the counter back instead of leaving a gap. Numbers already present in
+// invoices.invoice_number are skipped first (soft-deleted rows included, the
+// UNIQUE index covers them), which covers a renamed prefix and invoices
+// imported from Fakturoid.
+func (r *InvoiceRepository) CreateWithNextNumber(ctx context.Context, inv *domain.Invoice, sequenceID int64) error {
+	now := time.Now()
+	inv.CreatedAt = now
+	inv.UpdatedAt = now
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("beginning transaction for invoice create: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	seq, err := scanSequenceRow(tx.QueryRowContext(ctx, `
+		SELECT id, prefix, next_number, year, format_pattern
+		FROM invoice_sequences WHERE id = ? AND deleted_at IS NULL`, sequenceID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("invoice sequence %d not found: %w", sequenceID, domain.ErrNotFound)
+		}
+		return fmt.Errorf("querying invoice sequence %d: %w", sequenceID, err)
+	}
+
+	// Skip numbers already used by any invoice, including soft-deleted ones.
+	number := formatSequenceNumber(seq)
+	for {
+		var count int
+		err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM invoices WHERE invoice_number = ?`, number).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("checking invoice number %q: %w", number, err)
+		}
+		if count == 0 {
+			break
+		}
+		seq.NextNumber++
+		number = formatSequenceNumber(seq)
+	}
+
+	// Store the counter past the reserved number.
+	_, err = tx.ExecContext(ctx, `
+		UPDATE invoice_sequences SET next_number = ? WHERE id = ? AND deleted_at IS NULL`, seq.NextNumber+1, sequenceID)
+	if err != nil {
+		return fmt.Errorf("reserving next number for sequence %d: %w", sequenceID, err)
+	}
+
+	inv.SequenceID = sequenceID
+	inv.InvoiceNumber = number
+	if inv.VariableSymbol == "" {
+		// Variable symbol defaults to the invoice number, as in InvoiceService.Create.
+		inv.VariableSymbol = number
+	}
+
+	if err := insertInvoiceTx(ctx, tx, inv); err != nil {
+		return err
+	}
+	if err := insertInvoiceItemsTx(ctx, tx, inv); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing invoice transaction: %w", err)
+	}
+	return nil
+}
+
+// insertInvoiceTx inserts the invoice row inside tx and sets inv.ID.
+func insertInvoiceTx(ctx context.Context, tx *sql.Tx, inv *domain.Invoice) error {
 	// Use NULL for zero sequence_id to avoid FK constraint violation.
 	var seqID any
 	if inv.SequenceID > 0 {
@@ -184,10 +285,14 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 		return fmt.Errorf("getting last insert id for invoice: %w", err)
 	}
 	inv.ID = invoiceID
+	return nil
+}
 
+// insertInvoiceItemsTx inserts all invoice items inside tx and sets their IDs.
+func insertInvoiceItemsTx(ctx context.Context, tx *sql.Tx, inv *domain.Invoice) error {
 	for i := range inv.Items {
 		item := &inv.Items[i]
-		item.InvoiceID = invoiceID
+		item.InvoiceID = inv.ID
 
 		itemResult, err := tx.ExecContext(ctx, `
 			INSERT INTO invoice_items (
@@ -205,10 +310,6 @@ func (r *InvoiceRepository) Create(ctx context.Context, inv *domain.Invoice) err
 			return fmt.Errorf("getting last insert id for invoice item %d: %w", i, err)
 		}
 		item.ID = itemID
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing invoice transaction: %w", err)
 	}
 	return nil
 }
@@ -557,11 +658,10 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var seq domain.InvoiceSequence
-	err = tx.QueryRowContext(ctx, `
+	var seq *domain.InvoiceSequence
+	seq, err = scanSequenceRow(tx.QueryRowContext(ctx, `
 		SELECT id, prefix, next_number, year, format_pattern
-		FROM invoice_sequences WHERE id = ? AND deleted_at IS NULL`, sequenceID,
-	).Scan(&seq.ID, &seq.Prefix, &seq.NextNumber, &seq.Year, &seq.FormatPattern)
+		FROM invoice_sequences WHERE id = ? AND deleted_at IS NULL`, sequenceID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("invoice sequence %d not found: %w", sequenceID, domain.ErrNotFound)
@@ -569,9 +669,7 @@ func (r *InvoiceRepository) GetNextNumber(ctx context.Context, sequenceID int64)
 		return "", fmt.Errorf("querying invoice sequence %d: %w", sequenceID, err)
 	}
 
-	// NOTE: format_pattern is not yet implemented; using hardcoded format.
-	// This must stay consistent with service.FormatPreview.
-	number := fmt.Sprintf("%s%d%04d", seq.Prefix, seq.Year, seq.NextNumber)
+	number := formatSequenceNumber(seq)
 
 	_, err = tx.ExecContext(ctx, `
 		UPDATE invoice_sequences SET next_number = next_number + 1 WHERE id = ? AND deleted_at IS NULL`, sequenceID)

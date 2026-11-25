@@ -64,6 +64,7 @@ func (g *VIESSummaryGenerator) Generate(
 	vetaD := VIESVetaD{
 		Dokument:    "SHV",
 		KUladis:     "DPH",
+		DPoddp:      submissionDate(info).Format("02.01.2006"),
 		Rok:         vs.Period.Year,
 		Ctvrt:       vs.Period.Quarter,
 		ShviesForma: viesFormRegular,

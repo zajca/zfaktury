@@ -7,9 +7,14 @@ import (
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
+// cryptoTimeTestFrom is 15 Feb 2025, the first calendar date (Europe/Prague)
+// on which the crypto time-test exemption applies, regardless of when the
+// coins were bought.
+var cryptoTimeTestFrom = CivilDate{Year: 2025, Month: 2, Day: 15}
+
 var ruleSets = map[int]RuleSet{
 	2024: {
-		ID:     "cz-dpfo-2024.v4",
+		ID:     "cz-dpfo-2024.v6",
 		Year:   2024,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -50,6 +55,7 @@ var ruleSets = map[int]RuleSet{
 				30: domain.NewAmount(600_000, 0),
 			},
 			TimeTestYears:               3,
+			CryptoTimeTestFrom:          cryptoTimeTestFrom,
 			SecurityExemptionLimit:      domain.NewAmount(0, 0),
 			SpouseIncomeLimit:           domain.NewAmount(68_000, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
@@ -61,7 +67,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2025: {
-		ID:     "cz-dpfo-2025.v4",
+		ID:     "cz-dpfo-2025.v6",
 		Year:   2025,
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
@@ -102,6 +108,7 @@ var ruleSets = map[int]RuleSet{
 				30: domain.NewAmount(600_000, 0),
 			},
 			TimeTestYears:               3,
+			CryptoTimeTestFrom:          cryptoTimeTestFrom,
 			SecurityExemptionLimit:      domain.NewAmount(40_000_000, 0),
 			SpouseIncomeLimit:           domain.NewAmount(68_000, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
@@ -113,7 +120,7 @@ var ruleSets = map[int]RuleSet{
 		Forms: dpfodp7Forms(),
 	},
 	2026: {
-		ID:     "cz-dpfo-2026.v3-provisional",
+		ID:     "cz-dpfo-2026.v5-provisional",
 		Year:   2026,
 		Status: RuleStatusProvisional,
 		Sources: []LegalSource{
@@ -158,6 +165,7 @@ var ruleSets = map[int]RuleSet{
 				30: domain.NewAmount(600_000, 0),
 			},
 			TimeTestYears:               3,
+			CryptoTimeTestFrom:          cryptoTimeTestFrom,
 			SecurityExemptionLimit:      domain.NewAmount(40_000_000, 0),
 			SpouseIncomeLimit:           domain.NewAmount(68_000, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),

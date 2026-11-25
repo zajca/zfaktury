@@ -91,8 +91,8 @@ func TestHandleGetTaxConstants(t *testing.T) {
 		if resp.Year != 2025 {
 			t.Errorf("Year = %d, want 2025", resp.Year)
 		}
-		if resp.RuleSetID != "cz-dpfo-2025.v4" {
-			t.Errorf("RuleSetID = %q, want cz-dpfo-2025.v4", resp.RuleSetID)
+		if resp.RuleSetID != "cz-dpfo-2025.v6" {
+			t.Errorf("RuleSetID = %q, want cz-dpfo-2025.v6", resp.RuleSetID)
 		}
 		if resp.RuleSetStatus != "final" {
 			t.Errorf("RuleSetStatus = %q, want final", resp.RuleSetStatus)

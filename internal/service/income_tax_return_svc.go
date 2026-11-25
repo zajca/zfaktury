@@ -188,6 +188,13 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 
 	// Step 4b: §8 capital income and §10 other income (investments).
 	if s.investmentSvc != nil {
+		// Recompute FIFO first: results stored by an older build can keep
+		// outdated exemptions (e.g. a crypto sale before 2025-02-15 stored as
+		// time-test exempt). FIFO is a pure function of the transactions and
+		// the current rule set, so recomputing here is always safe.
+		if fifoErr := s.investmentSvc.RecalculateFIFO(ctx, itr.Year); fifoErr != nil {
+			return nil, fmt.Errorf("recalculating FIFO for income_tax_return: %w", fifoErr)
+		}
 		summary, sumErr := s.investmentSvc.GetYearSummary(ctx, itr.Year)
 		if sumErr != nil {
 			return nil, fmt.Errorf("computing investment income for income_tax_return: %w", sumErr)
@@ -199,6 +206,12 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.OtherIncomeExpenses = summary.OtherIncomeExpenses
 		itr.OtherIncomeExempt = summary.OtherIncomeExempt
 		itr.OtherIncomeNet = summary.OtherIncomeNet
+		// § 10 odst. 4 sentence 3: a negative § 10 total never lowers the other
+		// parts of the tax base. Store the floored value so the persisted return
+		// and XML ř.40 carry the same value calc uses for the tax base.
+		if itr.OtherIncomeNet < 0 {
+			itr.OtherIncomeNet = 0
+		}
 	}
 
 	// Step 4c: §6 employment income aggregation (RFC-016).

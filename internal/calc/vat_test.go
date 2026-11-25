@@ -113,6 +113,46 @@ func TestCalculateVATReturn(t *testing.T) {
 			},
 		},
 		{
+			name: "invoice with discount line and its credit note net to zero",
+			invoices: []VATInvoiceInput{
+				{
+					Type: "invoice",
+					Items: []VATItemInput{
+						{Base: domain.NewAmount(1000, 0), VATAmount: domain.NewAmount(210, 0), VATRatePercent: 21},
+						{Base: -domain.NewAmount(100, 0), VATAmount: -domain.NewAmount(21, 0), VATRatePercent: 21},
+					},
+				},
+				{
+					Type: "credit_note",
+					Items: []VATItemInput{
+						{Base: -domain.NewAmount(1000, 0), VATAmount: -domain.NewAmount(210, 0), VATRatePercent: 21},
+						{Base: domain.NewAmount(100, 0), VATAmount: domain.NewAmount(21, 0), VATRatePercent: 21},
+					},
+				},
+			},
+			want: VATResult{},
+		},
+		{
+			name: "invoice with discount line and its sign-flipped credit note net to zero",
+			invoices: []VATInvoiceInput{
+				{
+					Type: "invoice",
+					Items: []VATItemInput{
+						{Base: domain.NewAmount(1000, 0), VATAmount: domain.NewAmount(210, 0), VATRatePercent: 21},
+						{Base: -domain.NewAmount(100, 0), VATAmount: -domain.NewAmount(21, 0), VATRatePercent: 21},
+					},
+				},
+				{
+					Type: "credit_note",
+					Items: []VATItemInput{
+						{Base: domain.NewAmount(1000, 0), VATAmount: domain.NewAmount(210, 0), VATRatePercent: 21},
+						{Base: -domain.NewAmount(100, 0), VATAmount: -domain.NewAmount(21, 0), VATRatePercent: 21},
+					},
+				},
+			},
+			want: VATResult{},
+		},
+		{
 			name: "invoice with 0% VAT rate excluded",
 			invoices: []VATInvoiceInput{
 				{

@@ -154,7 +154,7 @@ func (s *VATReturnService) Recalculate(ctx context.Context, id int64) (*domain.V
 	// Determine date range from period.
 	dateFrom, dateTo := periodDateRange(vr.Period)
 
-	// Query invoices in the period: sent, paid, overdue; NOT credit_note type.
+	// Query all invoices in the period, credit notes included so they reduce the output VAT.
 	invoices, _, err := s.invoiceRepo.List(ctx, domain.InvoiceFilter{
 		DeliveryDateFrom: &dateFrom,
 		DeliveryDateTo:   &dateTo,

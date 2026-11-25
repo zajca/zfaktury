@@ -923,14 +923,16 @@ func TestVATReturn_Recalculate_FullCreditNoteNetsToZero(t *testing.T) {
 		t.Fatalf("creating customer: %v", err)
 	}
 
-	today := time.Now()
+	// A fixed date keeps the invoice, the credit note and the VAT return in the
+	// same quarter, so the test cannot fail at a quarter boundary.
+	fixedDate := time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC)
 	inv := &domain.Invoice{
 		CustomerID:    customer.ID,
 		SequenceID:    1,
 		Type:          domain.InvoiceTypeRegular,
-		IssueDate:     today,
-		DueDate:       today,
-		DeliveryDate:  today,
+		IssueDate:     fixedDate,
+		DueDate:       fixedDate,
+		DeliveryDate:  fixedDate,
 		CurrencyCode:  domain.CurrencyCZK,
 		PaymentMethod: "bank_transfer",
 		Items: []domain.InvoiceItem{
@@ -948,6 +950,14 @@ func TestVATReturn_Recalculate_FullCreditNoteNetsToZero(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCreditNote() error: %v", err)
 	}
+	// CreateCreditNote stamps the credit note with the current time, so pin its
+	// dates to fixedDate to keep it in the same quarter as the invoice.
+	cn.IssueDate = fixedDate
+	cn.DueDate = fixedDate
+	cn.DeliveryDate = fixedDate
+	if err := invoiceRepo.Update(ctx, cn); err != nil {
+		t.Fatalf("pinning credit note dates: %v", err)
+	}
 	if err := invoiceSvc.MarkAsSent(ctx, cn.ID); err != nil {
 		t.Fatalf("marking credit note sent: %v", err)
 	}
@@ -957,8 +967,8 @@ func TestVATReturn_Recalculate_FullCreditNoteNetsToZero(t *testing.T) {
 	setRepo := repository.NewSettingsRepository(db)
 	vatSvc := NewVATReturnService(vatRepo, invoiceRepo, expRepo, setRepo, nil)
 
-	quarter := (int(today.Month())-1)/3 + 1
-	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: today.Year(), Quarter: quarter}}
+	quarter := (int(fixedDate.Month())-1)/3 + 1
+	vr := &domain.VATReturn{Period: domain.TaxPeriod{Year: fixedDate.Year(), Quarter: quarter}}
 	if err := vatSvc.Create(ctx, vr); err != nil {
 		t.Fatalf("creating vat_return: %v", err)
 	}

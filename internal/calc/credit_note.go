@@ -16,3 +16,23 @@ func CreditNoteAmount(a domain.Amount) domain.Amount {
 	}
 	return a
 }
+
+// creditNoteDocumentFactor returns the factor to apply to every base and VAT
+// amount of one credit note: -1 when the credit note's item bases sum to a
+// positive amount (a whole credit note stored with the opposite sign), +1
+// otherwise.
+//
+// The factor is decided once per document from the sum of its item bases, not
+// per line, so the relative signs of the lines (a discount line, for example)
+// are preserved. Flipping each line on its own would break a credit note that
+// contains mixed-sign lines and make it disagree with the control statement.
+func creditNoteDocumentFactor(items []VATItemInput) domain.Amount {
+	var sum domain.Amount
+	for _, item := range items {
+		sum += item.Base
+	}
+	if sum > 0 {
+		return -1
+	}
+	return 1
+}

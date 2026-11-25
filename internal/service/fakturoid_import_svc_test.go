@@ -644,6 +644,9 @@ func (m *fakturoidMockInvoiceRepo) UpdateStatus(_ context.Context, _ int64, _ st
 func (m *fakturoidMockInvoiceRepo) GetNextNumber(_ context.Context, _ int64) (string, error) {
 	return "INV-001", nil
 }
+func (m *fakturoidMockInvoiceRepo) CreateWithNextNumber(_ context.Context, _ *domain.Invoice, _ int64) error {
+	return nil
+}
 func (m *fakturoidMockInvoiceRepo) FindByRelatedInvoice(_ context.Context, _ int64, _ string) (*domain.Invoice, error) {
 	return nil, nil
 }

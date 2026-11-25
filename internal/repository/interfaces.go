@@ -20,6 +20,7 @@ type ContactRepo interface {
 // InvoiceRepo defines the persistence interface for invoices.
 type InvoiceRepo interface {
 	Create(ctx context.Context, invoice *domain.Invoice) error
+	CreateWithNextNumber(ctx context.Context, invoice *domain.Invoice, sequenceID int64) error
 	Update(ctx context.Context, invoice *domain.Invoice) error
 	Delete(ctx context.Context, id int64) error
 	GetByID(ctx context.Context, id int64) (*domain.Invoice, error)

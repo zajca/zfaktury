@@ -34,6 +34,7 @@ func (g *ControlStatementGenerator) Generate(cs *domain.VATControlStatement, lin
 			VetaD: KHVetaD{
 				Dokument:  "KH1",
 				KUladis:   "DPH",
+				DPoddp:    submissionDate(info).Format("02.01.2006"),
 				Rok:       cs.Period.Year,
 				Mesic:     cs.Period.Month,
 				KHDPHForm: filingCode,

@@ -188,7 +188,7 @@ func TestVIESSummaryGenerator_Generate_TaxpayerBlock(t *testing.T) {
 	}
 
 	wantD := map[string]string{
-		"dokument": "SHV", "k_uladis": "DPH", "rok": "2025", "ctvrt": "1", "shvies_forma": "R",
+		"dokument": "SHV", "k_uladis": "DPH", "d_poddp": "25.04.2025", "rok": "2025", "ctvrt": "1", "shvies_forma": "R",
 	}
 	if got := attrs(doc.VetaD.Attrs); !maps.Equal(got, wantD) {
 		t.Errorf("VetaD = %v, want %v", got, wantD)
@@ -362,4 +362,24 @@ func TestVIESSummary_Golden_Empty(t *testing.T) {
 
 	goldenPath := filepath.Join("testdata", "vies_summary_empty.golden.xml")
 	testutil.AssertGolden(t, goldenPath, xmlData)
+}
+
+// The VIES summary must carry d_poddp (issue #72), the same date attribute the
+// VAT return writes.
+func TestVIESSummaryGenerator_Generate_DPoddp(t *testing.T) {
+	gen := &VIESSummaryGenerator{}
+	vs := &domain.VIESSummary{
+		ID:         1,
+		Period:     domain.TaxPeriod{Year: 2025, Quarter: 1},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	xmlData, err := gen.Generate(vs, nil, testTaxpayerInfo())
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+	if want := `d_poddp="25.04.2025"`; !strings.Contains(string(xmlData), want) {
+		t.Errorf("VIES XML lacks %s:\n%s", want, xmlData)
+	}
 }

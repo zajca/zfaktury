@@ -22,6 +22,7 @@ type DPHSHV struct {
 type VIESVetaD struct {
 	Dokument    string `xml:"dokument,attr"`     // Document type, always SHV
 	KUladis     string `xml:"k_uladis,attr"`     // Tax code, always DPH
+	DPoddp      string `xml:"d_poddp,attr"`      // Date of the filing, DD.MM.RRRR
 	Rok         int    `xml:"rok,attr"`          // Year
 	Ctvrt       int    `xml:"ctvrt,attr"`        // Quarter (1-4)
 	ShviesForma string `xml:"shvies_forma,attr"` // Filing form: R=regular (N is not generated)

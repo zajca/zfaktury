@@ -17,6 +17,7 @@ import (
 	"time"
 
 	csszschemas "github.com/zajca/zfaktury/docs/xml-schemas/cssz"
+	eposchemas "github.com/zajca/zfaktury/docs/xml-schemas/epo"
 )
 
 var (
@@ -37,16 +38,35 @@ var (
 
 // Schema is an embedded XSD entry point.
 type Schema struct {
-	name string
-	file string
+	name  string
+	file  string
+	files fs.FS
 }
 
-// SchemaOSVC25 is the ČSSZ OSVČ overview schema (namespace
-// http://schemas.cssz.cz/OSVC2025).
-var SchemaOSVC25 = Schema{name: "OSVC25", file: "OSVC25.xsd"}
+var (
+	// SchemaOSVC25 is the ČSSZ OSVČ overview schema (namespace
+	// http://schemas.cssz.cz/OSVC2025).
+	SchemaOSVC25 = Schema{name: "OSVC25", file: "OSVC25.xsd", files: csszschemas.Files}
+	// SchemaDPHDP3 is the EPO VAT return (DPHDP3) schema.
+	SchemaDPHDP3 = Schema{name: "DPHDP3", file: "dphdp3_epo2.xsd", files: eposchemas.Files}
+	// SchemaDPHKH1 is the EPO VAT control statement (DPHKH1) schema.
+	SchemaDPHKH1 = Schema{name: "DPHKH1", file: "dphkh1_epo2.xsd", files: eposchemas.Files}
+	// SchemaDPHSHV is the EPO VIES recapitulative statement (DPHSHV) schema.
+	SchemaDPHSHV = Schema{name: "DPHSHV", file: "dphshv_epo2.xsd", files: eposchemas.Files}
+)
 
 // String returns the schema name.
 func (s Schema) String() string { return s.name }
+
+// schemaFS returns the embedded file system holding the schema's entry point
+// and the files it imports. A Schema built without one falls back to the ČSSZ
+// schemas, which is how a zero value behaved before the field existed.
+func (s Schema) schemaFS() fs.FS {
+	if s.files != nil {
+		return s.files
+	}
+	return csszschemas.Files
+}
 
 // InvalidError carries the xmllint messages for a non-conforming document.
 type InvalidError struct {
@@ -231,13 +251,13 @@ func pathless(err error) error {
 // writeSchemas copies the embedded XSD files into dir, so imports resolve
 // next to the entry point, and returns the entry point path.
 func writeSchemas(dir string, schema Schema) (string, error) {
-	entries, err := fs.ReadDir(csszschemas.Files, ".")
+	entries, err := fs.ReadDir(schema.schemaFS(), ".")
 	if err != nil {
 		return "", fmt.Errorf("%w: reading embedded schemas: %w", ErrExec, err)
 	}
 	found := false
 	for _, e := range entries {
-		data, err := csszschemas.Files.ReadFile(e.Name())
+		data, err := fs.ReadFile(schema.schemaFS(), e.Name())
 		if err != nil {
 			return "", fmt.Errorf("%w: reading embedded %s: %w", ErrExec, e.Name(), err)
 		}

@@ -10,9 +10,9 @@ import (
 // change must come with a new rule-set ID (for example ".v2") and a new entry
 // here; editing an existing ID's values fails this test on purpose.
 var goldenFingerprints = map[string]string{
-	"cz-dpfo-2024.v6":             "e31c9c015055fe79b512fc166b192aff41248a7e35038d7e5daefacc9db2a72a",
-	"cz-dpfo-2025.v6":             "4dd20e9f1c66e03e02bf0323ad07e7867713df5a234204e4537935cde3d404cd",
-	"cz-dpfo-2026.v5-provisional": "327650bbc72a80d8c3f4523dbe25f0ab92fa8ce0474eb5d4bfa36ea50998a373",
+	"cz-dpfo-2024.v7":             "f58904f31f152d6ad57a86e172cc1bf6e99dbc905c84fbed04670d8e5616f08c",
+	"cz-dpfo-2025.v7":             "1b770c6a5472a64d835ec808b518b91f599552c9e9f6e6ad25101660707afae6",
+	"cz-dpfo-2026.v6-provisional": "e9155698702c2cca4026e22bb14835a79cc9cfe3fd2474355973cd1c1499aa29",
 }
 
 func TestFingerprint_GoldenPerRuleSetID(t *testing.T) {

@@ -887,3 +887,69 @@ func TestIncomeTaxXML_BonusReportedSeparately(t *testing.T) {
 		t.Errorf("expected kc_zbyvpred=-10000 (ř.91 reflects ř.72 − ř.89 = −10 000), got:\n%s", xmlData)
 	}
 }
+
+// TestIncomeTaxXML_ChildBonusRowsUseStatutoryLimits verifies that ř.73 (kc_slevy35c)
+// and ř.76 (kc_danbonus) carry the limited split from the same calc rule the return
+// was computed with — § 35c odst. 3 (bonus must be at least 100 CZK) and § 35c odst. 4
+// with § 21g odst. 1 (§ 6 + § 7 gross income at least 6x the monthly minimum wage on
+// 1 January; 2025: 6 x 20 800 = 124 800 CZK) — not a second formula.
+func TestIncomeTaxXML_ChildBonusRowsUseStatutoryLimits(t *testing.T) {
+	children := []domain.TaxChildCredit{
+		{Year: 2025, ChildName: "Petr Novak", BirthNumber: "150310/0005", ChildOrder: 1, MonthsClaimed: 12},
+	}
+	base := func(revenue, benefit domain.Amount) *domain.IncomeTaxReturn {
+		return &domain.IncomeTaxReturn{
+			Year: 2025, FilingType: domain.FilingTypeRegular,
+			TotalRevenue: revenue,
+			TotalTax:     0,
+			CreditBasic:  domain.NewAmount(30_840, 0),
+			TotalCredits: domain.NewAmount(30_840, 0),
+			ChildBenefit: benefit,
+		}
+	}
+	tests := []struct {
+		name         string
+		itr          *domain.IncomeTaxReturn
+		wantSlevy35c string
+		wantDanbonus string
+	}{
+		{
+			name:         "income 100 000 below 124 800 -> bonus 0, sleva 0 (tax after credits is 0)",
+			itr:          base(domain.NewAmount(100_000, 0), domain.NewAmount(15_204, 0)),
+			wantSlevy35c: "0",
+			wantDanbonus: "0",
+		},
+		{
+			name:         "income exactly 124 800 -> bonus 15 204 paid",
+			itr:          base(domain.NewAmount(124_800, 0), domain.NewAmount(15_204, 0)),
+			wantSlevy35c: "0",
+			wantDanbonus: "15204",
+		},
+		{
+			name:         "computed bonus 99 CZK below the 100 CZK minimum -> 0",
+			itr:          base(domain.NewAmount(200_000, 0), domain.NewAmount(99, 0)),
+			wantSlevy35c: "0",
+			wantDanbonus: "0",
+		},
+		{
+			name:         "computed bonus 100 CZK -> paid",
+			itr:          base(domain.NewAmount(200_000, 0), domain.NewAmount(100, 0)),
+			wantSlevy35c: "0",
+			wantDanbonus: "100",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			xmlData, err := GenerateIncomeTaxXML(tt.itr, section6BaseSettings(), children, nil, nil)
+			if err != nil {
+				t.Fatalf("GenerateIncomeTaxXML: %v", err)
+			}
+			if !bytes.Contains(xmlData, []byte(`kc_slevy35c="`+tt.wantSlevy35c+`"`)) {
+				t.Errorf("expected kc_slevy35c=%q (ř.73), got:\n%s", tt.wantSlevy35c, xmlData)
+			}
+			if !bytes.Contains(xmlData, []byte(`kc_danbonus="`+tt.wantDanbonus+`"`)) {
+				t.Errorf("expected kc_danbonus=%q (ř.76), got:\n%s", tt.wantDanbonus, xmlData)
+			}
+		})
+	}
+}

@@ -334,6 +334,7 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		CapitalIncomeNet:            itr.CapitalIncomeNet,
 		OtherIncomeNet:              itr.OtherIncomeNet,
 		Section6TaxBase:             itr.Section6TaxBase,
+		Section6GrossIncome:         itr.Section6GrossIncome,
 		Section6AdvanceWithheld:     itr.Section6AdvanceWithheld,
 		Section6WithholdingCredited: itr.Section6WithholdingCredited,
 		Section6MonthlyBonusPaid:    itr.Section6MonthlyBonusPaid,

@@ -402,8 +402,8 @@ func TestIncomeTaxReturnService_Recalculate_WithInvoice(t *testing.T) {
 	if result.CreditBasic != constants.BasicCredit {
 		t.Errorf("CreditBasic = %d, want %d", result.CreditBasic, constants.BasicCredit)
 	}
-	if result.TaxRuleSetID != "cz-dpfo-2025.v6" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v6", result.TaxRuleSetID)
+	if result.TaxRuleSetID != "cz-dpfo-2025.v7" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2025.v7", result.TaxRuleSetID)
 	}
 	if result.TaxRuleSetStatus != "final" {
 		t.Errorf("TaxRuleSetStatus = %q, want final", result.TaxRuleSetStatus)
@@ -509,8 +509,8 @@ func TestIncomeTaxReturnService_Recalculate_ProvisionalRuleSetWarning(t *testing
 	if err != nil {
 		t.Fatalf("Recalculate() error: %v", err)
 	}
-	if result.TaxRuleSetID != "cz-dpfo-2026.v5-provisional" {
-		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v5-provisional", result.TaxRuleSetID)
+	if result.TaxRuleSetID != "cz-dpfo-2026.v6-provisional" {
+		t.Errorf("TaxRuleSetID = %q, want cz-dpfo-2026.v6-provisional", result.TaxRuleSetID)
 	}
 	if result.TaxRuleSetStatus != "provisional" {
 		t.Errorf("TaxRuleSetStatus = %q, want provisional", result.TaxRuleSetStatus)
@@ -1668,6 +1668,111 @@ func TestIncomeTaxReturnService_GenerateXML_LegacyFiledSpouseWithoutChildMonths(
 // TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged is the positive control:
 // when the spouse and disability records still match the stored amounts, the XML
 // carries their months (m_vyzmanzl / m_cinvduch).
+// seedSentInvoice2025 inserts a sent 2025 invoice with the given net subtotal, so
+// Recalculate picks it up as §7 revenue for the year.
+func seedSentInvoice2025(t *testing.T, db *sql.DB, number string, subtotal domain.Amount) {
+	t.Helper()
+	contact := testutil.SeedContact(t, db, nil)
+	jan15 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+	_, err := db.ExecContext(context.Background(), `
+		INSERT INTO invoices (
+			invoice_number, type, status,
+			issue_date, due_date, delivery_date, variable_symbol, constant_symbol,
+			customer_id, currency_code, exchange_rate,
+			payment_method, bank_account, bank_code, iban, swift,
+			subtotal_amount, vat_amount, total_amount, paid_amount,
+			notes, internal_notes,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		number, domain.InvoiceTypeRegular, domain.InvoiceStatusSent,
+		jan15.Format("2006-01-02"), jan15.AddDate(0, 0, 14).Format("2006-01-02"), jan15.Format("2006-01-02"),
+		"", "", contact.ID, "CZK", 100,
+		"bank_transfer", "", "", "", "",
+		subtotal, 0, subtotal, 0,
+		"", "",
+		now.Format(time.RFC3339), now.Format(time.RFC3339),
+	)
+	if err != nil {
+		t.Fatalf("inserting invoice: %v", err)
+	}
+}
+
+// seedOneChild2025 stores one child credited for all 12 months of 2025
+// (ChildBenefit 15 204 CZK).
+func seedOneChild2025(t *testing.T, creditsSvc *TaxCreditsService) {
+	t.Helper()
+	now := time.Now()
+	child := &domain.TaxChildCredit{
+		Year:          2025,
+		ChildName:     "Anna",
+		BirthNumber:   "0501010001",
+		ChildOrder:    1,
+		MonthsClaimed: 12,
+		ZTP:           false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := creditsSvc.CreateChild(context.Background(), child); err != nil {
+		t.Fatalf("CreateChild: %v", err)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_ChildBonusBelowIncomeThreshold: § 35c odst. 4
+// with § 21g odst. 1 — § 7 revenue 100 000 CZK is below 6 x 20 800 = 124 800 CZK
+// (2025 minimum wage), so the refundable bonus is 0. The stored ChildBenefit (ř.72)
+// keeps the full 15 204 CZK and TaxAfterBenefit is not negative.
+func TestIncomeTaxReturnService_Recalculate_ChildBonusBelowIncomeThreshold(t *testing.T) {
+	svc, creditsSvc, _, db := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedOneChild2025(t, creditsSvc)
+	seedSentInvoice2025(t, db, "FV20250101", domain.NewAmount(100_000, 0))
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	if want := domain.NewAmount(15_204, 0); result.ChildBenefit != want {
+		t.Errorf("ChildBenefit = %d, want %d (ř.72 keeps the full benefit)", result.ChildBenefit, want)
+	}
+	// Tax base 100 000 -> tax 15 000 -> 0 after the basic credit, so sleva = 0 and
+	// the bonus would be the whole 15 204 — but income 100 000 < 124 800 -> bonus 0.
+	if result.TaxAfterBenefit != 0 {
+		t.Errorf("TaxAfterBenefit = %d, want 0 (bonus not claimable below 6x minimum wage)", result.TaxAfterBenefit)
+	}
+}
+
+// TestIncomeTaxReturnService_Recalculate_ChildBonusAboveIncomeThreshold: § 7 revenue
+// 200 000 CZK reaches 124 800 CZK, so the full 15 204 CZK bonus is refundable and
+// TaxAfterBenefit goes negative.
+func TestIncomeTaxReturnService_Recalculate_ChildBonusAboveIncomeThreshold(t *testing.T) {
+	svc, creditsSvc, _, db := setupIncomeTaxSvcWithEmployment(t)
+	ctx := context.Background()
+
+	seedOneChild2025(t, creditsSvc)
+	seedSentInvoice2025(t, db, "FV20250102", domain.NewAmount(200_000, 0))
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	result, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate: %v", err)
+	}
+
+	want := -domain.NewAmount(15_204, 0)
+	if result.TaxAfterBenefit != want {
+		t.Errorf("TaxAfterBenefit = %d, want %d (bonus paid at income >= 124 800 CZK)", result.TaxAfterBenefit, want)
+	}
+}
+
 func TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged(t *testing.T) {
 	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
 	ctx := context.Background()

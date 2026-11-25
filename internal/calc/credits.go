@@ -97,6 +97,41 @@ func ComputeChildBenefit(children []ChildCreditInput, constants TaxYearConstants
 	return total
 }
 
+// minChildBonusCZK is the minimum yearly daňový bonus that can be claimed
+// (§ 35c odst. 3): a computed bonus of 1-99 CZK becomes 0.
+const minChildBonusCZK = 100
+
+// SplitChildBenefit splits the child benefit into the sleva part (reduces the
+// tax, floored at 0) and the refundable daňový bonus, applying the two statutory
+// conditions on the bonus:
+//   - § 35c odst. 3: the bonus must be at least 100 CZK, otherwise it is 0;
+//   - § 35c odst. 4 with § 21g odst. 1: the taxpayer's § 6 + § 7 income in the tax
+//     year must reach 6x the monthly minimum wage effective on 1 January. "Income"
+//     is the gross příjem (§ 6 gross income plus § 7 revenue), not the partial tax
+//     base after expenses. Below the threshold the benefit only reduces the tax to
+//     0 (sleva) and the bonus is 0.
+//
+// The sleva part is unaffected by both conditions. This is the single place that
+// computes the limited split; the income tax calculation and the XML generator
+// (ř.73/ř.76) both use it.
+func SplitChildBenefit(taxAfterCredits, childBenefit, section6GrossIncome, section7Revenue domain.Amount, constants TaxYearConstants) (sleva, bonus domain.Amount) {
+	if taxAfterCredits < 0 {
+		taxAfterCredits = 0
+	}
+	sleva = childBenefit
+	if sleva > taxAfterCredits {
+		sleva = taxAfterCredits
+	}
+	excess := childBenefit - sleva
+	if excess > 0 {
+		income := section6GrossIncome + section7Revenue
+		if income >= constants.MinimumWage*6 && excess >= domain.NewAmount(minChildBonusCZK, 0) {
+			bonus = excess
+		}
+	}
+	return sleva, bonus
+}
+
 // DeductionInput describes a single tax deduction claim.
 type DeductionInput struct {
 	Category      string

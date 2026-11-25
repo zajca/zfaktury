@@ -104,7 +104,11 @@ type TaxYearConstants struct {
 	CryptoTimeTestFrom     CivilDate
 	SecurityExemptionLimit domain.Amount // max yearly gross time-test income that stays exempt (0 = no limit)
 
-	SpouseIncomeLimit           domain.Amount
+	SpouseIncomeLimit domain.Amount
+	// MinimumWage is the monthly minimum wage effective on 1 January of the
+	// rule-set year (§ 21g odst. 1 ZDP), unadjusted for hours worked. The child
+	// bonus (§ 35c odst. 4) requires § 6 + § 7 income of at least 6x this value.
+	MinimumWage                 domain.Amount
 	DeductionCapMortgage        domain.Amount
 	DeductionCapLifeInsurance   domain.Amount
 	DeductionCapPension         domain.Amount
@@ -256,6 +260,9 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if r.Constants.BasicCredit <= 0 {
 		errs = append(errs, fmt.Errorf("%s basic credit must be positive: %w", r.ID, domain.ErrInvalidInput))
+	}
+	if r.Constants.MinimumWage <= 0 {
+		errs = append(errs, fmt.Errorf("%s minimum wage must be positive: %w", r.ID, domain.ErrInvalidInput))
 	}
 	if r.Constants.SocialRate <= 0 || r.Constants.HealthRate <= 0 {
 		errs = append(errs, fmt.Errorf("%s insurance rates must be positive: %w", r.ID, domain.ErrInvalidInput))

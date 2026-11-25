@@ -308,6 +308,114 @@ func TestComputeChildBenefit(t *testing.T) {
 	}
 }
 
+// TestSplitChildBenefit covers the statutory limits on the refundable child bonus:
+// § 35c odst. 3 (bonus >= 100 CZK) and § 35c odst. 4 + § 21g odst. 1 (§ 6 + § 7 gross
+// income >= 6x the monthly minimum wage on 1 January; 2025: 6 x 20 800 = 124 800 CZK).
+// The sleva part is never limited.
+func TestSplitChildBenefit(t *testing.T) {
+	c := constants2025() // MinimumWage 2025 = 20 800 CZK -> threshold 124 800 CZK
+	if c.MinimumWage != domain.NewAmount(20_800, 0) {
+		t.Fatalf("2025 MinimumWage = %d, want 20 800 CZK", c.MinimumWage)
+	}
+
+	tests := []struct {
+		name           string
+		taxAfterCredit domain.Amount
+		childBenefit   domain.Amount
+		section6Gross  domain.Amount
+		section7Rev    domain.Amount
+		wantSleva      domain.Amount
+		wantBonus      domain.Amount
+	}{
+		{
+			name:           "benefit below tax: all sleva, no bonus",
+			taxAfterCredit: domain.NewAmount(10_000, 0),
+			childBenefit:   domain.NewAmount(5_000, 0),
+			section7Rev:    domain.NewAmount(200_000, 0),
+			wantSleva:      domain.NewAmount(5_000, 0),
+			wantBonus:      0,
+		},
+		{
+			name:           "bonus 99 CZK below the 100 CZK minimum -> 0",
+			taxAfterCredit: 0,
+			childBenefit:   domain.NewAmount(99, 0),
+			section7Rev:    domain.NewAmount(200_000, 0),
+			wantSleva:      0,
+			wantBonus:      0,
+		},
+		{
+			name:           "bonus exactly 100 CZK -> paid",
+			taxAfterCredit: 0,
+			childBenefit:   domain.NewAmount(100, 0),
+			section7Rev:    domain.NewAmount(200_000, 0),
+			wantSleva:      0,
+			wantBonus:      domain.NewAmount(100, 0),
+		},
+		{
+			name:           "income 124 799 via §7 revenue -> bonus 0, sleva still eats the tax",
+			taxAfterCredit: domain.NewAmount(62_865, 0),
+			childBenefit:   domain.NewAmount(100_000, 0),
+			section7Rev:    domain.NewAmount(124_799, 0),
+			wantSleva:      domain.NewAmount(62_865, 0),
+			wantBonus:      0,
+		},
+		{
+			name:           "income exactly 124 800 via §7 revenue -> bonus paid",
+			taxAfterCredit: domain.NewAmount(62_880, 0),
+			childBenefit:   domain.NewAmount(100_000, 0),
+			section7Rev:    domain.NewAmount(124_800, 0),
+			wantSleva:      domain.NewAmount(62_880, 0),
+			wantBonus:      domain.NewAmount(37_120, 0),
+		},
+		{
+			name:           "§6 gross income counts toward the threshold",
+			taxAfterCredit: 0,
+			childBenefit:   domain.NewAmount(15_204, 0),
+			section6Gross:  domain.NewAmount(130_000, 0),
+			wantSleva:      0,
+			wantBonus:      domain.NewAmount(15_204, 0),
+		},
+		{
+			name:           "§6 + §7 combined just below threshold -> bonus 0",
+			taxAfterCredit: 0,
+			childBenefit:   domain.NewAmount(15_204, 0),
+			section6Gross:  domain.NewAmount(100_000, 0),
+			section7Rev:    domain.NewAmount(24_799, 0), // 124 799 total
+			wantSleva:      0,
+			wantBonus:      0,
+		},
+		{
+			name:           "§6 + §7 combined at threshold -> bonus paid",
+			taxAfterCredit: 0,
+			childBenefit:   domain.NewAmount(15_204, 0),
+			section6Gross:  domain.NewAmount(100_000, 0),
+			section7Rev:    domain.NewAmount(24_800, 0), // 124 800 total
+			wantSleva:      0,
+			wantBonus:      domain.NewAmount(15_204, 0),
+		},
+		{
+			name:           "negative tax after credits clamps to 0, whole benefit is excess",
+			taxAfterCredit: domain.NewAmount(-5_000, 0),
+			childBenefit:   domain.NewAmount(15_204, 0),
+			section7Rev:    domain.NewAmount(200_000, 0),
+			wantSleva:      0,
+			wantBonus:      domain.NewAmount(15_204, 0),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sleva, bonus := SplitChildBenefit(tt.taxAfterCredit, tt.childBenefit, tt.section6Gross, tt.section7Rev, c)
+			if sleva != tt.wantSleva {
+				t.Errorf("sleva = %d (%s CZK), want %d (%s CZK)", sleva, sleva, tt.wantSleva, tt.wantSleva)
+			}
+			if bonus != tt.wantBonus {
+				t.Errorf("bonus = %d (%s CZK), want %d (%s CZK)", bonus, bonus, tt.wantBonus, tt.wantBonus)
+			}
+		})
+	}
+}
+
 func TestComputeDeductions(t *testing.T) {
 	c := testConstants()
 	taxBase := domain.NewAmount(1_000_000, 0)

@@ -82,6 +82,12 @@ var (
 	// ErrInvalidXML is returned when the input is not a ZFaktury-style XML
 	// document or exceeds the configured size.
 	ErrInvalidXML = errors.New("XML is not acceptable for EPO")
+	// ErrPackaging is returned for an unknown packaging value. Regenerating
+	// the XML does not help, so it must not be reported as ErrInvalidXML.
+	ErrPackaging = errors.New("unknown EPO packaging")
+	// ErrRequestTooLarge is returned when the packed archive exceeds the
+	// configured size limit.
+	ErrRequestTooLarge = errors.New("EPO request is too large")
 )
 
 // Finding is one item of EPO's <Chyby> list.
@@ -139,6 +145,7 @@ type Client struct {
 	maxRequestBytes  int64
 	maxResponseBytes int64
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // Option configures the Client.
@@ -204,6 +211,16 @@ func WithHTTPClient(hc *http.Client) Option {
 	}
 }
 
+// WithNow replaces the clock used for the ZIP entry modification time. A nil
+// value keeps the default.
+func WithNow(now func() time.Time) Option {
+	return func(c *Client) {
+		if now != nil {
+			c.now = now
+		}
+	}
+}
+
 func noRedirect(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 
 // NewClient creates a Podatelna EPO client.
@@ -217,6 +234,7 @@ func NewClient(opts ...Option) *Client {
 			Timeout:       DefaultTimeout,
 			CheckRedirect: noRedirect,
 		},
+		now: time.Now,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -374,7 +392,7 @@ func (c *Client) pack(xmlData []byte, packaging Packaging) ([]byte, error) {
 	case PackagingZIP:
 		return c.zipXML(xmlData)
 	default:
-		return nil, fmt.Errorf("%w: unknown packaging %d", ErrInvalidXML, packaging)
+		return nil, fmt.Errorf("%w: unknown packaging %d", ErrPackaging, packaging)
 	}
 }
 
@@ -383,7 +401,7 @@ func (c *Client) pack(xmlData []byte, packaging Packaging) ([]byte, error) {
 func (c *Client) zipXML(xmlData []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	w, err := zw.CreateHeader(&zip.FileHeader{Name: ZIPEntryName, Method: zip.Deflate})
+	w, err := zw.CreateHeader(&zip.FileHeader{Name: ZIPEntryName, Method: zip.Deflate, Modified: c.now()})
 	if err != nil {
 		return nil, fmt.Errorf("creating ZIP entry: %w", err)
 	}
@@ -394,7 +412,7 @@ func (c *Client) zipXML(xmlData []byte) ([]byte, error) {
 		return nil, fmt.Errorf("closing ZIP archive: %w", err)
 	}
 	if int64(buf.Len()) > c.maxRequestBytes {
-		return nil, fmt.Errorf("%w: ZIP archive of %d bytes exceeds the %d byte limit", ErrInvalidXML, buf.Len(), c.maxRequestBytes)
+		return nil, fmt.Errorf("%w: ZIP archive of %d bytes exceeds the %d byte limit", ErrRequestTooLarge, buf.Len(), c.maxRequestBytes)
 	}
 	return buf.Bytes(), nil
 }

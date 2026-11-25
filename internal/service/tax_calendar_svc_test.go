@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -204,11 +205,11 @@ func TestTaxCalendarService_GetDeadlines_FilingMethod(t *testing.T) {
 		wantOverview time.Time
 		wantNote     string
 	}{
-		{"missing settings row", nil, date(2026, time.April, 1), date(2026, time.May, 4), "no filing method is set for tax year 2025"},
-		{"unset method", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodUnset}, date(2026, time.April, 1), date(2026, time.May, 4), "no filing method is set for tax year 2025"},
-		{"standard", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}, date(2026, time.April, 1), date(2026, time.May, 4), "filing method for tax year 2025: standard"},
-		{"electronic, 1 May is a holiday", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodElectronic}, date(2026, time.May, 4), date(2026, time.June, 4), "filing method for tax year 2025: electronic"},
-		{"advisor", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}, date(2026, time.July, 1), date(2026, time.August, 3), "filing method for tax year 2025: advisor"},
+		{"missing settings row", nil, date(2026, time.April, 1), date(2026, time.May, 4), "pro rok 2025 není nastaven způsob podání"},
+		{"unset method", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodUnset}, date(2026, time.April, 1), date(2026, time.May, 4), "pro rok 2025 není nastaven způsob podání"},
+		{"standard", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}, date(2026, time.April, 1), date(2026, time.May, 4), "Způsob podání přiznání za rok 2025: do 1. dubna (papírově nebo elektronicky)"},
+		{"electronic, 1 May is a holiday", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodElectronic}, date(2026, time.May, 4), date(2026, time.June, 4), "Způsob podání přiznání za rok 2025: elektronicky po 1. dubnu"},
+		{"advisor", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}, date(2026, time.July, 1), date(2026, time.August, 3), "Způsob podání přiznání za rok 2025: daňový poradce po 1. dubnu"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -245,8 +246,157 @@ func TestTaxCalendarService_GetDeadlines_FilingMethod(t *testing.T) {
 				if !strings.Contains(d.Description, tt.wantNote) {
 					t.Errorf("%s description = %q, want it to contain %q", d.Name, d.Description, tt.wantNote)
 				}
+				// The raw stored filing method value must never appear in the text.
+				if tt.seed != nil && tt.seed.FilingMethod != domain.FilingMethodUnset {
+					if raw := string(tt.seed.FilingMethod); strings.Contains(d.Description, raw) {
+						t.Errorf("%s description = %q, must not contain the raw filing method %q", d.Name, d.Description, raw)
+					}
+				}
 			}
 		})
+	}
+}
+
+// TestTaxCalendarService_GetDeadlines_CzechTexts checks that every deadline
+// name and description produced for a calendar year is Czech.
+func TestTaxCalendarService_GetDeadlines_CzechTexts(t *testing.T) {
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
+
+	deadlines, err := svc.GetDeadlines(context.Background(), 2026)
+	if err != nil {
+		t.Fatalf("GetDeadlines: %v", err)
+	}
+
+	monthNames := []string{
+		"leden", "únor", "březen", "duben", "květen", "červen",
+		"červenec", "srpen", "září", "říjen", "listopad", "prosinec",
+	}
+	wantNames := make(map[string]bool, 19)
+	for _, m := range monthNames {
+		wantNames[fmt.Sprintf("Přiznání k DPH za %s 2026", m)] = true
+	}
+	wantNames["Přiznání k dani z příjmů"] = true
+	wantNames["Přehled o příjmech a výdajích pro ČSSZ"] = true
+	wantNames["Přehled pro zdravotní pojišťovnu"] = true
+	for _, q := range []string{"1. čtvrtletí", "2. čtvrtletí", "3. čtvrtletí", "4. čtvrtletí"} {
+		wantNames["Záloha na daň z příjmů – "+q] = true
+	}
+
+	gotNames := make(map[string]bool, len(deadlines))
+	for _, d := range deadlines {
+		gotNames[d.Name] = true
+	}
+	for want := range wantNames {
+		if !gotNames[want] {
+			t.Errorf("missing deadline name %q", want)
+		}
+	}
+	for got := range gotNames {
+		if !wantNames[got] {
+			t.Errorf("unexpected deadline name %q", got)
+		}
+	}
+
+	// Descriptions: Czech wording; "za leden 2026" is accusative (same form as nominative for masculine inanimate nouns).
+	vat := findDeadlineByName(deadlines, "Přiznání k DPH za leden 2026")
+	if vat == nil {
+		t.Fatalf("missing January VAT deadline")
+	}
+	if want := "Měsíční přiznání k DPH za leden 2026"; vat.Description != want {
+		t.Errorf("VAT description = %q, want %q", vat.Description, want)
+	}
+	if want := "Termín podání přiznání k dani z příjmů za rok 2025"; !strings.Contains(findDeadlineByType(deadlines, "income_tax").Description, want) {
+		t.Errorf("income tax description = %q, want it to contain %q", findDeadlineByType(deadlines, "income_tax").Description, want)
+	}
+	if want := "Termín podání přehledu o příjmech a výdajích pro ČSSZ za rok 2025"; !strings.Contains(findDeadlineByType(deadlines, "social").Description, want) {
+		t.Errorf("social description = %q, want it to contain %q", findDeadlineByType(deadlines, "social").Description, want)
+	}
+	if want := "Termín podání přehledu pro zdravotní pojišťovnu za rok 2025"; !strings.Contains(findDeadlineByType(deadlines, "health").Description, want) {
+		t.Errorf("health description = %q, want it to contain %q", findDeadlineByType(deadlines, "health").Description, want)
+	}
+	advance := findDeadlineByName(deadlines, "Záloha na daň z příjmů – 1. čtvrtletí")
+	if advance == nil {
+		t.Fatalf("missing Q1 advance deadline")
+	}
+	if want := "Čtvrtletní záloha na daň z příjmů za 1. čtvrtletí 2026"; advance.Description != want {
+		t.Errorf("advance description = %q, want %q", advance.Description, want)
+	}
+
+	// No English leftovers anywhere.
+	for _, d := range deadlines {
+		for _, en := range []string{"VAT return", "Income tax", "Social insurance", "Health insurance", "Monthly VAT", "filing method", "Quarterly income"} {
+			if strings.Contains(d.Name, en) || strings.Contains(d.Description, en) {
+				t.Errorf("deadline %q still contains English %q", d.Name, en)
+			}
+		}
+	}
+}
+
+func findDeadlineByName(deadlines []TaxDeadline, name string) *TaxDeadline {
+	for i := range deadlines {
+		if deadlines[i].Name == name {
+			return &deadlines[i]
+		}
+	}
+	return nil
+}
+
+// TestTaxCalendarService_GetDeadlines_UnsetNoteWhenDateMoved checks the note
+// when no filing method is set for a tax year whose 1 April was shifted (2023
+// tax year: 1 April 2024 was Easter Monday, the shown date is 2 April 2024).
+func TestTaxCalendarService_GetDeadlines_UnsetNoteWhenDateMoved(t *testing.T) {
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
+
+	deadlines, err := svc.GetDeadlines(context.Background(), 2024)
+	if err != nil {
+		t.Fatalf("GetDeadlines: %v", err)
+	}
+
+	returnDeadline := findDeadlineByType(deadlines, "income_tax")
+	if returnDeadline == nil {
+		t.Fatalf("missing income_tax deadline in %v", deadlines)
+	}
+	if want := date(2024, time.April, 2); !returnDeadline.Date.Equal(want) {
+		t.Errorf("return date = %s, want %s (1 April 2024 was Easter Monday)", returnDeadline.Date.Format("2006-01-02"), want.Format("2006-01-02"))
+	}
+
+	for _, d := range []*TaxDeadline{returnDeadline, findDeadlineByType(deadlines, "social"), findDeadlineByType(deadlines, "health")} {
+		if !strings.Contains(d.Description, "Termíny počítají s podáním přiznání do 1. dubna (papírově nebo elektronicky), případně do prvního následujícího pracovního dne, protože pro rok 2023 není nastaven způsob podání.") {
+			t.Errorf("%s description = %q, want it to state the 1 April assumption with the next-business-day shift and the missing filing method", d.Name, d.Description)
+		}
+		if !strings.Contains(d.Description, "Způsob podání lze nastavit v části Daň z příjmů → Zálohy.") {
+			t.Errorf("%s description = %q, want it to point to Daň z příjmů → Zálohy", d.Name, d.Description)
+		}
+		// The note is joined to the deadline sentence with ". ", not "; ".
+		if !strings.Contains(d.Description, "za rok 2023. Termíny počítají") {
+			t.Errorf("%s description = %q, want the note joined with '. '", d.Name, d.Description)
+		}
+		if strings.Contains(d.Description, "; ") {
+			t.Errorf("%s description = %q, must not join sentences with '; '", d.Name, d.Description)
+		}
+		if strings.Contains(d.Description, "filing by 1 April") {
+			t.Errorf("%s description = %q, must not claim the dates assume filing by 1 April", d.Name, d.Description)
+		}
+	}
+}
+
+// TestTaxCalendarService_GetDeadlines_UnknownFilingMethod checks that an
+// unknown stored filing method fails with ErrInvalidInput and never leaks the
+// raw value.
+func TestTaxCalendarService_GetDeadlines_UnknownFilingMethod(t *testing.T) {
+	svc := NewTaxCalendarService(stubTaxYearSettingsRepo{getByYear: func(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+		return &domain.TaxYearSettings{Year: year, FilingMethod: domain.FilingMethod("paper")}, nil
+	}})
+
+	_, err := svc.GetDeadlines(context.Background(), 2026)
+	if err == nil {
+		t.Fatal("GetDeadlines returned nil error, want ErrInvalidInput for an unknown filing method")
+	}
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("error = %v, want it to wrap domain.ErrInvalidInput", err)
+	}
+	if strings.Contains(err.Error(), "paper") {
+		t.Errorf("error = %q, must not leak the raw filing method value", err)
 	}
 }
 

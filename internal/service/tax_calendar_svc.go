@@ -40,6 +40,12 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 	if err != nil {
 		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
 	}
+	// Validate the method before any deadline computation so an unknown stored
+	// value fails here instead of leaking into a deadline text.
+	methodNote, err := filingMethodNote(taxYear, method)
+	if err != nil {
+		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
+	}
 	returnDate, err := IncomeTaxReturnDeadline(taxYear, method)
 	if err != nil {
 		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
@@ -48,15 +54,14 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 	if err != nil {
 		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
 	}
-	methodNote := filingMethodNote(taxYear, method)
 
 	var deadlines []TaxDeadline
 
 	// Monthly VAT: 25th of the following month for each month's VAT.
 	// January VAT is due Feb 25, ..., December VAT is due Jan 25 of next year.
 	monthNames := []string{
-		"January", "February", "March", "April", "May", "June",
-		"July", "August", "September", "October", "November", "December",
+		"leden", "únor", "březen", "duben", "květen", "červen",
+		"červenec", "srpen", "září", "říjen", "listopad", "prosinec",
 	}
 	for m := 1; m <= 12; m++ {
 		// VAT for month m is due on the 25th of month m+1.
@@ -72,36 +77,37 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 			dueHolidays = czechPublicHolidays(dueYear)
 		}
 		date := s.nextBusinessDay(time.Date(dueYear, time.Month(dueMonth), 25, 0, 0, 0, 0, time.UTC), dueHolidays)
+		monthYear := formatYear(year)
 		deadlines = append(deadlines, TaxDeadline{
-			Name:        "VAT return - " + monthNames[m-1],
+			Name:        fmt.Sprintf("Přiznání k DPH za %s %s", monthNames[m-1], monthYear),
 			Date:        date,
 			Type:        "vat",
-			Description: "Monthly VAT return for " + monthNames[m-1] + " " + formatYear(year),
+			Description: fmt.Sprintf("Měsíční přiznání k DPH za %s %s", monthNames[m-1], monthYear),
 		})
 	}
 
 	// Income tax annual return: deadline depends on the filing method of the tax year.
 	deadlines = append(deadlines, TaxDeadline{
-		Name:        "Income tax return",
+		Name:        "Přiznání k dani z příjmů",
 		Date:        returnDate,
 		Type:        "income_tax",
-		Description: "Annual income tax return filing deadline; " + methodNote,
+		Description: fmt.Sprintf("Termín podání přiznání k dani z příjmů za rok %d. %s", taxYear, methodNote),
 	})
 
 	// Social insurance overview: one month after the return deadline.
 	deadlines = append(deadlines, TaxDeadline{
-		Name:        "Social insurance overview",
+		Name:        "Přehled o příjmech a výdajích pro ČSSZ",
 		Date:        overviewDate,
 		Type:        "social",
-		Description: "Annual social insurance overview filing deadline; " + methodNote,
+		Description: fmt.Sprintf("Termín podání přehledu o příjmech a výdajích pro ČSSZ za rok %d. %s", taxYear, methodNote),
 	})
 
 	// Health insurance overview: one month after the return deadline.
 	deadlines = append(deadlines, TaxDeadline{
-		Name:        "Health insurance overview",
+		Name:        "Přehled pro zdravotní pojišťovnu",
 		Date:        overviewDate,
 		Type:        "health",
-		Description: "Annual health insurance overview filing deadline; " + methodNote,
+		Description: fmt.Sprintf("Termín podání přehledu pro zdravotní pojišťovnu za rok %d. %s", taxYear, methodNote),
 	})
 
 	// Quarterly income tax advances.
@@ -110,17 +116,17 @@ func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxD
 		day   int
 		label string
 	}{
-		{time.March, 15, "Q1"},
-		{time.June, 15, "Q2"},
-		{time.September, 15, "Q3"},
-		{time.December, 15, "Q4"},
+		{time.March, 15, "1. čtvrtletí"},
+		{time.June, 15, "2. čtvrtletí"},
+		{time.September, 15, "3. čtvrtletí"},
+		{time.December, 15, "4. čtvrtletí"},
 	}
 	for _, q := range quarterDates {
 		deadlines = append(deadlines, TaxDeadline{
-			Name:        "Income tax advance " + q.label,
+			Name:        "Záloha na daň z příjmů – " + q.label,
 			Date:        s.nextBusinessDay(time.Date(year, q.month, q.day, 0, 0, 0, 0, time.UTC), holidays),
 			Type:        "advance",
-			Description: "Quarterly income tax advance payment " + q.label,
+			Description: fmt.Sprintf("Čtvrtletní záloha na daň z příjmů za %s %s", q.label, formatYear(year)),
 		})
 	}
 
@@ -145,12 +151,33 @@ func (s *TaxCalendarService) filingMethod(ctx context.Context, taxYear int) (dom
 }
 
 // filingMethodNote describes the filing method behind the return and overview
-// deadlines; an unset method states the 1 April assumption.
-func filingMethodNote(taxYear int, method domain.FilingMethod) string {
+// deadlines. An unset method states the assumption the deadline computation
+// makes: filed by 1 April (on paper or electronically), shifted to the first
+// following business day, and says where the method is set. An unknown stored
+// value is an error, never shown.
+func filingMethodNote(taxYear int, method domain.FilingMethod) (string, error) {
 	if method == domain.FilingMethodUnset {
-		return fmt.Sprintf("dates assume filing by 1 April because no filing method is set for tax year %d", taxYear)
+		return fmt.Sprintf("Termíny počítají s podáním přiznání do 1. dubna (papírově nebo elektronicky), případně do prvního následujícího pracovního dne, protože pro rok %d není nastaven způsob podání. Způsob podání lze nastavit v části Daň z příjmů → Zálohy.", taxYear), nil
 	}
-	return fmt.Sprintf("filing method for tax year %d: %s", taxYear, method)
+	label, err := filingMethodLabel(method)
+	if err != nil {
+		return "", fmt.Errorf("filing method for tax year %d: %w", taxYear, err)
+	}
+	return fmt.Sprintf("Způsob podání přiznání za rok %d: %s", taxYear, label), nil
+}
+
+// filingMethodLabel maps a stored filing method to its readable Czech label.
+func filingMethodLabel(method domain.FilingMethod) (string, error) {
+	switch method {
+	case domain.FilingMethodStandard:
+		return "do 1. dubna (papírově nebo elektronicky)", nil
+	case domain.FilingMethodElectronic:
+		return "elektronicky po 1. dubnu", nil
+	case domain.FilingMethodAdvisor:
+		return "daňový poradce po 1. dubnu", nil
+	default:
+		return "", fmt.Errorf("unknown filing method: %w", domain.ErrInvalidInput)
+	}
 }
 
 // nextBusinessDay shifts a date forward if it falls on a weekend or Czech public holiday.

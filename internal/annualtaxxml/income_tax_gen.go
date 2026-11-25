@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
@@ -211,12 +212,14 @@ func buildCreditRows(itr *domain.IncomeTaxReturn, spouse *domain.TaxSpouseCredit
 		}
 		rows.SpouseFirst, rows.SpouseLast = splitPersonName(spouse.SpouseName)
 		rows.SpouseRC = stripBirthNumberSeparators(spouse.SpouseBirthNumber)
+		// Rows 65a/65b carry the effective months, the same cap the calc applies (§ 35bb odst. 2).
+		effectiveMonths := calc.SpouseEffectiveMonths(itr.Year, spouse.MonthsClaimed, spouse.ChildUnder3Months)
 		if spouse.SpouseZTP {
 			rows.Manztpp = ToWholeCZK(itr.CreditSpouse)
-			rows.MManz = spouse.MonthsClaimed
+			rows.MManz = effectiveMonths
 		} else {
 			rows.Op15_1c = ToWholeCZK(itr.CreditSpouse)
-			rows.MVyzmanzl = spouse.MonthsClaimed
+			rows.MVyzmanzl = effectiveMonths
 		}
 	}
 

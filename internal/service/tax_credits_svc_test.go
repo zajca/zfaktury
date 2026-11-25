@@ -30,10 +30,11 @@ func TestTaxCreditsService_UpsertSpouse(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana Novakova",
-		SpouseIncome:  domain.NewAmount(50000, 0),
-		MonthsClaimed: 12,
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
@@ -57,10 +58,11 @@ func TestTaxCreditsService_UpsertSpouse_Update(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana Novakova",
-		SpouseIncome:  domain.NewAmount(50000, 0),
-		MonthsClaimed: 12,
+		Year:              2025,
+		SpouseName:        "Jana Novakova",
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -146,10 +148,11 @@ func TestTaxCreditsService_UpsertSpouse_ValidMonthsBoundary(t *testing.T) {
 
 	// MonthsClaimed=1 is valid.
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Test 1",
-		SpouseIncome:  0,
-		MonthsClaimed: 1,
+		Year:              2025,
+		SpouseName:        "Test 1",
+		SpouseIncome:      0,
+		MonthsClaimed:     1,
+		ChildUnder3Months: 1,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Errorf("UpsertSpouse(months=1) unexpected error: %v", err)
@@ -157,10 +160,11 @@ func TestTaxCreditsService_UpsertSpouse_ValidMonthsBoundary(t *testing.T) {
 
 	// MonthsClaimed=12 is valid (different year to avoid conflict).
 	credit2 := &domain.TaxSpouseCredit{
-		Year:          2024,
-		SpouseName:    "Test 12",
-		SpouseIncome:  0,
-		MonthsClaimed: 12,
+		Year:              2024,
+		SpouseName:        "Test 12",
+		SpouseIncome:      0,
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 	if err := svc.UpsertSpouse(ctx, credit2); err != nil {
 		t.Errorf("UpsertSpouse(months=12) unexpected error: %v", err)
@@ -191,9 +195,10 @@ func TestTaxCreditsService_DeleteSpouse(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
-		MonthsClaimed: 12,
+		Year:              2025,
+		SpouseName:        "Jana",
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -222,8 +227,9 @@ func TestTaxCreditsService_ComputeCredits_SpouseProportionalMonths(t *testing.T)
 	credit := &domain.TaxSpouseCredit{
 		Year:          2025,
 		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(50000, 0), // below 68000 CZK
-		MonthsClaimed: 6,
+		SpouseIncome:      domain.NewAmount(50000, 0), // below 68000 CZK
+		MonthsClaimed:     6,
+		ChildUnder3Months: 6,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -248,8 +254,9 @@ func TestTaxCreditsService_ComputeCredits_SpouseFullYear(t *testing.T) {
 	credit := &domain.TaxSpouseCredit{
 		Year:          2025,
 		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(60000, 0),
-		MonthsClaimed: 12,
+		SpouseIncome:      domain.NewAmount(60000, 0),
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -274,8 +281,9 @@ func TestTaxCreditsService_ComputeCredits_SpouseIncomeAboveThreshold(t *testing.
 	credit := &domain.TaxSpouseCredit{
 		Year:          2025,
 		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(68000, 0),
-		MonthsClaimed: 12,
+		SpouseIncome:      domain.NewAmount(68000, 0),
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -298,9 +306,10 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPDoubling(t *testing.T) {
 	credit := &domain.TaxSpouseCredit{
 		Year:          2025,
 		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(50000, 0),
-		SpouseZTP:     true,
-		MonthsClaimed: 12,
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		SpouseZTP:         true,
+		MonthsClaimed:     12,
+		ChildUnder3Months: 12,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -325,9 +334,10 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPPartialMonths(t *testing.T) {
 	credit := &domain.TaxSpouseCredit{
 		Year:          2025,
 		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(40000, 0),
-		SpouseZTP:     true,
-		MonthsClaimed: 3,
+		SpouseIncome:      domain.NewAmount(40000, 0),
+		SpouseZTP:         true,
+		MonthsClaimed:     3,
+		ChildUnder3Months: 3,
 	}
 	if err := svc.UpsertSpouse(ctx, credit); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -540,11 +550,12 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 
 	// Spouse with ZTP, partial months.
 	spouseCr := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(30000, 0),
-		SpouseZTP:     true,
-		MonthsClaimed: 6,
+		Year:              2025,
+		SpouseName:        "Jana",
+		SpouseIncome:      domain.NewAmount(30000, 0),
+		SpouseZTP:         true,
+		MonthsClaimed:     6,
+		ChildUnder3Months: 6,
 	}
 	if err := svc.UpsertSpouse(ctx, spouseCr); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -1175,12 +1186,13 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 
 	// Set up source year 2024 data.
 	spouse := &domain.TaxSpouseCredit{
-		Year:          2024,
-		SpouseName:    "Jana",
-		SpouseIncome:  domain.NewAmount(50000, 0),
-		SpouseZTP:     true,
-		MonthsClaimed: 10,
-		CreditAmount:  domain.NewAmount(99999, 0), // should be zeroed
+		Year:              2024,
+		SpouseName:        "Jana",
+		SpouseIncome:      domain.NewAmount(50000, 0),
+		SpouseZTP:         true,
+		MonthsClaimed:     10,
+		ChildUnder3Months: 10,
+		CreditAmount:      domain.NewAmount(99999, 0), // should be zeroed
 	}
 	if err := svc.UpsertSpouse(ctx, spouse); err != nil {
 		t.Fatalf("UpsertSpouse() error: %v", err)
@@ -1322,9 +1334,10 @@ func TestTaxCreditsService_CopyFromYear_SkipsExistingData(t *testing.T) {
 
 	// Set up source year.
 	srcSpouse := &domain.TaxSpouseCredit{
-		Year:          2024,
-		SpouseName:    "Source Jana",
-		MonthsClaimed: 10,
+		Year:              2024,
+		SpouseName:        "Source Jana",
+		MonthsClaimed:     10,
+		ChildUnder3Months: 10,
 	}
 	if err := svc.UpsertSpouse(ctx, srcSpouse); err != nil {
 		t.Fatalf("UpsertSpouse(source) error: %v", err)
@@ -1332,9 +1345,10 @@ func TestTaxCreditsService_CopyFromYear_SkipsExistingData(t *testing.T) {
 
 	// Set up target year with existing data.
 	targetSpouse := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Target Jana",
-		MonthsClaimed: 6,
+		Year:              2025,
+		SpouseName:        "Target Jana",
+		MonthsClaimed:     6,
+		ChildUnder3Months: 6,
 	}
 	if err := svc.UpsertSpouse(ctx, targetSpouse); err != nil {
 		t.Fatalf("UpsertSpouse(target) error: %v", err)
@@ -1481,6 +1495,77 @@ func TestTaxCreditsService_ComputeCredits_DisabilityProportionalMonths(t *testin
 				t.Errorf("rows = %d/%d/%d, want %d/%d/%d",
 					personal.Disability12, personal.Disability3, personal.DisabilityZTPP,
 					tc.want12, tc.want3, tc.wantZTPP)
+			}
+		})
+	}
+}
+
+// TestTaxCreditsService_UpsertSpouse_ChildUnder3Validation checks the § 35bb odst. 2
+// rule: ChildUnder3Months must be 0-12, and from 2024 the claimed months must not
+// exceed the months with a child under 3 in the common household.
+func TestTaxCreditsService_UpsertSpouse_ChildUnder3Validation(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	// 2024+: claimed months above the child months are refused.
+	err := svc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana", MonthsClaimed: 12, ChildUnder3Months: 6,
+	})
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("2025 months 12 > child 6: error = %v, want ErrInvalidInput", err)
+	}
+	// Child months range.
+	for _, months := range []int{-1, 13} {
+		err := svc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+			Year: 2025, SpouseName: "Jana", MonthsClaimed: 1, ChildUnder3Months: months,
+		})
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("child months=%d: error = %v, want ErrInvalidInput", months, err)
+		}
+	}
+	// Valid: 2024+ with enough child months, and pre-2024 without any.
+	for _, credit := range []*domain.TaxSpouseCredit{
+		{Year: 2025, SpouseName: "Jana", MonthsClaimed: 6, ChildUnder3Months: 6},
+		{Year: 2024, SpouseName: "Jana", MonthsClaimed: 12, ChildUnder3Months: 12},
+		{Year: 2023, SpouseName: "Jana", MonthsClaimed: 12, ChildUnder3Months: 0},
+	} {
+		if err := svc.UpsertSpouse(ctx, credit); err != nil {
+			t.Errorf("UpsertSpouse(%+v) unexpected error: %v", credit, err)
+		}
+	}
+}
+
+// TestTaxCreditsService_ComputeCredits_SpouseEffectiveChildMonths verifies that the
+// recalculation uses the effective months min(MonthsClaimed, ChildUnder3Months) for
+// 2024+. The records are written through the repository to bypass the upsert
+// validation that refuses MonthsClaimed > ChildUnder3Months.
+func TestTaxCreditsService_ComputeCredits_SpouseEffectiveChildMonths(t *testing.T) {
+	cases := []struct {
+		name        string
+		ztp         bool
+		childMonths int
+		want        domain.Amount
+	}{
+		{name: "12 claimed / 6 child months gives 6/12", childMonths: 6, want: domain.NewAmount(12_420, 0)},
+		{name: "ZTP/P spouse doubles the effective amount", ztp: true, childMonths: 6, want: domain.NewAmount(24_840, 0)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, db := setupTaxCreditsSvc(t)
+			ctx := context.Background()
+
+			if err := repository.NewTaxSpouseCreditRepository(db).Upsert(ctx, &domain.TaxSpouseCredit{
+				Year: 2025, SpouseName: "Jana", SpouseIncome: domain.NewAmount(50_000, 0),
+				SpouseZTP: tc.ztp, MonthsClaimed: 12, ChildUnder3Months: tc.childMonths,
+			}); err != nil {
+				t.Fatalf("repo Upsert() error: %v", err)
+			}
+			spouseCredit, _, _, err := computeCreditsFlat(svc, ctx, 2025)
+			if err != nil {
+				t.Fatalf("ComputeCredits() error: %v", err)
+			}
+			if spouseCredit != tc.want {
+				t.Errorf("spouseCredit = %d, want %d", spouseCredit, tc.want)
 			}
 		})
 	}

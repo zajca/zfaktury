@@ -136,7 +136,7 @@ func TestIncomeTaxXML_Golden_Full(t *testing.T) {
 		{ChildName: "Anna Novakova", BirthNumber: "230615/0110", ChildOrder: 2, MonthsClaimed: 12},
 	}
 	spouse := &domain.TaxSpouseCredit{
-		SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12,
+		SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12, ChildUnder3Months: 12,
 	}
 	personal := &domain.TaxPersonalCredits{
 		Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 12,

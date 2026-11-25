@@ -94,7 +94,65 @@ func TestComputeSpouseCredit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ComputeSpouseCredit(tt.spouseIncome, tt.monthsClaimed, tt.spouseZTP, c)
+			// Pre-2024 year: the child-under-3 condition does not apply.
+			got := ComputeSpouseCredit(tt.spouseIncome, tt.monthsClaimed, 0, 2023, tt.spouseZTP, c)
+			if got != tt.want {
+				t.Errorf("ComputeSpouseCredit() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestComputeSpouseCredit_ChildUnder3Months verifies the § 35bb odst. 2 rule for 2024+:
+// the credit is capped by the months at whose start a dependent child under 3 lived in
+// the common household; a ZTP/P spouse only doubles the effective amount.
+func TestComputeSpouseCredit_ChildUnder3Months(t *testing.T) {
+	c := testConstants2024()
+
+	tests := []struct {
+		name          string
+		spouseIncome  domain.Amount
+		monthsClaimed int
+		childMonths   int
+		year          int
+		spouseZTP     bool
+		want          domain.Amount
+	}{
+		{
+			name:          "12 claimed / 6 child months gives 6/12",
+			spouseIncome:  domain.NewAmount(50_000, 0),
+			monthsClaimed: 12, childMonths: 6, year: 2025,
+			want: domain.NewAmount(12_420, 0),
+		},
+		{
+			name:          "ZTP/P spouse doubles the effective amount",
+			spouseIncome:  domain.NewAmount(50_000, 0),
+			monthsClaimed: 12, childMonths: 6, year: 2025, spouseZTP: true,
+			want: domain.NewAmount(24_840, 0),
+		},
+		{
+			name:          "child months above claimed keep the claimed months",
+			spouseIncome:  domain.NewAmount(50_000, 0),
+			monthsClaimed: 6, childMonths: 12, year: 2024,
+			want: domain.NewAmount(12_420, 0),
+		},
+		{
+			name:          "no child months computes 0 for 2024+",
+			spouseIncome:  domain.NewAmount(50_000, 0),
+			monthsClaimed: 12, childMonths: 0, year: 2025,
+			want: 0,
+		},
+		{
+			name:          "pre-2024 ignores child months",
+			spouseIncome:  domain.NewAmount(50_000, 0),
+			monthsClaimed: 12, childMonths: 0, year: 2023,
+			want: domain.NewAmount(24_840, 0),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ComputeSpouseCredit(tt.spouseIncome, tt.monthsClaimed, tt.childMonths, tt.year, tt.spouseZTP, c)
 			if got != tt.want {
 				t.Errorf("ComputeSpouseCredit() = %v, want %v", got, tt.want)
 			}

@@ -2,15 +2,28 @@ package calc
 
 import "github.com/zajca/zfaktury/internal/domain"
 
+// SpouseEffectiveMonths returns the months for which the spouse credit applies. From
+// 2024 the claim is capped by the months at whose start a dependent child under 3
+// lived in the common household (§ 35bb odst. 2); earlier years use the claimed months.
+// Used both by the calc input and by the XML rows 65a/65b, so the rule lives here only.
+func SpouseEffectiveMonths(year, monthsClaimed, childUnder3Months int) int {
+	if year >= 2024 && childUnder3Months < monthsClaimed {
+		return childUnder3Months
+	}
+	return monthsClaimed
+}
+
 // ComputeSpouseCredit computes the spouse tax credit.
 // Returns 0 if spouse income is at or above the income limit.
-// The credit is proportional to months claimed (out of 12).
+// The credit is proportional to the effective months (out of 12); see
+// SpouseEffectiveMonths for the 2024+ child-under-3 cap.
 // If spouseZTP is true, the credit is doubled.
-func ComputeSpouseCredit(spouseIncome domain.Amount, monthsClaimed int, spouseZTP bool, constants TaxYearConstants) domain.Amount {
+func ComputeSpouseCredit(spouseIncome domain.Amount, monthsClaimed, childUnder3Months, year int, spouseZTP bool, constants TaxYearConstants) domain.Amount {
 	if spouseIncome >= constants.SpouseIncomeLimit {
 		return 0
 	}
-	credit := constants.SpouseCredit.Multiply(float64(monthsClaimed) / 12.0)
+	months := SpouseEffectiveMonths(year, monthsClaimed, childUnder3Months)
+	credit := constants.SpouseCredit.Multiply(float64(months) / 12.0)
 	if spouseZTP {
 		credit = credit.Multiply(2)
 	}

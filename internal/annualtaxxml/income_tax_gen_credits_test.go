@@ -111,13 +111,13 @@ func formulaCases() []formulaCase {
 		{
 			name: "full", itr: full,
 			children: []domain.TaxChildCredit{{ChildName: "Petr Novak", BirthNumber: "150310/0005", ChildOrder: 1, MonthsClaimed: 12}},
-			spouse:   &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12},
+			spouse:   &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12, ChildUnder3Months: 12},
 			personal: &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel1And2, DisabilityMonths: 12},
 		},
 		{name: "minimal", itr: minimal},
 		{
 			name: "all credits", itr: allCredits,
-			spouse:   &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12},
+			spouse:   &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12, ChildUnder3Months: 12},
 			personal: &domain.TaxPersonalCredits{Year: 2025, DisabilityLevel: domain.DisabilityLevel3, ZTPP: true, DisabilityMonths: 12, ZTPPMonths: 12},
 		},
 		{
@@ -397,7 +397,7 @@ func TestIncomeTaxXML_SpouseZTPPUsesRow65b(t *testing.T) {
 	}
 
 	t.Run("ZTP/P spouse, 12 months", func(t *testing.T) {
-		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12}
+		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12, ChildUnder3Months: 12}
 		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(49_680, 0)), newCreditTestSettings(), nil, spouse, nil)
 		if err != nil {
 			t.Fatalf("GenerateIncomeTaxXML: %v", err)
@@ -412,7 +412,7 @@ func TestIncomeTaxXML_SpouseZTPPUsesRow65b(t *testing.T) {
 	})
 
 	t.Run("regular spouse, 7 months", func(t *testing.T) {
-		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 7}
+		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 7, ChildUnder3Months: 12}
 		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(14_490, 0)), newCreditTestSettings(), nil, spouse, nil)
 		if err != nil {
 			t.Fatalf("GenerateIncomeTaxXML: %v", err)
@@ -423,6 +423,45 @@ func TestIncomeTaxXML_SpouseZTPPUsesRow65b(t *testing.T) {
 		}
 		if d["manz_jmeno"] != "Marie" || d["manz_prijmeni"] != "Novakova" || d["manz_r_cislo"] != "8551010006" {
 			t.Errorf("spouse identity = %q %q %q", d["manz_jmeno"], d["manz_prijmeni"], d["manz_r_cislo"])
+		}
+	})
+}
+
+// TestIncomeTaxXML_SpouseEffectiveMonths verifies that rows 65a/65b carry the
+// effective months min(MonthsClaimed, ChildUnder3Months) for 2024+ (§ 35bb odst. 2),
+// together with the matching amount.
+func TestIncomeTaxXML_SpouseEffectiveMonths(t *testing.T) {
+	newItr := func(spouseCredit domain.Amount) *domain.IncomeTaxReturn {
+		return &domain.IncomeTaxReturn{
+			Year: 2025, FilingType: domain.FilingTypeRegular,
+			TotalRevenue: domain.NewAmount(1_000_000, 0), UsedExpenses: domain.NewAmount(200_000, 0),
+			TotalTax:    domain.NewAmount(200_000, 0),
+			CreditBasic: domain.NewAmount(30_840, 0), CreditSpouse: spouseCredit,
+			TotalCredits: domain.NewAmount(30_840, 0) + spouseCredit,
+		}
+	}
+
+	t.Run("12 claimed / 6 child months emits m_vyzmanzl=6", func(t *testing.T) {
+		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", MonthsClaimed: 12, ChildUnder3Months: 6}
+		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(12_420, 0)), newCreditTestSettings(), nil, spouse, nil)
+		if err != nil {
+			t.Fatalf("GenerateIncomeTaxXML: %v", err)
+		}
+		d, _, _ := parseIncomeTax(t, data)
+		if d["kc_op15_1c"] != "12420" || d["m_vyzmanzl"] != "6" {
+			t.Errorf("kc_op15_1c/m_vyzmanzl = %q/%q, want 12420/6", d["kc_op15_1c"], d["m_vyzmanzl"])
+		}
+	})
+
+	t.Run("ZTP/P spouse emits the effective months on row 65b", func(t *testing.T) {
+		spouse := &domain.TaxSpouseCredit{SpouseName: "Marie Novakova", SpouseBirthNumber: "855101/0006", SpouseZTP: true, MonthsClaimed: 12, ChildUnder3Months: 6}
+		data, err := GenerateIncomeTaxXML(newItr(domain.NewAmount(24_840, 0)), newCreditTestSettings(), nil, spouse, nil)
+		if err != nil {
+			t.Fatalf("GenerateIncomeTaxXML: %v", err)
+		}
+		d, _, _ := parseIncomeTax(t, data)
+		if d["kc_manztpp"] != "24840" || d["m_manz"] != "6" {
+			t.Errorf("kc_manztpp/m_manz = %q/%q, want 24840/6", d["kc_manztpp"], d["m_manz"])
 		}
 	})
 }

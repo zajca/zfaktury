@@ -85,7 +85,7 @@ func TestTaxCredits_GetSummary_WithData(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
 	// Create spouse credit.
-	spouseBody := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12}`
+	spouseBody := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/spouse", bytes.NewBufferString(spouseBody))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -162,7 +162,7 @@ func TestTaxCredits_GetSummary_WithData(t *testing.T) {
 func TestTaxCredits_UpsertSpouse(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
-	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12}`
+	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/spouse", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -195,7 +195,7 @@ func TestTaxCredits_UpsertSpouse_Update(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
 	// Create first.
-	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12}`
+	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/spouse", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -205,7 +205,7 @@ func TestTaxCredits_UpsertSpouse_Update(t *testing.T) {
 	}
 
 	// Update with different name.
-	body = `{"spouse_name":"Marie","spouse_birth_number":"8551011234","spouse_income":3000000,"spouse_ztp":true,"months_claimed":6}`
+	body = `{"spouse_name":"Marie","spouse_birth_number":"8551011234","spouse_income":3000000,"spouse_ztp":true,"months_claimed":6,"child_under3_months":12}`
 	req = httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/spouse", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
@@ -233,7 +233,7 @@ func TestTaxCredits_UpsertSpouse_Update(t *testing.T) {
 func TestTaxCredits_UpsertSpouse_InvalidYear(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
-	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12}`
+	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/abc/spouse", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -247,7 +247,7 @@ func TestTaxCredits_UpsertSpouse_InvalidYear(t *testing.T) {
 func TestTaxCredits_UpsertSpouse_MissingName(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
-	body := `{"spouse_name":"","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12}`
+	body := `{"spouse_name":"","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/spouse", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -304,7 +304,7 @@ func TestTaxCredits_DeleteSpouse(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
 	// Create spouse first.
-	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12}`
+	body := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":12,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/spouse", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -858,7 +858,7 @@ func TestTaxCredits_CopyFromYear(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
 	// Set up source year data.
-	spouseBody := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":10}`
+	spouseBody := `{"spouse_name":"Jana","spouse_birth_number":"8551011234","spouse_income":5000000,"spouse_ztp":false,"months_claimed":10,"child_under3_months":12}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2024/spouse", bytes.NewBufferString(spouseBody))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

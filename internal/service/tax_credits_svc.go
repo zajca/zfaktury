@@ -52,6 +52,12 @@ func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.Tax
 	if credit.MonthsClaimed < 1 || credit.MonthsClaimed > 12 {
 		return fmt.Errorf("months claimed must be 1-12: %w", domain.ErrInvalidInput)
 	}
+	if credit.ChildUnder3Months < 0 || credit.ChildUnder3Months > 12 {
+		return fmt.Errorf("child under 3 months must be 0-12: %w", domain.ErrInvalidInput)
+	}
+	if credit.Year >= 2024 && credit.MonthsClaimed > credit.ChildUnder3Months {
+		return fmt.Errorf("months claimed must not exceed the months with a child under 3 in the common household: %w", domain.ErrInvalidInput)
+	}
 	var existing *domain.TaxSpouseCredit
 	if s.audit != nil {
 		existing, _ = s.spouseRepo.GetByYear(ctx, credit.Year)
@@ -317,7 +323,7 @@ func (s *TaxCreditsService) ComputeCreditsWithConstants(ctx context.Context, yea
 		return 0, calc.PersonalCreditsResult{}, fmt.Errorf("fetching spouse credit for compute: %w", err)
 	}
 	if spouse != nil {
-		spouseCredit = calc.ComputeSpouseCredit(spouse.SpouseIncome, spouse.MonthsClaimed, spouse.SpouseZTP, constants)
+		spouseCredit = calc.ComputeSpouseCredit(spouse.SpouseIncome, spouse.MonthsClaimed, spouse.ChildUnder3Months, year, spouse.SpouseZTP, constants)
 	}
 
 	// Personal credits (student + disability).

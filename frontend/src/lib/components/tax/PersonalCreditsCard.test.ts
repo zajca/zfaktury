@@ -1,40 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
-import type { TaxConstants } from '$lib/api/client';
 import PersonalCreditsCard from './PersonalCreditsCard.svelte';
 import PersonalCreditsCardTestWrapper from './PersonalCreditsCardTestWrapper.svelte';
 
 afterEach(() => {
 	cleanup();
 });
-
-function makeTaxConstants(studentCredit: number): TaxConstants {
-	return {
-		rule_set_id: 'cz-dpfo-2025.v1',
-		rule_set_status: 'final',
-		rule_set_hash: 'abc123',
-		year: 2025,
-		basic_credit: 3084000,
-		spouse_credit: 2484000,
-		spouse_income_limit: 6800000,
-		student_credit: studentCredit,
-		disability_credit_1: 252000,
-		disability_credit_3: 504000,
-		disability_ztpp: 1614000,
-		child_benefit_1: 1520400,
-		child_benefit_2: 2232000,
-		child_benefit_3_plus: 2784000,
-		progressive_threshold: 167605200,
-		flat_rate_caps: { '60': 120000000 },
-		deduction_cap_mortgage: 15000000,
-		deduction_cap_pension: 2400000,
-		deduction_cap_life_insurance: 2400000,
-		deduction_cap_savings_combined: 4800000,
-		deduction_cap_union: 300000,
-		time_test_years: 3,
-		security_exemption_limit: 10000000
-	};
-}
 
 type CardProps = {
 	isStudent: boolean;
@@ -44,7 +15,7 @@ type CardProps = {
 	ztpp: boolean;
 	ztppMonths: number;
 	summary: null;
-	taxConstants: TaxConstants | null;
+	taxConstants: null;
 	saving: boolean;
 	onSave: () => void;
 };
@@ -74,43 +45,6 @@ describe('PersonalCreditsCard', () => {
 			(o) => o.textContent
 		);
 		expect(options).toEqual(['Žádná', '1. a 2. stupeň', '3. stupeň']);
-	});
-
-	it('hides the student checkbox and months when the year student credit is 0', () => {
-		renderCard(vi.fn(), { taxConstants: makeTaxConstants(0) });
-
-		expect(screen.queryByLabelText('Student')).toBeNull();
-	});
-
-	it('shows the abolition note in place of the student controls when the credit is 0', () => {
-		renderCard(vi.fn(), { taxConstants: makeTaxConstants(0) });
-
-		expect(screen.getByText('Sleva na studenta se od roku 2024 neuplatňuje.')).toBeTruthy();
-		expect(screen.queryByLabelText('Student')).toBeNull();
-	});
-
-	it('shows the student controls when the tax constants are not loaded', () => {
-		renderCard(vi.fn(), { taxConstants: null });
-
-		expect(screen.getByLabelText('Student')).toBeTruthy();
-	});
-
-	it('hides the student months select even when the stored flag is set, for a zero-credit year', () => {
-		renderCard(vi.fn(), { isStudent: true, taxConstants: makeTaxConstants(0) });
-
-		expect(screen.queryByLabelText('Student')).toBeNull();
-		expect(screen.queryAllByRole('combobox').length).toBe(1); // only the disability select
-	});
-
-	it('shows the student checkbox and months select when the year student credit is above 0', async () => {
-		renderCard(vi.fn(), { taxConstants: makeTaxConstants(435600) });
-
-		const checkbox = screen.getByLabelText('Student') as HTMLInputElement;
-		expect(checkbox.checked).toBe(false);
-		await fireEvent.click(checkbox);
-		expect(checkbox.checked).toBe(true);
-		// Two selects once the student months appear: student + disability.
-		expect(screen.getAllByRole('combobox').length).toBe(2);
 	});
 
 	it('renders the ZTP/P checkbox and toggles it', async () => {

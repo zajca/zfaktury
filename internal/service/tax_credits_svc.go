@@ -8,7 +8,6 @@ import (
 	"github.com/zajca/zfaktury/internal/calc"
 	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/repository"
-	"github.com/zajca/zfaktury/internal/taxrules"
 )
 
 // TaxCreditsService provides business logic for tax credits and deductions.
@@ -174,20 +173,6 @@ func (s *TaxCreditsService) ListChildren(ctx context.Context, year int) ([]domai
 func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.TaxPersonalCredits) error {
 	if credits.Year < 2000 || credits.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
-	}
-	// The student credit is 0 in the 2024+ rule sets; claiming it there is refused.
-	// Years without a rule set skip the check.
-	if credits.IsStudent {
-		constants, err := calc.GetTaxConstants(credits.Year)
-		var noRuleSet *taxrules.NoRuleSetError
-		switch {
-		case errors.As(err, &noRuleSet):
-			// No rule set for the year: nothing to check against.
-		case err != nil:
-			return fmt.Errorf("getting tax constants for the student credit check: %w", err)
-		case constants.StudentCredit == 0:
-			return fmt.Errorf("studentskou slevu nelze pro rok %d uplatnit: %w", credits.Year, domain.ErrInvalidInput)
-		}
 	}
 	if credits.StudentMonths < 0 || credits.StudentMonths > 12 {
 		return fmt.Errorf("student months must be 0-12: %w", domain.ErrInvalidInput)
@@ -534,19 +519,6 @@ func (s *TaxCreditsService) CopyFromYear(ctx context.Context, sourceYear, target
 			newPersonal.Year = targetYear
 			newPersonal.CreditStudent = 0
 			newPersonal.CreditDisability = 0
-			// A target year whose rule set has a zero student credit cannot claim the
-			// student flag; clear it on the copy. Years without a rule set keep it.
-			constants, err := calc.GetTaxConstants(targetYear)
-			var noRuleSet *taxrules.NoRuleSetError
-			if !errors.As(err, &noRuleSet) {
-				if err != nil {
-					return fmt.Errorf("getting tax constants for the personal credits copy: %w", err)
-				}
-				if constants.StudentCredit == 0 {
-					newPersonal.IsStudent = false
-					newPersonal.StudentMonths = 0
-				}
-			}
 			if err := s.personalRepo.Upsert(ctx, &newPersonal); err != nil {
 				return fmt.Errorf("copying personal credits: %w", err)
 			}

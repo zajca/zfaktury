@@ -106,12 +106,6 @@
 				disabilityMonths = summary.personal.disability_months;
 				ztpp = summary.personal.ztpp;
 				ztppMonths = summary.personal.ztpp_months;
-				// A stale student flag from a year whose student credit is 0 cannot be
-				// saved back (the service refuses it), so reset it locally.
-				if (taxConstants && taxConstants.student_credit === 0) {
-					isStudent = false;
-					studentMonths = 0;
-				}
 			} else {
 				isStudent = false;
 				studentMonths = 12;
@@ -192,12 +186,9 @@
 	async function savePersonal() {
 		saving = true;
 		try {
-			// When the year's student credit is 0 the service refuses the flag, so the
-			// card never sends it for such years (null constants keep the old behaviour).
-			const studentCreditAvailable = taxConstants === null || taxConstants.student_credit > 0;
 			await taxCreditsApi.upsertPersonal(selectedYear, {
-				is_student: studentCreditAvailable ? isStudent : false,
-				student_months: studentCreditAvailable && isStudent ? studentMonths : 0,
+				is_student: isStudent,
+				student_months: isStudent ? studentMonths : 0,
 				disability_level: disabilityLevel,
 				disability_months: disabilityLevel !== 0 ? disabilityMonths : 0,
 				ztpp,

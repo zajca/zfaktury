@@ -56,7 +56,7 @@ func (s *TaxCreditsService) UpsertSpouse(ctx context.Context, credit *domain.Tax
 		return fmt.Errorf("child under 3 months must be 0-12: %w", domain.ErrInvalidInput)
 	}
 	if credit.Year >= 2024 && credit.MonthsClaimed > credit.ChildUnder3Months {
-		return fmt.Errorf("months claimed must not exceed the months with a child under 3 in the common household: %w", domain.ErrInvalidInput)
+		return fmt.Errorf("počet uplatněných měsíců nesmí překročit počet měsíců s dítětem do 3 let ve společné domácnosti: %w", domain.ErrInvalidInput)
 	}
 	var existing *domain.TaxSpouseCredit
 	if s.audit != nil {
@@ -173,6 +173,13 @@ func (s *TaxCreditsService) ListChildren(ctx context.Context, year int) ([]domai
 func (s *TaxCreditsService) UpsertPersonal(ctx context.Context, credits *domain.TaxPersonalCredits) error {
 	if credits.Year < 2000 || credits.Year > 2100 {
 		return fmt.Errorf("year out of valid range: %w", domain.ErrInvalidInput)
+	}
+	// The student credit is 0 in the 2024+ rule sets; claiming it there is refused.
+	// Years without a rule set skip the check.
+	if credits.IsStudent {
+		if constants, err := calc.GetTaxConstants(credits.Year); err == nil && constants.StudentCredit == 0 {
+			return fmt.Errorf("studentskou slevu nelze od roku 2024 uplatnit: %w", domain.ErrInvalidInput)
+		}
 	}
 	if credits.StudentMonths < 0 || credits.StudentMonths > 12 {
 		return fmt.Errorf("student months must be 0-12: %w", domain.ErrInvalidInput)

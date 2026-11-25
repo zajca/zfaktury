@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/zajca/zfaktury/internal/calc"
@@ -357,7 +358,7 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPPartialMonths(t *testing.T) {
 }
 
 func TestTaxCreditsService_ComputeCredits_StudentProportional(t *testing.T) {
-	svc, _ := setupTaxCreditsSvc(t)
+	svc, db := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
 	personal := &domain.TaxPersonalCredits{
@@ -365,8 +366,10 @@ func TestTaxCreditsService_ComputeCredits_StudentProportional(t *testing.T) {
 		IsStudent:     true,
 		StudentMonths: 8,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
-		t.Fatalf("UpsertPersonal() error: %v", err)
+	// Written through the repository: UpsertPersonal refuses the student flag in years
+	// whose rule set has a zero student credit.
+	if err := repository.NewTaxPersonalCreditsRepository(db).Upsert(ctx, personal); err != nil {
+		t.Fatalf("repo Upsert(personal) error: %v", err)
 	}
 
 	_, _, studentCredit, err := computeCreditsFlat(svc, ctx, 2025)
@@ -382,7 +385,7 @@ func TestTaxCreditsService_ComputeCredits_StudentProportional(t *testing.T) {
 }
 
 func TestTaxCreditsService_ComputeCredits_StudentFullYear(t *testing.T) {
-	svc, _ := setupTaxCreditsSvc(t)
+	svc, db := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
 	personal := &domain.TaxPersonalCredits{
@@ -390,8 +393,10 @@ func TestTaxCreditsService_ComputeCredits_StudentFullYear(t *testing.T) {
 		IsStudent:     true,
 		StudentMonths: 12,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
-		t.Fatalf("UpsertPersonal() error: %v", err)
+	// Written through the repository: UpsertPersonal refuses the student flag in years
+	// whose rule set has a zero student credit.
+	if err := repository.NewTaxPersonalCreditsRepository(db).Upsert(ctx, personal); err != nil {
+		t.Fatalf("repo Upsert(personal) error: %v", err)
 	}
 
 	_, _, studentCredit, err := computeCreditsFlat(svc, ctx, 2025)
@@ -545,7 +550,7 @@ func TestTaxCreditsService_ComputeCredits_NoData(t *testing.T) {
 }
 
 func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
-	svc, _ := setupTaxCreditsSvc(t)
+	svc, db := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
 	// Spouse with ZTP, partial months.
@@ -561,7 +566,8 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 		t.Fatalf("UpsertSpouse() error: %v", err)
 	}
 
-	// Student + disability level 1.
+	// Student + disability level 1. Written through the repository: UpsertPersonal
+	// refuses the student flag in years whose rule set has a zero student credit.
 	personal := &domain.TaxPersonalCredits{
 		Year:             2025,
 		IsStudent:        true,
@@ -569,8 +575,8 @@ func TestTaxCreditsService_ComputeCredits_AllCombined(t *testing.T) {
 		DisabilityLevel:  1,
 		DisabilityMonths: 12,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
-		t.Fatalf("UpsertPersonal() error: %v", err)
+	if err := repository.NewTaxPersonalCreditsRepository(db).Upsert(ctx, personal); err != nil {
+		t.Fatalf("repo Upsert(personal) error: %v", err)
 	}
 
 	spouseAmt, disabilityAmt, studentAmt, err := computeCreditsFlat(svc, ctx, 2025)
@@ -830,6 +836,53 @@ func TestTaxCreditsService_UpsertPersonal_InvalidStudentMonths(t *testing.T) {
 	}
 }
 
+// TestTaxCreditsService_UpsertPersonal_StudentRefusedWhenCreditZero covers years whose
+// rule set has a zero student credit (2024+): claiming the student flag is refused.
+func TestTaxCreditsService_UpsertPersonal_StudentRefusedWhenCreditZero(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	for _, year := range []int{2024, 2025, 2026} {
+		err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+			Year:          year,
+			IsStudent:     true,
+			StudentMonths: 12,
+		})
+		if err == nil {
+			t.Fatalf("year %d: expected an error, got nil", year)
+		}
+		if !errors.Is(err, domain.ErrInvalidInput) {
+			t.Errorf("year %d: error = %v, want ErrInvalidInput", year, err)
+		}
+		if !strings.Contains(err.Error(), "studentskou slevu nelze od roku 2024 uplatnit") {
+			t.Errorf("year %d: error = %v, want the Czech student-credit message", year, err)
+		}
+	}
+}
+
+// TestTaxCreditsService_UpsertPersonal_StudentAllowedWithoutRuleSet covers years without
+// a rule set: the student-credit check is skipped and the flag is accepted.
+func TestTaxCreditsService_UpsertPersonal_StudentAllowedWithoutRuleSet(t *testing.T) {
+	svc, _ := setupTaxCreditsSvc(t)
+	ctx := context.Background()
+
+	err := svc.UpsertPersonal(ctx, &domain.TaxPersonalCredits{
+		Year:          2023,
+		IsStudent:     true,
+		StudentMonths: 12,
+	})
+	if err != nil {
+		t.Fatalf("UpsertPersonal() for a year without a rule set: %v", err)
+	}
+	got, err := svc.GetPersonal(ctx, 2023)
+	if err != nil {
+		t.Fatalf("GetPersonal() error: %v", err)
+	}
+	if !got.IsStudent || got.StudentMonths != 12 {
+		t.Errorf("got IsStudent=%v months=%d, want true/12", got.IsStudent, got.StudentMonths)
+	}
+}
+
 func TestTaxCreditsService_UpsertPersonal_InvalidDisabilityLevel(t *testing.T) {
 	svc, _ := setupTaxCreditsSvc(t)
 	ctx := context.Background()
@@ -850,7 +903,7 @@ func TestTaxCreditsService_UpsertPersonal_InvalidDisabilityLevel(t *testing.T) {
 }
 
 func TestTaxCreditsService_GetPersonal(t *testing.T) {
-	svc, _ := setupTaxCreditsSvc(t)
+	svc, db := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
 	personal := &domain.TaxPersonalCredits{
@@ -860,8 +913,10 @@ func TestTaxCreditsService_GetPersonal(t *testing.T) {
 		DisabilityLevel:  2,
 		DisabilityMonths: 12,
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
-		t.Fatalf("UpsertPersonal() error: %v", err)
+	// Written through the repository: UpsertPersonal refuses the student flag in years
+	// whose rule set has a zero student credit.
+	if err := repository.NewTaxPersonalCreditsRepository(db).Upsert(ctx, personal); err != nil {
+		t.Fatalf("repo Upsert(personal) error: %v", err)
 	}
 
 	got, err := svc.GetPersonal(ctx, 2025)
@@ -1181,7 +1236,7 @@ func TestTaxCreditsService_DeleteDeduction(t *testing.T) {
 // --- CopyFromYear tests ---
 
 func TestTaxCreditsService_CopyFromYear(t *testing.T) {
-	svc, _ := setupTaxCreditsSvc(t)
+	svc, db := setupTaxCreditsSvc(t)
 	ctx := context.Background()
 
 	// Set up source year 2024 data.
@@ -1220,8 +1275,10 @@ func TestTaxCreditsService_CopyFromYear(t *testing.T) {
 		ZTPPMonths:       12,
 		CreditStudent:    domain.NewAmount(77777, 0),
 	}
-	if err := svc.UpsertPersonal(ctx, personal); err != nil {
-		t.Fatalf("UpsertPersonal() error: %v", err)
+	// Written through the repository: UpsertPersonal refuses the student flag in years
+	// whose rule set has a zero student credit.
+	if err := repository.NewTaxPersonalCreditsRepository(db).Upsert(ctx, personal); err != nil {
+		t.Fatalf("repo Upsert(personal) error: %v", err)
 	}
 
 	ded := &domain.TaxDeduction{
@@ -1553,6 +1610,9 @@ func TestTaxCreditsService_UpsertSpouse_ChildUnder3Validation(t *testing.T) {
 	})
 	if !errors.Is(err, domain.ErrInvalidInput) {
 		t.Errorf("2025 months 12 > child 6: error = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "počet měsíců s dítětem do 3 let ve společné domácnosti") {
+		t.Errorf("2025 months 12 > child 6: error = %v, want the Czech child-months message", err)
 	}
 	// Child months range.
 	for _, months := range []int{-1, 13} {

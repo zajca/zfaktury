@@ -495,12 +495,21 @@ func (s *IncomeTaxReturnService) GenerateXML(ctx context.Context, id int64) (*do
 		// computation from the current credit records, otherwise the XML rows
 		// 65-68 would not back the stored totals.
 		if spouseCredit != itr.CreditSpouse {
-			// A spouse record stored before migration 045 has child_under3_months = 0,
-			// so the message names the field the owner has to fill in.
+			// The child-months wording applies only when the mismatch is caused by a
+			// spouse record whose claimed months exceed the child-under-3 months
+			// (possible for records stored before migration 045); other causes get
+			// the general filed / recalculate messages.
+			childMonthsCause := spouse != nil && itr.Year >= 2024 && spouse.ChildUnder3Months < spouse.MonthsClaimed
 			if itr.Status == domain.FilingStatusFiled {
-				return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+				if childMonthsCause {
+					return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
+				}
+				return nil, fmt.Errorf("uložená sleva na manžela/ku neodpovídá aktuálnímu nastavení slev, přiznání nelze bez obnovení nastavení znovu vygenerovat: %w", domain.ErrInvalidInput)
 			}
-			return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání: %w", domain.ErrInvalidInput)
+			if childMonthsCause {
+				return nil, fmt.Errorf("vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání: %w", domain.ErrInvalidInput)
+			}
+			return nil, fmt.Errorf("údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání: %w", domain.ErrInvalidInput)
 		}
 		if personalResult.Disability12 != itr.CreditDisability12 ||
 			personalResult.Disability3 != itr.CreditDisability3 ||

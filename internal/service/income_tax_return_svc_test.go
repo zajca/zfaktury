@@ -1343,11 +1343,11 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			// a spouse mismatch names the child-under-3 field to fill in
-			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+			// a spouse mismatch not caused by missing child-under-3 months gets the general message
+			wantMessage: "údaje o slevách se od posledního přepočtu změnily, přepočítejte přiznání",
 		},
 		{
-			name:   "filed spouse child months changed",
+			name:   "filed spouse months changed",
 			status: domain.FilingStatusFiled,
 			change: func(t *testing.T, creditsSvc *TaxCreditsService, ctx context.Context) {
 				if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
@@ -1357,7 +1357,7 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsChangedAfterRecalculate(t *te
 					t.Fatalf("UpsertSpouse() error: %v", err)
 				}
 			},
-			wantMessage: "měsíce s dítětem do 3 let ve společné domácnosti",
+			wantMessage: "přiznání nelze bez obnovení nastavení znovu vygenerovat",
 		},
 	}
 	for _, tc := range cases {
@@ -1508,5 +1508,54 @@ func TestIncomeTaxReturnService_GenerateXML_CreditsUnchanged(t *testing.T) {
 	}
 	if !strings.Contains(xml, `m_cinvduch="6"`) {
 		t.Errorf("XML missing m_cinvduch=\"6\":\n%s", xml)
+	}
+}
+
+// TestIncomeTaxReturnService_GenerateXML_DraftSpouseChildMonthsMissing covers the draft
+// counterpart of the legacy filed case: when the spouse credit mismatch is caused by
+// child-under-3 months below the claimed months (2024+), the refusal names that field
+// instead of the general recalculate message. The record is written through the
+// repository because UpsertSpouse refuses MonthsClaimed > ChildUnder3Months.
+func TestIncomeTaxReturnService_GenerateXML_DraftSpouseChildMonthsMissing(t *testing.T) {
+	svc, creditsSvc, db := setupIncomeTaxSvcWithCredits(t)
+	ctx := context.Background()
+	seedFinancniUradCode(t, db)
+
+	if err := creditsSvc.UpsertSpouse(ctx, &domain.TaxSpouseCredit{
+		Year: 2025, SpouseName: "Jana", SpouseBirthNumber: "8555012345",
+		SpouseIncome: domain.NewAmount(50_000, 0), MonthsClaimed: 12, ChildUnder3Months: 12,
+	}); err != nil {
+		t.Fatalf("UpsertSpouse() error: %v", err)
+	}
+
+	itr := &domain.IncomeTaxReturn{Year: 2025, FilingType: domain.FilingTypeRegular}
+	if err := svc.Create(ctx, itr); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	recalc, err := svc.Recalculate(ctx, itr.ID)
+	if err != nil {
+		t.Fatalf("Recalculate() error: %v", err)
+	}
+	if recalc.CreditSpouse <= 0 {
+		t.Fatalf("CreditSpouse = %d, want > 0", recalc.CreditSpouse)
+	}
+
+	// Simulate a record whose claimed months exceed the child-under-3 months.
+	spouseRepo := repository.NewTaxSpouseCreditRepository(db)
+	spouse, err := spouseRepo.GetByYear(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetByYear(spouse) error: %v", err)
+	}
+	spouse.ChildUnder3Months = 6
+	if err := spouseRepo.Upsert(ctx, spouse); err != nil {
+		t.Fatalf("repo Upsert(spouse) error: %v", err)
+	}
+
+	_, err = svc.GenerateXML(ctx, itr.ID)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("GenerateXML() error = %v, want ErrInvalidInput", err)
+	}
+	if !strings.Contains(err.Error(), "vyplňte u slevy na manžela/ku měsíce s dítětem do 3 let ve společné domácnosti a přepočítejte přiznání") {
+		t.Errorf("GenerateXML() error = %v, want the child-months recalculate message", err)
 	}
 }

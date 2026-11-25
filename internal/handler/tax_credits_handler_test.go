@@ -104,8 +104,9 @@ func TestTaxCredits_GetSummary_WithData(t *testing.T) {
 		t.Fatalf("create child: status = %d, want %d, body: %s", w.Code, http.StatusCreated, w.Body.String())
 	}
 
-	// Create personal credits.
-	personalBody := `{"is_student":true,"student_months":10,"disability_level":0}`
+	// Create personal credits (the student flag is refused for 2025, whose rule set
+	// has a zero student credit).
+	personalBody := `{"is_student":false,"student_months":0,"disability_level":0}`
 	req = httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(personalBody))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
@@ -146,8 +147,8 @@ func TestTaxCredits_GetSummary_WithData(t *testing.T) {
 	if resp.Personal == nil {
 		t.Fatal("expected Personal to be non-nil")
 	}
-	if !resp.Personal.IsStudent {
-		t.Error("expected Personal.IsStudent to be true")
+	if resp.Personal.IsStudent {
+		t.Error("expected Personal.IsStudent to be false")
 	}
 	if resp.TotalCredits <= 0 {
 		t.Errorf("expected TotalCredits > 0, got %d", resp.TotalCredits)
@@ -623,8 +624,10 @@ func TestTaxCredits_DeleteChild_InvalidID(t *testing.T) {
 func TestTaxCredits_UpsertPersonal(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
+	// Year 2023 has no rule set, so the student flag is accepted (the student-credit
+	// check is skipped); 2024+ rule sets have a zero student credit and refuse it.
 	body := `{"is_student":true,"student_months":10,"disability_level":1,"disability_months":12}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2023/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -638,8 +641,8 @@ func TestTaxCredits_UpsertPersonal(t *testing.T) {
 		t.Fatalf("decode error: %v", err)
 	}
 
-	if resp.Year != 2025 {
-		t.Errorf("Year = %d, want 2025", resp.Year)
+	if resp.Year != 2023 {
+		t.Errorf("Year = %d, want 2023", resp.Year)
 	}
 	if !resp.IsStudent {
 		t.Error("expected IsStudent to be true")
@@ -655,9 +658,9 @@ func TestTaxCredits_UpsertPersonal(t *testing.T) {
 func TestTaxCredits_UpsertPersonal_Update(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
-	// Create first.
+	// Create first (year 2023 has no rule set, so the student flag is accepted).
 	body := `{"is_student":true,"student_months":10,"disability_level":0}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2023/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -667,7 +670,7 @@ func TestTaxCredits_UpsertPersonal_Update(t *testing.T) {
 
 	// Update.
 	body = `{"is_student":false,"student_months":0,"disability_level":2,"disability_months":12}`
-	req = httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
+	req = httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2023/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -719,6 +722,21 @@ func TestTaxCredits_UpsertPersonal_StudentMonthsOutOfRange(t *testing.T) {
 	r := setupTaxCreditsRouter(t)
 
 	body := `{"is_student":true,"student_months":13,"disability_level":0}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d, body: %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestTaxCredits_UpsertPersonal_StudentRefusedWhenCreditZero(t *testing.T) {
+	r := setupTaxCreditsRouter(t)
+
+	// 2025 has a rule set with a zero student credit: the flag is refused.
+	body := `{"is_student":true,"student_months":10,"disability_level":0}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/tax-credits/2025/personal", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

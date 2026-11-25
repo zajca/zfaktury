@@ -400,7 +400,7 @@ func invoiceFromDomain(inv *domain.Invoice) invoiceResponse {
 		CustomerID:       inv.CustomerID,
 		IssueDate:        inv.IssueDate.Format("2006-01-02"),
 		DueDate:          inv.DueDate.Format("2006-01-02"),
-		DeliveryDate:     inv.DeliveryDate.Format("2006-01-02"),
+		DeliveryDate:     inv.TaxableSupplyDate().Format("2006-01-02"),
 		VariableSymbol:   inv.VariableSymbol,
 		ConstantSymbol:   inv.ConstantSymbol,
 		CurrencyCode:     inv.CurrencyCode,

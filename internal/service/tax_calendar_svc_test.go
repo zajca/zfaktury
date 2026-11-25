@@ -205,8 +205,8 @@ func TestTaxCalendarService_GetDeadlines_FilingMethod(t *testing.T) {
 		wantOverview time.Time
 		wantNote     string
 	}{
-		{"missing settings row", nil, date(2026, time.April, 1), date(2026, time.May, 4), "bez daňového poradce"},
-		{"unset method", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodUnset}, date(2026, time.April, 1), date(2026, time.May, 4), "bez daňového poradce"},
+		{"missing settings row", nil, date(2026, time.April, 1), date(2026, time.May, 4), "pro rok 2025 není nastaven způsob podání"},
+		{"unset method", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodUnset}, date(2026, time.April, 1), date(2026, time.May, 4), "pro rok 2025 není nastaven způsob podání"},
 		{"standard", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}, date(2026, time.April, 1), date(2026, time.May, 4), "způsob podání přiznání za rok 2025: do 1. dubna (papírově nebo elektronicky)"},
 		{"electronic, 1 May is a holiday", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodElectronic}, date(2026, time.May, 4), date(2026, time.June, 4), "způsob podání přiznání za rok 2025: elektronicky po 1. dubnu"},
 		{"advisor", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}, date(2026, time.July, 1), date(2026, time.August, 3), "způsob podání přiznání za rok 2025: daňový poradce po 1. dubnu"},
@@ -297,7 +297,7 @@ func TestTaxCalendarService_GetDeadlines_CzechTexts(t *testing.T) {
 		}
 	}
 
-	// Descriptions: Czech wording, month in genitive with the year.
+	// Descriptions: Czech wording; "za leden 2026" is accusative (same form as nominative for masculine inanimate nouns).
 	vat := findDeadlineByName(deadlines, "Přiznání k DPH za leden 2026")
 	if vat == nil {
 		t.Fatalf("missing January VAT deadline")
@@ -361,14 +361,11 @@ func TestTaxCalendarService_GetDeadlines_UnsetNoteWhenDateMoved(t *testing.T) {
 	}
 
 	for _, d := range []*TaxDeadline{returnDeadline, findDeadlineByType(deadlines, "social"), findDeadlineByType(deadlines, "health")} {
-		if !strings.Contains(d.Description, "papírově nebo elektronicky bez daňového poradce") {
-			t.Errorf("%s description = %q, want it to state the paper/electronic-without-advisor assumption", d.Name, d.Description)
+		if !strings.Contains(d.Description, "Termíny počítají s podáním přiznání do 1. dubna (papírově nebo elektronicky), případně do prvního následujícího pracovního dne, protože pro rok 2023 není nastaven způsob podání.") {
+			t.Errorf("%s description = %q, want it to state the 1 April assumption with the next-business-day shift and the missing filing method", d.Name, d.Description)
 		}
-		if !strings.Contains(d.Description, "první následující pracovní den") {
-			t.Errorf("%s description = %q, want it to mention the shift to the next business day instead of hardcoding 1 April", d.Name, d.Description)
-		}
-		if !strings.Contains(d.Description, "Daňové zálohy a nastavení") {
-			t.Errorf("%s description = %q, want it to name the settings page „Daňové zálohy a nastavení“", d.Name, d.Description)
+		if !strings.Contains(d.Description, "Způsob podání lze nastavit v části Daň z příjmů → Zálohy.") {
+			t.Errorf("%s description = %q, want it to point to Daň z příjmů → Zálohy", d.Name, d.Description)
 		}
 		if strings.Contains(d.Description, "filing by 1 April") {
 			t.Errorf("%s description = %q, must not claim the dates assume filing by 1 April", d.Name, d.Description)

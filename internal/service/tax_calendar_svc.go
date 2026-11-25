@@ -152,12 +152,12 @@ func (s *TaxCalendarService) filingMethod(ctx context.Context, taxYear int) (dom
 
 // filingMethodNote describes the filing method behind the return and overview
 // deadlines. An unset method states the assumption the deadline computation
-// makes: filed on paper or electronically without a tax advisor, i.e. by
-// 1 April shifted to the first following business day. The note also says
-// where the method is set. An unknown stored value is an error, never shown.
+// makes: filed by 1 April (on paper or electronically), shifted to the first
+// following business day, and says where the method is set. An unknown stored
+// value is an error, never shown.
 func filingMethodNote(taxYear int, method domain.FilingMethod) (string, error) {
 	if method == domain.FilingMethodUnset {
-		return fmt.Sprintf("termíny počítají s podáním přiznání papírově nebo elektronicky bez daňového poradce do 1. dubna (případně první následující pracovní den); způsob podání za rok %d se nastaví na stránce „Daňové zálohy a nastavení“", taxYear), nil
+		return fmt.Sprintf("Termíny počítají s podáním přiznání do 1. dubna (papírově nebo elektronicky), případně do prvního následujícího pracovního dne, protože pro rok %d není nastaven způsob podání. Způsob podání lze nastavit v části Daň z příjmů → Zálohy.", taxYear), nil
 	}
 	label, err := filingMethodLabel(method)
 	if err != nil {

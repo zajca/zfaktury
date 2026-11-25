@@ -225,8 +225,8 @@ func TestTaxCreditsService_ComputeCredits_SpouseProportionalMonths(t *testing.T)
 
 	// Create spouse credit with 6 months claimed, income below threshold.
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
+		Year:              2025,
+		SpouseName:        "Jana",
 		SpouseIncome:      domain.NewAmount(50000, 0), // below 68000 CZK
 		MonthsClaimed:     6,
 		ChildUnder3Months: 6,
@@ -252,8 +252,8 @@ func TestTaxCreditsService_ComputeCredits_SpouseFullYear(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
+		Year:              2025,
+		SpouseName:        "Jana",
 		SpouseIncome:      domain.NewAmount(60000, 0),
 		MonthsClaimed:     12,
 		ChildUnder3Months: 12,
@@ -279,8 +279,8 @@ func TestTaxCreditsService_ComputeCredits_SpouseIncomeAboveThreshold(t *testing.
 
 	// Spouse income >= 68000 CZK (6_800_000 halere) -> no credit.
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
+		Year:              2025,
+		SpouseName:        "Jana",
 		SpouseIncome:      domain.NewAmount(68000, 0),
 		MonthsClaimed:     12,
 		ChildUnder3Months: 12,
@@ -304,8 +304,8 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPDoubling(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
+		Year:              2025,
+		SpouseName:        "Jana",
 		SpouseIncome:      domain.NewAmount(50000, 0),
 		SpouseZTP:         true,
 		MonthsClaimed:     12,
@@ -332,8 +332,8 @@ func TestTaxCreditsService_ComputeCredits_SpouseZTPPartialMonths(t *testing.T) {
 	ctx := context.Background()
 
 	credit := &domain.TaxSpouseCredit{
-		Year:          2025,
-		SpouseName:    "Jana",
+		Year:              2025,
+		SpouseName:        "Jana",
 		SpouseIncome:      domain.NewAmount(40000, 0),
 		SpouseZTP:         true,
 		MonthsClaimed:     3,

@@ -64,6 +64,36 @@ func TestAuditLogHandler_List_DayBoundsAreLocalDays(t *testing.T) {
 			t.Errorf("entity IDs listed = %v, want exactly 2, 3 and 4", got)
 		}
 	})
+
+	// 2026-10-25 is the other Europe/Prague DST change day: at 03:00 the
+	// clock falls back to 02:00, so the local day is 25 hours long. A flat
+	// 24-hour "next local midnight" bound would end at 23:00 local and
+	// wrongly drop the last hour of the local day from the result.
+	t.Run("Europe/Prague on the autumn DST change day", func(t *testing.T) {
+		prague, err := time.LoadLocation("Europe/Prague")
+		if err != nil {
+			t.Fatalf("loading Europe/Prague: %v", err)
+		}
+		origLocal := time.Local
+		time.Local = prague
+		t.Cleanup(func() { time.Local = origLocal })
+
+		entries := []struct {
+			id        int
+			createdAt string
+		}{
+			{1, "2026-10-24T23:30:00+02:00"}, // previous local day
+			{2, "2026-10-25T00:30:00+02:00"}, // first minutes of the local day, previous day in UTC
+			{3, "2026-10-25T02:30:00+02:00"}, // before the 03:00 -> 02:00 fallback
+			{4, "2026-10-25T02:30:00+01:00"}, // the repeated hour after the fallback
+			{5, "2026-10-25T23:30:00+01:00"}, // last minutes of the 25-hour day; a flat 24-hour bound would wrongly exclude it
+			{6, "2026-10-26T00:30:00+01:00"}, // next local day
+		}
+		got := listAuditLogDay(t, "2026-10-25", "2026-10-25", entries)
+		if len(got) != 4 || !got[2] || !got[3] || !got[4] || !got[5] {
+			t.Errorf("entity IDs listed = %v, want exactly 2, 3, 4 and 5", got)
+		}
+	})
 }
 
 // listAuditLogDay seeds the given audit entries and returns the entity IDs the

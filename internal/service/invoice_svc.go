@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -80,28 +81,26 @@ func (s *InvoiceService) Create(ctx context.Context, invoice *domain.Invoice) er
 		invoice.SequenceID = seq.ID
 	}
 
-	// Assign invoice number from sequence.
-	if invoice.InvoiceNumber == "" && invoice.SequenceID > 0 {
-		number, err := s.repo.GetNextNumber(ctx, invoice.SequenceID)
-		if errors.Is(err, domain.ErrNotFound) {
-			return fmt.Errorf("sequence %d does not exist or was deleted: %w", invoice.SequenceID, domain.ErrInvalidInput)
-		}
-		if err != nil {
-			return fmt.Errorf("getting next invoice number: %w", err)
-		}
-		invoice.InvoiceNumber = number
-	}
-
-	// Set variable symbol to invoice number if not set.
-	if invoice.VariableSymbol == "" {
-		invoice.VariableSymbol = invoice.InvoiceNumber
-	}
-
 	// Calculate totals from line items.
 	invoice.CalculateTotals()
 
-	if err := s.repo.Create(ctx, invoice); err != nil {
-		return fmt.Errorf("creating invoice: %w", err)
+	if invoice.InvoiceNumber == "" && invoice.SequenceID > 0 {
+		// Take the next sequence number and insert the invoice in one
+		// transaction, so a failed insert leaves no gap in the numbering.
+		if err := s.repo.CreateWithNextNumber(ctx, invoice, invoice.SequenceID); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				return fmt.Errorf("sequence %d does not exist or was deleted: %w", invoice.SequenceID, domain.ErrInvalidInput)
+			}
+			return fmt.Errorf("creating invoice with next number: %w", err)
+		}
+	} else {
+		// Set variable symbol to invoice number if not set.
+		if invoice.VariableSymbol == "" {
+			invoice.VariableSymbol = invoice.InvoiceNumber
+		}
+		if err := s.repo.Create(ctx, invoice); err != nil {
+			return fmt.Errorf("creating invoice: %w", err)
+		}
 	}
 	if s.audit != nil {
 		s.audit.Log(ctx, "invoice", invoice.ID, "create", nil, invoice)
@@ -144,6 +143,15 @@ func (s *InvoiceService) Update(ctx context.Context, invoice *domain.Invoice) er
 	}
 	if invoice.SequenceID == 0 {
 		invoice.SequenceID = existing.SequenceID
+	}
+	// A sequence changed by the update must exist and not be soft-deleted.
+	if invoice.SequenceID != existing.SequenceID && s.sequences != nil {
+		if _, err := s.sequences.GetByID(ctx, invoice.SequenceID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("sequence %d does not exist or was deleted: %w", invoice.SequenceID, domain.ErrInvalidInput)
+			}
+			return fmt.Errorf("fetching sequence: %w", err)
+		}
 	}
 	if invoice.VariableSymbol == "" {
 		invoice.VariableSymbol = existing.VariableSymbol

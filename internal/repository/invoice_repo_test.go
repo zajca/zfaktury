@@ -551,3 +551,151 @@ func TestInvoiceRepository_List_DateFilter(t *testing.T) {
 	}
 	_ = invoices
 }
+
+func TestInvoiceRepository_CreateWithNextNumber_SkipsExistingNumber(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	// An existing invoice already uses FV20260001.
+	existing := makeRepoInvoice(customerID, seqID)
+	existing.InvoiceNumber = "FV20260001"
+	if err := repo.Create(ctx, existing); err != nil {
+		t.Fatalf("Create() existing error: %v", err)
+	}
+
+	// The old sequence is deleted and a new one with the same prefix and year
+	// is created (renamed-prefix case); it starts at 1 again.
+	if err := NewSequenceRepository(db).Delete(ctx, seqID); err != nil {
+		t.Fatalf("deleting old sequence: %v", err)
+	}
+	newSeqID := testutil.SeedInvoiceSequence(t, db, "FV", 2026)
+
+	inv := makeRepoInvoice(customerID, newSeqID)
+	inv.InvoiceNumber = ""
+	if err := repo.CreateWithNextNumber(ctx, inv, newSeqID); err != nil {
+		t.Fatalf("CreateWithNextNumber() error: %v", err)
+	}
+	if inv.InvoiceNumber != "FV20260002" {
+		t.Errorf("InvoiceNumber = %q, want FV20260002", inv.InvoiceNumber)
+	}
+	if inv.SequenceID != newSeqID {
+		t.Errorf("SequenceID = %d, want %d", inv.SequenceID, newSeqID)
+	}
+
+	seq, err := NewSequenceRepository(db).GetByID(ctx, newSeqID)
+	if err != nil {
+		t.Fatalf("GetByID() sequence error: %v", err)
+	}
+	if seq.NextNumber != 3 {
+		t.Errorf("NextNumber = %d, want 3 (stored past the used number)", seq.NextNumber)
+	}
+}
+
+func TestInvoiceRepository_CreateWithNextNumber_SkipsImportedNumber(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	// An invoice imported from Fakturoid keeps its number ahead of the
+	// sequence counter and does not advance it.
+	now := time.Now()
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO invoices (sequence_id, invoice_number, type, status, issue_date, due_date, delivery_date,
+			customer_id, currency_code, exchange_rate, payment_method,
+			subtotal_amount, vat_amount, total_amount, paid_amount, created_at, updated_at)
+		VALUES (NULL, ?, 'regular', 'draft', ?, ?, ?, ?, 'CZK', 100, 'bank_transfer', 0, 0, 0, 0, ?, ?)`,
+		"FV20260002", now, now.AddDate(0, 0, 14), now, customerID, now, now); err != nil {
+		t.Fatalf("inserting imported invoice: %v", err)
+	}
+
+	first := makeRepoInvoice(customerID, seqID)
+	first.InvoiceNumber = ""
+	if err := repo.CreateWithNextNumber(ctx, first, seqID); err != nil {
+		t.Fatalf("CreateWithNextNumber() first error: %v", err)
+	}
+	if first.InvoiceNumber != "FV20260001" {
+		t.Errorf("first InvoiceNumber = %q, want FV20260001", first.InvoiceNumber)
+	}
+
+	// The next number would collide with the imported one and must be skipped.
+	second := makeRepoInvoice(customerID, seqID)
+	second.InvoiceNumber = ""
+	if err := repo.CreateWithNextNumber(ctx, second, seqID); err != nil {
+		t.Fatalf("CreateWithNextNumber() second error: %v", err)
+	}
+	if second.InvoiceNumber != "FV20260003" {
+		t.Errorf("second InvoiceNumber = %q, want FV20260003 (imported FV20260002 skipped)", second.InvoiceNumber)
+	}
+}
+
+func TestInvoiceRepository_CreateWithNextNumber_SkipsSoftDeletedNumber(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	// A soft-deleted invoice still occupies its number via the UNIQUE index.
+	deleted := makeRepoInvoice(customerID, seqID)
+	deleted.InvoiceNumber = "FV20260001"
+	if err := repo.Create(ctx, deleted); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+	if err := repo.Delete(ctx, deleted.ID); err != nil {
+		t.Fatalf("Delete() error: %v", err)
+	}
+
+	inv := makeRepoInvoice(customerID, seqID)
+	inv.InvoiceNumber = ""
+	if err := repo.CreateWithNextNumber(ctx, inv, seqID); err != nil {
+		t.Fatalf("CreateWithNextNumber() error: %v", err)
+	}
+	if inv.InvoiceNumber != "FV20260002" {
+		t.Errorf("InvoiceNumber = %q, want FV20260002 (soft-deleted FV20260001 skipped)", inv.InvoiceNumber)
+	}
+}
+
+func TestInvoiceRepository_CreateWithNextNumber_FailedInsertLeavesCounterUnchanged(t *testing.T) {
+	db, customerID, seqID := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	// The CHECK constraint on payment_method fails the insert after the
+	// number was reserved.
+	inv := makeRepoInvoice(customerID, seqID)
+	inv.InvoiceNumber = ""
+	inv.PaymentMethod = "bogus"
+	if err := repo.CreateWithNextNumber(ctx, inv, seqID); err == nil {
+		t.Fatal("expected error for failed insert")
+	}
+
+	seq, err := NewSequenceRepository(db).GetByID(ctx, seqID)
+	if err != nil {
+		t.Fatalf("GetByID() sequence error: %v", err)
+	}
+	if seq.NextNumber != 1 {
+		t.Errorf("NextNumber = %d, want 1 (unchanged after failed insert)", seq.NextNumber)
+	}
+
+	// No gap: the next successful create still gets the first number.
+	retry := makeRepoInvoice(customerID, seqID)
+	retry.InvoiceNumber = ""
+	if err := repo.CreateWithNextNumber(ctx, retry, seqID); err != nil {
+		t.Fatalf("CreateWithNextNumber() retry error: %v", err)
+	}
+	if retry.InvoiceNumber != "FV20260001" {
+		t.Errorf("retry InvoiceNumber = %q, want FV20260001", retry.InvoiceNumber)
+	}
+}
+
+func TestInvoiceRepository_CreateWithNextNumber_SequenceNotFound(t *testing.T) {
+	db, customerID, _ := setupInvoiceTestDB(t)
+	repo := NewInvoiceRepository(db)
+	ctx := context.Background()
+
+	inv := makeRepoInvoice(customerID, 0)
+	inv.InvoiceNumber = ""
+	err := repo.CreateWithNextNumber(ctx, inv, 99999)
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("CreateWithNextNumber() error = %v, want domain.ErrNotFound", err)
+	}
+}

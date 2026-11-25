@@ -4,17 +4,23 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
 
 var (
-	digitsOKEC    = regexp.MustCompile(`^\d{5}$`)
-	digitsPSC     = regexp.MustCompile(`^\d{5}$`)
-	digitsDIC     = regexp.MustCompile(`^\d{8,10}$`)
-	digitsUFO     = regexp.MustCompile(`^\d{3}$`)
-	digitsPracUFO = regexp.MustCompile(`^\d{4}$`)
+	digitsOKEC     = regexp.MustCompile(`^\d{5}$`)
+	digitsPSC      = regexp.MustCompile(`^\d{5}$`)
+	digitsDIC      = regexp.MustCompile(`^\d{8,10}$`)
+	digitsUFO      = regexp.MustCompile(`^\d{3}$`)
+	digitsPracUFO  = regexp.MustCompile(`^\d{4}$`)
+	digitsHouseNum = regexp.MustCompile(`^\d{1,6}$`)
 )
+
+// maxPhoneLength is the c_telef maxLength shared by the DPHDP3 and DPHKH1
+// schemas; the value is written straight into the attribute.
+const maxPhoneLength = 14
 
 // Document names used in the validation error message.
 const (
@@ -80,6 +86,12 @@ func validateTaxpayer(info TaxpayerInfo, document string, requireOKEC bool) erro
 	}
 	if info.PracUFO != "" && !digitsPracUFO.MatchString(info.PracUFO) {
 		problems = append(problems, "Kód pracoviště FÚ (c_pracufo) musí být 4 číslice")
+	}
+	if info.HouseNum != "" && !digitsHouseNum.MatchString(info.HouseNum) {
+		problems = append(problems, "Číslo popisné musí být číslo s nejvýše 6 číslicemi, bez lomítka")
+	}
+	if utf8.RuneCountInString(info.Phone) > maxPhoneLength {
+		problems = append(problems, "Telefon (c_telef) může mít nejvýše 14 znaků")
 	}
 
 	if len(problems) == 0 {

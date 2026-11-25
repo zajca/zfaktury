@@ -122,6 +122,9 @@ func (m *vcMockInvoiceRepo) UpdateStatus(_ context.Context, _ int64, _ string) e
 func (m *vcMockInvoiceRepo) GetNextNumber(_ context.Context, _ int64) (string, error) {
 	return "", nil
 }
+func (m *vcMockInvoiceRepo) CreateWithNextNumber(_ context.Context, _ *domain.Invoice, _ int64) error {
+	return nil
+}
 func (m *vcMockInvoiceRepo) GetRelatedInvoices(_ context.Context, _ int64) ([]domain.Invoice, error) {
 	return nil, nil
 }

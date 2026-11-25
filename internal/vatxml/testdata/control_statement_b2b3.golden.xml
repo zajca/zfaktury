@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Pisemnost>
   <DPHKH1>
-    <VetaD dokument="KH1" k_uladis="DPH" rok="2025" mesic="6" khdph_forma="B"></VetaD>
+    <VetaD dokument="KH1" k_uladis="DPH" d_poddp="25.04.2025" rok="2025" mesic="6" khdph_forma="B"></VetaD>
     <VetaP c_ufo="464" c_pracufo="3305" dic="8001010006" typ_ds="F" jmeno="Jan" prijmeni="Testovaci" ulice="Testovaci" c_pop="1" naz_obce="Praha" psc="11000" stat="ČESKÁ REPUBLIKA" email="ja@example.test" c_telef="600000000"></VetaP>
     <VetaB2 c_evid_dd="VF2025001" dppd="10.06.2025" dic_dod="99887766" zakl_dane1="35000" dan1="7350" pomer="N" zdph_44="N"></VetaB2>
     <VetaB2 c_evid_dd="VF2025002" dppd="22.06.2025" dic_dod="11223344" zakl_dane2="15000" dan2="1800" pomer="N" zdph_44="N"></VetaB2>

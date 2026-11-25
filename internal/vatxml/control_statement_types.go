@@ -9,6 +9,7 @@ type KHVetaD struct {
 	XMLName   xml.Name `xml:"VetaD"`
 	Dokument  string   `xml:"dokument,attr"`
 	KUladis   string   `xml:"k_uladis,attr"`
+	DPoddp    string   `xml:"d_poddp,attr"`
 	Rok       int      `xml:"rok,attr"`
 	Mesic     int      `xml:"mesic,attr"`
 	KHDPHForm string   `xml:"khdph_forma,attr"`

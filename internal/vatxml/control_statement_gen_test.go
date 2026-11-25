@@ -613,3 +613,23 @@ func TestControlStatement_Golden_Corrective(t *testing.T) {
 	goldenPath := filepath.Join("testdata", "control_statement_corrective.golden.xml")
 	testutil.AssertGolden(t, goldenPath, xmlData)
 }
+
+// The control statement must carry d_poddp (issue #72); EPO warns when the
+// Datum vyhotovení KH attribute is missing.
+func TestControlStatementGenerator_Generate_DPoddp(t *testing.T) {
+	gen := NewControlStatementGenerator()
+	cs := &domain.VATControlStatement{
+		ID:         1,
+		Period:     domain.TaxPeriod{Year: 2025, Month: 3},
+		FilingType: domain.FilingTypeRegular,
+		Status:     domain.FilingStatusReady,
+	}
+
+	xmlData, err := gen.Generate(cs, nil, testTaxpayerInfo())
+	if err != nil {
+		t.Fatalf("Generate() error: %v", err)
+	}
+	if want := `d_poddp="25.04.2025"`; !strings.Contains(string(xmlData), want) {
+		t.Errorf("control statement XML lacks %s:\n%s", want, xmlData)
+	}
+}

@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -11,7 +13,7 @@ import (
 	"github.com/zajca/zfaktury/internal/testutil"
 )
 
-func newInvoiceTestStack(t *testing.T) (*InvoiceService, *ContactService, *repository.InvoiceRepository, *repository.ContactRepository, func() int64) {
+func newInvoiceTestStackDB(t *testing.T) (*InvoiceService, *ContactService, *repository.InvoiceRepository, *repository.ContactRepository, *repository.SequenceRepository, *sql.DB, func() int64) {
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	contactRepo := repository.NewContactRepository(db)
@@ -33,6 +35,12 @@ func newInvoiceTestStack(t *testing.T) (*InvoiceService, *ContactService, *repos
 		return c.ID
 	}
 
+	return invoiceSvc, contactSvc, invoiceRepo, contactRepo, sequenceRepo, db, createCustomer
+}
+
+func newInvoiceTestStack(t *testing.T) (*InvoiceService, *ContactService, *repository.InvoiceRepository, *repository.ContactRepository, func() int64) {
+	t.Helper()
+	invoiceSvc, contactSvc, invoiceRepo, contactRepo, _, _, createCustomer := newInvoiceTestStackDB(t)
 	return invoiceSvc, contactSvc, invoiceRepo, contactRepo, createCustomer
 }
 
@@ -846,5 +854,143 @@ func TestInvoiceService_Update_PreservesInvoiceNumber(t *testing.T) {
 	}
 	if updated.Notes != "Updated" {
 		t.Errorf("Notes = %q, want %q", updated.Notes, "Updated")
+	}
+}
+
+func TestInvoiceService_Create_SkipsExistingNumberAfterSequenceRecreate(t *testing.T) {
+	svc, _, _, _, seqRepo, db, createCustomer := newInvoiceTestStackDB(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// First invoice on the seeded FV 2026 sequence gets FV20260001.
+	first := makeInvoice(customerID)
+	if err := svc.Create(ctx, first); err != nil {
+		t.Fatalf("Create() first error: %v", err)
+	}
+	if first.InvoiceNumber != "FV20260001" {
+		t.Fatalf("first InvoiceNumber = %q, want FV20260001", first.InvoiceNumber)
+	}
+
+	// The sequence is deleted and recreated with the same prefix and year
+	// (renamed-prefix case), so it starts at 1 again.
+	if err := seqRepo.Delete(ctx, first.SequenceID); err != nil {
+		t.Fatalf("deleting sequence: %v", err)
+	}
+	newSeqID := testutil.SeedInvoiceSequence(t, db, "FV", 2026)
+
+	second := makeInvoice(customerID)
+	second.SequenceID = newSeqID
+	if err := svc.Create(ctx, second); err != nil {
+		t.Fatalf("Create() second error: %v", err)
+	}
+	if second.InvoiceNumber != "FV20260002" {
+		t.Errorf("second InvoiceNumber = %q, want FV20260002", second.InvoiceNumber)
+	}
+}
+
+func TestInvoiceService_Create_SkipsImportedNumber(t *testing.T) {
+	svc, _, _, _, _, _, createCustomer := newInvoiceTestStackDB(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// Fakturoid-style import: explicit number, no sequence counter advance.
+	imported := makeInvoice(customerID)
+	imported.SequenceID = 0
+	imported.InvoiceNumber = "FV20260002"
+	if err := svc.Create(ctx, imported); err != nil {
+		t.Fatalf("Create() imported error: %v", err)
+	}
+
+	first := makeInvoice(customerID)
+	if err := svc.Create(ctx, first); err != nil {
+		t.Fatalf("Create() first error: %v", err)
+	}
+	if first.InvoiceNumber != "FV20260001" {
+		t.Errorf("first InvoiceNumber = %q, want FV20260001", first.InvoiceNumber)
+	}
+
+	// The next number would collide with the imported one and must be skipped.
+	second := makeInvoice(customerID)
+	if err := svc.Create(ctx, second); err != nil {
+		t.Fatalf("Create() second error: %v", err)
+	}
+	if second.InvoiceNumber != "FV20260003" {
+		t.Errorf("second InvoiceNumber = %q, want FV20260003 (imported FV20260002 skipped)", second.InvoiceNumber)
+	}
+}
+
+func TestInvoiceService_Create_FailedInsertLeavesSequenceCounterUnchanged(t *testing.T) {
+	svc, _, _, _, seqRepo, _, createCustomer := newInvoiceTestStackDB(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	// The CHECK constraint on payment_method fails the insert after the
+	// number was taken.
+	inv := makeInvoice(customerID)
+	inv.PaymentMethod = "bogus"
+	if err := svc.Create(ctx, inv); err == nil {
+		t.Fatal("expected error for failed insert")
+	}
+
+	seq, err := seqRepo.GetByID(ctx, inv.SequenceID)
+	if err != nil {
+		t.Fatalf("GetByID() sequence error: %v", err)
+	}
+	if seq.NextNumber != 1 {
+		t.Errorf("NextNumber = %d, want 1 (unchanged after failed insert)", seq.NextNumber)
+	}
+
+	// No gap: the retry still gets the first number.
+	retry := makeInvoice(customerID)
+	if err := svc.Create(ctx, retry); err != nil {
+		t.Fatalf("Create() retry error: %v", err)
+	}
+	if retry.InvoiceNumber != "FV20260001" {
+		t.Errorf("retry InvoiceNumber = %q, want FV20260001", retry.InvoiceNumber)
+	}
+}
+
+func TestInvoiceService_Update_DeletedSequenceFails(t *testing.T) {
+	svc, _, _, _, seqRepo, db, createCustomer := newInvoiceTestStackDB(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// A second sequence that is soft-deleted afterwards.
+	deletedSeqID := testutil.SeedInvoiceSequence(t, db, "XY", 2026)
+	if err := seqRepo.Delete(ctx, deletedSeqID); err != nil {
+		t.Fatalf("deleting sequence: %v", err)
+	}
+
+	inv.SequenceID = deletedSeqID
+	err := svc.Update(ctx, inv)
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Fatalf("Update() error = %v, want domain.ErrInvalidInput", err)
+	}
+}
+
+func TestInvoiceService_Update_OwnSequenceDeletedLaterStillUpdates(t *testing.T) {
+	svc, _, _, _, seqRepo, _, createCustomer := newInvoiceTestStackDB(t)
+	ctx := context.Background()
+	customerID := createCustomer()
+
+	inv := makeInvoice(customerID)
+	if err := svc.Create(ctx, inv); err != nil {
+		t.Fatalf("Create() error: %v", err)
+	}
+
+	// The invoice's own sequence is soft-deleted afterwards; updating with an
+	// unchanged sequence id must still work.
+	if err := seqRepo.Delete(ctx, inv.SequenceID); err != nil {
+		t.Fatalf("deleting sequence: %v", err)
+	}
+
+	inv.Notes = "updated"
+	if err := svc.Update(ctx, inv); err != nil {
+		t.Fatalf("Update() error: %v", err)
 	}
 }

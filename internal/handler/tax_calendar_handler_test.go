@@ -1,19 +1,38 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/zajca/zfaktury/internal/domain"
 	"github.com/zajca/zfaktury/internal/service"
 )
 
+// stubTaxYearSettingsRepo is a small in-test TaxYearSettingsRepo.
+type stubTaxYearSettingsRepo struct {
+	getByYear func(ctx context.Context, year int) (*domain.TaxYearSettings, error)
+}
+
+func (r stubTaxYearSettingsRepo) GetByYear(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+	return r.getByYear(ctx, year)
+}
+
+func (r stubTaxYearSettingsRepo) Upsert(ctx context.Context, tys *domain.TaxYearSettings) error {
+	return nil
+}
+
 func setupTaxCalendarHandler(t *testing.T) (*TaxCalendarHandler, *chi.Mux) {
 	t.Helper()
-	svc := service.NewTaxCalendarService()
+	repo := stubTaxYearSettingsRepo{getByYear: func(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+		return nil, domain.ErrNotFound
+	}}
+	svc := service.NewTaxCalendarService(repo)
 	h := NewTaxCalendarHandler(svc)
 
 	r := chi.NewRouter()
@@ -105,6 +124,24 @@ func TestTaxCalendarHandler_GetCalendar_InvalidYear(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusBadRequest, w.Body.String())
+	}
+}
+
+func TestTaxCalendarHandler_GetCalendar_ServiceError(t *testing.T) {
+	boom := errors.New("database is down")
+	repo := stubTaxYearSettingsRepo{getByYear: func(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+		return nil, boom
+	}}
+	h := NewTaxCalendarHandler(service.NewTaxCalendarService(repo))
+	r := chi.NewRouter()
+	r.Get("/", h.GetCalendar)
+
+	req := httptest.NewRequest(http.MethodGet, "/?year=2026", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d, body = %s", w.Code, http.StatusInternalServerError, w.Body.String())
 	}
 }
 

@@ -1,14 +1,61 @@
 package service
 
 import (
+	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/repository"
+	"github.com/zajca/zfaktury/internal/testutil"
 )
 
-func TestTaxCalendarService_GetDeadlines_Count(t *testing.T) {
-	svc := NewTaxCalendarService()
+// stubTaxYearSettingsRepo is a small in-test TaxYearSettingsRepo.
+type stubTaxYearSettingsRepo struct {
+	getByYear func(ctx context.Context, year int) (*domain.TaxYearSettings, error)
+}
 
-	deadlines := svc.GetDeadlines(2026)
+func (r stubTaxYearSettingsRepo) GetByYear(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+	return r.getByYear(ctx, year)
+}
+
+func (r stubTaxYearSettingsRepo) Upsert(ctx context.Context, tys *domain.TaxYearSettings) error {
+	return nil
+}
+
+// notFoundTaxYearSettingsRepo simulates a year with no stored settings row.
+func notFoundTaxYearSettingsRepo() stubTaxYearSettingsRepo {
+	return stubTaxYearSettingsRepo{getByYear: func(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+		return nil, domain.ErrNotFound
+	}}
+}
+
+// calendarTestRepo returns a real TaxYearSettingsRepository on in-memory SQLite.
+func calendarTestRepo(t *testing.T) repository.TaxYearSettingsRepo {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+	return repository.NewTaxYearSettingsRepository(db)
+}
+
+func findDeadlineByType(deadlines []TaxDeadline, typ string) *TaxDeadline {
+	for i := range deadlines {
+		if deadlines[i].Type == typ {
+			return &deadlines[i]
+		}
+	}
+	return nil
+}
+
+func TestTaxCalendarService_GetDeadlines_Count(t *testing.T) {
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
+
+	deadlines, err := svc.GetDeadlines(context.Background(), 2026)
+	if err != nil {
+		t.Fatalf("GetDeadlines: %v", err)
+	}
 
 	// 12 VAT + 1 income tax + 1 social + 1 health + 4 quarterly advances = 19
 	expected := 19
@@ -18,9 +65,12 @@ func TestTaxCalendarService_GetDeadlines_Count(t *testing.T) {
 }
 
 func TestTaxCalendarService_GetDeadlines_Sorted(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 
-	deadlines := svc.GetDeadlines(2026)
+	deadlines, err := svc.GetDeadlines(context.Background(), 2026)
+	if err != nil {
+		t.Fatalf("GetDeadlines: %v", err)
+	}
 
 	for i := 1; i < len(deadlines); i++ {
 		if deadlines[i].Date.Before(deadlines[i-1].Date) {
@@ -32,9 +82,12 @@ func TestTaxCalendarService_GetDeadlines_Sorted(t *testing.T) {
 }
 
 func TestTaxCalendarService_GetDeadlines_WeekendShift(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 
-	deadlines := svc.GetDeadlines(2026)
+	deadlines, err := svc.GetDeadlines(context.Background(), 2026)
+	if err != nil {
+		t.Fatalf("GetDeadlines: %v", err)
+	}
 
 	for _, d := range deadlines {
 		wd := d.Date.Weekday()
@@ -46,9 +99,12 @@ func TestTaxCalendarService_GetDeadlines_WeekendShift(t *testing.T) {
 }
 
 func TestTaxCalendarService_GetDeadlines_Types(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 
-	deadlines := svc.GetDeadlines(2026)
+	deadlines, err := svc.GetDeadlines(context.Background(), 2026)
+	if err != nil {
+		t.Fatalf("GetDeadlines: %v", err)
+	}
 
 	typeCounts := make(map[string]int)
 	for _, d := range deadlines {
@@ -137,8 +193,112 @@ func TestCzechPublicHolidays(t *testing.T) {
 	}
 }
 
+// TestTaxCalendarService_GetDeadlines_FilingMethod checks that for calendar
+// year 2026 the return and overview deadlines follow the filing method stored
+// for tax year 2025.
+func TestTaxCalendarService_GetDeadlines_FilingMethod(t *testing.T) {
+	tests := []struct {
+		name         string
+		seed         *domain.TaxYearSettings // nil = no settings row for 2025
+		wantReturn   time.Time
+		wantOverview time.Time
+		wantNote     string
+	}{
+		{"missing settings row", nil, date(2026, time.April, 1), date(2026, time.May, 4), "no filing method is set for tax year 2025"},
+		{"unset method", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodUnset}, date(2026, time.April, 1), date(2026, time.May, 4), "no filing method is set for tax year 2025"},
+		{"standard", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodStandard}, date(2026, time.April, 1), date(2026, time.May, 4), "filing method for tax year 2025: standard"},
+		{"electronic, 1 May is a holiday", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodElectronic}, date(2026, time.May, 4), date(2026, time.June, 4), "filing method for tax year 2025: electronic"},
+		{"advisor", &domain.TaxYearSettings{Year: 2025, FilingMethod: domain.FilingMethodAdvisor}, date(2026, time.July, 1), date(2026, time.August, 3), "filing method for tax year 2025: advisor"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := calendarTestRepo(t)
+			if tt.seed != nil {
+				if err := repo.Upsert(context.Background(), tt.seed); err != nil {
+					t.Fatalf("seeding tax year settings: %v", err)
+				}
+			}
+
+			svc := NewTaxCalendarService(repo)
+			deadlines, err := svc.GetDeadlines(context.Background(), 2026)
+			if err != nil {
+				t.Fatalf("GetDeadlines: %v", err)
+			}
+
+			returnDeadline := findDeadlineByType(deadlines, "income_tax")
+			social := findDeadlineByType(deadlines, "social")
+			health := findDeadlineByType(deadlines, "health")
+			if returnDeadline == nil || social == nil || health == nil {
+				t.Fatalf("missing income_tax/social/health entries in %v", deadlines)
+			}
+
+			if !returnDeadline.Date.Equal(tt.wantReturn) {
+				t.Errorf("return date = %s, want %s", returnDeadline.Date.Format("2006-01-02"), tt.wantReturn.Format("2006-01-02"))
+			}
+			if !social.Date.Equal(tt.wantOverview) {
+				t.Errorf("social overview date = %s, want %s", social.Date.Format("2006-01-02"), tt.wantOverview.Format("2006-01-02"))
+			}
+			if !health.Date.Equal(tt.wantOverview) {
+				t.Errorf("health overview date = %s, want %s", health.Date.Format("2006-01-02"), tt.wantOverview.Format("2006-01-02"))
+			}
+			for _, d := range []*TaxDeadline{returnDeadline, social, health} {
+				if !strings.Contains(d.Description, tt.wantNote) {
+					t.Errorf("%s description = %q, want it to contain %q", d.Name, d.Description, tt.wantNote)
+				}
+			}
+		})
+	}
+}
+
+// TestTaxCalendarService_GetDeadlines_RepoError checks that a repo error other
+// than not-found is returned wrapped.
+func TestTaxCalendarService_GetDeadlines_RepoError(t *testing.T) {
+	boom := errors.New("database is down")
+	svc := NewTaxCalendarService(stubTaxYearSettingsRepo{getByYear: func(ctx context.Context, year int) (*domain.TaxYearSettings, error) {
+		return nil, boom
+	}})
+
+	_, err := svc.GetDeadlines(context.Background(), 2026)
+	if err == nil {
+		t.Fatal("GetDeadlines returned nil error, want the wrapped repo error")
+	}
+	if !errors.Is(err, boom) {
+		t.Errorf("error = %v, want it to wrap %v", err, boom)
+	}
+	if !strings.Contains(err.Error(), "listing tax deadlines") {
+		t.Errorf("error = %q, want it wrapped with a verb", err)
+	}
+}
+
+// TestIncomeTaxReturnDeadline covers the extracted return-deadline helper.
+func TestIncomeTaxReturnDeadline(t *testing.T) {
+	tests := []struct {
+		name   string
+		year   int
+		method domain.FilingMethod
+		want   time.Time
+	}{
+		{"2025 standard", 2025, domain.FilingMethodStandard, date(2026, time.April, 1)},
+		{"2025 electronic, 1 May is a holiday", 2025, domain.FilingMethodElectronic, date(2026, time.May, 4)},
+		{"2025 advisor", 2025, domain.FilingMethodAdvisor, date(2026, time.July, 1)},
+		{"2025 unset", 2025, domain.FilingMethodUnset, date(2026, time.April, 1)},
+		{"2023 standard, 1 April is Easter Monday", 2023, domain.FilingMethodStandard, date(2024, time.April, 2)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IncomeTaxReturnDeadline(tt.year, tt.method)
+			if err != nil {
+				t.Fatalf("IncomeTaxReturnDeadline: %v", err)
+			}
+			if !got.Equal(tt.want) {
+				t.Errorf("IncomeTaxReturnDeadline(%d, %q) = %s, want %s", tt.year, tt.method, got.Format("2006-01-02"), tt.want.Format("2006-01-02"))
+			}
+		})
+	}
+}
+
 func TestNextBusinessDay_Weekend(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 	holidays := make(map[time.Time]bool)
 
 	// 2026-01-03 is a Saturday.
@@ -159,7 +319,7 @@ func TestNextBusinessDay_Weekend(t *testing.T) {
 }
 
 func TestNextBusinessDay_Holiday(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 
 	// 2026-01-01 is a Thursday (public holiday).
 	holidays := map[time.Time]bool{
@@ -175,7 +335,7 @@ func TestNextBusinessDay_Holiday(t *testing.T) {
 }
 
 func TestNextBusinessDay_HolidayBeforeWeekend(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 
 	// Create a scenario: Friday is a holiday, so it should shift to Monday.
 	friday := time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC) // 2026-01-02 is Friday
@@ -191,7 +351,7 @@ func TestNextBusinessDay_HolidayBeforeWeekend(t *testing.T) {
 }
 
 func TestNextBusinessDay_AlreadyBusinessDay(t *testing.T) {
-	svc := NewTaxCalendarService()
+	svc := NewTaxCalendarService(notFoundTaxYearSettingsRepo())
 	holidays := make(map[time.Time]bool)
 
 	// 2026-01-05 is a Monday (not a holiday).

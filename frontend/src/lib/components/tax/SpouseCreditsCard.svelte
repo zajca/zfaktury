@@ -94,9 +94,7 @@
 				</Select>
 			</div>
 			<div>
-				<span class="text-xs text-tertiary"
-					>Měsíce s dítětem do 3 let ve společné domácnosti</span
-				>
+				<span class="text-xs text-tertiary">Měsíce s dítětem do 3 let ve společné domácnosti</span>
 				<Select
 					value={spouseChildUnder3Months}
 					onchange={(e: Event) => {

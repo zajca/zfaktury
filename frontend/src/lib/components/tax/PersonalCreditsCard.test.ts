@@ -84,7 +84,9 @@ describe('PersonalCreditsCard', () => {
 		render(PersonalCreditsCardTestWrapper);
 
 		const disabilityLabel = screen.getByText('Měsíce (invalidita)');
-		const disabilitySelect = disabilityLabel.parentElement?.querySelector('select') as HTMLSelectElement;
+		const disabilitySelect = disabilityLabel.parentElement?.querySelector(
+			'select'
+		) as HTMLSelectElement;
 		await fireEvent.change(disabilitySelect, { target: { value: '6' } });
 		expect(screen.getByTestId('disabilityMonths').textContent).toBe('6');
 

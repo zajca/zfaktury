@@ -201,6 +201,27 @@ func TestGenerate_Dates(t *testing.T) {
 	}
 }
 
+func TestGenerate_ZeroDeliveryDateFallsBackToIssueDate(t *testing.T) {
+	gen := NewISDOCGenerator()
+	inv := testInvoice()
+	inv.IssueDate = time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	inv.DeliveryDate = time.Time{}
+
+	data, err := gen.Generate(context.Background(), inv, testSupplier())
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	var doc Invoice
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
+	}
+
+	if doc.TaxPointDate != "2026-03-10" {
+		t.Errorf("TaxPointDate = %q, want the issue date %q", doc.TaxPointDate, "2026-03-10")
+	}
+}
+
 func TestGenerate_SupplierParty(t *testing.T) {
 	gen := NewISDOCGenerator()
 	data, err := gen.Generate(context.Background(), testInvoice(), testSupplier())

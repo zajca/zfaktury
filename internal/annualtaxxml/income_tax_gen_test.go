@@ -3,6 +3,8 @@ package annualtaxxml
 import (
 	"bytes"
 	"errors"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -282,6 +284,110 @@ func TestIncomeTaxXML_Section10TriggersPriloha2(t *testing.T) {
 		if !bytes.Contains(xmlData, []byte(want)) {
 			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
 		}
+	}
+}
+
+// Příloha č. 2 must declare only taxable § 10 income (§ 4 ZDP — time-test
+// exempt income is not declared). The return stores the taxable-only § 10
+// gross/expenses, and the annex's uhrn_rozdil10 must equal ř.40 (kc_zd10).
+// Scenario behind the stored values: an exempt sale (proceeds 600 CZK, cost
+// 100 CZK, exempt 500 CZK) plus a taxable sale (proceeds 400 CZK, cost
+// 300 CZK) -> the stored return carries gross 400 / expenses 300 / net 100 CZK.
+func TestIncomeTaxXML_Priloha2_ReportsTaxableSection10Only(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:                2025,
+		FilingType:          domain.FilingTypeRegular,
+		TotalRevenue:        domain.NewAmount(500000, 0),
+		UsedExpenses:        domain.NewAmount(300000, 0),
+		TaxBase:             domain.NewAmount(201686, 0),
+		OtherIncomeGross:    domain.NewAmount(400, 0),
+		OtherIncomeExpenses: domain.NewAmount(300, 0),
+		OtherIncomeExempt:   domain.NewAmount(500, 0),
+		OtherIncomeNet:      domain.NewAmount(100, 0),
+	}
+	settings := map[string]string{
+		"financni_urad_code":    "451",
+		"taxpayer_first_name":   "Jan",
+		"taxpayer_last_name":    "Novak",
+		"taxpayer_birth_number": "8001010006",
+		"dic":                   "CZ1234567890",
+		"taxpayer_street":      "Hlavni",
+		"taxpayer_house_number": "42",
+		"taxpayer_city":         "Praha",
+		"taxpayer_postal_code":  "11000",
+		"c_okec":                "62109",
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, settings, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_zd10="100"`,
+		`priloha2="1"`,
+		`kc_prij10="400"`,
+		`kc_vyd10="300"`,
+		`kc_zd10p="100"`,
+		`uhrn_prijmy10="400"`,
+		`uhrn_vydaje10="300"`,
+		`uhrn_rozdil10="100"`,
+		`prijmy10="400"`,
+		`vydaje10="300"`,
+		`rozdil10="100"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
+
+	// The generated return must validate against the EPO DPFDP7 schema.
+	xmllint, err := exec.LookPath("xmllint")
+	if err != nil {
+		skipOrFailWithoutXmllint(t, err)
+	}
+	xmlPath := filepath.Join(t.TempDir(), "dpfdp7.xml")
+	if err := os.WriteFile(xmlPath, xmlData, 0o600); err != nil {
+		t.Fatalf("write generated XML: %v", err)
+	}
+	xsdPath := filepath.Join("..", "..", "docs", "xml-schemas", "epo", "dpfdp7_epo2.xsd")
+	if out, err := exec.Command(xmllint, "--noout", "--schema", xsdPath, xmlPath).CombinedOutput(); err != nil {
+		t.Fatalf("xmllint XSD validation failed: %v\n%s", err, out)
+	}
+}
+
+// Floor-at-0 case: a § 10 loss is stored as net 0 (ř.40 omitted), and Příloha
+// č. 2 caps expenses at gross so uhrn_rozdil10 is 0 as well — the annex and
+// ř.40 agree.
+func TestIncomeTaxXML_Priloha2_Section10LossFloored(t *testing.T) {
+	itr := &domain.IncomeTaxReturn{
+		Year:                2025,
+		FilingType:          domain.FilingTypeRegular,
+		TotalRevenue:        domain.NewAmount(500000, 0),
+		UsedExpenses:        domain.NewAmount(300000, 0),
+		TaxBase:             domain.NewAmount(200000, 0),
+		OtherIncomeGross:    domain.NewAmount(100, 0),
+		OtherIncomeExpenses: domain.NewAmount(300, 0),
+		OtherIncomeNet:      0, // floored by Recalculate
+	}
+	xmlData, err := GenerateIncomeTaxXML(itr, map[string]string{
+		"financni_urad_code": "451",
+		"dic":                "CZ1234567890",
+		"c_okec":             "62109",
+	}, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateIncomeTaxXML: %v", err)
+	}
+	for _, want := range []string{
+		`kc_prij10="100"`,
+		`kc_vyd10="100"`, // expenses capped at gross
+		`kc_zd10p="0"`,
+		`uhrn_rozdil10="0"`,
+	} {
+		if !bytes.Contains(xmlData, []byte(want)) {
+			t.Errorf("expected XML to contain %q, got:\n%s", want, string(xmlData))
+		}
+	}
+	if bytes.Contains(xmlData, []byte(`kc_zd10=`)) {
+		t.Errorf("kc_zd10 (ř.40) must be omitted at 0, got:\n%s", string(xmlData))
 	}
 }
 

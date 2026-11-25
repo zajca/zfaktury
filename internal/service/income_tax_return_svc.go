@@ -202,8 +202,12 @@ func (s *IncomeTaxReturnService) Recalculate(ctx context.Context, id int64) (*do
 		itr.CapitalIncomeGross = summary.CapitalIncomeGross
 		itr.CapitalIncomeTax = summary.CapitalIncomeTax
 		itr.CapitalIncomeNet = summary.CapitalIncomeNet
-		itr.OtherIncomeGross = summary.OtherIncomeGross
-		itr.OtherIncomeExpenses = summary.OtherIncomeExpenses
+		// § 10 gross/expenses stored on the return are the taxable-only pair
+		// (exempt income is not declared, § 4 ZDP), so Příloha č. 2's
+		// uhrn_rozdil10 equals ř.40 (kc_zd10). The investments page keeps the
+		// full totals from the year summary.
+		itr.OtherIncomeGross = summary.OtherIncomeTaxableGross
+		itr.OtherIncomeExpenses = summary.OtherIncomeTaxableExpenses
 		itr.OtherIncomeExempt = summary.OtherIncomeExempt
 		itr.OtherIncomeNet = summary.OtherIncomeNet
 		// § 10 odst. 4 sentence 3: a negative § 10 total never lowers the other

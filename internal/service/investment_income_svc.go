@@ -398,6 +398,7 @@ func (s *InvestmentIncomeService) GetYearSummary(ctx context.Context, year int) 
 	}
 
 	var otherGross, otherExpenses, otherExempt domain.Amount
+	var taxableGross, taxableExpenses domain.Amount
 	for _, sell := range sells {
 		// A time-test-exempt sale that ends in a loss contributes 0 to the § 10
 		// base: no income, no expense, no loss (§ 10 odst. 4).
@@ -407,18 +408,32 @@ func (s *InvestmentIncomeService) GetYearSummary(ctx context.Context, year int) 
 		otherGross += sell.TotalAmount - sell.Fees
 		otherExpenses += sell.CostBasis
 		otherExempt += sell.ExemptAmount
+		// Taxable-only share for Příloha č. 2: the exempt part of the gain is
+		// split off proportionally from proceeds and costs, so the taxable
+		// difference equals the sale's taxable gain exactly.
+		taxableGain := sell.ComputedGain - sell.ExemptAmount
+		if sell.ComputedGain > 0 {
+			expensesPart := proportionalAmount(sell.CostBasis, taxableGain, sell.ComputedGain)
+			taxableExpenses += expensesPart
+			taxableGross += expensesPart + taxableGain
+		} else {
+			taxableGross += sell.TotalAmount - sell.Fees
+			taxableExpenses += sell.CostBasis
+		}
 	}
 	otherNet := otherGross - otherExpenses - otherExempt
 
 	return &domain.InvestmentYearSummary{
-		Year:                year,
-		CapitalIncomeGross:  capitalGross,
-		CapitalIncomeTax:    capitalTax,
-		CapitalIncomeNet:    capitalNet,
-		OtherIncomeGross:    otherGross,
-		OtherIncomeExpenses: otherExpenses,
-		OtherIncomeExempt:   otherExempt,
-		OtherIncomeNet:      otherNet,
+		Year:                       year,
+		CapitalIncomeGross:         capitalGross,
+		CapitalIncomeTax:           capitalTax,
+		CapitalIncomeNet:           capitalNet,
+		OtherIncomeGross:           otherGross,
+		OtherIncomeExpenses:        otherExpenses,
+		OtherIncomeExempt:          otherExempt,
+		OtherIncomeNet:             otherNet,
+		OtherIncomeTaxableGross:    taxableGross,
+		OtherIncomeTaxableExpenses: taxableExpenses,
 	}, nil
 }
 

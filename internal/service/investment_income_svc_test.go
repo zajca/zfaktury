@@ -1192,6 +1192,76 @@ func TestInvestmentIncomeService_GetYearSummary_ExemptLossSaleContributesZero(t 
 	}
 }
 
+// Příloha č. 2 declares only taxable § 10 income: the summary carries the
+// taxable-only gross/expenses next to the full totals. Exempt sale: proceeds
+// 600 CZK, cost 100 CZK (time-test exempt, exempt amount 500 CZK). Taxable
+// sale: proceeds 400 CZK, cost 300 CZK. Full gross = 1 000 CZK, full expenses
+// = 400 CZK, but the taxable pair is 400 / 300 CZK with a 100 CZK difference.
+func TestInvestmentIncomeService_GetYearSummary_TaxableOnlySection10(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	// Time-test-exempt sale with a gain: bought 2015-01-01 for 100 CZK,
+	// sold 2025-06-01 for 600 CZK -> gain 500 CZK, fully exempt.
+	buyOld := testSecTx(2025, domain.AssetTypeStock, "OLD", domain.TransactionTypeBuy,
+		time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC), 100, 10000)
+	if err := svc.CreateSecurityTransaction(ctx, buyOld); err != nil {
+		t.Fatalf("Create buyOld: %v", err)
+	}
+	sellOld := testSecTx(2025, domain.AssetTypeStock, "OLD", domain.TransactionTypeSell,
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 100, 60000)
+	if err := svc.CreateSecurityTransaction(ctx, sellOld); err != nil {
+		t.Fatalf("Create sellOld: %v", err)
+	}
+
+	// Taxable sale: bought 2024-06-01 for 300 CZK, sold 2025-06-02 for 400 CZK.
+	buyNew := testSecTx(2025, domain.AssetTypeStock, "NEW", domain.TransactionTypeBuy,
+		time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC), 100, 30000)
+	if err := svc.CreateSecurityTransaction(ctx, buyNew); err != nil {
+		t.Fatalf("Create buyNew: %v", err)
+	}
+	sellNew := testSecTx(2025, domain.AssetTypeStock, "NEW", domain.TransactionTypeSell,
+		time.Date(2025, 6, 2, 0, 0, 0, 0, time.UTC), 100, 40000)
+	if err := svc.CreateSecurityTransaction(ctx, sellNew); err != nil {
+		t.Fatalf("Create sellNew: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO: %v", err)
+	}
+
+	summary, err := svc.GetYearSummary(ctx, 2025)
+	if err != nil {
+		t.Fatalf("GetYearSummary() error: %v", err)
+	}
+
+	// Full totals (investments page): both sales' proceeds and costs.
+	if summary.OtherIncomeGross != 100000 {
+		t.Errorf("OtherIncomeGross = %d, want 100000", summary.OtherIncomeGross)
+	}
+	if summary.OtherIncomeExpenses != 40000 {
+		t.Errorf("OtherIncomeExpenses = %d, want 40000", summary.OtherIncomeExpenses)
+	}
+	if summary.OtherIncomeExempt != 50000 {
+		t.Errorf("OtherIncomeExempt = %d, want 50000", summary.OtherIncomeExempt)
+	}
+	if summary.OtherIncomeNet != 10000 {
+		t.Errorf("OtherIncomeNet = %d, want 10000", summary.OtherIncomeNet)
+	}
+
+	// Taxable-only totals (stored on the return, reported in Příloha č. 2):
+	// only the taxable sale's 400 / 300 CZK.
+	if summary.OtherIncomeTaxableGross != 40000 {
+		t.Errorf("OtherIncomeTaxableGross = %d, want 40000", summary.OtherIncomeTaxableGross)
+	}
+	if summary.OtherIncomeTaxableExpenses != 30000 {
+		t.Errorf("OtherIncomeTaxableExpenses = %d, want 30000", summary.OtherIncomeTaxableExpenses)
+	}
+	if diff := summary.OtherIncomeTaxableGross - summary.OtherIncomeTaxableExpenses; diff != summary.OtherIncomeNet {
+		t.Errorf("taxable gross - expenses = %d, want OtherIncomeNet %d", diff, summary.OtherIncomeNet)
+	}
+}
+
 func TestInvestmentIncomeService_NetAmountCalculation(t *testing.T) {
 	svc, _, _ := newInvestmentIncomeService(t)
 	ctx := context.Background()

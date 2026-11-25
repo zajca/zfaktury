@@ -65,7 +65,7 @@ func (g *ISDOCGenerator) buildDocument(inv *domain.Invoice, supplier SupplierInf
 		UUID:              fmt.Sprintf("zfaktury-%d", inv.ID),
 		IssuingSystem:     "ZFaktury",
 		IssueDate:         inv.IssueDate.Format("2006-01-02"),
-		TaxPointDate:      inv.DeliveryDate.Format("2006-01-02"),
+		TaxPointDate:      inv.TaxableSupplyDate().Format("2006-01-02"),
 		VATApplicable:     g.hasVAT(inv),
 		Note:              inv.Notes,
 		LocalCurrencyCode: "CZK",

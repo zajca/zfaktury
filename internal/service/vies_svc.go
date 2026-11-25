@@ -144,7 +144,13 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 	if vs.Status == domain.FilingStatusFiled {
 		return fmt.Errorf("recalculating VIES summary: %w: cannot recalculate a filed summary", domain.ErrInvalidInput)
 	}
+	return s.recalculate(ctx, vs)
+}
 
+// recalculate recomputes the lines of a non-filed VIES summary from the current
+// invoice data and stores them, replacing any previous lines.
+func (s *VIESSummaryService) recalculate(ctx context.Context, vs *domain.VIESSummary) error {
+	id := vs.ID
 	startDate, endDate := quarterDateRange(vs.Period.Year, vs.Period.Quarter)
 
 	// Fetch invoices in the quarter by delivery date; status is filtered in code.
@@ -244,12 +250,55 @@ func (s *VIESSummaryService) Recalculate(ctx context.Context, id int64) error {
 	return nil
 }
 
+// msgVIESNoFiledSummary is the user-facing text when no summary of the quarter
+// is filed yet, so a follow-up summary has no baseline to correct.
+const msgVIESNoFiledSummary = "Za toto čtvrtletí zatím není podané žádné souhrnné hlášení VIES. Nejprve označte řádné souhrnné hlášení za toto čtvrtletí jako podané."
+
+// filedBaselineLines returns the lines of the most recently filed other VIES
+// summary of the same year and quarter, any filing type. Stored lines hold the
+// full recomputed state of the quarter, so they are the effective filed state a
+// corrective or supplementary summary corrects.
+func (s *VIESSummaryService) filedBaselineLines(ctx context.Context, vs *domain.VIESSummary) ([]domain.VIESSummaryLine, error) {
+	summaries, err := s.repo.List(ctx, vs.Period.Year)
+	if err != nil {
+		return nil, fmt.Errorf("listing VIES summaries for the filed baseline: %w", err)
+	}
+	var latest *domain.VIESSummary
+	for i := range summaries {
+		candidate := &summaries[i]
+		if candidate.ID == vs.ID || candidate.Period.Quarter != vs.Period.Quarter {
+			continue
+		}
+		if candidate.Status != domain.FilingStatusFiled || candidate.FiledAt == nil {
+			continue
+		}
+		if latest == nil || candidate.FiledAt.After(*latest.FiledAt) {
+			latest = candidate
+		}
+	}
+	if latest == nil {
+		return nil, fmt.Errorf("finding a filed VIES summary for the quarter: %w", &domain.UserMessageError{Message: msgVIESNoFiledSummary})
+	}
+	lines, err := s.repo.GetLines(ctx, latest.ID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching the filed VIES summary lines for the baseline: %w", err)
+	}
+	return lines, nil
+}
+
 // GenerateXML generates the EPO XML for a VIES summary and stores it. The
 // taxpayer block is read from settings, the same source the VAT return uses.
+// A filed summary is refused. For a corrective or supplementary summary the
+// lines are first recomputed from the current invoices and the baseline lines
+// of the most recently filed summary of the same quarter are passed to the
+// generator, so only storno rows and changed rows are emitted.
 func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64) error {
 	vs, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary for XML generation: %w", err)
+	}
+	if vs.Status == domain.FilingStatusFiled {
+		return fmt.Errorf("generating VIES XML: %w: cannot generate XML for a filed summary", domain.ErrInvalidInput)
 	}
 
 	info, err := buildTaxpayerInfo(ctx, s.settings)
@@ -260,13 +309,30 @@ func (s *VIESSummaryService) GenerateXML(ctx context.Context, id int64) error {
 		return err
 	}
 
+	followUp := vs.FilingType == domain.FilingTypeCorrective || vs.FilingType == domain.FilingTypeSupplementary
+	if followUp {
+		// The diff must reflect the current state of the quarter, not stale
+		// stored lines, so recompute the lines from the invoices first.
+		if err := s.recalculate(ctx, vs); err != nil {
+			return fmt.Errorf("recalculating VIES summary lines for XML generation: %w", err)
+		}
+	}
+
 	lines, err := s.repo.GetLines(ctx, id)
 	if err != nil {
 		return fmt.Errorf("fetching VIES summary lines for XML generation: %w", err)
 	}
 
+	var baseline []domain.VIESSummaryLine
+	if followUp {
+		baseline, err = s.filedBaselineLines(ctx, vs)
+		if err != nil {
+			return err
+		}
+	}
+
 	gen := vatxml.VIESSummaryGenerator{}
-	xmlData, err := gen.Generate(vs, lines, info)
+	xmlData, err := gen.Generate(vs, lines, baseline, info)
 	if err != nil {
 		return fmt.Errorf("generating VIES XML: %w", err)
 	}

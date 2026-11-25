@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // unzipSingleEntry opens body as a ZIP archive, requires exactly one entry and
@@ -74,6 +75,26 @@ func TestPackagingZIP_SendsSingleEntryArchive(t *testing.T) {
 	}
 }
 
+func TestPackagingZIP_EntryCarriesModificationTime(t *testing.T) {
+	fixed := time.Date(2026, 3, 1, 12, 34, 56, 0, time.UTC)
+	srv, rec := newFake(t, http.StatusOK, fixture(t, "open_form_url.xml"))
+	c := NewClient(WithBaseURL(srv.URL+"/dpr"), WithNow(func() time.Time { return fixed }))
+
+	if _, err := c.OpenForm(context.Background(), []byte(sampleXML), PackagingZIP); err != nil {
+		t.Fatalf("OpenForm: %v", err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.body), int64(len(rec.body)))
+	if err != nil {
+		t.Fatalf("request body is not a ZIP archive: %v", err)
+	}
+	if len(zr.File) != 1 {
+		t.Fatalf("archive has %d entries, want exactly 1", len(zr.File))
+	}
+	if got := zr.File[0].Modified; got.IsZero() || !got.Equal(fixed) {
+		t.Errorf("entry Modified = %v, want the injected %v", got, fixed)
+	}
+}
+
 func TestPackagingPlain_SendsXMLUnchanged(t *testing.T) {
 	srv, rec := newFake(t, http.StatusOK, fixture(t, "open_form_url.xml"))
 	c := NewClient(WithBaseURL(srv.URL + "/dpr"))
@@ -113,8 +134,8 @@ func TestPackagingZIP_ArchiveOverLimitIsRefused(t *testing.T) {
 	xmlData := []byte(`<Pisemnost/>`)
 	c := NewClient(WithBaseURL(srv.URL), WithMaxRequestBytes(int64(len(xmlData))))
 
-	if _, err := c.Check(context.Background(), xmlData, PackagingZIP); !errors.Is(err, ErrInvalidXML) {
-		t.Errorf("err = %v, want ErrInvalidXML", err)
+	if _, err := c.Check(context.Background(), xmlData, PackagingZIP); !errors.Is(err, ErrRequestTooLarge) {
+		t.Errorf("err = %v, want ErrRequestTooLarge", err)
 	}
 	if calls != 0 {
 		t.Errorf("fake received %d request(s), want none", calls)
@@ -126,8 +147,8 @@ func TestPackaging_UnknownValueIsRefused(t *testing.T) {
 	srv := newCountingServer(t, &calls)
 	c := NewClient(WithBaseURL(srv.URL))
 
-	if _, err := c.Check(context.Background(), []byte(sampleXML), Packaging(99)); !errors.Is(err, ErrInvalidXML) {
-		t.Errorf("err = %v, want ErrInvalidXML", err)
+	if _, err := c.Check(context.Background(), []byte(sampleXML), Packaging(99)); !errors.Is(err, ErrPackaging) {
+		t.Errorf("err = %v, want ErrPackaging", err)
 	}
 	if calls != 0 {
 		t.Errorf("fake received %d request(s), want none", calls)

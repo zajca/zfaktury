@@ -113,6 +113,9 @@ func (h *EPOHandler) respondOpenFormError(w http.ResponseWriter, err error) {
 		respondError(w, http.StatusNotFound, "Podání nebylo nalezeno.")
 	case errors.Is(err, domain.ErrInvalidInput):
 		respondError(w, http.StatusBadRequest, "Neplatný požadavek.")
+	case errors.Is(err, epo.ErrPackaging), errors.Is(err, epo.ErrRequestTooLarge):
+		slog.Error("EPO open-form request could not be packed", "error", err)
+		respondError(w, http.StatusInternalServerError, "Podání se nepodařilo připravit pro EPO. Zkuste to znovu, nebo stáhněte XML a nahrajte ho ručně.")
 	case errors.Is(err, epo.ErrInvalidXML):
 		respondError(w, http.StatusUnprocessableEntity, "XML podání nelze odeslat do EPO. Vygenerujte ho znovu.")
 	case errors.Is(err, epo.ErrEPOTimeout):

@@ -25,7 +25,7 @@ type VIESVetaD struct {
 	DPoddp      string `xml:"d_poddp,attr"`      // Date of the filing, DD.MM.RRRR
 	Rok         int    `xml:"rok,attr"`          // Year
 	Ctvrt       int    `xml:"ctvrt,attr"`        // Quarter (1-4)
-	ShviesForma string `xml:"shvies_forma,attr"` // Filing form: R=regular (N is not generated)
+	ShviesForma string `xml:"shvies_forma,attr"` // Filing form: R=regular, N=follow-up (corrective/supplementary)
 }
 
 // VIESVetaP contains the taxpayer identification. c_ufo, dic and typ_ds are
@@ -45,10 +45,14 @@ type VIESVetaP struct {
 }
 
 // VIESVetaR contains one line of the summary: the totals for one EU partner and
-// type of supply.
+// type of supply. A storno row of a follow-up summary (KStorno "A") carries
+// only k_stat, c_vat, k_pln_eu and k_storno; pln_hodnota is required on every
+// other row, including a real row with value 0, so it is a pointer that is nil
+// only on storno rows.
 type VIESVetaR struct {
-	KStat      string `xml:"k_stat,attr"`      // Country code (2-letter)
-	CVat       string `xml:"c_vat,attr"`       // Partner VAT ID (without country prefix)
-	KPlnEU     string `xml:"k_pln_eu,attr"`    // Type of supply: 0=goods, 1=transfer, 2=triangular, 3=services
-	PlnHodnota int64  `xml:"pln_hodnota,attr"` // Total value in whole CZK
+	KStorno    string `xml:"k_storno,attr,omitempty"` // "A" on a storno row
+	KStat      string `xml:"k_stat,attr"`             // Country code (2-letter)
+	CVat       string `xml:"c_vat,attr"`              // Partner VAT ID (without country prefix)
+	KPlnEU     string `xml:"k_pln_eu,attr"`           // Type of supply: 0=goods, 1=transfer, 2=triangular, 3=services
+	PlnHodnota *int64 `xml:"pln_hodnota,attr,omitempty"`
 }

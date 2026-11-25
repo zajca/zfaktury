@@ -2,11 +2,27 @@ package pdf
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/zajca/zfaktury/internal/domain"
 )
+
+func TestDuzpLabel_ZeroDeliveryDateShowsIssueDate(t *testing.T) {
+	inv := &domain.Invoice{
+		IssueDate: time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC),
+		// DeliveryDate left zero, as in invoices saved before DUZP existed.
+	}
+
+	got := duzpLabel(inv)
+	if !strings.Contains(got, "10.03.2026") {
+		t.Errorf("duzpLabel = %q, want the issue date 10.03.2026", got)
+	}
+	if strings.Contains(got, "01.01.0001") {
+		t.Errorf("duzpLabel = %q, must not show the zero date", got)
+	}
+}
 
 func TestInvoicePDFGenerator_Generate(t *testing.T) {
 	gen := NewInvoicePDFGenerator()

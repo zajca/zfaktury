@@ -1,8 +1,14 @@
 package service
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"sort"
 	"time"
+
+	"github.com/zajca/zfaktury/internal/domain"
+	"github.com/zajca/zfaktury/internal/repository"
 )
 
 // TaxDeadline represents a single tax deadline in the Czech tax calendar.
@@ -14,16 +20,35 @@ type TaxDeadline struct {
 }
 
 // TaxCalendarService provides Czech tax calendar with holiday-aware deadline shifting.
-type TaxCalendarService struct{}
-
-// NewTaxCalendarService creates a new TaxCalendarService.
-func NewTaxCalendarService() *TaxCalendarService {
-	return &TaxCalendarService{}
+type TaxCalendarService struct {
+	taxYearSettingsRepo repository.TaxYearSettingsRepo
 }
 
-// GetDeadlines returns all tax deadlines for the given year, shifted to business days.
-func (s *TaxCalendarService) GetDeadlines(year int) []TaxDeadline {
+// NewTaxCalendarService creates a new TaxCalendarService.
+func NewTaxCalendarService(taxYearSettingsRepo repository.TaxYearSettingsRepo) *TaxCalendarService {
+	return &TaxCalendarService{taxYearSettingsRepo: taxYearSettingsRepo}
+}
+
+// GetDeadlines returns all tax deadlines for the given calendar year, shifted
+// to business days. The return and insurance overview deadlines follow the
+// filing method stored for tax year year-1.
+func (s *TaxCalendarService) GetDeadlines(ctx context.Context, year int) ([]TaxDeadline, error) {
 	holidays := czechPublicHolidays(year)
+
+	taxYear := year - 1
+	method, err := s.filingMethod(ctx, taxYear)
+	if err != nil {
+		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
+	}
+	returnDate, err := IncomeTaxReturnDeadline(taxYear, method)
+	if err != nil {
+		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
+	}
+	overviewDate, err := OverviewDeadline(taxYear, method)
+	if err != nil {
+		return nil, fmt.Errorf("listing tax deadlines for %d: %w", year, err)
+	}
+	methodNote := filingMethodNote(taxYear, method)
 
 	var deadlines []TaxDeadline
 
@@ -55,28 +80,28 @@ func (s *TaxCalendarService) GetDeadlines(year int) []TaxDeadline {
 		})
 	}
 
-	// Income tax annual return: April 1.
+	// Income tax annual return: deadline depends on the filing method of the tax year.
 	deadlines = append(deadlines, TaxDeadline{
 		Name:        "Income tax return",
-		Date:        s.nextBusinessDay(time.Date(year, time.April, 1, 0, 0, 0, 0, time.UTC), holidays),
+		Date:        returnDate,
 		Type:        "income_tax",
-		Description: "Annual income tax return filing deadline",
+		Description: "Annual income tax return filing deadline; " + methodNote,
 	})
 
-	// Social insurance overview: May 2.
+	// Social insurance overview: one month after the return deadline.
 	deadlines = append(deadlines, TaxDeadline{
 		Name:        "Social insurance overview",
-		Date:        s.nextBusinessDay(time.Date(year, time.May, 2, 0, 0, 0, 0, time.UTC), holidays),
+		Date:        overviewDate,
 		Type:        "social",
-		Description: "Annual social insurance overview filing deadline",
+		Description: "Annual social insurance overview filing deadline; " + methodNote,
 	})
 
-	// Health insurance overview: May 2.
+	// Health insurance overview: one month after the return deadline.
 	deadlines = append(deadlines, TaxDeadline{
 		Name:        "Health insurance overview",
-		Date:        s.nextBusinessDay(time.Date(year, time.May, 2, 0, 0, 0, 0, time.UTC), holidays),
+		Date:        overviewDate,
 		Type:        "health",
-		Description: "Annual health insurance overview filing deadline",
+		Description: "Annual health insurance overview filing deadline; " + methodNote,
 	})
 
 	// Quarterly income tax advances.
@@ -103,7 +128,29 @@ func (s *TaxCalendarService) GetDeadlines(year int) []TaxDeadline {
 		return deadlines[i].Date.Before(deadlines[j].Date)
 	})
 
-	return deadlines
+	return deadlines, nil
+}
+
+// filingMethod returns the filing method stored for the given tax year. A
+// missing settings row counts as unset.
+func (s *TaxCalendarService) filingMethod(ctx context.Context, taxYear int) (domain.FilingMethod, error) {
+	tys, err := s.taxYearSettingsRepo.GetByYear(ctx, taxYear)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.FilingMethodUnset, nil
+		}
+		return "", fmt.Errorf("fetching tax year settings for %d: %w", taxYear, err)
+	}
+	return tys.FilingMethod, nil
+}
+
+// filingMethodNote describes the filing method behind the return and overview
+// deadlines; an unset method states the 1 April assumption.
+func filingMethodNote(taxYear int, method domain.FilingMethod) string {
+	if method == domain.FilingMethodUnset {
+		return fmt.Sprintf("dates assume filing by 1 April because no filing method is set for tax year %d", taxYear)
+	}
+	return fmt.Sprintf("filing method for tax year %d: %s", taxYear, method)
 }
 
 // nextBusinessDay shifts a date forward if it falls on a weekend or Czech public holiday.

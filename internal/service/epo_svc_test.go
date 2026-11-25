@@ -66,6 +66,23 @@ func TestEPOKind_Packaging(t *testing.T) {
 	}
 }
 
+// The EPO packaging of every kind must stay equal to the packaging the filing
+// kinds table declares for the same document, because the EPO check in the
+// filing flow reads it from there.
+func TestEPOKind_PackagingMatchesFilingKinds(t *testing.T) {
+	for _, kind := range []EPOKind{EPOKindVATReturn, EPOKindControlStatement, EPOKindVIESSummary, EPOKindIncomeTax} {
+		t.Run(string(kind), func(t *testing.T) {
+			info, ok := filingKinds[domain.FilingKind(kind)]
+			if !ok {
+				t.Fatalf("filing kinds table has no entry for %q", kind)
+			}
+			if got := kind.Packaging(); got != info.epoPackaging {
+				t.Errorf("%s: EPOKind.Packaging() = %d, filingKinds epoPackaging = %d", kind, got, info.epoPackaging)
+			}
+		})
+	}
+}
+
 // The kind decides the packaging of both the check and the form request.
 func TestEPOService_OpenForm_RoutesPackagingByKind(t *testing.T) {
 	for kind, want := range map[EPOKind]epo.Packaging{

@@ -21,7 +21,7 @@ export default defineConfig({
 			reporter: ['text', 'html', 'lcov'],
 			reportsDirectory: './coverage',
 			include: ['src/lib/**/*.ts', 'src/lib/**/*.svelte', 'src/routes/**/*.svelte'],
-			exclude: ['src/**/*.test.ts', 'src/test-setup.ts', 'src/**/*.d.ts']
+			exclude: ['src/**/*.test.ts', 'src/test-setup.ts', 'src/**/*.d.ts', 'src/lib/test-utils/**']
 		}
 	},
 	resolve: {

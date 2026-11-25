@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/csv"
 	"net/http"
 	"net/http/httptest"
@@ -164,6 +165,65 @@ func TestExportHandler_ExportInvoices_WithData(t *testing.T) {
 	// Currency should be CZK.
 	if dataRow[10] != "CZK" {
 		t.Errorf("currency = %q, want %q", dataRow[10], "CZK")
+	}
+}
+
+func TestExportHandler_ExportInvoices_ZeroDeliveryDateShowsIssueDate(t *testing.T) {
+	db := testutil.NewTestDB(t)
+
+	invoiceRepo := repository.NewInvoiceRepository(db)
+	expenseRepo := repository.NewExpenseRepository(db)
+	contactRepo := repository.NewContactRepository(db)
+	seqRepo := repository.NewSequenceRepository(db)
+
+	contactSvc := service.NewContactService(contactRepo, nil, nil)
+	seqSvc := service.NewSequenceService(seqRepo, nil)
+	invoiceSvc := service.NewInvoiceService(invoiceRepo, contactSvc, seqSvc, nil)
+	expenseSvc := service.NewExpenseService(expenseRepo, nil)
+
+	h := NewExportHandler(invoiceSvc, expenseSvc)
+
+	contact := testutil.SeedContact(t, db, &domain.Contact{Name: "Export Test Corp"})
+	items := []domain.InvoiceItem{
+		{
+			Description:    "Development",
+			Quantity:       100,
+			Unit:           "hod",
+			UnitPrice:      domain.NewAmount(1500, 0),
+			VATRatePercent: 21,
+		},
+	}
+	inv := testutil.SeedInvoice(t, db, contact.ID, items)
+	// Invoices saved before DUZP existed hold no delivery date.
+	if _, err := db.ExecContext(context.Background(), "UPDATE invoices SET delivery_date = NULL WHERE id = ?", inv.ID); err != nil {
+		t.Fatalf("clearing delivery_date: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Get("/invoices", h.ExportInvoices)
+
+	req := httptest.NewRequest(http.MethodGet, "/invoices", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body = %s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	body := w.Body.Bytes()
+	reader := csv.NewReader(strings.NewReader(string(body[3:])))
+	reader.Comma = ';'
+	records, err := reader.ReadAll()
+	if err != nil {
+		t.Fatalf("parsing CSV: %v", err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("expected 2 rows (header + data), got %d", len(records))
+	}
+
+	want := inv.IssueDate.Format("02.01.2006")
+	if got := records[1][6]; got != want {
+		t.Errorf("DUZP column = %q, want the issue date %q", got, want)
 	}
 }
 

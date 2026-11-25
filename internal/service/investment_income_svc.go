@@ -192,6 +192,8 @@ type assetGroupKey struct {
 }
 
 // RecalculateFIFO recomputes FIFO cost basis, gains, and time test exemptions for all sells in a year.
+// Lots are matched over each asset's full transaction history in date order, so lots consumed by
+// sells in earlier years are not reused and a buy dated after a sale never matches it.
 func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int) error {
 	constants, err := calc.GetTaxConstants(year)
 	if err != nil {
@@ -206,11 +208,10 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 		return nil
 	}
 
-	// Group sells by (assetName, assetType).
-	groups := make(map[assetGroupKey][]domain.SecurityTransaction)
+	// Group sells by (assetName, assetType) to find the assets with sells this year.
+	assetKeys := make(map[assetGroupKey]struct{})
 	for _, sell := range sells {
-		key := assetGroupKey{AssetName: sell.AssetName, AssetType: sell.AssetType}
-		groups[key] = append(groups[key], sell)
+		assetKeys[assetGroupKey{AssetName: sell.AssetName, AssetType: sell.AssetType}] = struct{}{}
 	}
 
 	// FIFO results are collected first because the exemption limit applies to
@@ -219,8 +220,8 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 	var limitedIncome domain.Amount
 
 	// Sort group keys for deterministic processing.
-	keys := make([]assetGroupKey, 0, len(groups))
-	for k := range groups {
+	keys := make([]assetGroupKey, 0, len(assetKeys))
+	for k := range assetKeys {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
@@ -231,23 +232,31 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 	})
 
 	for _, key := range keys {
-		groupSells := groups[key]
-
-		// Sort sells by transaction date (FIFO order).
-		sort.Slice(groupSells, func(i, j int) bool {
-			return groupSells[i].TransactionDate.Before(groupSells[j].TransactionDate)
-		})
-
-		// Load all buys for this asset group.
+		// Load the asset's full transaction history (all years) so that lots
+		// already consumed by sells in earlier years are not reused.
 		buys, err := s.securityRepo.ListBuysForFIFO(ctx, key.AssetName, key.AssetType)
 		if err != nil {
 			return fmt.Errorf("listing buys for FIFO asset %s/%s: %w", key.AssetName, key.AssetType, err)
 		}
+		history, err := s.securityRepo.ListSellsForFIFO(ctx, key.AssetName, key.AssetType)
+		if err != nil {
+			return fmt.Errorf("listing sell history for FIFO asset %s/%s: %w", key.AssetName, key.AssetType, err)
+		}
 
-		// Track consumed quantity per buy (shared across all sells of this group).
+		// Walk the history in date order, carrying the remaining quantity per
+		// buy lot across years. A buy dated on or before a sale is available to
+		// it (a buy on the sale date counts); a buy dated after the sale never
+		// matches it. Only sells of the requested year get stored results.
 		consumed := make(map[int64]int64) // buyID -> consumed quantity
+		var lots []*domain.SecurityTransaction
+		nextBuy := 0
 
-		for _, sell := range groupSells {
+		for _, sell := range history {
+			for nextBuy < len(buys) && !buys[nextBuy].TransactionDate.After(sell.TransactionDate) {
+				lots = append(lots, &buys[nextBuy])
+				nextBuy++
+			}
+
 			remainingQty := sell.Quantity
 			var costBasis domain.Amount
 			allBuysExempt := true
@@ -264,13 +273,11 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 			}
 			timeTestCutoff := sell.TransactionDate.AddDate(-constants.TimeTestYears, 0, 0)
 
-			for _, buy := range buys {
-				if remainingQty <= 0 {
-					break
-				}
-
-				availableQty := buy.Quantity - consumed[buy.ID]
+			for len(lots) > 0 && remainingQty > 0 {
+				lot := lots[0]
+				availableQty := lot.Quantity - consumed[lot.ID]
 				if availableQty <= 0 {
+					lots = lots[1:]
 					continue
 				}
 
@@ -282,21 +289,30 @@ func (s *InvestmentIncomeService) RecalculateFIFO(ctx context.Context, year int)
 
 				// Calculate proportional cost basis from this buy.
 				// costBasis portion = buy.TotalAmount * (takeQty / buy.Quantity)
-				buyCost := domain.Amount(int64(buy.TotalAmount) * takeQty / buy.Quantity)
+				buyCost := domain.Amount(int64(lot.TotalAmount) * takeQty / lot.Quantity)
 				costBasis += buyCost
 
 				// Check time test: buy must be before the cutoff date.
-				if !buy.TransactionDate.Before(timeTestCutoff) {
+				if !lot.TransactionDate.Before(timeTestCutoff) {
 					allBuysExempt = false
 				}
 
-				consumed[buy.ID] += takeQty
+				consumed[lot.ID] += takeQty
 				remainingQty -= takeQty
+				if consumed[lot.ID] >= lot.Quantity {
+					lots = lots[1:]
+				}
 			}
 
 			// If we couldn't match all sell quantity to buys, mark as not exempt.
 			if remainingQty > 0 {
 				allBuysExempt = false
+			}
+
+			// Sells of other years only consume lots; their stored results are
+			// not rewritten.
+			if sell.Year != year {
+				continue
 			}
 
 			limited := allBuysExempt && exemptionLimitApplies(constants, sell.AssetType)

@@ -245,6 +245,31 @@ func (r *SecurityTransactionRepository) ListBuysForFIFO(ctx context.Context, ass
 	return result, nil
 }
 
+// ListSellsForFIFO retrieves all sell transactions for a given asset in any year, ordered by date for FIFO matching.
+func (r *SecurityTransactionRepository) ListSellsForFIFO(ctx context.Context, assetName, assetType string) ([]domain.SecurityTransaction, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+securityTransactionColumns+` FROM security_transactions WHERE asset_name = ? AND asset_type = ? AND transaction_type = 'sell' ORDER BY transaction_date ASC, id ASC`,
+		assetName, assetType,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("listing sell transactions for FIFO (%s/%s): %w", assetName, assetType, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.SecurityTransaction
+	for rows.Next() {
+		t, err := scanSecurityTransaction(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning security_transaction row: %w", err)
+		}
+		result = append(result, *t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating security_transaction rows: %w", err)
+	}
+	return result, nil
+}
+
 // ListSellsByYear retrieves all sell transactions for a given year, ordered by date.
 func (r *SecurityTransactionRepository) ListSellsByYear(ctx context.Context, year int) ([]domain.SecurityTransaction, error) {
 	rows, err := r.db.QueryContext(ctx,

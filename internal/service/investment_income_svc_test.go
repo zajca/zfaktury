@@ -832,6 +832,160 @@ func TestInvestmentIncomeService_RecalculateFIFO_SellWithNoMatchingBuys(t *testi
 	}
 }
 
+// FIFO must run over the asset's full history: a lot consumed by a sale in an
+// earlier year cannot be reused by a later sale. Buy 10 in 2020, sell 10 in
+// 2024, buy 10 in 2024, sell 10 in 2025 -> the 2025 sale consumes the 2024 lot
+// (taxable, 2024 cost basis), and the 2025 recalculation must not rewrite the
+// stored 2024 results.
+func TestInvestmentIncomeService_RecalculateFIFO_MultiYearLots(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	buy2020 := testSecTx(2020, domain.AssetTypeStock, "AAPL", domain.TransactionTypeBuy,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 100000, 1000000)
+	if err := svc.CreateSecurityTransaction(ctx, buy2020); err != nil {
+		t.Fatalf("Create buy2020: %v", err)
+	}
+	sell2024 := testSecTx(2024, domain.AssetTypeStock, "AAPL", domain.TransactionTypeSell,
+		time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC), 100000, 2000000)
+	if err := svc.CreateSecurityTransaction(ctx, sell2024); err != nil {
+		t.Fatalf("Create sell2024: %v", err)
+	}
+	buy2024 := testSecTx(2024, domain.AssetTypeStock, "AAPL", domain.TransactionTypeBuy,
+		time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC), 100000, 3000000)
+	if err := svc.CreateSecurityTransaction(ctx, buy2024); err != nil {
+		t.Fatalf("Create buy2024: %v", err)
+	}
+	sell2025 := testSecTx(2025, domain.AssetTypeStock, "AAPL", domain.TransactionTypeSell,
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 100000, 4000000)
+	if err := svc.CreateSecurityTransaction(ctx, sell2025); err != nil {
+		t.Fatalf("Create sell2025: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2024); err != nil {
+		t.Fatalf("RecalculateFIFO(2024) error: %v", err)
+	}
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO(2025) error: %v", err)
+	}
+
+	got2025, err := svc.GetSecurityTransaction(ctx, sell2025.ID)
+	if err != nil {
+		t.Fatalf("Get sell2025: %v", err)
+	}
+	// The 2020 lot was consumed by the 2024 sale; the 2025 sale must use the
+	// 2024-07-01 lot with its 3 000 000 halere cost.
+	if got2025.CostBasis != 3000000 {
+		t.Errorf("sell2025 CostBasis = %d, want 3000000 (2024 lot)", got2025.CostBasis)
+	}
+	if got2025.ComputedGain != 1000000 {
+		t.Errorf("sell2025 ComputedGain = %d, want 1000000", got2025.ComputedGain)
+	}
+	// The 2024 lot was held about a year: no time-test exemption.
+	if got2025.TimeTestExempt {
+		t.Error("sell2025 TimeTestExempt = true, want false (2024 lot held < 3 years)")
+	}
+
+	// The 2025 recalculation must not rewrite the 2024 results.
+	got2024, err := svc.GetSecurityTransaction(ctx, sell2024.ID)
+	if err != nil {
+		t.Fatalf("Get sell2024: %v", err)
+	}
+	if got2024.CostBasis != 1000000 {
+		t.Errorf("sell2024 CostBasis = %d, want 1000000 (2020 lot)", got2024.CostBasis)
+	}
+	if !got2024.TimeTestExempt {
+		t.Error("sell2024 TimeTestExempt = false, want true (2020 lot held > 3 years)")
+	}
+	if got2024.ExemptAmount != 1000000 {
+		t.Errorf("sell2024 ExemptAmount = %d, want 1000000", got2024.ExemptAmount)
+	}
+}
+
+// Partial lots carry across years: buy 10 in 2020, buy 10 in 2023, sell 4 in
+// 2023, sell 8 in 2025 -> the 2025 sale takes 6 from the 2020 lot and 2 from the
+// 2023 lot.
+func TestInvestmentIncomeService_RecalculateFIFO_PartialLotsAcrossYears(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	buy2020 := testSecTx(2020, domain.AssetTypeETF, "VWCE", domain.TransactionTypeBuy,
+		time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), 100000, 1000000)
+	if err := svc.CreateSecurityTransaction(ctx, buy2020); err != nil {
+		t.Fatalf("Create buy2020: %v", err)
+	}
+	buy2023 := testSecTx(2023, domain.AssetTypeETF, "VWCE", domain.TransactionTypeBuy,
+		time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), 100000, 2000000)
+	if err := svc.CreateSecurityTransaction(ctx, buy2023); err != nil {
+		t.Fatalf("Create buy2023: %v", err)
+	}
+	sell2023 := testSecTx(2023, domain.AssetTypeETF, "VWCE", domain.TransactionTypeSell,
+		time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC), 40000, 900000)
+	if err := svc.CreateSecurityTransaction(ctx, sell2023); err != nil {
+		t.Fatalf("Create sell2023: %v", err)
+	}
+	sell2025 := testSecTx(2025, domain.AssetTypeETF, "VWCE", domain.TransactionTypeSell,
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 80000, 2000000)
+	if err := svc.CreateSecurityTransaction(ctx, sell2025); err != nil {
+		t.Fatalf("Create sell2025: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO(2025) error: %v", err)
+	}
+
+	got, err := svc.GetSecurityTransaction(ctx, sell2025.ID)
+	if err != nil {
+		t.Fatalf("Get sell2025: %v", err)
+	}
+	// 6 from the 2020 lot (1 000 000 * 60000/100000 = 600 000) + 2 from the
+	// 2023 lot (2 000 000 * 20000/100000 = 400 000).
+	if got.CostBasis != 1000000 {
+		t.Errorf("CostBasis = %d, want 1000000 (600000 from 2020 lot + 400000 from 2023 lot)", got.CostBasis)
+	}
+	// The 2023 lot is younger than the 3-year cutoff for a 2025-06-01 sale.
+	if got.TimeTestExempt {
+		t.Error("TimeTestExempt = true, want false (part of the sale comes from the 2023 lot)")
+	}
+}
+
+// A buy dated after the sale must never match it — the sale is reported like a
+// short sale today: no cost basis, not exempt.
+func TestInvestmentIncomeService_RecalculateFIFO_BuyAfterSaleNotMatched(t *testing.T) {
+	svc, _, _ := newInvestmentIncomeService(t)
+	ctx := context.Background()
+
+	sell := testSecTx(2025, domain.AssetTypeStock, "ORPHAN", domain.TransactionTypeSell,
+		time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC), 100000, 500000)
+	if err := svc.CreateSecurityTransaction(ctx, sell); err != nil {
+		t.Fatalf("Create sell: %v", err)
+	}
+	// The only buy is dated one month AFTER the sale (and booked in 2026).
+	buyLater := testSecTx(2026, domain.AssetTypeStock, "ORPHAN", domain.TransactionTypeBuy,
+		time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC), 100000, 100000)
+	if err := svc.CreateSecurityTransaction(ctx, buyLater); err != nil {
+		t.Fatalf("Create buyLater: %v", err)
+	}
+
+	if err := svc.RecalculateFIFO(ctx, 2025); err != nil {
+		t.Fatalf("RecalculateFIFO(2025) error: %v", err)
+	}
+
+	got, err := svc.GetSecurityTransaction(ctx, sell.ID)
+	if err != nil {
+		t.Fatalf("Get sell: %v", err)
+	}
+	if got.CostBasis != 0 {
+		t.Errorf("CostBasis = %d, want 0 (buy dated after the sale must not match)", got.CostBasis)
+	}
+	if got.TimeTestExempt {
+		t.Error("TimeTestExempt = true, want false")
+	}
+	if got.ComputedGain != 500000 {
+		t.Errorf("ComputedGain = %d, want 500000", got.ComputedGain)
+	}
+}
+
 // The crypto time-test exemption (§ 4 odst. 1 písm. zk), zákon 32/2025 Sb.)
 // applies only to sales on or after 15 Feb 2025, no matter when the coins were
 // bought; earlier crypto sales stay taxable even when held more than 3 years.

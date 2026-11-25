@@ -311,7 +311,7 @@ func TestIncomeTaxXML_Priloha2_ReportsTaxableSection10Only(t *testing.T) {
 		"taxpayer_last_name":    "Novak",
 		"taxpayer_birth_number": "8001010006",
 		"dic":                   "CZ1234567890",
-		"taxpayer_street":      "Hlavni",
+		"taxpayer_street":       "Hlavni",
 		"taxpayer_house_number": "42",
 		"taxpayer_city":         "Praha",
 		"taxpayer_postal_code":  "11000",

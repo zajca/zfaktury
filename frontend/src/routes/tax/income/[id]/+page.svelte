@@ -59,6 +59,15 @@
 		tax_ruleset_provisional: {
 			title: 'Přiznání používá předběžná daňová pravidla',
 			helpTopicId: 'rocni-dane'
+		},
+		child_bonus_income_test: {
+			title:
+				'Daňový bonus nelze vyplatit: příjmy podle § 6 a § 7 nedosahují šestinásobku minimální mzdy',
+			helpTopicId: 'zvyhodneni-na-deti'
+		},
+		child_bonus_below_minimum: {
+			title: 'Daňový bonus pod 100 Kč se nevyplácí',
+			helpTopicId: 'zvyhodneni-na-deti'
 		}
 	};
 

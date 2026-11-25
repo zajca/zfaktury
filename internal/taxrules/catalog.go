@@ -60,7 +60,9 @@ var ruleSets = map[int]RuleSet{
 			SecurityExemptionLimit: domain.NewAmount(0, 0),
 			SpouseIncomeLimit:      domain.NewAmount(68_000, 0),
 			// Minimální mzda k 1. 1. 2024 (nařízení vlády č. 396/2023 Sb.; MPSV).
-			MinimumWage:                 domain.NewAmount(18_900, 0),
+			MinimumWage: domain.NewAmount(18_900, 0),
+			// Minimální výše daňového bonusu (§ 35c odst. 3 ZDP).
+			MinChildBonus:               domain.NewAmount(100, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
 			DeductionCapLifeInsurance:   domain.NewAmount(0, 0),
 			DeductionCapPension:         domain.NewAmount(0, 0),
@@ -75,7 +77,7 @@ var ruleSets = map[int]RuleSet{
 		Status: RuleStatusFinal,
 		Sources: []LegalSource{
 			{Title: "Zákon č. 586/1992 Sb., § 15, § 16, § 21g, § 35ba, § 35c"},
-			{Title: "Nařízení vlády č. 285/2024 Sb.", URL: "https://mpsv.gov.cz/minimalni-mzda", Note: "koeficient 0,422 pro rok 2025; částku 20 800 Kč měsíčně vyhlásilo sdělení MPSV č. 251/2024 Sb. (MPSV: 49 233 x 0,422 zaokrouhleno nahoru na celé stokoruny)"},
+			{Title: "Sdělení MPSV č. 286/2024 Sb.", URL: "https://mpsv.gov.cz/minimalni-mzda", Note: "minimální mzda od 1. 1. 2025: 20 800 Kč měsíčně (koeficient 0,422 podle nařízení vlády č. 285/2024 Sb. x predikce průměrné mzdy 49 233 Kč podle sdělení MF č. 251/2024 Sb., zaokrouhleno nahoru na celé stokoruny)"},
 			{Title: "Nařízení vlády č. 282/2024 Sb.", Note: "průměrná mzda pro rok 2025"},
 			{Title: "MF: změny v daňovém osvobození prodeje podílů a akcií", URL: "https://mf.gov.cz/cs/ministerstvo/media/tiskove-zpravy/2025/zmeny-v-daneni-prodeje-podilu-ve-firmach-a-akcii-a-61234", Note: "od ledna 2025 limit 40 mil. Kč na úhrn příjmů ve zdaňovacím období, příjmy nad limit se zdaňují poměrně"},
 			{Title: "ČSSZ: stanovení výše pojistného na důchodové pojištění OSVČ", URL: "https://www.cssz.gov.cz/osvc-duchodove-pojisteni-stanoveni-vyse-pojistneho", Note: "maximální vyměřovací základ 2 234 736 Kč (48násobek průměrné mzdy)"},
@@ -115,9 +117,11 @@ var ruleSets = map[int]RuleSet{
 			CryptoTimeTestFrom:     cryptoTimeTestFrom,
 			SecurityExemptionLimit: domain.NewAmount(40_000_000, 0),
 			SpouseIncomeLimit:      domain.NewAmount(68_000, 0),
-			// Minimální mzda k 1. 1. 2025: nařízení vlády č. 285/2024 Sb. (koeficient
-			// 0,422) + sdělení MPSV č. 251/2024 Sb. (49 233 x 0,422 -> 20 800 Kč; MPSV).
-			MinimumWage:                 domain.NewAmount(20_800, 0),
+			// Minimální mzda k 1. 1. 2025: sdělení MPSV č. 286/2024 Sb. (koeficient
+			// 0,422 podle nařízení vlády č. 285/2024 Sb.; MPSV).
+			MinimumWage: domain.NewAmount(20_800, 0),
+			// Minimální výše daňového bonusu (§ 35c odst. 3 ZDP).
+			MinChildBonus:               domain.NewAmount(100, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
 			DeductionCapLifeInsurance:   domain.NewAmount(0, 0),
 			DeductionCapPension:         domain.NewAmount(0, 0),
@@ -177,7 +181,9 @@ var ruleSets = map[int]RuleSet{
 			SecurityExemptionLimit: domain.NewAmount(40_000_000, 0),
 			SpouseIncomeLimit:      domain.NewAmount(68_000, 0),
 			// Minimální mzda k 1. 1. 2026 (sdělení MPSV č. 356/2025 Sb.; MPSV).
-			MinimumWage:                 domain.NewAmount(22_400, 0),
+			MinimumWage: domain.NewAmount(22_400, 0),
+			// Minimální výše daňového bonusu (§ 35c odst. 3 ZDP).
+			MinChildBonus:               domain.NewAmount(100, 0),
 			DeductionCapMortgage:        domain.NewAmount(150_000, 0),
 			DeductionCapLifeInsurance:   domain.NewAmount(0, 0),
 			DeductionCapPension:         domain.NewAmount(0, 0),

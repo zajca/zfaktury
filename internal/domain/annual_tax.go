@@ -21,6 +21,15 @@ const (
 	// a provisional rule set. This is acceptable for drafts but should be
 	// reviewed before final filing/XML submission.
 	WarningTaxRuleSetProvisional = "tax_ruleset_provisional"
+
+	// WarningChildBonusIncomeTest signals the refundable child bonus was zeroed
+	// because the § 6 + § 7 gross income did not reach 6x the monthly minimum
+	// wage on 1 January (§ 35c odst. 4 with § 21g odst. 1 ZDP).
+	WarningChildBonusIncomeTest = "child_bonus_income_test"
+
+	// WarningChildBonusBelowMinimum signals the computed child bonus was below
+	// the claim minimum and becomes 0 (§ 35c odst. 3 ZDP: at least 100 CZK).
+	WarningChildBonusBelowMinimum = "child_bonus_below_minimum"
 )
 
 // IncomeTaxReturn represents DPFO (danove priznani fyzickych osob).

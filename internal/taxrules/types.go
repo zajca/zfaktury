@@ -108,7 +108,10 @@ type TaxYearConstants struct {
 	// MinimumWage is the monthly minimum wage effective on 1 January of the
 	// rule-set year (§ 21g odst. 1 ZDP), unadjusted for hours worked. The child
 	// bonus (§ 35c odst. 4) requires § 6 + § 7 income of at least 6x this value.
-	MinimumWage                 domain.Amount
+	MinimumWage domain.Amount
+	// MinChildBonus is the minimum yearly daňový bonus that can be claimed
+	// (§ 35c odst. 3 ZDP): a computed bonus of 1-99 CZK becomes 0.
+	MinChildBonus               domain.Amount
 	DeductionCapMortgage        domain.Amount
 	DeductionCapLifeInsurance   domain.Amount
 	DeductionCapPension         domain.Amount
@@ -263,6 +266,9 @@ func ValidateRuleSet(r RuleSet) error {
 	}
 	if r.Constants.MinimumWage <= 0 {
 		errs = append(errs, fmt.Errorf("%s minimum wage must be positive: %w", r.ID, domain.ErrInvalidInput))
+	}
+	if r.Constants.MinChildBonus <= 0 {
+		errs = append(errs, fmt.Errorf("%s minimum child bonus must be positive: %w", r.ID, domain.ErrInvalidInput))
 	}
 	if r.Constants.SocialRate <= 0 || r.Constants.HealthRate <= 0 {
 		errs = append(errs, fmt.Errorf("%s insurance rates must be positive: %w", r.ID, domain.ErrInvalidInput))
